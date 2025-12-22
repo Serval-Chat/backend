@@ -21,6 +21,7 @@ import type {
 } from '../di/interfaces/IServerMessageRepository';
 import type { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '../di/interfaces/IChannelRepository';
+import type { IReactionRepository } from '../di/interfaces/IReactionRepository';
 import { PermissionService } from '../services/PermissionService';
 import type { ILogger } from '../di/interfaces/ILogger';
 import { getIO } from '../socket';
@@ -58,6 +59,8 @@ export class ServerMessageController extends Controller {
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
+        @inject(TYPES.ReactionRepository)
+        private reactionRepo: IReactionRepository,
         @inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @inject(TYPES.Logger) private logger: ILogger,
@@ -93,12 +96,30 @@ export class ServerMessageController extends Controller {
         }
 
         // Fetch messages using cursor-based pagination (before / around)
-        return await this.serverMessageRepo.findByChannelId(
+        const msgs = await this.serverMessageRepo.findByChannelId(
             channelId,
             limit,
             before,
             around,
         );
+
+        // Bulk fetch reactions for all retrieved messages
+        const messageIds = msgs.map((m) => m._id.toString());
+        const reactionsMap = await this.reactionRepo.getReactionsForMessages(
+            messageIds,
+            'server',
+            userId,
+        );
+
+        return msgs.map((msg) => {
+            const msgObj = (msg as any).toObject
+                ? (msg as any).toObject()
+                : msg;
+            return {
+                ...msgObj,
+                reactions: reactionsMap[msg._id.toString()] || [],
+            };
+        });
     }
 
     /**
@@ -232,7 +253,21 @@ export class ServerMessageController extends Controller {
             }
         }
 
-        return { message, repliedMessage };
+        const reactions = await this.reactionRepo.getReactionsByMessage(
+            messageId,
+            'server',
+            userId,
+        );
+
+        return {
+            message: {
+                ...((message as any).toObject
+                    ? (message as any).toObject()
+                    : message),
+                reactions,
+            },
+            repliedMessage,
+        };
     }
 
     /**

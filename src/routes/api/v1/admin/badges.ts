@@ -48,11 +48,9 @@ router.post(
             const { id, name, description, icon, color } = req.body;
 
             if (!id || !name || !description || !icon) {
-                return res
-                    .status(400)
-                    .send({
-                        error: 'id, name, description, and icon are required',
-                    });
+                return res.status(400).send({
+                    error: 'id, name, description, and icon are required',
+                });
             }
 
             // Check if badge ID already exists

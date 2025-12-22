@@ -10,6 +10,7 @@ import { IReactionRepository } from '../../di/interfaces/IReactionRepository';
 import { IMessageRepository } from '../../di/interfaces/IMessageRepository';
 import { IServerMessageRepository } from '../../di/interfaces/IServerMessageRepository';
 import { IServerMemberRepository } from '../../di/interfaces/IServerMemberRepository';
+import { IUserRepository } from '../../di/interfaces/IUserRepository';
 import { PresenceService } from '../services/PresenceService';
 import { getIO } from '../../socket';
 import logger from '../../utils/logger';
@@ -33,6 +34,7 @@ export class ReactionGateway {
         private serverMessageRepo: IServerMessageRepository,
         @inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
+        @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.PresenceService) private presenceService: PresenceService,
     ) {}
 
@@ -86,18 +88,23 @@ export class ReactionGateway {
                         ? message.receiverId.toString()
                         : message.senderId.toString();
 
-                const otherUser = await (
-                    this.messageRepo as any
-                ).userRepo?.findById(otherUserId); // Hacky but we need username
-
-                // Let's emit to the sender
-                ctx.socket.emit('reaction_added', {
-                    messageId,
-                    messageType: 'dm',
-                    reactions,
-                });
-
-                // And emit to receiver if online
+                const io = getIO();
+                // Notify both participants
+                for (const uid of [userId, otherUserId]) {
+                    const user = await this.userRepo.findById(uid);
+                    if (user?.username) {
+                        const sockets = this.presenceService.getSockets(
+                            user.username,
+                        );
+                        sockets.forEach((sid: string) => {
+                            io.to(sid).emit('reaction_added', {
+                                messageId,
+                                messageType: 'dm',
+                                reactions,
+                            });
+                        });
+                    }
+                }
             } else if (messageType === 'server') {
                 if (!serverId || !channelId)
                     return {
@@ -188,13 +195,29 @@ export class ReactionGateway {
                     'dm',
                     userId,
                 );
-                ctx.socket.emit('reaction_removed', {
-                    messageId,
-                    messageType: 'dm',
-                    reactions,
-                });
 
-                // Similar to add_reaction, need to notify the other user.
+                const otherUserId =
+                    message.senderId.toString() === userId
+                        ? message.receiverId.toString()
+                        : message.senderId.toString();
+
+                const io = getIO();
+                // Notify both participants
+                for (const uid of [userId, otherUserId]) {
+                    const user = await this.userRepo.findById(uid);
+                    if (user?.username) {
+                        const sockets = this.presenceService.getSockets(
+                            user.username,
+                        );
+                        sockets.forEach((sid: string) => {
+                            io.to(sid).emit('reaction_removed', {
+                                messageId,
+                                messageType: 'dm',
+                                reactions,
+                            });
+                        });
+                    }
+                }
             } else if (messageType === 'server') {
                 if (!serverId || !channelId)
                     return {

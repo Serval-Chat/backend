@@ -685,11 +685,9 @@ router.patch(
                     role.name &&
                     role.name.trim().toLowerCase() === '@everyone'
                 ) {
-                    return res
-                        .status(400)
-                        .json({
-                            error: 'Cannot set @everyone as default role',
-                        });
+                    return res.status(400).json({
+                        error: 'Cannot set @everyone as default role',
+                    });
                 }
             }
 
@@ -1082,8 +1080,8 @@ router.post(
                 position !== undefined
                     ? position
                     : maxPositionChannel
-                        ? maxPositionChannel.position + 1
-                        : 0;
+                      ? maxPositionChannel.position + 1
+                      : 0;
 
             const channel = await channelRepo.create({
                 serverId,
@@ -1262,11 +1260,9 @@ router.patch(
                         .json({ error: 'Category not found' });
                 }
                 if (category.serverId !== serverId) {
-                    return res
-                        .status(400)
-                        .json({
-                            error: 'Category does not belong to this server',
-                        });
+                    return res.status(400).json({
+                        error: 'Category does not belong to this server',
+                    });
                 }
             }
 
@@ -1555,8 +1551,8 @@ router.post(
                 position !== undefined
                     ? position
                     : maxPositionCategory
-                        ? maxPositionCategory.position + 1
-                        : 0;
+                      ? maxPositionCategory.position + 1
+                      : 0;
 
             const category = await categoryRepo.create({
                 serverId,
@@ -2160,11 +2156,9 @@ router.post(
                         newOwnerId,
                     },
                 );
-                return res
-                    .status(403)
-                    .json({
-                        error: 'Only the server owner can transfer ownership',
-                    });
+                return res.status(403).json({
+                    error: 'Only the server owner can transfer ownership',
+                });
             }
 
             // Verify new owner is a server member
@@ -2362,34 +2356,34 @@ router.post(
                 permissions:
                     permissions ||
                     (name &&
-                        (name.toLowerCase().includes('mute') ||
-                            name.toLowerCase().includes('muted'))
+                    (name.toLowerCase().includes('mute') ||
+                        name.toLowerCase().includes('muted'))
                         ? {
-                            sendMessages: false,
-                            manageMessages: false,
-                            deleteMessagesOfOthers: false,
-                            manageChannels: false,
-                            manageRoles: false,
-                            banMembers: false,
-                            kickMembers: false,
-                            manageInvites: false,
-                            manageServer: false,
-                            administrator: false,
-                            pingRolesAndEveryone: false,
-                        }
+                              sendMessages: false,
+                              manageMessages: false,
+                              deleteMessagesOfOthers: false,
+                              manageChannels: false,
+                              manageRoles: false,
+                              banMembers: false,
+                              kickMembers: false,
+                              manageInvites: false,
+                              manageServer: false,
+                              administrator: false,
+                              pingRolesAndEveryone: false,
+                          }
                         : {
-                            sendMessages: true,
-                            manageMessages: false,
-                            deleteMessagesOfOthers: false,
-                            manageChannels: false,
-                            manageRoles: false,
-                            banMembers: false,
-                            kickMembers: false,
-                            manageInvites: false,
-                            manageServer: false,
-                            administrator: false,
-                            pingRolesAndEveryone: false,
-                        }),
+                              sendMessages: true,
+                              manageMessages: false,
+                              deleteMessagesOfOthers: false,
+                              manageChannels: false,
+                              manageRoles: false,
+                              banMembers: false,
+                              kickMembers: false,
+                              manageInvites: false,
+                              manageServer: false,
+                              administrator: false,
+                              pingRolesAndEveryone: false,
+                          }),
             };
 
             const role = await roleRepo.create({
@@ -2496,29 +2490,23 @@ router.patch(
                         member &&
                         member.roles.some((r: any) => r.toString() === roleId)
                     ) {
-                        return res
-                            .status(403)
-                            .json({
-                                error: 'Cannot reorder a role you currently have',
-                            });
+                        return res.status(403).json({
+                            error: 'Cannot reorder a role you currently have',
+                        });
                     }
 
                     // Can't reorder roles at or above their position
                     if (role.position >= userHighestPosition) {
-                        return res
-                            .status(403)
-                            .json({
-                                error: 'Cannot reorder roles at or above your highest role position',
-                            });
+                        return res.status(403).json({
+                            error: 'Cannot reorder roles at or above your highest role position',
+                        });
                     }
 
                     // Can't move roles to a position at or above their highest position
                     if (position >= userHighestPosition) {
-                        return res
-                            .status(403)
-                            .json({
-                                error: 'Cannot move roles to a position at or above your highest role',
-                            });
+                        return res.status(403).json({
+                            error: 'Cannot move roles to a position at or above your highest role',
+                        });
                     }
                 }
             }
@@ -2618,11 +2606,9 @@ router.patch(
                     member &&
                     member.roles.some((r: any) => r.toString() === roleId)
                 ) {
-                    return res
-                        .status(403)
-                        .json({
-                            error: 'Cannot edit a role you currently have',
-                        });
+                    return res.status(403).json({
+                        error: 'Cannot edit a role you currently have',
+                    });
                 }
 
                 // Prevent non-owners from editing roles at or above their highest position
@@ -2632,11 +2618,9 @@ router.patch(
                         userId,
                     );
                 if (roleToUpdate.position >= userHighestPosition) {
-                    return res
-                        .status(403)
-                        .json({
-                            error: 'Cannot edit roles at or above your highest role position',
-                        });
+                    return res.status(403).json({
+                        error: 'Cannot edit roles at or above your highest role position',
+                    });
                 }
             }
 
@@ -2679,11 +2663,9 @@ router.patch(
                             userId,
                         );
                     if (position >= userHighestPosition) {
-                        return res
-                            .status(403)
-                            .json({
-                                error: 'Cannot set role position at or above your highest role',
-                            });
+                        return res.status(403).json({
+                            error: 'Cannot set role position at or above your highest role',
+                        });
                     }
                 }
                 updates.position = position;
@@ -2757,11 +2739,9 @@ router.delete(
                         (r: any) => r.toString() === roleId,
                     )
                 ) {
-                    return res
-                        .status(403)
-                        .json({
-                            error: 'Cannot delete a role you currently have',
-                        });
+                    return res.status(403).json({
+                        error: 'Cannot delete a role you currently have',
+                    });
                 }
 
                 // Prevent non-owners from deleting roles at or above their highest position
@@ -2771,11 +2751,9 @@ router.delete(
                         userId,
                     );
                 if (roleToDelete.position >= userHighestPosition) {
-                    return res
-                        .status(403)
-                        .json({
-                            error: 'Cannot delete roles at or above your highest role position',
-                        });
+                    return res.status(403).json({
+                        error: 'Cannot delete roles at or above your highest role position',
+                    });
                 }
             }
 
@@ -2795,11 +2773,9 @@ router.delete(
                 ) {
                     // User is trying to delete their own admin role - prevent this
                     if (!isOwner) {
-                        return res
-                            .status(403)
-                            .json({
-                                error: 'Cannot delete your own administrator role',
-                            });
+                        return res.status(403).json({
+                            error: 'Cannot delete your own administrator role',
+                        });
                     }
                 }
             }
@@ -2881,11 +2857,9 @@ router.post(
                         currentUserId,
                     );
                 if (roleToAssign.position >= userHighestPosition) {
-                    return res
-                        .status(403)
-                        .json({
-                            error: 'Cannot assign roles at or above your highest role position',
-                        });
+                    return res.status(403).json({
+                        error: 'Cannot assign roles at or above your highest role position',
+                    });
                 }
             }
 
@@ -3035,11 +3009,9 @@ router.delete(
                         currentUserId,
                     );
                 if (roleBeingRemoved.position >= userHighestPosition) {
-                    return res
-                        .status(403)
-                        .json({
-                            error: 'Cannot remove roles at or above your highest role position',
-                        });
+                    return res.status(403).json({
+                        error: 'Cannot remove roles at or above your highest role position',
+                    });
                 }
             }
 
@@ -3121,11 +3093,9 @@ router.delete(
 
                     // Prevent non-owner administrators from removing Administrator role from other administrators
                     if (targetHasAdministrator && currentUserHasAdministrator) {
-                        return res
-                            .status(403)
-                            .json({
-                                error: 'Cannot remove Administrator role from other administrators',
-                            });
+                        return res.status(403).json({
+                            error: 'Cannot remove Administrator role from other administrators',
+                        });
                     }
                 }
             }
@@ -3567,11 +3537,9 @@ router.post(
             }
 
             if (server.ownerId.toString() === userId) {
-                return res
-                    .status(400)
-                    .json({
-                        error: 'Owner cannot leave server. Transfer ownership or delete the server.',
-                    });
+                return res.status(400).json({
+                    error: 'Owner cannot leave server. Transfer ownership or delete the server.',
+                });
             }
 
             await serverMemberRepo.remove(serverId, userId);
@@ -3735,10 +3703,10 @@ router.post(
                 ...banObject,
                 user: bannedUser
                     ? {
-                        _id: bannedUser._id,
-                        username: bannedUser.username,
-                        profilePicture: bannedUser.profilePicture,
-                    }
+                          _id: bannedUser._id,
+                          username: bannedUser.username,
+                          profilePicture: bannedUser.profilePicture,
+                      }
                     : null,
                 bannedByUser: currentUser
                     ? { _id: currentUser._id, username: currentUser.username }
@@ -3883,16 +3851,16 @@ router.get(
                         ...ban,
                         user: bannedUser
                             ? {
-                                _id: bannedUser._id,
-                                username: bannedUser.username,
-                                profilePicture: bannedUser.profilePicture,
-                            }
+                                  _id: bannedUser._id,
+                                  username: bannedUser.username,
+                                  profilePicture: bannedUser.profilePicture,
+                              }
                             : null,
                         bannedByUser: bannedByUser
                             ? {
-                                _id: bannedByUser._id,
-                                username: bannedByUser.username,
-                            }
+                                  _id: bannedByUser._id,
+                                  username: bannedByUser.username,
+                              }
                             : null,
                     };
                 }),
