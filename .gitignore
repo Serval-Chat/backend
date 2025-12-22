@@ -1,3 +1,21 @@
+# Backend-only .gitignore entries
+
+# Unironically we also host public files from here.
+public/
+
+# Tokens file used during registration
+tokens.txt
+
+# Logs & Dist folder
+logs/
+dist/
+
+# Environment file
+.env
+
+# User generated content folder
+uploads
+
 # Logs
 logs
 *.log

@@ -1,0 +1,17 @@
+{
+	"entryFile": "src/server.ts",
+	"noImplicitAdditionalProperties": "throw-on-extras",
+	"controllerPathGlobs": [
+		"src/controllers/**/*Controller.ts"
+	],
+	"spec": {
+		"outputDirectory": "public",
+		"specVersion": 3
+	},
+	"routes": {
+		"routesDir": "src/routes/tsoa",
+		"iocModule": "src/ioc.ts",
+		"authentication": true,
+		"authenticationModule": "src/auth.ts"
+	}
+}
