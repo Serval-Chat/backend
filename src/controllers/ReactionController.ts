@@ -196,7 +196,7 @@ export class ReactionController extends Controller {
      * Adds a reaction to a DM message.
      * Enforces DM participation and maximum reaction limits.
      */
-    @Post('dm/{messageId}/reactions')
+    @Post('messages/{messageId}/reactions')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Invalid emoji or limit reached', {
         error: ErrorMessages.REACTION.MAX_REACTIONS,
@@ -264,23 +264,20 @@ export class ReactionController extends Controller {
                 ? message.receiverId.toString()
                 : message.senderId.toString();
 
-        [userId, receiverId].forEach((uid) => {
-            // PresenceService requires usernames for socket lookup; fetch user to bridge the ID-to-username gap
-            this.userRepo.findById(uid).then((user: any) => {
-                if (user?.username) {
-                    const sockets = this.presenceService.getSockets(
-                        user.username,
-                    );
-                    sockets.forEach((sid: string) => {
-                        io.to(sid).emit('reaction_added', {
-                            messageId,
-                            messageType: 'dm',
-                            reactions,
-                        });
+        // Notify both participants
+        for (const uid of [userId, receiverId]) {
+            const user = await this.userRepo.findById(uid);
+            if (user?.username) {
+                const sockets = this.presenceService.getSockets(user.username);
+                sockets.forEach((sid: string) => {
+                    io.to(sid).emit('reaction_added', {
+                        messageId,
+                        messageType: 'dm',
+                        reactions,
                     });
-                }
-            });
-        });
+                });
+            }
+        }
 
         this.setStatus(201);
         return { reactions };
@@ -290,7 +287,7 @@ export class ReactionController extends Controller {
      * Removes a reaction from a DM message.
      * Enforces DM participation and reaction existence.
      */
-    @Delete('dm/{messageId}/reactions')
+    @Delete('messages/{messageId}/reactions')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.REACTION.ACCESS_DENIED,
@@ -346,22 +343,20 @@ export class ReactionController extends Controller {
                 ? message.receiverId.toString()
                 : message.senderId.toString();
 
-        [userId, receiverId].forEach((uid) => {
-            this.userRepo.findById(uid).then((user: any) => {
-                if (user?.username) {
-                    const sockets = this.presenceService.getSockets(
-                        user.username,
-                    );
-                    sockets.forEach((sid: string) => {
-                        io.to(sid).emit('reaction_removed', {
-                            messageId,
-                            messageType: 'dm',
-                            reactions,
-                        });
+        // Notify both participants
+        for (const uid of [userId, receiverId]) {
+            const user = await this.userRepo.findById(uid);
+            if (user?.username) {
+                const sockets = this.presenceService.getSockets(user.username);
+                sockets.forEach((sid: string) => {
+                    io.to(sid).emit('reaction_removed', {
+                        messageId,
+                        messageType: 'dm',
+                        reactions,
                     });
-                }
-            });
-        });
+                });
+            }
+        }
 
         return { reactions };
     }

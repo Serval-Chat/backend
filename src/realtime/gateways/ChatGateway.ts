@@ -157,12 +157,10 @@ export class ChatGateway {
                         count: 0,
                     });
                 } else {
-                    ctx.socket
-                        .to(sid)
-                        .emit('dm_unread', {
-                            peer: peerUser.username,
-                            count: 0,
-                        });
+                    ctx.socket.to(sid).emit('dm_unread', {
+                        peer: peerUser.username,
+                        count: 0,
+                    });
                 }
             });
         }

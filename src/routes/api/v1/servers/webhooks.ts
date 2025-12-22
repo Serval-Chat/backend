@@ -156,11 +156,9 @@ router.post(
                     .json({ error: 'Webhook name is required' });
             }
             if (name.length > 100) {
-                return res
-                    .status(400)
-                    .json({
-                        error: 'Webhook name must be 100 characters or less',
-                    });
+                return res.status(400).json({
+                    error: 'Webhook name must be 100 characters or less',
+                });
             }
 
             // Verify user is member of server
@@ -240,11 +238,9 @@ router.delete(
 
             // Type guards
             if (!serverId || !channelId || !webhookId) {
-                return res
-                    .status(400)
-                    .json({
-                        error: 'Server ID, Channel ID, and Webhook ID are required',
-                    });
+                return res.status(400).json({
+                    error: 'Server ID, Channel ID, and Webhook ID are required',
+                });
             }
 
             // Verify user is member of server
@@ -305,11 +301,9 @@ router.post(
 
             // Type guards
             if (!serverId || !channelId || !webhookId) {
-                return res
-                    .status(400)
-                    .json({
-                        error: 'Server ID, Channel ID, and Webhook ID are required',
-                    });
+                return res.status(400).json({
+                    error: 'Server ID, Channel ID, and Webhook ID are required',
+                });
             }
 
             // Verify user is member of server
@@ -451,11 +445,9 @@ topLevelRouter.post(
                     .json({ error: 'Message content is required' });
             }
             if (content.length > 5000) {
-                return res
-                    .status(400)
-                    .json({
-                        error: 'Message content must be 5000 characters or less',
-                    });
+                return res.status(400).json({
+                    error: 'Message content must be 5000 characters or less',
+                });
             }
 
             // Validate optional username

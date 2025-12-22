@@ -118,11 +118,9 @@ router.post(
             }
 
             if (!name || name.length > 32 || !/^[a-zA-Z0-9_-]+$/.test(name)) {
-                return res
-                    .status(400)
-                    .json({
-                        error: 'Invalid emoji name. Must be 1-32 characters, alphanumeric, underscore, or dash only',
-                    });
+                return res.status(400).json({
+                    error: 'Invalid emoji name. Must be 1-32 characters, alphanumeric, underscore, or dash only',
+                });
             }
 
             // Check permissions - owner or has manageServer permission
