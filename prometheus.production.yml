@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'chat-app'
+    static_configs:
+      - targets: ['localhost:443']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scheme: https
+    tls_config:
+      insecure_skip_verify: false 

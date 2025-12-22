@@ -1,0 +1,145 @@
+import type { Server, Socket } from 'socket.io';
+import type { Container } from 'inversify';
+import { ZodSchema } from 'zod';
+import { EVENT_METADATA, GATEWAY_METADATA } from './decorators';
+import type {
+    EventHandlerMetadata,
+    GatewayMetadata,
+    SocketContext,
+} from './types';
+import logger from '../../utils/logger';
+
+/**
+ * RealTime Dispatcher.
+ *
+ * Handles the registration and dispatching of WebSocket events to gateway handlers.
+ * Manages dependency injection, validation, and error handling for all events.
+ */
+export class RealTimeDispatcher {
+    constructor(private container: Container) {}
+
+    /**
+     * Registers all gateway classes with the Socket.IO server.
+     *
+     * @param io - The Socket.IO server instance.
+     * @param gateways - List of gateway classes to register.
+     */
+    registerGateways(io: Server, gateways: Function[]) {
+        gateways.forEach((GatewayClass) => {
+            const gatewayMetadata: GatewayMetadata = Reflect.getMetadata(
+                GATEWAY_METADATA,
+                GatewayClass,
+            );
+            const events: EventHandlerMetadata[] =
+                Reflect.getMetadata(EVENT_METADATA, GatewayClass) || [];
+
+            if (!gatewayMetadata) {
+                logger.warn(
+                    `Class ${GatewayClass.name} is not decorated with @Gateway`,
+                );
+                return;
+            }
+
+            const namespace = io.of(gatewayMetadata.namespace || '/');
+
+            namespace.on('connection', async (socket: Socket) => {
+                // Resolve the gateway instance for this connection (or singleton depending on DI config)
+                // Ideally, gateways should be singletons or transient. If they are stateful per socket, we need a factory.
+                // For now, assuming singletons or stateless handlers.
+                let gatewayInstance: any;
+                try {
+                    gatewayInstance = this.container.resolve(
+                        GatewayClass as any,
+                    );
+                } catch (error) {
+                    logger.error(
+                        `Failed to resolve gateway ${GatewayClass.name}:`,
+                        error,
+                    );
+                    return;
+                }
+
+                // Attach user to context if authenticated
+                // This assumes auth middleware has already run and attached user to socket
+                const user = (socket as any).user;
+                const ctx: SocketContext = { socket, user };
+
+                // Handle connection hook
+                if (typeof gatewayInstance.handleConnection === 'function') {
+                    try {
+                        await gatewayInstance.handleConnection(ctx);
+                    } catch (error: any) {
+                        logger.error(
+                            `[Socket Failure] Connection Hook: ${GatewayClass.name}`,
+                            {
+                                reason:
+                                    error.message || 'Connection hook failed',
+                                socketId: ctx.socket.id,
+                                userId: ctx.user.id,
+                                stack: error.stack,
+                            },
+                        );
+                    }
+                }
+
+                events.forEach(({ event, schema, method }) => {
+                    socket.on(event, async (payload: any, ack?: Function) => {
+                        try {
+                            // 1. Validation
+                            let validatedPayload = payload;
+                            if (schema) {
+                                const result = schema.safeParse(payload);
+                                if (!result.success) {
+                                    logger.warn(
+                                        `[Socket Failure] Event: ${event}`,
+                                        {
+                                            reason: 'Validation failed',
+                                            socketId: ctx.socket.id,
+                                            userId: ctx.user.id,
+                                            validationErrors:
+                                                result.error.issues,
+                                        },
+                                    );
+                                    if (ack) {
+                                        return ack({
+                                            ok: false,
+                                            error: 'Validation failed',
+                                            details: result.error.issues,
+                                        });
+                                    }
+                                    return;
+                                }
+                                validatedPayload = result.data;
+                            }
+
+                            // 2. Execution
+                            const result = await gatewayInstance[method](
+                                ctx,
+                                validatedPayload,
+                            );
+
+                            // 3. Acknowledgment
+                            if (ack && result !== undefined) {
+                                ack(result);
+                            }
+                        } catch (error: any) {
+                            logger.error(`[Socket Failure] Event: ${event}`, {
+                                reason:
+                                    error.message || 'Internal execution error',
+                                socketId: ctx.socket.id,
+                                userId: ctx.user.id,
+                                stack: error.stack,
+                            });
+                            if (ack) {
+                                ack({
+                                    ok: false,
+                                    error: 'Internal server error',
+                                });
+                            }
+                        }
+                    });
+                });
+            });
+        });
+    }
+}
