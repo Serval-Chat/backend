@@ -1,5 +1,8 @@
 # Backend-only .gitignore entries
 
+# TSOA auto-generated files
+src/routes/tsoa/routes.ts
+
 # Unironically we also host public files from here.
 public/
 
