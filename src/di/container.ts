@@ -81,6 +81,7 @@ import { FileProxyController } from '../controllers/FileProxyController';
 import { ServerPublicController } from '../controllers/ServerPublicController';
 import { UserWarningController } from '../controllers/UserWarningController';
 import { UserPingController } from '../controllers/UserPingController';
+import { FileCompatibilityController } from '../controllers/FileCompatibilityController';
 
 /**
  * Dependency Injection Container
@@ -332,6 +333,11 @@ container
 
 container
     .bind<UserPingController>(UserPingController)
+    .toSelf()
+    .inTransientScope();
+
+container
+    .bind<FileCompatibilityController>(FileCompatibilityController)
     .toSelf()
     .inTransientScope();
 
