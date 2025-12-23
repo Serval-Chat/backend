@@ -48,9 +48,9 @@ import { UserWarningController } from './../../controllers/UserWarningController
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { UserPingController } from './../../controllers/UserPingController';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { WebhookController } from './../../controllers/WebhookController';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { FileCompatibilityController } from './../../controllers/FileCompatibilityController';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { WebhookController } from './../../controllers/WebhookController';
 import { expressAuthentication } from './../../auth';
 // @ts-ignore - no great way to install types from subpackage
 import { iocContainer } from './../../ioc';
@@ -887,7 +887,8 @@ const models: TsoaRoute.Models = {
     "SendMessageRequest": {
         "dataType": "refObject",
         "properties": {
-            "text": {"dataType":"string","required":true},
+            "content": {"dataType":"string"},
+            "text": {"dataType":"string"},
             "replyToId": {"dataType":"string"},
         },
         "additionalProperties": false,
@@ -896,7 +897,8 @@ const models: TsoaRoute.Models = {
     "ServerEditMessageRequest": {
         "dataType": "refObject",
         "properties": {
-            "text": {"dataType":"string","required":true},
+            "content": {"dataType":"string"},
+            "text": {"dataType":"string"},
         },
         "additionalProperties": false,
     },
@@ -5329,6 +5331,42 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsFileCompatibilityController_downloadFile: Record<string, TsoaRoute.ParameterSchema> = {
+                filename: {"in":"path","name":"filename","required":true,"dataType":"string"},
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.get('/api/v1/download/:filename',
+            ...(fetchMiddlewares<RequestHandler>(FileCompatibilityController)),
+            ...(fetchMiddlewares<RequestHandler>(FileCompatibilityController.prototype.downloadFile)),
+
+            async function FileCompatibilityController_downloadFile(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsFileCompatibilityController_downloadFile, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<FileCompatibilityController>(FileCompatibilityController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'downloadFile',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsWebhookController_getWebhooks: Record<string, TsoaRoute.ParameterSchema> = {
                 serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
                 channelId: {"in":"path","name":"channelId","required":true,"dataType":"string"},
@@ -5551,42 +5589,6 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
 
               await templateService.apiHandler({
                 methodName: 'executeWebhook',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsFileCompatibilityController_downloadFile: Record<string, TsoaRoute.ParameterSchema> = {
-                filename: {"in":"path","name":"filename","required":true,"dataType":"string"},
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
-        };
-        app.get('/api/v1/download/:filename',
-            ...(fetchMiddlewares<RequestHandler>(FileCompatibilityController)),
-            ...(fetchMiddlewares<RequestHandler>(FileCompatibilityController.prototype.downloadFile)),
-
-            async function FileCompatibilityController_downloadFile(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsFileCompatibilityController_downloadFile, request, response });
-
-                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
-
-                const controller: any = await container.get<FileCompatibilityController>(FileCompatibilityController);
-                if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-                }
-
-              await templateService.apiHandler({
-                methodName: 'downloadFile',
                 controller,
                 response,
                 next,
