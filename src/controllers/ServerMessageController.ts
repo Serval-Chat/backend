@@ -35,12 +35,14 @@ import { ErrorResponse } from './models/ErrorResponse';
 import { ErrorMessages } from '../constants/errorMessages';
 
 interface SendMessageRequest {
-    text: string;
+    content?: string;
+    text?: string;
     replyToId?: string;
 }
 
 interface ServerEditMessageRequest {
-    text: string;
+    content?: string;
+    text?: string;
 }
 
 /**
@@ -167,11 +169,17 @@ export class ServerMessageController extends Controller {
             throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
+        const messageText = (body.content || body.text || '').trim();
+        if (!messageText) {
+            this.setStatus(400);
+            throw new Error(ErrorMessages.MESSAGE.TEXT_REQUIRED);
+        }
+
         const message = await this.serverMessageRepo.create({
             serverId: new mongoose.Types.ObjectId(serverId),
             channelId: new mongoose.Types.ObjectId(channelId),
             senderId: new mongoose.Types.ObjectId(userId),
-            text: body.text.trim(),
+            text: messageText,
             replyToId: body.replyToId
                 ? new mongoose.Types.ObjectId(body.replyToId)
                 : undefined,
@@ -301,8 +309,14 @@ export class ServerMessageController extends Controller {
             throw new Error(ErrorMessages.MESSAGE.ONLY_SENDER_EDIT);
         }
 
+        const messageText = (body.content || body.text || '').trim();
+        if (!messageText) {
+            this.setStatus(400);
+            throw new Error(ErrorMessages.MESSAGE.TEXT_REQUIRED);
+        }
+
         const updatedMessage = await this.serverMessageRepo.update(messageId, {
-            text: body.text.trim(),
+            text: messageText,
             // Mark message as edited for client-side rendering
             isEdited: true,
         });

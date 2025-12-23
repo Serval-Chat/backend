@@ -170,6 +170,14 @@ export function createApp(): Application {
 
     // Global error handler
     app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+        if (err.name === 'ValidateError') {
+            logger.warn(`Validation error for ${req.method} ${req.url}:`, err.fields);
+            return res.status(400).json({
+                error: 'Validation Failed',
+                details: err.fields,
+            });
+        }
+
         logger.error('Unhandled error:', err);
 
         if (res.headersSent) {
@@ -178,7 +186,7 @@ export function createApp(): Application {
 
         const status = err.status || 500;
         const message =
-            PROJECT_LEVEL === 'production'
+            PROJECT_LEVEL === 'production' && status >= 500
                 ? 'Internal Server Error'
                 : err.message || 'Internal Server Error';
 
