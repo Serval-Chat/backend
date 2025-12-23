@@ -171,7 +171,10 @@ export function createApp(): Application {
     // Global error handler
     app.use((err: any, req: Request, res: Response, next: NextFunction) => {
         if (err.name === 'ValidateError') {
-            logger.warn(`Validation error for ${req.method} ${req.url}:`, err.fields);
+            logger.warn(
+                `Validation error for ${req.method} ${req.url}:`,
+                err.fields,
+            );
             return res.status(400).json({
                 error: 'Validation Failed',
                 details: err.fields,

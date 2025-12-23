@@ -1,12 +1,4 @@
-import {
-    Controller,
-    Get,
-    Route,
-    Tags,
-    Path,
-    Request,
-    Response,
-} from 'tsoa';
+import { Controller, Get, Route, Tags, Path, Request, Response } from 'tsoa';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '../di/types';
 import type { ILogger } from '../di/interfaces/ILogger';

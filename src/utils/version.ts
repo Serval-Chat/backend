@@ -3,12 +3,19 @@ import path from 'path';
 import fs from 'fs';
 import logger from './logger';
 
+let cachedCommitHash: { commit: string; short: string } | null = null;
+let cachedVersion: string | null = null;
+
 /**
  * Get git commit hash information.
  *
  * @returns Full and short commit hash, or 'unknown' if git is (somehow) unavailable
  */
 export function getGitCommitHash(): { commit: string; short: string } {
+    if (cachedCommitHash) {
+        return cachedCommitHash;
+    }
+
     try {
         // Get the full commit hash
         const commit = execSync('git rev-parse HEAD', {
@@ -22,10 +29,14 @@ export function getGitCommitHash(): { commit: string; short: string } {
             encoding: 'utf-8',
         }).trim();
 
-        return { commit, short };
+        const result = { commit, short };
+        cachedCommitHash = result;
+        return result;
     } catch (err) {
         logger.error('Failed to get git commit hash:', err);
-        return { commit: 'unknown', short: 'unknown' };
+        const result = { commit: 'unknown', short: 'unknown' };
+        cachedCommitHash = result;
+        return result;
     }
 }
 
@@ -35,6 +46,10 @@ export function getGitCommitHash(): { commit: string; short: string } {
  * @returns Version string, defaults to 'unknown' if unavailable
  */
 export function getVersion(): string {
+    if (cachedVersion) {
+        return cachedVersion;
+    }
+
     try {
         // Read version from package.json
         const packageJsonPath = path.join(process.cwd(), 'package.json');
@@ -42,10 +57,12 @@ export function getVersion(): string {
             const packageJson = JSON.parse(
                 fs.readFileSync(packageJsonPath, 'utf-8'),
             );
-            return packageJson.version || 'unknown';
+            cachedVersion = packageJson.version || 'unknown';
+            return cachedVersion!;
         }
     } catch (err) {
         logger.error('Failed to read version from package.json:', err);
     }
-    return 'unknown';
+    cachedVersion = 'unknown';
+    return cachedVersion;
 }
