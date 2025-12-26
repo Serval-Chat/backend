@@ -165,7 +165,7 @@ export class ServerRoleController extends Controller {
         @Path() serverId: string,
         @Request() req: express.Request,
         @Body() body: ReorderRolesRequest,
-    ): Promise<{ message: string }> {
+    ): Promise<IRole[]> {
         // @ts-ignore
         const userId = req.user.id;
         if (
@@ -190,7 +190,7 @@ export class ServerRoleController extends Controller {
             rolePositions: body.rolePositions,
         });
 
-        return { message: 'Roles reordered' };
+        return await this.roleRepo.findByServerId(serverId);
     }
 
     /**
