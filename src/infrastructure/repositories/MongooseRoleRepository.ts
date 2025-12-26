@@ -32,6 +32,9 @@ export class MongooseRoleRepository implements IRoleRepository {
         color?: string;
         startColor?: string;
         endColor?: string;
+        colors?: string[];
+        gradientRepeat?: number;
+        separateFromOtherRoles?: boolean;
         position?: number;
         permissions?: Partial<IRolePermissions>;
     }): Promise<IRole> {
@@ -44,6 +47,9 @@ export class MongooseRoleRepository implements IRoleRepository {
             color: data.color || '#99aab5',
             startColor: data.startColor,
             endColor: data.endColor,
+            colors: data.colors,
+            gradientRepeat: data.gradientRepeat,
+            separateFromOtherRoles: data.separateFromOtherRoles,
             position: data.position || 0,
             permissions: data.permissions || {},
         });

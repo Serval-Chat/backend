@@ -50,6 +50,7 @@ export interface IRole {
      * Number of times to repeat the gradient (1 = no repeat, 2+ = repeat).
      */
     gradientRepeat?: number;
+    separateFromOtherRoles?: boolean;
     position: number;
     permissions: IRolePermissions;
     createdAt?: Date;
@@ -80,7 +81,9 @@ export interface IRoleRepository {
         color?: string;
         startColor?: string;
         endColor?: string;
+        colors?: string[];
         gradientRepeat?: number;
+        separateFromOtherRoles?: boolean;
         position?: number;
         permissions?: Partial<IRolePermissions>;
     }): Promise<IRole>;
