@@ -801,6 +801,7 @@ const models: TsoaRoute.Models = {
             "endColor": {"dataType":"string"},
             "colors": {"dataType":"array","array":{"dataType":"string"}},
             "gradientRepeat": {"dataType":"double"},
+            "separateFromOtherRoles": {"dataType":"boolean"},
             "position": {"dataType":"double","required":true},
             "permissions": {"ref":"IRolePermissions","required":true},
             "createdAt": {"dataType":"datetime"},
@@ -813,7 +814,20 @@ const models: TsoaRoute.Models = {
         "properties": {
             "name": {"dataType":"string","required":true},
             "color": {"dataType":"string"},
+            "startColor": {"dataType":"string"},
+            "endColor": {"dataType":"string"},
+            "colors": {"dataType":"array","array":{"dataType":"string"}},
+            "gradientRepeat": {"dataType":"double"},
+            "separateFromOtherRoles": {"dataType":"boolean"},
             "permissions": {"dataType":"any"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ReorderRolesRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "rolePositions": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"position":{"dataType":"double","required":true},"roleId":{"dataType":"string","required":true}}},"required":true},
         },
         "additionalProperties": false,
     },
@@ -823,16 +837,13 @@ const models: TsoaRoute.Models = {
         "properties": {
             "name": {"dataType":"string"},
             "color": {"dataType":"string"},
+            "startColor": {"dataType":"string"},
+            "endColor": {"dataType":"string"},
+            "colors": {"dataType":"array","array":{"dataType":"string"}},
+            "gradientRepeat": {"dataType":"double"},
+            "separateFromOtherRoles": {"dataType":"boolean"},
             "permissions": {"dataType":"any"},
             "position": {"dataType":"double"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ReorderRolesRequest": {
-        "dataType": "refObject",
-        "properties": {
-            "rolePositions": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"position":{"dataType":"double","required":true},"roleId":{"dataType":"string","required":true}}},"required":true},
         },
         "additionalProperties": false,
     },
@@ -4279,6 +4290,44 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsServerRoleController_reorderRoles: Record<string, TsoaRoute.ParameterSchema> = {
+                serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                body: {"in":"body","name":"body","required":true,"ref":"ReorderRolesRequest"},
+        };
+        app.patch('/api/v1/servers/:serverId/roles/reorder',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(ServerRoleController)),
+            ...(fetchMiddlewares<RequestHandler>(ServerRoleController.prototype.reorderRoles)),
+
+            async function ServerRoleController_reorderRoles(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsServerRoleController_reorderRoles, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<ServerRoleController>(ServerRoleController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'reorderRoles',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsServerRoleController_updateRole: Record<string, TsoaRoute.ParameterSchema> = {
                 serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
                 roleId: {"in":"path","name":"roleId","required":true,"dataType":"string"},
@@ -4345,44 +4394,6 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
 
               await templateService.apiHandler({
                 methodName: 'deleteRole',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsServerRoleController_reorderRoles: Record<string, TsoaRoute.ParameterSchema> = {
-                serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                body: {"in":"body","name":"body","required":true,"ref":"ReorderRolesRequest"},
-        };
-        app.patch('/api/v1/servers/:serverId/roles/reorder',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<RequestHandler>(ServerRoleController)),
-            ...(fetchMiddlewares<RequestHandler>(ServerRoleController.prototype.reorderRoles)),
-
-            async function ServerRoleController_reorderRoles(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsServerRoleController_reorderRoles, request, response });
-
-                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
-
-                const controller: any = await container.get<ServerRoleController>(ServerRoleController);
-                if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-                }
-
-              await templateService.apiHandler({
-                methodName: 'reorderRoles',
                 controller,
                 response,
                 next,

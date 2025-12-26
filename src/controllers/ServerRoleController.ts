@@ -23,20 +23,30 @@ import express from 'express';
 import { ErrorResponse } from './models/ErrorResponse';
 import { ErrorMessages } from '../constants/errorMessages';
 
-interface CreateRoleRequest {
+export interface CreateRoleRequest {
     name: string;
     color?: string;
+    startColor?: string;
+    endColor?: string;
+    colors?: string[];
+    gradientRepeat?: number;
+    separateFromOtherRoles?: boolean;
     permissions?: any;
 }
 
-interface UpdateRoleRequest {
+export interface UpdateRoleRequest {
     name?: string;
     color?: string;
+    startColor?: string;
+    endColor?: string;
+    colors?: string[];
+    gradientRepeat?: number;
+    separateFromOtherRoles?: boolean;
     permissions?: any;
     position?: number;
 }
 
-interface ReorderRolesRequest {
+export interface ReorderRolesRequest {
     rolePositions: { roleId: string; position: number }[];
 }
 
@@ -117,10 +127,22 @@ export class ServerRoleController extends Controller {
             await this.roleRepo.findMaxPositionByServerId(serverId);
         const position = maxPositionRole ? maxPositionRole.position + 1 : 1;
 
+        const roleColor =
+            body.startColor ||
+                body.endColor ||
+                (body.colors && body.colors.length > 0)
+                ? null
+                : (body.color || '#99aab5');
+
         const role = await this.roleRepo.create({
             serverId,
             name: body.name.trim(),
-            color: body.color || '#99aab5',
+            color: roleColor as string,
+            startColor: body.startColor,
+            endColor: body.endColor,
+            colors: body.colors,
+            gradientRepeat: body.gradientRepeat,
+            separateFromOtherRoles: body.separateFromOtherRoles,
             position,
             permissions: body.permissions || {},
         });
@@ -129,6 +151,46 @@ export class ServerRoleController extends Controller {
         io.to(`server:${serverId}`).emit('role_created', { serverId, role });
 
         return role;
+    }
+
+    /**
+     * Reorders roles within a server's hierarchy.
+     * Enforces 'manageRoles' permission.
+     */
+    @Patch('reorder')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+    })
+    public async reorderRoles(
+        @Path() serverId: string,
+        @Request() req: express.Request,
+        @Body() body: ReorderRolesRequest,
+    ): Promise<{ message: string }> {
+        // @ts-ignore
+        const userId = req.user.id;
+        if (
+            !(await this.permissionService.hasPermission(
+                serverId,
+                userId,
+                'manageRoles',
+            ))
+        ) {
+            this.setStatus(403);
+            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES);
+        }
+
+        // Bulk update role positions to reflect the new hierarchy
+        for (const { roleId, position } of body.rolePositions) {
+            await this.roleRepo.update(roleId, { position });
+        }
+
+        const io = getIO();
+        io.to(`server:${serverId}`).emit('roles_reordered', {
+            serverId,
+            rolePositions: body.rolePositions,
+        });
+
+        return { message: 'Roles reordered' };
     }
 
     /**
@@ -169,7 +231,25 @@ export class ServerRoleController extends Controller {
 
         const updates: any = {};
         if (body.name) updates.name = body.name.trim();
-        if (body.color) updates.color = body.color;
+
+        // If gradient colors are provided, clear the solid color to indicate gradient mode
+        if (
+            body.startColor ||
+            body.endColor ||
+            (body.colors && body.colors.length > 0)
+        ) {
+            updates.color = null;
+        } else if (body.color !== undefined) {
+            updates.color = body.color;
+        }
+
+        if (body.startColor !== undefined) updates.startColor = body.startColor;
+        if (body.endColor !== undefined) updates.endColor = body.endColor;
+        if (body.colors !== undefined) updates.colors = body.colors;
+        if (body.gradientRepeat !== undefined)
+            updates.gradientRepeat = body.gradientRepeat;
+        if (body.separateFromOtherRoles !== undefined)
+            updates.separateFromOtherRoles = body.separateFromOtherRoles;
         if (body.permissions) updates.permissions = body.permissions;
         if (body.position !== undefined) updates.position = body.position;
 
@@ -241,43 +321,4 @@ export class ServerRoleController extends Controller {
         return { message: 'Role deleted' };
     }
 
-    /**
-     * Reorders roles within a server's hierarchy.
-     * Enforces 'manageRoles' permission.
-     */
-    @Patch('reorder')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-    })
-    public async reorderRoles(
-        @Path() serverId: string,
-        @Request() req: express.Request,
-        @Body() body: ReorderRolesRequest,
-    ): Promise<{ message: string }> {
-        // @ts-ignore
-        const userId = req.user.id;
-        if (
-            !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
-                'manageRoles',
-            ))
-        ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES);
-        }
-
-        // Bulk update role positions to reflect the new hierarchy
-        for (const { roleId, position } of body.rolePositions) {
-            await this.roleRepo.update(roleId, { position });
-        }
-
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('roles_reordered', {
-            serverId,
-            rolePositions: body.rolePositions,
-        });
-
-        return { message: 'Roles reordered' };
-    }
 }
