@@ -2,6 +2,8 @@ import {
     Controller,
     Get,
     Post,
+    Delete,
+    Put,
     Route,
     Body,
     Path,
@@ -20,6 +22,7 @@ import type { IBanRepository } from '@/di/interfaces/IBanRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PresenceService } from '@/realtime/services/PresenceService';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -28,12 +31,20 @@ import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 import crypto from 'crypto';
 import { getIO } from '@/socket';
 import { Badge } from '@/models/Badge';
+import { Ban } from '@/models/Ban';
+import { ServerBan } from '@/models/Server';
+import mongoose from 'mongoose';
+import {
+    generateAnonymizedUsername,
+    DELETED_AVATAR_PATH,
+    deleteAvatarFile,
+} from '@/utils/deletion';
 import express from 'express';
 
 /**
  * Request body for resetting user profile fields.
  */
-interface ResetProfileRequest {
+export interface ResetProfileRequest {
     /**
      * Fields to reset (e.g., 'username', 'displayName', 'pronouns', 'bio').
      * Resetting 'username' forces a logout.
@@ -41,7 +52,7 @@ interface ResetProfileRequest {
     fields: string[];
 }
 
-interface DashboardStats {
+export interface DashboardStats {
     users: number;
     usersTrend: number;
     activeUsers: number;
@@ -54,7 +65,7 @@ interface DashboardStats {
     messagesTrend: number;
 }
 
-interface UserListItem {
+export interface UserListItem {
     _id: string;
     username: string;
     login: string;
@@ -69,12 +80,64 @@ interface UserListItem {
 /**
  * Extended user details for administrative view.
  */
-interface UserDetails extends UserListItem {
+export interface UserDetails extends UserListItem {
     bio: string;
     pronouns: string;
     badges: any[];
     deletedAt?: Date;
     deletedReason?: string;
+}
+
+export interface SoftDeleteUserRequest {
+    reason?: string;
+}
+
+export interface UpdateUserPermissionsRequest {
+    permissions: AdminPermissions;
+}
+
+export interface BanUserRequest {
+    reason: string;
+    duration: number;
+}
+
+export interface WarnUserRequest {
+    message: string;
+}
+
+export interface BanHistoryItem {
+    _id: string;
+    reason: string;
+    timestamp: Date;
+    expirationTimestamp: Date;
+    issuedBy: string;
+    active: boolean;
+}
+
+export interface ServerListItem {
+    _id: string;
+    name: string;
+    icon: string | null;
+    ownerId: string;
+    createdAt: Date;
+    deletedAt?: Date;
+    owner: {
+        _id: string;
+        username: string;
+        displayName: string | null;
+        profilePicture: string | null;
+    } | null;
+}
+
+export interface ExtendedUserDetails extends UserDetails {
+    servers: Array<{
+        _id: string;
+        name: string;
+        icon: string | null;
+        ownerId: string;
+        joinedAt?: Date;
+        isOwner: boolean;
+    }>;
 }
 
 /**
@@ -100,6 +163,8 @@ export class AdminController extends Controller {
         private messageRepo: IMessageRepository,
         @inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
+        @inject(TYPES.ServerMemberRepository)
+        private serverMemberRepo: IServerMemberRepository,
     ) {
         super();
     }
@@ -357,4 +422,812 @@ export class AdminController extends Controller {
 
         return { message: 'User profile fields reset', fields };
     }
+
+    /**
+     * Helper method to log admin actions to audit log
+     */
+    private async logAdminAction(
+        req: express.Request,
+        actionType: string,
+        targetUserId?: string,
+        additionalData?: any,
+    ): Promise<void> {
+        try {
+            const safeData: any = {};
+            if (additionalData) {
+                if (additionalData.reason) safeData.reason = additionalData.reason;
+                if (additionalData.duration)
+                    safeData.duration = additionalData.duration;
+                if (additionalData.count) safeData.count = additionalData.count;
+                if (additionalData.serverId)
+                    safeData.serverId = additionalData.serverId;
+                if (additionalData.serverName)
+                    safeData.serverName = additionalData.serverName;
+                if (additionalData.fields) safeData.fields = additionalData.fields;
+            }
+
+            const auditData: any = {
+                // @ts-ignore
+                adminId: req.user?.id || 'unknown',
+                actionType,
+                additionalData: safeData,
+            };
+
+            if (targetUserId) {
+                auditData.targetUserId = targetUserId;
+            }
+
+            await this.auditLogRepo.create(auditData);
+        } catch (error) {
+            this.logger.error('Audit log error:', error);
+        }
+    }
+
+    /**
+     * Soft deletes a user account.
+     */
+    @Post('users/{userId}/soft-delete')
+    @Response<ErrorResponse>('400', 'User already deleted', {
+        error: ErrorMessages.AUTH.USER_ALREADY_DELETED,
+    })
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Response<ErrorResponse>('404', 'User not found', {
+        error: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
+    @Security('jwt', ['manageUsers'])
+    public async softDeleteUser(
+        @Path() userId: string,
+        @Body() body: SoftDeleteUserRequest,
+        @Request() req: express.Request,
+    ): Promise<{
+        message: string;
+        anonymizedUsername: string;
+        offlineFriends: number;
+    }> {
+        const { reason = 'No reason provided' } = body;
+
+        const user = await this.userRepo.findById(userId);
+        if (!user) {
+            this.setStatus(404);
+            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        if (user.deletedAt) {
+            this.setStatus(400);
+            throw new Error(ErrorMessages.AUTH.USER_ALREADY_DELETED);
+        }
+
+        const oldUsername = user.username || '';
+        const oldAvatar = user.profilePicture;
+
+        const anonymizedUsername =
+            user.anonymizedUsername || generateAnonymizedUsername(userId);
+
+        await this.userRepo.update(userId, {
+            deletedAt: new Date(),
+            deletedReason: reason,
+            profilePicture: DELETED_AVATAR_PATH,
+            login: `deleted_${userId}`,
+            anonymizedUsername,
+            tokenVersion: (user.tokenVersion || 0) + 1,
+        });
+
+        if (oldAvatar) {
+            await deleteAvatarFile(oldAvatar);
+        }
+
+        await this.friendshipRepo.deleteAllRequestsForUser(userId);
+
+        await this.logAdminAction(req, 'soft_delete_user', userId, {
+            reason,
+        });
+
+        const friendships = await this.friendshipRepo.findAllByUserId(userId);
+        const io = getIO();
+        const offlineFriends: string[] = [];
+
+        for (const friendship of friendships) {
+            const friendUsername =
+                friendship.userId?.toString() === userId
+                    ? friendship.friend
+                    : friendship.user;
+
+            const friendUser = await this.userRepo.findByUsername(
+                friendUsername || '',
+            );
+            if (friendUser) {
+                const sockets = this.presenceService.getSockets(
+                    friendUser.username || '',
+                );
+                if (sockets && sockets.length > 0) {
+                    sockets.forEach((socketId) => {
+                        io.to(socketId).emit('user_soft_deleted', {
+                            oldUsername,
+                            newUsername: anonymizedUsername,
+                            userId: user._id.toString(),
+                            avatar: DELETED_AVATAR_PATH,
+                        });
+                    });
+                } else {
+                    offlineFriends.push(friendUser._id.toString());
+                }
+            }
+        }
+
+        const deletedUserSockets = this.presenceService.getSockets(oldUsername);
+        if (deletedUserSockets) {
+            deletedUserSockets.forEach((socketId) => {
+                const socket = io.sockets.sockets.get(socketId);
+                if (socket) {
+                    socket.emit('account_deleted', {
+                        reason: 'Account has been deleted',
+                    });
+                    socket.disconnect(true);
+                }
+            });
+        }
+
+        return {
+            message: 'User soft deleted',
+            anonymizedUsername,
+            offlineFriends: offlineFriends.length,
+        };
+    }
+
+    /**
+     * Legacy delete endpoint that forwards to soft delete.
+     */
+    @Delete('users/{userId}')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Response<ErrorResponse>('404', 'User not found', {
+        error: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
+    @Security('jwt', ['manageUsers'])
+    public async deleteUser(
+        @Path() userId: string,
+        @Body() body: SoftDeleteUserRequest,
+        @Request() req: express.Request,
+    ): Promise<{ message: string; anonymizedUsername: string }> {
+        const result = await this.softDeleteUser(userId, body, req);
+        return {
+            message: 'User deleted',
+            anonymizedUsername: result.anonymizedUsername,
+        };
+    }
+
+    /**
+     * Hard deletes a user account completely.
+     */
+    @Post('users/{userId}/hard-delete')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Response<ErrorResponse>('404', 'User not found', {
+        error: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
+    @Security('jwt', ['manageUsers'])
+    public async hardDeleteUser(
+        @Path() userId: string,
+        @Body() body: SoftDeleteUserRequest,
+        @Request() req: express.Request,
+    ): Promise<{
+        message: string;
+        sentMessagesAnonymized: number;
+        receivedMessagesAnonymized: number;
+        offlineFriends: number;
+    }> {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const { reason = 'No reason provided' } = body;
+
+            const user = await this.userRepo.findById(userId);
+            if (!user) {
+                await session.abortTransaction();
+                this.setStatus(404);
+                throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            }
+
+            const username = user.username || '';
+            const oldAvatar = user.profilePicture;
+
+            const sentMessagesUpdated =
+                await this.messageRepo.updateManyBySenderId(userId, {
+                    senderDeleted: true,
+                    anonymizedSender: 'Deleted User',
+                });
+
+            const receivedMessagesUpdated =
+                await this.messageRepo.updateManyByReceiverId(userId, {
+                    receiverDeleted: true,
+                    anonymizedReceiver: 'Deleted User',
+                });
+
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userId);
+
+            await this.friendshipRepo.deleteAllForUser(userId);
+            await this.friendshipRepo.deleteAllRequestsForUser(userId);
+            await this.warningRepo.deleteAllForUser(userId);
+            await this.banRepo.deleteAllForUser(userId);
+            await this.userRepo.incrementTokenVersion(userId);
+
+            if (oldAvatar && oldAvatar !== DELETED_AVATAR_PATH) {
+                await deleteAvatarFile(oldAvatar);
+            }
+
+            await this.userRepo.hardDelete(userId);
+
+            await this.logAdminAction(req, 'hard_delete_user', userId, {
+                reason,
+            });
+
+            await session.commitTransaction();
+
+            const io = getIO();
+            const offlineFriends: string[] = [];
+
+            for (const friendship of friendships) {
+                const friendUsername =
+                    friendship.userId?.toString() === userId
+                        ? friendship.friend
+                        : friendship.user;
+
+                const friendUser = await this.userRepo.findByUsername(
+                    friendUsername || '',
+                );
+                if (friendUser) {
+                    const sockets = this.presenceService.getSockets(
+                        friendUser.username || '',
+                    );
+                    if (sockets && sockets.length > 0) {
+                        sockets.forEach((socketId) => {
+                            io.to(socketId).emit('user_hard_deleted', {
+                                username,
+                                userId,
+                            });
+                        });
+                    } else {
+                        offlineFriends.push(friendUser._id.toString());
+                    }
+                }
+            }
+
+            const deletedUserSockets =
+                this.presenceService.getSockets(username);
+            if (deletedUserSockets) {
+                deletedUserSockets.forEach((socketId) => {
+                    const socket = io.sockets.sockets.get(socketId);
+                    if (socket) {
+                        socket.emit('account_deleted', {
+                            reason: 'Account has been deleted',
+                        });
+                        socket.disconnect(true);
+                    }
+                });
+            }
+
+            return {
+                message: 'User and associated data hard deleted',
+                sentMessagesAnonymized: sentMessagesUpdated.modifiedCount,
+                receivedMessagesAnonymized:
+                    receivedMessagesUpdated.modifiedCount,
+                offlineFriends: offlineFriends.length,
+            };
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Updates a user's permissions.
+     */
+    @Put('users/{userId}/permissions')
+    @Response<ErrorResponse>('400', 'Invalid permissions', {
+        error: ErrorMessages.ADMIN.INVALID_PERMISSIONS,
+    })
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Response<ErrorResponse>('404', 'User not found', {
+        error: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
+    @Security('jwt', ['manageUsers'])
+    public async updateUserPermissions(
+        @Path() userId: string,
+        @Body() body: UpdateUserPermissionsRequest,
+        @Request() req: express.Request,
+    ): Promise<{ message: string }> {
+        const { permissions } = body;
+
+        if (!permissions || typeof permissions !== 'object') {
+            this.setStatus(400);
+            throw new Error(ErrorMessages.ADMIN.INVALID_PERMISSIONS);
+        }
+
+        const user = await this.userRepo.findById(userId);
+        if (!user) {
+            this.setStatus(404);
+            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        // @ts-ignore
+        if (userId === req.user?.id) {
+            this.setStatus(400);
+            throw new Error('Cannot modify your own permissions');
+        }
+
+        await this.userRepo.updatePermissions(userId, permissions);
+        await this.logAdminAction(req, 'update_permissions', userId, {
+            permissions,
+        });
+
+        return { message: 'Permissions updated' };
+    }
+
+    /**
+     * Bans a user for a specified duration.
+     */
+    @Post('users/{userId}/ban')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Response<ErrorResponse>('404', 'User not found', {
+        error: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
+    @Security('jwt', ['banUsers'])
+    public async banUser(
+        @Path() userId: string,
+        @Body() body: BanUserRequest,
+        @Request() req: express.Request,
+    ): Promise<any> {
+        const { reason, duration } = body;
+
+        const targetUser = await this.userRepo.findById(userId);
+        if (!targetUser) {
+            this.setStatus(404);
+            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        const expirationTimestamp = new Date(Date.now() + duration * 60 * 1000);
+        // @ts-ignore
+        const issuedById = req.user?.id || 'unknown';
+
+        const ban = await this.banRepo.createOrUpdateWithHistory({
+            userId,
+            reason: reason.trim(),
+            issuedBy: issuedById,
+            expirationTimestamp,
+        });
+
+        await this.logAdminAction(req, 'ban_user', userId, {
+            reason: reason.trim(),
+            duration,
+        });
+
+        const serverMemberships =
+            await this.serverMemberRepo.findAllByUserId(userId);
+        const io = getIO();
+
+        for (const membership of serverMemberships) {
+            await this.serverMemberRepo.deleteById(membership._id.toString());
+            io.to(`server:${membership.serverId}`).emit('server_member_left', {
+                serverId: membership.serverId,
+                userId: targetUser.username || '',
+            });
+        }
+
+        const sockets = this.presenceService.getSockets(
+            targetUser.username || '',
+        );
+        if (sockets && sockets.length > 0) {
+            sockets.forEach((sid) => {
+                io.to(sid).emit('ban', {
+                    reason: reason.trim(),
+                    // @ts-ignore
+                    issuedBy: req.user?.username,
+                    expirationTimestamp,
+                });
+                io.sockets.sockets.get(sid)?.disconnect(true);
+            });
+        }
+
+        return ban;
+    }
+
+    /**
+     * Unbans a user.
+     */
+    @Post('users/{userId}/unban')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Security('jwt', ['banUsers'])
+    public async unbanUser(
+        @Path() userId: string,
+        @Request() req: express.Request,
+    ): Promise<{ message: string }> {
+        await this.banRepo.deactivateAllForUser(userId);
+        await this.logAdminAction(req, 'unban_user', userId);
+        return { message: 'User unbanned' };
+    }
+
+    /**
+     * Retrieves ban history for a user.
+     */
+    @Get('users/{userId}/bans')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Security('jwt', ['viewBans'])
+    public async getUserBanHistory(
+        @Path() userId: string,
+    ): Promise<BanHistoryItem[]> {
+        const ban = await this.banRepo.findByUserIdWithHistory(userId);
+        if (!ban || !ban.history || ban.history.length === 0) {
+            return [];
+        }
+
+        const historyWithStatus = ban.history!.map(
+            (entry: any, index: number) => ({
+                _id: entry._id,
+                reason: entry.reason,
+                timestamp: entry.timestamp,
+                expirationTimestamp: entry.expirationTimestamp,
+                issuedBy: entry.issuedBy,
+                active: index === ban.history!.length - 1 && ban.active,
+            }),
+        );
+        return historyWithStatus;
+    }
+
+    /**
+     * Lists all bans with pagination.
+     */
+    @Get('bans')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Security('jwt', ['viewBans'])
+    public async listBans(
+        @Query() limit: number = 50,
+        @Query() offset: number = 0,
+    ): Promise<any[]> {
+        const bans = await this.banRepo.findAll({
+            limit: Number(limit),
+            offset: Number(offset),
+        });
+        return bans;
+    }
+
+    /**
+     * Diagnostic endpoint for ban collections.
+     */
+    @Get('bans/diagnostic')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Security('jwt', ['viewBans'])
+    public async getBansDiagnostic(): Promise<any> {
+        const appBansCount = await Ban.countDocuments();
+        const appBansSample = await Ban.find({}).limit(5).lean();
+
+        const serverBansCount = await ServerBan.countDocuments();
+        const serverBansSample = await ServerBan.find({}).limit(5).lean();
+
+        return {
+            appBans: {
+                count: appBansCount,
+                sample: appBansSample,
+            },
+            serverBans: {
+                count: serverBansCount,
+                sample: serverBansSample,
+            },
+        };
+    }
+
+    /**
+     * Warns a user.
+     */
+    @Post('users/{userId}/warn')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Security('jwt', ['warnUsers'])
+    public async warnUser(
+        @Path() userId: string,
+        @Body() body: WarnUserRequest,
+        @Request() req: express.Request,
+    ): Promise<any> {
+        const { message } = body;
+
+        // @ts-ignore
+        const warning = await this.warningRepo.create({
+            userId,
+            // @ts-ignore
+            issuedBy: req.user?.id,
+            message,
+        });
+
+        await this.logAdminAction(req, 'warn_user', userId, {
+            reason: message,
+        });
+
+        const user = await this.userRepo.findById(userId);
+        if (user) {
+            const sockets = this.presenceService.getSockets(
+                user.username || '',
+            );
+            if (sockets) {
+                const io = getIO();
+                sockets.forEach((sid) => {
+                    io.to(sid).emit('warning', warning);
+                });
+            }
+        }
+
+        return warning;
+    }
+
+    /**
+     * Retrieves warnings for a user.
+     */
+    @Get('users/{userId}/warnings')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Security('jwt', ['warnUsers'])
+    public async getUserWarnings(@Path() userId: string): Promise<any[]> {
+        const warnings = await this.warningRepo.findByUserId(userId);
+        return warnings;
+    }
+
+    /**
+     * Lists all warnings with pagination.
+     */
+    @Get('warnings')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Security('jwt', ['warnUsers'])
+    public async listWarnings(
+        @Query() limit: number = 50,
+        @Query() offset: number = 0,
+    ): Promise<any[]> {
+        const warnings = await this.warningRepo.findAll({
+            limit: Number(limit),
+            offset: Number(offset),
+        });
+        return warnings;
+    }
+
+    /**
+     * Lists audit logs with pagination.
+     */
+    @Get('logs')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Security('jwt', ['viewLogs'])
+    public async listAuditLogs(
+        @Query() limit: number = 100,
+        @Query() offset: number = 0,
+    ): Promise<any[]> {
+        const logs = await this.auditLogRepo.find({
+            limit: Number(limit),
+            offset: Number(offset),
+        });
+        return logs;
+    }
+
+    /**
+     * Lists servers with owner details.
+     */
+    @Get('servers')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Security('jwt', ['manageServer'])
+    public async listServers(
+        @Query() limit: number = 50,
+        @Query() offset: number = 0,
+        @Query() search?: string,
+    ): Promise<ServerListItem[]> {
+        const servers = await this.serverRepo.findMany({
+            limit: Number(limit),
+            offset: Number(offset),
+            search: search as string,
+            includeDeleted: true,
+        });
+
+        const ownerIds = [...new Set(servers.map((s) => s.ownerId))].filter(
+            (id) => mongoose.Types.ObjectId.isValid(id.toString()),
+        );
+        const owners = await this.userRepo.findByIds(ownerIds);
+
+        const enrichedServers = servers.map((server) => {
+            const owner = owners.find(
+                (u) => u._id.toString() === server.ownerId.toString(),
+            );
+            return {
+                _id: server._id.toString(),
+                name: server.name,
+                icon: server.icon ? `${server.icon}` : null,
+                ownerId: server.ownerId.toString(),
+                createdAt: server.createdAt || new Date(),
+                deletedAt: server.deletedAt,
+                owner: owner
+                    ? {
+                        _id: owner._id.toString(),
+                        username: owner.username || '',
+                        displayName: owner.displayName || null,
+                        profilePicture: owner.profilePicture
+                            ? `/api/v1/profile/picture/${owner.profilePicture}`
+                            : null,
+                    }
+                    : null,
+            };
+        });
+
+        return enrichedServers;
+    }
+
+    /**
+     * Soft deletes a server.
+     */
+    @Delete('servers/{serverId}')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Response<ErrorResponse>('404', 'Server not found', {
+        error: ErrorMessages.SERVER.NOT_FOUND,
+    })
+    @Security('jwt', ['manageServer'])
+    public async deleteServer(
+        @Path() serverId: string,
+        @Request() req: express.Request,
+    ): Promise<{ message: string }> {
+        const server = await this.serverRepo.findById(serverId, true);
+        if (!server) {
+            this.setStatus(404);
+            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        await this.serverRepo.softDelete(serverId);
+
+        const io = getIO();
+        io.to(`server:${serverId}`).emit('server_deleted', { serverId });
+
+        await this.logAdminAction(
+            req,
+            'delete_server',
+            server.ownerId.toString(),
+            { serverId, serverName: server.name },
+        );
+
+        return { message: 'Server deleted' };
+    }
+
+    /**
+     * Restores a deleted server.
+     */
+    @Post('servers/{serverId}/restore')
+    @Response<ErrorResponse>('400', 'Server not deleted', {
+        error: ErrorMessages.SERVER.NOT_DELETED,
+    })
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Response<ErrorResponse>('404', 'Server not found', {
+        error: ErrorMessages.SERVER.NOT_FOUND,
+    })
+    @Security('jwt', ['manageServer'])
+    public async restoreServer(
+        @Path() serverId: string,
+        @Request() req: express.Request,
+    ): Promise<{ message: string }> {
+        const server = await this.serverRepo.findById(serverId, true);
+
+        if (!server) {
+            this.setStatus(404);
+            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        if (!server.deletedAt) {
+            this.setStatus(400);
+            throw new Error(ErrorMessages.SERVER.NOT_DELETED);
+        }
+
+        await this.serverRepo.restore(serverId);
+
+        await this.logAdminAction(
+            req,
+            'restore_server',
+            server.ownerId.toString(),
+            { serverId, serverName: server.name },
+        );
+
+        return { message: 'Server restored' };
+    }
+
+    /**
+     * Extended user details with servers.
+     */
+    @Get('users/{userId}/details')
+    @Response<ErrorResponse>('403', 'Forbidden', {
+        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
+    @Response<ErrorResponse>('404', 'User not found', {
+        error: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
+    @Security('jwt', ['viewUsers'])
+    public async getExtendedUserDetails(
+        @Path() userId: string,
+    ): Promise<ExtendedUserDetails> {
+        const user = await this.userRepo.findById(userId);
+        if (!user) {
+            this.setStatus(404);
+            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        const profilePictureUrl = user.deletedAt
+            ? '/images/deleted-cat.jpg'
+            : user.profilePicture
+                ? `/api/v1/profile/picture/${user.profilePicture}`
+                : null;
+
+        const memberships = await this.serverMemberRepo.findByUserId(userId);
+        const serverIds = memberships.map((m) => m.serverId.toString());
+        const servers = await this.serverRepo.findByIds(serverIds);
+
+        const serverList = servers.map((server) => {
+            const membership = memberships.find(
+                (m) => m.serverId.toString() === server._id.toString(),
+            );
+            return {
+                _id: server._id.toString(),
+                name: server.name,
+                icon: server.icon ? `${server.icon}` : null,
+                ownerId: server.ownerId.toString(),
+                joinedAt: membership?.joinedAt,
+                isOwner: server.ownerId.toString() === userId,
+            };
+        });
+
+        const activeBan = await this.banRepo.findActiveByUserId(userId);
+        const warningCount = await this.warningRepo.countByUserId(userId);
+
+        let badges: any[] = [];
+        if (user.badges && user.badges.length > 0) {
+            badges = await Badge.find({ id: { $in: user.badges } });
+        }
+
+        return {
+            _id: user._id.toString(),
+            username: user.username || '',
+            login: user.login || '',
+            displayName: user.displayName || null,
+            profilePicture: profilePictureUrl,
+            permissions: user.permissions || '0',
+            createdAt: user.createdAt || new Date(),
+            banExpiry: activeBan?.expirationTimestamp,
+            warningCount,
+            bio: user.bio || '',
+            pronouns: user.pronouns || '',
+            badges,
+            deletedAt: user.deletedAt,
+            deletedReason: user.deletedReason,
+            servers: serverList,
+        };
+    }
 }
+

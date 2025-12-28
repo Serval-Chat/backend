@@ -42,6 +42,7 @@ export const ErrorMessages = {
         NEW_PASSWORD_SAME:
             'New password must be different from the current password',
         INVALID_CURRENT_PASSWORD: 'Invalid current password',
+        USER_ALREADY_DELETED: 'User is already deleted',
     },
 
     SERVER: {
@@ -59,6 +60,7 @@ export const ErrorMessages = {
         ONLY_OWNER_DELETE: 'Only owner can delete server',
         NOT_SERVER_MEMBER: 'Not a server member',
         FAILED_UPSERT_READ: 'Failed to upsert server channel read',
+        NOT_DELETED: 'Server is not deleted',
     },
 
     CHANNEL: {
@@ -214,6 +216,7 @@ export const ErrorMessages = {
 
     ADMIN: {
         INVALID_FIELDS: 'Invalid fields provided',
+        INVALID_PERMISSIONS: 'Invalid permissions provided',
     },
     WEBHOOK: {
         NOT_FOUND: 'Webhook not found',
