@@ -33,7 +33,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 interface CreateInviteRequest {
     maxUses?: number;
     expiresIn?: number; // in seconds
-    customCode?: string;
+    customPath?: string;
 }
 
 /**
@@ -84,7 +84,11 @@ export class ServerInviteController extends Controller {
             ))
         ) {
             this.setStatus(403);
-            throw new Error(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
+            const error = new Error(
+                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
+            ) as any;
+            error.status = 403;
+            throw error;
         }
 
         return await this.inviteRepo.findByServerId(serverId);
@@ -118,24 +122,36 @@ export class ServerInviteController extends Controller {
             ))
         ) {
             this.setStatus(403);
-            throw new Error(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
+            const error = new Error(
+                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
+            ) as any;
+            error.status = 403;
+            throw error;
         }
 
-        const { maxUses, expiresIn, customCode } = body;
+        const { maxUses, expiresIn, customPath } = body;
 
-        let code = customCode;
+        let code = customPath;
         if (code) {
             // Restrict custom invite codes to the server owner to prevent squatting/abuse
             const server = await this.serverRepo.findById(serverId);
             if (server?.ownerId.toString() !== userId) {
                 this.setStatus(403);
-                throw new Error(ErrorMessages.INVITE.ONLY_OWNER_CUSTOM);
+                const error = new Error(
+                    ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
+                ) as any;
+                error.status = 403;
+                throw error;
             }
 
             const existing = await this.inviteRepo.findByCode(code);
             if (existing) {
                 this.setStatus(400);
-                throw new Error(ErrorMessages.INVITE.ALREADY_EXISTS);
+                const error = new Error(
+                    ErrorMessages.INVITE.ALREADY_EXISTS,
+                ) as any;
+                error.status = 400;
+                throw error;
             }
         } else {
             // Generate a random 8-character hex code if no custom code is provided
@@ -151,7 +167,7 @@ export class ServerInviteController extends Controller {
             code,
             maxUses: maxUses || 0,
             expiresAt,
-            createdBy: userId,
+            createdByUserId: userId,
         });
     }
 
@@ -182,13 +198,19 @@ export class ServerInviteController extends Controller {
             ))
         ) {
             this.setStatus(403);
-            throw new Error(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
+            const error = new Error(
+                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
+            ) as any;
+            error.status = 403;
+            throw error;
         }
 
         const invite = await this.inviteRepo.findById(inviteId);
         if (!invite || invite.serverId.toString() !== serverId) {
             this.setStatus(404);
-            throw new Error(ErrorMessages.INVITE.NOT_FOUND);
+            const error = new Error(ErrorMessages.INVITE.NOT_FOUND) as any;
+            error.status = 404;
+            throw error;
         }
 
         await this.inviteRepo.delete(inviteId);
@@ -199,7 +221,7 @@ export class ServerInviteController extends Controller {
     /**
      * Retrieves public details for an invite code.
      */
-    @Get('servers/invite/{code}')
+    @Get('invites/{code}')
     @Response<ErrorResponse>('404', 'Invite Not Found', {
         error: ErrorMessages.INVITE.NOT_FOUND,
     })
@@ -241,6 +263,10 @@ export class ServerInviteController extends Controller {
             invite.serverId.toString(),
         );
         if (!server) {
+            console.log(
+                'getInviteDetails: Server not found for invite:',
+                invite.serverId,
+            );
             this.setStatus(404);
             const error = new Error(ErrorMessages.SERVER.NOT_FOUND) as any;
             error.status = 404;
@@ -267,7 +293,7 @@ export class ServerInviteController extends Controller {
      * Joins a server using an invite code.
      * Enforces ban checks and automatically assigns default roles.
      */
-    @Post('servers/join/{code}')
+    @Post('invites/{code}/join')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.SERVER.ALREADY_MEMBER,

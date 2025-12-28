@@ -60,7 +60,7 @@ export class PermissionService {
         if (!member) return -1;
 
         const roles = await Promise.all(
-            member.roles.map((roleId: any) =>
+            (member.roles || []).map((roleId: any) =>
                 this.roleRepo.findById(roleId.toString()),
             ),
         );
@@ -114,7 +114,7 @@ export class PermissionService {
 
         // Get all roles with their details
         const roles = await Promise.all(
-            member.roles.map((roleId: any) =>
+            (member.roles || []).map((roleId: any) =>
                 this.roleRepo.findById(roleId.toString()),
             ),
         );
@@ -186,7 +186,7 @@ export class PermissionService {
 
         // Get all roles with their details
         const roles = await Promise.all(
-            member.roles.map((roleId: any) =>
+            (member.roles || []).map((roleId: any) =>
                 this.roleRepo.findById(roleId.toString()),
             ),
         );

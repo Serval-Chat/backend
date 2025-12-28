@@ -1,0 +1,251 @@
+TAP version 13
+# [dotenv@17.2.3] injecting env (10) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+# 2025-12-28T16:26:06.471Z [31merror[39m: Error: ENOENT: no such file or directory, open '/home/neko/Serchat/backend/public/swagger.json'
+#     at Object.readFileSync (node:fs:449:20)
+#     at createApp (/home/neko/Serchat/backend/src/server.ts:144:16)
+#     at Object.<anonymous> (/home/neko/Serchat/backend/src/server.ts:203:13)
+#     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+#     at Module.m._compile (/home/neko/Serchat/backend/node_modules/ts-node/src/index.ts:1618:23)
+#     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+#     at Object.require.extensions.<computed> [as .ts] (/home/neko/Serchat/backend/node_modules/ts-node/src/index.ts:1621:12)
+#     at Module.load (node:internal/modules/cjs/loader:1275:32)
+#     at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
+#     at Module.require (node:internal/modules/cjs/loader:1298:19)
+# 2025-12-28T16:26:06.475Z [31merror[39m: Error: ENOENT: no such file or directory, open '/home/neko/Serchat/backend/public/swagger.json'
+#     at Object.readFileSync (node:fs:449:20)
+#     at createApp (/home/neko/Serchat/backend/src/server.ts:144:16)
+#     at setup (/home/neko/Serchat/backend/tests/integration/setup.cjs:40:11)
+#     at processTicksAndRejections (node:internal/process/task_queues:95:5)
+#     at async SuiteContext.<anonymous> (/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:25:9)
+#     at async TestHook.run (node:internal/test_runner/test:797:9)
+#     at async Suite.runHook (node:internal/test_runner/test:723:9)
+#     at async Suite.run (node:internal/test_runner/test:1129:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+# 2025-12-28T16:26:06.477Z [32minfo[39m: Initializing RealTime Server...
+# 2025-12-28T16:26:06.478Z [32minfo[39m: RealTime Server initialized with 1 modules.
+# (node:90236) [MONGOOSE] Warning: Duplicate schema index on {"token":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Response status: 200
+# Response body: {
+#   serverId: '69515a1ff245c20a12cec005',
+#   code: 'testcustom',
+#   createdByUserId: '69515a1ff245c20a12cec001',
+#   maxUses: 5,
+#   uses: 0,
+#   _id: '69515a1ff245c20a12cec012',
+#   createdAt: '2025-12-28T16:26:07.099Z',
+#   __v: 0
+# }
+# Subtest: Server Invites Integration Tests
+    # Subtest: POST /api/v1/servers/:serverId/invites
+        # Subtest: should create invite with customPath field
+        ok 1 - should create invite with customPath field
+          ---
+          duration_ms: 627.912444
+          ...
+        # Subtest: should create invite with maxUses only
+        ok 2 - should create invite with maxUses only
+          ---
+          duration_ms: 156.779172
+          ...
+        # Subtest: should create invite with expiresIn
+        ok 3 - should create invite with expiresIn
+          ---
+          duration_ms: 111.881073
+          ...
+        # Subtest: should create invite with no parameters (defaults)
+        ok 4 - should create invite with no parameters (defaults)
+          ---
+          duration_ms: 104.919667
+          ...
+# 2025-12-28T16:26:07.696Z [31merror[39m: Error: No permission to manage invites
+#     at ServerInviteController.createInvite (/home/neko/Serchat/backend/src/controllers/ServerInviteController.ts:123:27)
+#     at processTicksAndRejections (node:internal/process/task_queues:95:5)
+#     at async ExpressTemplateService.apiHandler (/home/neko/Serchat/backend/node_modules/@tsoa/runtime/src/routeGeneration/templates/express/expressTemplateService.ts:37:20)
+#     at async ServerInviteController_createInvite (/home/neko/Serchat/backend/src/routes/tsoa/routes.ts:2791:15)
+        # Subtest: should fail with customPath if not server owner
+        ok 5 - should fail with customPath if not server owner
+          ---
+          duration_ms: 212.472168
+          ...
+# 2025-12-28T16:26:07.904Z [31merror[39m: Error: No permission to manage invites
+#     at ServerInviteController.createInvite (/home/neko/Serchat/backend/src/controllers/ServerInviteController.ts:123:27)
+#     at processTicksAndRejections (node:internal/process/task_queues:95:5)
+#     at async ExpressTemplateService.apiHandler (/home/neko/Serchat/backend/node_modules/@tsoa/runtime/src/routeGeneration/templates/express/expressTemplateService.ts:37:20)
+#     at async ServerInviteController_createInvite (/home/neko/Serchat/backend/src/routes/tsoa/routes.ts:2791:15)
+        # Subtest: should fail if user lacks manageInvites permission
+        ok 6 - should fail if user lacks manageInvites permission
+          ---
+          duration_ms: 207.045305
+          ...
+# 2025-12-28T16:26:08.016Z [31merror[39m: Error: Invite code already exists
+#     at ServerInviteController.createInvite (/home/neko/Serchat/backend/src/controllers/ServerInviteController.ts:144:31)
+#     at processTicksAndRejections (node:internal/process/task_queues:95:5)
+#     at async ExpressTemplateService.apiHandler (/home/neko/Serchat/backend/node_modules/@tsoa/runtime/src/routeGeneration/templates/express/expressTemplateService.ts:37:20)
+#     at async ServerInviteController_createInvite (/home/neko/Serchat/backend/src/routes/tsoa/routes.ts:2791:15)
+        # Subtest: should fail if customPath already exists
+        ok 7 - should fail if customPath already exists
+          ---
+          duration_ms: 111.052725
+          ...
+        1..7
+    ok 1 - POST /api/v1/servers/:serverId/invites
+      ---
+      duration_ms: 1532.868181
+      type: 'suite'
+      ...
+    # Subtest: GET /api/v1/servers/:serverId/invites
+        # Subtest: should list all server invites
+        ok 1 - should list all server invites
+          ---
+          duration_ms: 121.357071
+          ...
+# 2025-12-28T16:26:08.329Z [31merror[39m: Error: No permission to manage invites
+#     at ServerInviteController.getServerInvites (/home/neko/Serchat/backend/src/controllers/ServerInviteController.ts:87:27)
+#     at processTicksAndRejections (node:internal/process/task_queues:95:5)
+#     at async ExpressTemplateService.apiHandler (/home/neko/Serchat/backend/node_modules/@tsoa/runtime/src/routeGeneration/templates/express/expressTemplateService.ts:37:20)
+#     at async ServerInviteController_getServerInvites (/home/neko/Serchat/backend/src/routes/tsoa/routes.ts:2753:15)
+        # Subtest: should fail if user lacks manageInvites permission
+        ok 2 - should fail if user lacks manageInvites permission
+          ---
+          duration_ms: 191.52688
+          ...
+        1..2
+    ok 2 - GET /api/v1/servers/:serverId/invites
+      ---
+      duration_ms: 313.131327
+      type: 'suite'
+      ...
+    # Subtest: DELETE /api/v1/servers/:serverId/invites/:inviteId
+        # Subtest: should delete an invite
+        ok 1 - should delete an invite
+          ---
+          duration_ms: 114.542289
+          ...
+        1..1
+    ok 3 - DELETE /api/v1/servers/:serverId/invites/:inviteId
+      ---
+      duration_ms: 114.666501
+      type: 'suite'
+      ...
+    # Subtest: GET /api/v1/invites/:code
+        # Subtest: should get invite details
+        not ok 1 - should get invite details
+          ---
+          duration_ms: 110.284989
+          location: '/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:322:9'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            
+            404 !== 200
+            
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 200
+          actual: 404
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:343:20)
+            processTicksAndRejections (node:internal/process/task_queues:95:5)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should return 404 for non-existent invite
+        ok 2 - should return 404 for non-existent invite
+          ---
+          duration_ms: 10.060681
+          ...
+        1..2
+    not ok 4 - GET /api/v1/invites/:code
+      ---
+      duration_ms: 120.568124
+      type: 'suite'
+      location: '/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:321:5'
+      failureType: 'subtestsFailed'
+      error: '1 subtest failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: POST /api/v1/invites/:code/join
+        # Subtest: should join server via invite
+        not ok 1 - should join server via invite
+          ---
+          duration_ms: 200.176691
+          location: '/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:357:9'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            
+            404 !== 200
+            
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 200
+          actual: 404
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:383:20)
+            processTicksAndRejections (node:internal/process/task_queues:95:5)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should increment invite uses on join
+        not ok 2 - should increment invite uses on join
+          ---
+          duration_ms: 213.551382
+          location: '/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:394:9'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            
+            0 !== 1
+            
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 1
+          actual: 0
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:424:20)
+            processTicksAndRejections (node:internal/process/task_queues:95:5)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should fail if invite max uses exceeded
+        ok 3 - should fail if invite max uses exceeded
+          ---
+          duration_ms: 288.147265
+          ...
+        1..3
+    not ok 5 - POST /api/v1/invites/:code/join
+      ---
+      duration_ms: 702.172274
+      type: 'suite'
+      location: '/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:356:5'
+      failureType: 'subtestsFailed'
+      error: '2 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    1..5
+not ok 1 - Server Invites Integration Tests
+  ---
+  duration_ms: 7607.109815
+  type: 'suite'
+  location: '/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:21:1'
+  failureType: 'subtestsFailed'
+  error: '2 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..1
+# tests 15
+# suites 6
+# pass 12
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 10799.172839
