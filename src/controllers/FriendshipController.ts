@@ -19,9 +19,7 @@ import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { PresenceService } from '@/realtime/services/PresenceService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
-import {
-    type SerializedCustomStatus,
-} from '@/utils/status';
+import { type SerializedCustomStatus } from '@/utils/status';
 import { mapUser } from '@/utils/user';
 import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';

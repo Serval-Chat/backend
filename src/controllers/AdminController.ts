@@ -435,7 +435,8 @@ export class AdminController extends Controller {
         try {
             const safeData: any = {};
             if (additionalData) {
-                if (additionalData.reason) safeData.reason = additionalData.reason;
+                if (additionalData.reason)
+                    safeData.reason = additionalData.reason;
                 if (additionalData.duration)
                     safeData.duration = additionalData.duration;
                 if (additionalData.count) safeData.count = additionalData.count;
@@ -443,7 +444,8 @@ export class AdminController extends Controller {
                     safeData.serverId = additionalData.serverId;
                 if (additionalData.serverName)
                     safeData.serverName = additionalData.serverName;
-                if (additionalData.fields) safeData.fields = additionalData.fields;
+                if (additionalData.fields)
+                    safeData.fields = additionalData.fields;
             }
 
             const auditData: any = {
@@ -1067,13 +1069,13 @@ export class AdminController extends Controller {
                 deletedAt: server.deletedAt,
                 owner: owner
                     ? {
-                        _id: owner._id.toString(),
-                        username: owner.username || '',
-                        displayName: owner.displayName || null,
-                        profilePicture: owner.profilePicture
-                            ? `/api/v1/profile/picture/${owner.profilePicture}`
-                            : null,
-                    }
+                          _id: owner._id.toString(),
+                          username: owner.username || '',
+                          displayName: owner.displayName || null,
+                          profilePicture: owner.profilePicture
+                              ? `/api/v1/profile/picture/${owner.profilePicture}`
+                              : null,
+                      }
                     : null,
             };
         });
@@ -1182,8 +1184,8 @@ export class AdminController extends Controller {
         const profilePictureUrl = user.deletedAt
             ? '/images/deleted-cat.jpg'
             : user.profilePicture
-                ? `/api/v1/profile/picture/${user.profilePicture}`
-                : null;
+              ? `/api/v1/profile/picture/${user.profilePicture}`
+              : null;
 
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
@@ -1230,4 +1232,3 @@ export class AdminController extends Controller {
         };
     }
 }
-
