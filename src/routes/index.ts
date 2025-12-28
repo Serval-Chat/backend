@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import publicRoutes from '@/routes/public-routes';
-import { topLevelRouter as webhooksTopLevelRoutes } from '@/routes/api/v1/servers/webhooks';
+
 
 import adminRouter from '@/routes/api/v1/admin/admin';
 import { authenticateToken } from '@/middleware/auth';
@@ -13,7 +13,7 @@ const router: Router = Router();
 
 // API must become before SPA
 
-router.use('/api/v1/webhooks', webhooksTopLevelRoutes);
+
 router.use('/api/v1/admin', authenticateToken, adminRouter);
 
 // Public routes (static files and SPA fallback) - comes after API routes
