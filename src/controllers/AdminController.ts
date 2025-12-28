@@ -118,6 +118,10 @@ export interface ServerListItem {
     _id: string;
     name: string;
     icon: string | null;
+    banner?: {
+        type: 'color' | 'image' | 'gif' | 'gradient';
+        value: string;
+    };
     ownerId: string;
     memberCount: number;
     createdAt: Date;
@@ -1069,19 +1073,20 @@ export class AdminController extends Controller {
                     _id: server._id.toString(),
                     name: server.name,
                     icon: server.icon ? `${server.icon}` : null,
+                    banner: server.banner,
                     ownerId: server.ownerId.toString(),
                     memberCount,
                     createdAt: server.createdAt || new Date(),
                     deletedAt: server.deletedAt,
                     owner: owner
                         ? {
-                              _id: owner._id.toString(),
-                              username: owner.username || '',
-                              displayName: owner.displayName || null,
-                              profilePicture: owner.profilePicture
-                                  ? `/api/v1/profile/picture/${owner.profilePicture}`
-                                  : null,
-                          }
+                            _id: owner._id.toString(),
+                            username: owner.username || '',
+                            displayName: owner.displayName || null,
+                            profilePicture: owner.profilePicture
+                                ? `/api/v1/profile/picture/${owner.profilePicture}`
+                                : null,
+                        }
                         : null,
                 };
             }),
@@ -1191,8 +1196,8 @@ export class AdminController extends Controller {
         const profilePictureUrl = user.deletedAt
             ? '/images/deleted-cat.jpg'
             : user.profilePicture
-              ? `/api/v1/profile/picture/${user.profilePicture}`
-              : null;
+                ? `/api/v1/profile/picture/${user.profilePicture}`
+                : null;
 
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
@@ -1210,6 +1215,7 @@ export class AdminController extends Controller {
                     _id: server._id.toString(),
                     name: server.name,
                     icon: server.icon ? `${server.icon}` : null,
+                    banner: server.banner,
                     ownerId: server.ownerId.toString(),
                     memberCount,
                     joinedAt: membership?.joinedAt,

@@ -580,6 +580,7 @@ const models: TsoaRoute.Models = {
             "_id": {"dataType":"string","required":true},
             "name": {"dataType":"string","required":true},
             "icon": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "banner": {"dataType":"nestedObjectLiteral","nestedProperties":{"value":{"dataType":"string","required":true},"type":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["color"]},{"dataType":"enum","enums":["image"]},{"dataType":"enum","enums":["gif"]},{"dataType":"enum","enums":["gradient"]}],"required":true}}},
             "ownerId": {"dataType":"string","required":true},
             "memberCount": {"dataType":"double","required":true},
             "createdAt": {"dataType":"datetime","required":true},
