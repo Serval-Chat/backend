@@ -84,6 +84,7 @@ export interface UserDetails extends UserListItem {
     bio: string;
     pronouns: string;
     badges: any[];
+    banner: string | null;
     deletedAt?: Date;
     deletedReason?: string;
 }
@@ -324,6 +325,9 @@ export class AdminController extends Controller {
             bio: user.bio || '',
             pronouns: user.pronouns || '',
             badges,
+            banner: user.banner
+                ? `/api/v1/profile/banner/${user.banner}`
+                : null,
             deletedAt: user.deletedAt,
             deletedReason: user.deletedReason,
         };
@@ -343,7 +347,7 @@ export class AdminController extends Controller {
     @Response<ErrorResponse>('404', 'User not found', {
         error: ErrorMessages.AUTH.USER_NOT_FOUND,
     })
-    @Security('jwt', ['resetUserProfile'])
+    @Security('jwt', ['manageUsers'])
     public async resetUserProfile(
         @Path() userId: string,
         @Body() requestBody: ResetProfileRequest,
@@ -369,6 +373,7 @@ export class AdminController extends Controller {
         if (fields.includes('displayName')) updateData.displayName = '';
         if (fields.includes('pronouns')) updateData.pronouns = '';
         if (fields.includes('bio')) updateData.bio = '';
+        if (fields.includes('banner')) updateData.banner = null;
 
         await this.userRepo.update(userId, updateData);
 
@@ -1245,6 +1250,9 @@ export class AdminController extends Controller {
             bio: user.bio || '',
             pronouns: user.pronouns || '',
             badges,
+            banner: user.banner
+                ? `/api/v1/profile/banner/${user.banner}`
+                : null,
             deletedAt: user.deletedAt,
             deletedReason: user.deletedReason,
             servers: serverList,

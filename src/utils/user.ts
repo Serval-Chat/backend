@@ -9,8 +9,8 @@ export function mapUser(user: any) {
     const profilePictureUrl = user.deletedAt
         ? '/images/deleted-cat.jpg'
         : user.profilePicture
-          ? `/api/v1/profile/picture/${user.profilePicture}`
-          : null;
+            ? `/api/v1/profile/picture/${user.profilePicture}`
+            : null;
 
     return {
         _id: user._id?.toString() || user.id,
@@ -37,5 +37,8 @@ export function mapUser(user: any) {
         badges: user.badges || [],
         deletedAt: user.deletedAt || null,
         anonymizedUsername: user.anonymizedUsername || null,
+        banner: user.banner
+            ? `/api/v1/profile/banner/${user.banner}`
+            : null,
     };
 }

@@ -20,6 +20,8 @@ import sharp from 'sharp';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { resolveSerializedCustomStatus } from '@/utils/status';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
@@ -138,6 +140,9 @@ interface UserProfile {
 
     /** List of badges assigned to the user */
     badges: BadgeResponse[];
+
+    /** URL to the user's profile banner */
+    banner: string | null;
 }
 
 interface BioUpdate {
@@ -164,6 +169,10 @@ export class ProfileController extends Controller {
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.Logger) private logger: ILogger,
         @inject(TYPES.StatusService) private statusService: StatusService,
+        @inject(TYPES.ServerMemberRepository)
+        private serverMemberRepo: IServerMemberRepository,
+        @inject(TYPES.FriendshipRepository)
+        private friendshipRepo: IFriendshipRepository,
     ) {
         super();
     }
@@ -324,107 +333,198 @@ export class ProfileController extends Controller {
     }
 
     /**
-     * Uploads or updates the user's profile picture.
-     * Resizes the image to 512x512 and Enforces path sanitization.
+     * Uploads or updates the user's profile banner.
+     * Resizes the image to 1200x300 and Enforces path sanitization.
      */
-    @Post('picture')
+    @Post('banner')
     @Security('jwt')
-    public async uploadProfilePicture(
-        @UploadedFile() profilePicture: Express.Multer.File,
+    public async uploadBanner(
+        @UploadedFile() banner: Express.Multer.File,
         @Request() req: express.Request,
-    ): Promise<{ message: string; profilePicture: string }> {
+    ): Promise<{ message: string; banner: string }> {
         try {
             // @ts-ignore: JWT middleware attaches user object
             const username = req.user.username;
+            // @ts-ignore: JWT middleware attaches user object
+            const userId = req.user.id;
 
-            if (!profilePicture) {
+            if (!banner) {
                 this.setStatus(400);
                 throw new Error(ErrorMessages.FILE.NO_FILE_UPLOADED);
             }
 
-            const user = await this.userRepo.findByUsername(username);
+            // Allow banners up to 5MB
+            const MAX_SIZE = 5 * 1024 * 1024;
+            if (banner.size > MAX_SIZE) {
+                this.setStatus(400);
+                throw new Error('File size too large. Max 5MB allowed.');
+            }
+
+            const user = await this.userRepo.findById(userId);
             if (!user) {
                 this.setStatus(404);
                 throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
-            // Remove old profile picture to save storage
-            if (user.profilePicture) {
+            // Remove old banner to save storage
+            if (user.banner) {
                 const oldPath = path.join(
                     process.cwd(),
                     'uploads',
-                    'profiles',
-                    path.basename(user.profilePicture),
+                    'banners',
+                    path.basename(user.banner),
                 );
                 if (fs.existsSync(oldPath)) {
                     fs.unlinkSync(oldPath);
                 }
             }
 
-            const profilesDir = path.join(process.cwd(), 'uploads', 'profiles');
-            if (!fs.existsSync(profilesDir)) {
-                fs.mkdirSync(profilesDir, { recursive: true });
+            const bannersDir = path.join(process.cwd(), 'uploads', 'banners');
+            if (!fs.existsSync(bannersDir)) {
+                fs.mkdirSync(bannersDir, { recursive: true });
             }
 
-            // Normalize profile picture dimensions
-            const uploadedPath = profilePicture.path;
-            const ext = path.extname(profilePicture.originalname).toLowerCase();
+            const uploadedPath = banner.path;
+
+            // Validate dimensions
+            try {
+                const metadata = await sharp(uploadedPath).metadata();
+
+                if (!metadata.width || !metadata.height) {
+                    fs.unlinkSync(uploadedPath);
+                    this.setStatus(400);
+                    throw new Error('Could not read image dimensions');
+                }
+
+                if (metadata.width > 1136 || metadata.height > 400) {
+                    fs.unlinkSync(uploadedPath);
+                    this.setStatus(400);
+                    throw new Error(`Banner dimensions must be at most 1136x400px. Received: ${metadata.width}x${metadata.height}px`);
+                }
+
+                // Check if the banner is webp
+                if (metadata.format !== 'webp') {
+                    fs.unlinkSync(uploadedPath);
+                    this.setStatus(400);
+                    throw new Error('Invalid file format. Only WebP is allowed.');
+                }
+            } catch (validationErr: any) {
+                if (fs.existsSync(uploadedPath)) {
+                    fs.unlinkSync(uploadedPath);
+                }
+                this.logger.error('Banner validation error:', validationErr);
+                this.setStatus(400);
+                throw new Error(validationErr.message || 'Failed to validate banner image');
+            }
+
+            const ext = '.webp';
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
-            const targetPath = path.join(profilesDir, filename);
+            const targetPath = path.join(bannersDir, filename);
 
             try {
-                await sharp(uploadedPath, { animated: true })
-                    .resize({
-                        width: 512,
-                        height: 512,
-                        fit: 'inside',
-                        withoutEnlargement: true,
-                    })
-                    .toFile(targetPath);
-
-                // Remove temporary upload file after processing
-                fs.unlinkSync(uploadedPath);
-            } catch (resizeErr) {
-                this.logger.error('Image resize error:', resizeErr);
-                this.setStatus(400);
-                throw new Error(ErrorMessages.PROFILE.FAILED_UPLOAD_PICTURE);
+                fs.renameSync(uploadedPath, targetPath);
+            } catch (moveErr) {
+                this.logger.error('Banner file move error:', moveErr);
+                if (fs.existsSync(uploadedPath)) {
+                    fs.unlinkSync(uploadedPath);
+                }
+                this.setStatus(500);
+                throw new Error('Failed to save banner image');
             }
 
-            await this.userRepo.updateProfilePicture(
-                user._id.toString(),
-                filename,
-            );
 
-            const profilePictureUrl = `/api/v1/profile/picture/${filename}`;
+            await this.userRepo.updateBanner(userId, filename);
+
+            const bannerUrl = `/api/v1/profile/banner/${filename}`;
 
             try {
                 const io = getIO();
-                io.emit('profile_picture_updated', {
+                const serverIds = await this.serverMemberRepo.findServerIdsByUserId(userId);
+                const friendships = await this.friendshipRepo.findAllByUserId(userId);
+
+                const updatePayload = {
                     username,
-                    profilePicture: profilePictureUrl,
+                    banner: bannerUrl,
+                };
+
+                // Emit to all servers the user is in
+                serverIds.forEach(serverId => {
+                    io.to(`server:${serverId}`).emit('user_banner_updated', updatePayload);
                 });
+
+                // Emit to all friends
+                friendships.forEach(friendship => {
+                    const friendId = friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                    io.to(`user:${friendId}`).emit('user_banner_updated', updatePayload);
+                });
+
+                // Also emit to the user themselves (for other sessions)
+                io.to(`user:${userId}`).emit('user_banner_updated', updatePayload);
+
             } catch (err) {
-                this.logger.error(
-                    'Failed to emit profile picture update:',
-                    err,
-                );
+                this.logger.error('Failed to emit banner update:', err);
             }
 
             return {
-                message: 'Profile picture updated successfully',
-                profilePicture: profilePictureUrl,
+                message: 'Profile banner updated successfully',
+                banner: bannerUrl,
             };
         } catch (err: any) {
-            this.logger.error('Profile picture upload error:', err);
-            if (
-                err.message === 'User not found' ||
-                err.message === 'No file uploaded'
-            ) {
-                throw err;
-            }
-            this.setStatus(500);
-            throw new Error(ErrorMessages.PROFILE.FAILED_UPLOAD_PICTURE);
+            this.logger.error('Banner upload error:', err);
+            throw err;
         }
+    }
+
+    /**
+     * Serves a profile banner file.
+     */
+    @Get('banner/{filename}')
+    public async getBanner(
+        @Path() filename: string,
+        @Request() req: express.Request,
+    ): Promise<void> {
+        const res = req.res;
+        if (!res) throw new Error('Response object not found');
+
+        if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+            res.status(400).send({ error: 'Invalid filename' });
+            return;
+        }
+
+        const filePath = path.join(process.cwd(), 'uploads', 'banners', filename);
+
+        if (!fs.existsSync(filePath)) {
+            res.status(404).send({ error: 'Banner not found' });
+            return;
+        }
+
+        const ext = path.extname(filename).toLowerCase();
+        const contentTypes: { [key: string]: string } = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+        };
+
+        res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+
+        return new Promise<void>((resolve, reject) => {
+            res.sendFile(filePath, (err) => {
+                if (err) {
+                    this.logger.error('Error sending banner file:', err);
+                    if (!res.headersSent) {
+                        res.status(500).send({ error: 'Failed to send banner' });
+                    }
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
     }
 
     /**
@@ -994,6 +1094,10 @@ export class ProfileController extends Controller {
                 this.logger.error('Error fetching user badges:', error);
             }
         }
+
+        mapped.banner = user.banner
+            ? `/api/v1/profile/banner/${user.banner}`
+            : null;
 
         return mapped as unknown as UserProfile;
     }
