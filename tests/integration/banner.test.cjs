@@ -30,13 +30,13 @@ describe('Banner Integration Tests', () => {
         const user = await createTestUser();
         const token = generateAuthToken(user);
 
-        // Create a tiny valid PNG buffer
-        const pngBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+        // Create a tiny valid WebP buffer
+        const webpBuffer = Buffer.from('UklGRkAAAABXRUJQVlA4WAoAAAAQAAAAAAAAAAAAQUxQSAIAAAAAAFZQOCAYAAAAMAEAnQEqAQABAAFAJiWkAANwAP79NmgA', 'base64');
 
         const res = await request(app)
             .post('/api/v1/profile/banner')
             .set('Authorization', `Bearer ${token}`)
-            .attach('banner', pngBuffer, 'test-banner.png');
+            .attach('banner', webpBuffer, 'test-banner.webp');
 
         assert.equal(res.status, 200);
         assert.ok(res.body.banner);
@@ -51,13 +51,13 @@ describe('Banner Integration Tests', () => {
     test('GET /api/v1/profile/banner/{filename} - should retrieve banner', async () => {
         const user = await createTestUser();
         const token = generateAuthToken(user);
-        const pngBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+        const webpBuffer = Buffer.from('UklGRkAAAABXRUJQVlA4WAoAAAAQAAAAAAAAAAAAQUxQSAIAAAAAAFZQOCAYAAAAMAEAnQEqAQABAAFAJiWkAANwAP79NmgA', 'base64');
 
         // First upload
         const uploadRes = await request(app)
             .post('/api/v1/profile/banner')
             .set('Authorization', `Bearer ${token}`)
-            .attach('banner', pngBuffer, 'test-banner.png');
+            .attach('banner', webpBuffer, 'test-banner.webp');
 
         const bannerUrl = uploadRes.body.banner;
 
@@ -66,7 +66,7 @@ describe('Banner Integration Tests', () => {
             .get(bannerUrl);
 
         assert.equal(res.status, 200);
-        assert.equal(res.header['content-type'], 'image/png');
+        assert.equal(res.header['content-type'], 'image/webp');
     });
 
     test('POST /api/v1/admin/users/{userId}/reset - should reset banner', async () => {
