@@ -17,10 +17,7 @@ import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { z } from 'zod';
 import { Types } from 'mongoose';
 import logger from '@/utils/logger';
-import {
-    messagesSentCounter,
-    websocketMessagesCounter,
-} from '@/utils/metrics';
+import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 
 /**
  * Chat Gateway.

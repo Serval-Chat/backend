@@ -16,7 +16,6 @@ import {
     ServerOwnershipTransferredSchema,
 } from '@/validation/schemas/realtime/server.schema';
 import { TYPES } from '@/di/types';
-import { IServerRepository } from '@/di/interfaces/IServerRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import { IChannelRepository } from '@/di/interfaces/IChannelRepository';
@@ -26,11 +25,7 @@ import { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import { PermissionService } from '@/services/PermissionService';
 import { PresenceService } from '@/realtime/services/PresenceService';
 import { z } from 'zod';
-import logger from '@/utils/logger';
-import {
-    messagesSentCounter,
-    websocketMessagesCounter,
-} from '@/utils/metrics';
+import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import { PingService } from '@/services/PingService';
 import { getIO } from '@/socket';
 
@@ -45,7 +40,6 @@ import { getIO } from '@/socket';
 @Gateway()
 export class ServerGateway {
     constructor(
-        @inject(TYPES.ServerRepository) private serverRepo: IServerRepository,
         @inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.ServerMessageRepository)
@@ -331,7 +325,7 @@ export class ServerGateway {
         ];
 
         // Replace mentions with display format for storage
-        const displayText = await replaceMentionsForDisplay(text, userMap);
+        await replaceMentionsForDisplay(text, userMap);
 
         const created = await this.serverMessageRepo.create({
             serverId,

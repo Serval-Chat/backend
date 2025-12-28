@@ -4,8 +4,6 @@ import { randomBytes } from 'crypto';
 import { container } from '@/di/container';
 import { TYPES } from '@/di/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { PresenceService } from '@/realtime/services/PresenceService';
 import { getMetricsMiddleware } from '@/middleware/metrics';
 import helmet from 'helmet';
 import cors from 'cors';

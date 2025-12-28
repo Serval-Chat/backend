@@ -18,7 +18,7 @@ export class SecurityGateway implements OnGatewayConnection {
     constructor(
         @inject(TYPES.BanRepository) private banRepo: IBanRepository,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) { }
+    ) {}
 
     /**
      * Handles new socket connection.

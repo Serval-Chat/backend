@@ -20,12 +20,10 @@ import { PresenceService } from '@/realtime/services/PresenceService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
 import {
-    resolveSerializedCustomStatus,
     type SerializedCustomStatus,
 } from '@/utils/status';
 import { mapUser } from '@/utils/user';
 import express from 'express';
-import { Types } from 'mongoose';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 

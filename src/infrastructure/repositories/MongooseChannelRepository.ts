@@ -5,7 +5,6 @@ import {
     CreateChannelDTO,
 } from '@/di/interfaces/IChannelRepository';
 import { Channel } from '@/models/Server';
-import mongoose from 'mongoose';
 
 /**
  * Transform MongoDB document to match IChannel interface.

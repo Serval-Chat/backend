@@ -125,7 +125,7 @@ export class MongooseReactionRepository implements IReactionRepository {
     async getReactionsByMessage(
         messageId: string,
         messageType: 'dm' | 'server',
-        currentUserId?: string,
+        _currentUserId?: string,
     ): Promise<ReactionData[]> {
         /**
          * Groups reactions by emoji.
@@ -179,9 +179,6 @@ export class MongooseReactionRepository implements IReactionRepository {
         // Transform results
         return results.map((r) => {
             const userIds = r.users.map((id: Types.ObjectId) => id.toString());
-            const hasReacted = currentUserId
-                ? userIds.includes(currentUserId)
-                : false;
 
             if (r._id.emojiType === 'custom') {
                 const emojiIdStr = r._id.emojiId
@@ -212,7 +209,7 @@ export class MongooseReactionRepository implements IReactionRepository {
     async getReactionsForMessages(
         messageIds: string[],
         messageType: 'dm' | 'server',
-        currentUserId?: string,
+        _currentUserId?: string,
     ): Promise<Record<string, ReactionData[]>> {
         if (messageIds.length === 0) return {};
 

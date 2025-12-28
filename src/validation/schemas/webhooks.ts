@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { nameSchema, objectIdSchema, optionalUrlSchema } from '@/validation/schemas/common';
+import {
+    nameSchema,
+    objectIdSchema,
+    optionalUrlSchema,
+} from '@/validation/schemas/common';
 
 /**
  * Webhook channel parameters validation

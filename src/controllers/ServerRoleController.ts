@@ -129,10 +129,10 @@ export class ServerRoleController extends Controller {
 
         const roleColor =
             body.startColor ||
-                body.endColor ||
-                (body.colors && body.colors.length > 0)
+            body.endColor ||
+            (body.colors && body.colors.length > 0)
                 ? null
-                : (body.color || '#99aab5');
+                : body.color || '#99aab5';
 
         const role = await this.roleRepo.create({
             serverId,
@@ -320,5 +320,4 @@ export class ServerRoleController extends Controller {
 
         return { message: 'Role deleted' };
     }
-
 }

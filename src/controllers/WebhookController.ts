@@ -25,10 +25,7 @@ import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { generateWebhookToken } from '@/services/WebhookService';
 import { getIO } from '@/socket';
-import {
-    messagesSentCounter,
-    websocketMessagesCounter,
-} from '@/utils/metrics';
+import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';

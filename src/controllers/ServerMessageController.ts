@@ -25,10 +25,7 @@ import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
-import {
-    messagesSentCounter,
-    websocketMessagesCounter,
-} from '@/utils/metrics';
+import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import express from 'express';
 import mongoose from 'mongoose';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';

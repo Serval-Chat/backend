@@ -4,8 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import { requireAdmin } from '@/routes/api/v1/admin/middlewares/requireAdmin';
 import logger from '@/utils/logger';
-import { validate } from '@/validation/middleware';
-import { z } from 'zod';
 
 const router = express.Router();
 
@@ -38,7 +36,6 @@ const writeTokens = (tokens: string[]) => {
     }
 };
 
-// List Invites
 /**
  * GET /api/v1/admin/invites
  *
@@ -49,11 +46,11 @@ router.get('/', requireAdmin('manageInvites'), async (req, res) => {
         const tokens = await readTokens();
         res.json(tokens);
     } catch (error) {
+        logger.error('Failed to list invites:', error);
         res.status(500).json({ error: 'Failed to list invites' });
     }
 });
 
-// Create Invite
 /**
  * POST /api/v1/admin/invites
  *
@@ -77,11 +74,11 @@ router.post('/', requireAdmin('manageInvites'), async (req, res) => {
 
         res.json({ message: 'Invite created', token });
     } catch (error) {
+        logger.error('Failed to create invite:', error);
         res.status(500).json({ error: 'Failed to create invite' });
     }
 });
 
-// Delete Invite
 /**
  * DELETE /api/v1/admin/invites/:token
  *
@@ -104,6 +101,7 @@ router.delete('/:token', requireAdmin('manageInvites'), async (req, res) => {
 
         res.json({ message: 'Invite deleted' });
     } catch (error) {
+        logger.error('Failed to delete invite:', error);
         res.status(500).json({ error: 'Failed to delete invite' });
     }
 });

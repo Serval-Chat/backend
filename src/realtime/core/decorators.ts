@@ -27,7 +27,7 @@ export function Gateway(namespace: string = '/'): ClassDecorator {
  * @param schema - Optional Zod schema for payload validation.
  */
 export function On(event: string, schema?: ZodSchema): MethodDecorator {
-    return (target, propertyKey, descriptor) => {
+    return (target, propertyKey, _descriptor) => {
         const events =
             Reflect.getMetadata(EVENT_METADATA, target.constructor) || [];
         events.push({ event, schema, method: propertyKey });
@@ -43,7 +43,7 @@ export function On(event: string, schema?: ZodSchema): MethodDecorator {
  * @param middleware - The middleware function to apply.
  */
 export function UseMiddleware(middleware: Function): MethodDecorator {
-    return (target, propertyKey, descriptor) => {
+    return (target, propertyKey, _descriptor) => {
         const middlewares =
             Reflect.getMetadata(MIDDLEWARE_METADATA, target.constructor) || [];
         middlewares.push({ middleware, method: propertyKey });
