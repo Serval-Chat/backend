@@ -1,9 +1,4 @@
-import {
-    Controller,
-    Get,
-    Route,
-    Tags,
-} from 'tsoa';
+import { Controller, Get, Route, Tags } from 'tsoa';
 import { injectable } from 'inversify';
 import { getGitCommitHash, getVersion } from '@/utils/version';
 

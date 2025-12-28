@@ -20,4 +20,3 @@ router.use('/api/v1/admin/invites', authenticateToken, inviteRoutes);
 router.use('/', publicRoutes);
 
 export default router;
-
