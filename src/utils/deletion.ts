@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { getAvatarStorage } from './storage';
-import logger from './logger';
+import { getAvatarStorage } from '@/utils/storage';
+import logger from '@/utils/logger';
 
 /**
  * Generate an anonymized username for deleted users.

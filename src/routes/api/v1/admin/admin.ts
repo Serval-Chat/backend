@@ -1,27 +1,27 @@
 import express from 'express';
-import { type AuthenticatedRequest } from '../../../../middleware/auth';
+import { type AuthenticatedRequest } from '@/middleware/auth';
 import mongoose from 'mongoose';
-import logger from '../../../../utils/logger';
-import { container } from '../../../../di/container';
-import { TYPES } from '../../../../di/types';
-import type { IUserRepository } from '../../../../di/interfaces/IUserRepository';
-import type { IBanRepository } from '../../../../di/interfaces/IBanRepository';
-import type { IWarningRepository } from '../../../../di/interfaces/IWarningRepository';
-import type { IAuditLogRepository } from '../../../../di/interfaces/IAuditLogRepository';
-import type { IMessageRepository } from '../../../../di/interfaces/IMessageRepository';
-import type { IFriendshipRepository } from '../../../../di/interfaces/IFriendshipRepository';
-import type { IServerMemberRepository } from '../../../../di/interfaces/IServerMemberRepository';
-import type { IServerRepository } from '../../../../di/interfaces/IServerRepository';
+import logger from '@/utils/logger';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { IBanRepository } from '@/di/interfaces/IBanRepository';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
+import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import rateLimit from 'express-rate-limit';
 import { Types } from 'mongoose';
-import { getIO } from '../../../../socket';
-import type { PresenceService } from '../../../../realtime/services/PresenceService';
+import { getIO } from '@/socket';
+import type { PresenceService } from '@/realtime/services/PresenceService';
 import {
     generateAnonymizedUsername,
     DELETED_AVATAR_PATH,
     deleteAvatarFile,
-} from '../../../../utils/deletion';
-import { validate } from '../../../../validation/middleware';
+} from '@/utils/deletion';
+import { validate } from '@/validation/middleware';
 import {
     listUsersQuerySchema,
     userIdParamSchema,
@@ -29,12 +29,15 @@ import {
     banUserSchema,
     warnUserSchema,
     resetProfileSchema,
-} from '../../../../validation/schemas/admin';
-import { serverIdParamSchema } from '../../../../validation/schemas/servers';
-import badgeRoutes from './badges';
-import inviteRoutes from './invites';
-import { requireAdmin } from './middlewares/requireAdmin';
-import { AdminPermissions } from './permissions';
+} from '@/validation/schemas/admin';
+import { serverIdParamSchema } from '@/validation/schemas/servers';
+import badgeRoutes from '@/routes/api/v1/admin/badges';
+import inviteRoutes from '@/routes/api/v1/admin/invites';
+import { requireAdmin } from '@/routes/api/v1/admin/middlewares/requireAdmin';
+import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import { Ban } from '@/models/Ban';
+import { ServerBan } from '@/models/Server';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -138,16 +141,6 @@ router.get('/stats', requireAdmin('viewLogs'), async (req, res) => {
             messageRepo.count(),
         ]);
 
-        // Get counts from 24h ago (approximate by subtracting new items)
-        // Note: This is a simplified "trend" calculation.
-        // Real trend = (current - previous) / previous * 100
-        // Here we calculate "new items in last 24h" as a proxy for positive trend.
-        // For a more accurate "total count 24h ago", we'd need historical snapshots or
-        // count all items created BEFORE oneDayAgo.
-
-        // Let's calculate percentage growth based on new items vs total.
-        // Growth = (New Items / (Total - New Items)) * 100
-
         const [newUsers, newBans, newServers, newMessages] = await Promise.all([
             userRepo.countCreatedAfter(oneDayAgo),
             banRepo.countCreatedAfter(oneDayAgo),
@@ -163,8 +156,6 @@ router.get('/stats', requireAdmin('viewLogs'), async (req, res) => {
 
         // Active users from PresenceService
         const activeUsersCount = presenceService.getAllOnlineUsers().length;
-        // For active users trend, we don't have history, so we'll return 0 or maybe track it in memory later.
-        // For now, 0 is fine as we don't have historical presence data.
 
         res.json({
             users,
@@ -748,12 +739,10 @@ router.get('/bans', requireAdmin('viewBans'), async (req, res) => {
 router.get('/bans/diagnostic', requireAdmin('viewBans'), async (req, res) => {
     try {
         // Check app-level bans
-        const { Ban } = await import('../../../../models/Ban');
         const appBansCount = await Ban.countDocuments();
         const appBansSample = await Ban.find({}).limit(5).lean();
 
         // Check server-level bans
-        const { ServerBan } = await import('../../../../models/Server');
         const serverBansCount = await ServerBan.countDocuments();
         const serverBansSample = await ServerBan.find({}).limit(5).lean();
 
@@ -869,7 +858,35 @@ router.get('/servers', requireAdmin('manageServer'), async (req, res) => {
             search: search as string,
             includeDeleted: true, // Admins can see deleted servers
         });
-        res.json(servers);
+
+        // Collect all owner IDs and filter out invalid ones
+        const ownerIds = [...new Set(servers.map((s) => s.ownerId))].filter((id) =>
+            mongoose.Types.ObjectId.isValid(id.toString()),
+        );
+        const owners = await userRepo.findByIds(ownerIds);
+
+        // Map servers to include owner details
+        const enrichedServers = servers.map((server) => {
+            const owner = owners.find(
+                (u) => u._id.toString() === server.ownerId.toString(),
+            );
+            return {
+                ...server,
+                icon: server.icon ? `${server.icon}` : null,
+                owner: owner
+                    ? {
+                        _id: owner._id,
+                        username: owner.username,
+                        displayName: owner.displayName,
+                        profilePicture: owner.profilePicture
+                            ? `/api/v1/profile/picture/${owner.profilePicture}`
+                            : null,
+                    }
+                    : null,
+            };
+        });
+
+        res.json(enrichedServers);
     } catch (error) {
         logger.error('[ADMIN] Failed to list servers:', error);
         res.status(500).json({ error: 'Failed to list servers' });
@@ -885,10 +902,6 @@ router.delete(
         try {
             const authReq = req as AuthenticatedRequest;
             const serverId = req.params.serverId as string;
-            // Check if server exists (including deleted ones, so we don't 404 if already deleted but we want to maybe hard delete later?
-            // Or just to confirm it exists.
-            // Actually if it's already deleted, softDelete will just update the timestamp again or do nothing.
-            // Let's check if it exists at all.
             const server = await serverRepo.findById(serverId, true);
             if (!server) {
                 return res.status(404).json({ error: 'Server not found' });
@@ -896,27 +909,6 @@ router.delete(
 
             await serverRepo.softDelete(serverId);
 
-            // We do NOT clean up related data for soft delete, so it can be restored if needed (though restore isn't asked for yet).
-            // But user said "unaccessible to all the members".
-            // Since we updated findById/findByOwnerId/findByIds to exclude deleted, they won't see it.
-            // What about members? ServerMemberRepository?
-            // ServerMemberRepository usually queries by serverId.
-            // If I query members of a deleted server, I might still get them.
-            // But the server itself won't be found by `findById`.
-            // The client usually fetches server details. If that fails, it might handle it.
-            // But "unaccessible" might mean we should also disconnect sockets?
-            // The user said "Make it unaccessible".
-            // I should probably emit an event to disconnect users or remove the server from their list.
-            // In the original delete logic, it was emitting 'server_member_left' or similar?
-            // Let's check the original code I'm replacing.
-
-            /* Original code was:
-        await serverRepo.delete(serverId);
-        // Clean up related data...
-        */
-
-            // If I soft delete, I should probably still notify clients to remove it from UI.
-            // I'll emit 'server_deleted' event to the server room.
             const io = getIO();
             io.to(`server:${serverId}`).emit('server_deleted', { serverId });
 
@@ -956,11 +948,6 @@ router.post(
 
             await serverRepo.restore(serverId);
 
-            // Notify clients that server is back?
-            // Maybe 'server_restored' event?
-            // Clients might need to re-fetch or be pushed the server data.
-            // For now, let's just restore it.
-
             await logAdminAction(
                 authReq,
                 'restore_server',
@@ -992,8 +979,8 @@ router.get(
             const profilePictureUrl = user.deletedAt
                 ? '/images/deleted-cat.jpg'
                 : user.profilePicture
-                  ? `/api/v1/profile/picture/${user.profilePicture}`
-                  : null;
+                    ? `/api/v1/profile/picture/${user.profilePicture}`
+                    : null;
 
             // Fetch servers user is in
             const memberships = await serverMemberRepo.findByUserId(userId);
@@ -1015,15 +1002,11 @@ router.get(
                 };
             });
 
-            // Fetch active bans/warnings if any (optional, but good for completeness)
-            // const bans = await banRepo.findByUserId(userId); // Assuming this exists or similar
-            // const warnings = await warningRepo.findByUserId(userId);
-
             const userDetails = {
                 _id: user._id,
                 username: user.username,
                 displayName: user.displayName,
-                email: user.login, // Assuming login is email
+                email: user.login,
                 profilePicture: profilePictureUrl,
                 createdAt: user.createdAt,
                 permissions: user.permissions,
@@ -1063,9 +1046,7 @@ router.post(
             const oldUsername = user.username;
 
             if (fields.includes('username')) {
-                const randomHex = require('crypto')
-                    .randomBytes(8)
-                    .toString('hex');
+                const randomHex = crypto.randomBytes(8).toString('hex');
                 updates.username = `user_${randomHex}`;
             }
             if (fields.includes('displayName')) {

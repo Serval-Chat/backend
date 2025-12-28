@@ -10,25 +10,25 @@ import {
     Tags,
     Request,
     Query,
-    Hidden,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { IUserRepository } from '../di/interfaces/IUserRepository';
-import type { IAuditLogRepository } from '../di/interfaces/IAuditLogRepository';
-import type { IFriendshipRepository } from '../di/interfaces/IFriendshipRepository';
-import type { IBanRepository } from '../di/interfaces/IBanRepository';
-import type { IServerRepository } from '../di/interfaces/IServerRepository';
-import type { IMessageRepository } from '../di/interfaces/IMessageRepository';
-import type { IWarningRepository } from '../di/interfaces/IWarningRepository';
-import { PresenceService } from '../realtime/services/PresenceService';
-import { PermissionService } from '../services/PermissionService';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { AdminPermissions } from '../routes/api/v1/admin/permissions';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
+import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
+import type { IBanRepository } from '@/di/interfaces/IBanRepository';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { PresenceService } from '@/realtime/services/PresenceService';
+import { PermissionService } from '@/services/PermissionService';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 import crypto from 'crypto';
-import { getIO } from '../socket';
+import { getIO } from '@/socket';
+import { Badge } from '@/models/Badge';
 import express from 'express';
 
 /**
@@ -237,7 +237,7 @@ export class AdminController extends Controller {
         const activeBan = await this.banRepo.findActiveByUserId(userId);
         const warningCount = await this.warningRepo.countByUserId(userId);
 
-        const { Badge } = await import('../models/Badge'); // plz dont do circular dependencies :(
+
         let badges: any[] = [];
         if (user.badges && user.badges.length > 0) {
             badges = await Badge.find({ id: { $in: user.badges } });

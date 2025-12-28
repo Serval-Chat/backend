@@ -1,11 +1,11 @@
 import { injectable, inject } from 'inversify';
-import { Gateway, On } from '../core/decorators';
-import { SocketContext, OnGatewayConnection } from '../core/types';
-import { PresenceService } from '../services/PresenceService';
-import { TYPES } from '../../di/types';
-import { PingService } from '../../services/PingService';
-import { websocketMessagesCounter } from '../../utils/metrics';
-import logger from '../../utils/logger';
+import { Gateway, On } from '@/realtime/core/decorators';
+import { SocketContext, OnGatewayConnection } from '@/realtime/core/types';
+import { PresenceService } from '@/realtime/services/PresenceService';
+import { TYPES } from '@/di/types';
+import { PingService } from '@/services/PingService';
+import { websocketMessagesCounter } from '@/utils/metrics';
+import logger from '@/utils/logger';
 
 /**
  * Presence Gateway.
@@ -45,9 +45,6 @@ export class PresenceGateway implements OnGatewayConnection {
         try {
             const storedPings = await this.pingService.getPingsForUser(userId);
             if (storedPings.length > 0) {
-                console.log(
-                    `Sending ${storedPings.length} stored pings to user ${username} (${userId})`,
-                );
                 storedPings.forEach((ping) => {
                     ctx.socket.emit('ping', ping);
                     websocketMessagesCounter.labels('ping', 'outbound').inc();

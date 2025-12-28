@@ -71,10 +71,6 @@ export const DeleteServerMessageSchema = z.object({
     messageId: z.string(),
 });
 
-// These seem to be client-emitted in the old code, but should ideally be server-emitted.
-// We keep them for compatibility if the client relies on emitting them,
-// but we should validate them or restrict them if possible.
-// For now, we define schemas.
 export const ServerMemberJoinedSchema = z.object({
     serverId: z.string(),
     userId: z.string(),

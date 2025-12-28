@@ -22,7 +22,7 @@ export interface IAvatarStorage {
  */
 import fs from 'fs/promises';
 import path from 'path';
-import logger from './logger';
+import logger from '@/utils/logger';
 
 export class FilesystemAvatarStorage implements IAvatarStorage {
     private baseDir: string;

@@ -13,24 +13,24 @@ import {
     FormField,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { IEmojiRepository } from '../di/interfaces/IEmojiRepository';
-import type { IServerRepository } from '../di/interfaces/IServerRepository';
-import type { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
-import { PermissionService } from '../services/PermissionService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { getIO } from '../socket';
+import { TYPES } from '@/di/types';
+import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import { PermissionService } from '@/services/PermissionService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { getIO } from '@/socket';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import mongoose from 'mongoose';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Controller for managing server-specific emojis.
- * Enforces security via server membership and 'manageServer' permission checks.
+ * Enforces server membership and 'manageServer' permission checks.
  */
 @injectable()
 @Route('api/v1/servers/{serverId}/emojis')

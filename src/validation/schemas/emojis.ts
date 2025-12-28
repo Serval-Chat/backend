@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { objectIdSchema } from './common';
+import { objectIdSchema } from '@/validation/schemas/common';
 
 /**
  * Get emoji by ID parameter validation

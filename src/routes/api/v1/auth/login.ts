@@ -1,13 +1,13 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
-import { loginLimiter } from '../../../../middleware/rateLimiting';
-import { generateJWT } from '../../../../utils/jwt';
-import { loginAttemptsCounter } from '../../../../utils/metrics';
-import { validate } from '../../../../validation/middleware';
-import { loginRequestSchema } from '../../../../validation/schemas/auth';
-import { container } from '../../../../di/container';
-import { TYPES } from '../../../../di/types';
-import type { AuthService } from '../../../../services/AuthService';
+import { loginLimiter } from '@/middleware/rateLimiting';
+import { generateJWT } from '@/utils/jwt';
+import { loginAttemptsCounter } from '@/utils/metrics';
+import { validate } from '@/validation/middleware';
+import { loginRequestSchema } from '@/validation/schemas/auth';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import type { AuthService } from '@/services/AuthService';
 
 const router: Router = Router();
 

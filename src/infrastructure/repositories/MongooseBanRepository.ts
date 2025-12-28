@@ -1,8 +1,8 @@
 import { injectable } from 'inversify';
-import { IBanRepository, IBan } from '../../di/interfaces/IBanRepository';
-import { Ban } from '../../models/Ban';
+import { IBanRepository, IBan } from '@/di/interfaces/IBanRepository';
+import { Ban } from '@/models/Ban';
 import { Types } from 'mongoose';
-import logger from '../../utils/logger';
+import logger from '@/utils/logger';
 
 /**
  * Mongoose Ban Repository

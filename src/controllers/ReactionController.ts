@@ -12,23 +12,23 @@ import {
     Request,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { IUserRepository } from '../di/interfaces/IUserRepository';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type {
     IReactionRepository,
     ReactionData,
-} from '../di/interfaces/IReactionRepository';
-import type { IMessageRepository } from '../di/interfaces/IMessageRepository';
-import type { IServerMessageRepository } from '../di/interfaces/IServerMessageRepository';
-import type { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '../di/interfaces/IChannelRepository';
-import { PermissionService } from '../services/PermissionService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { getIO } from '../socket';
-import { PresenceService } from '../realtime/services/PresenceService';
+} from '@/di/interfaces/IReactionRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
+import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import { PermissionService } from '@/services/PermissionService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { getIO } from '@/socket';
+import { PresenceService } from '@/realtime/services/PresenceService';
 import express from 'express';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * @example {

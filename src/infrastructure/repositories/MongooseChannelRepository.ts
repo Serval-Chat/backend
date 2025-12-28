@@ -3,8 +3,8 @@ import {
     IChannelRepository,
     IChannel,
     CreateChannelDTO,
-} from '../../di/interfaces/IChannelRepository';
-import { Channel } from '../../models/Server';
+} from '@/di/interfaces/IChannelRepository';
+import { Channel } from '@/models/Server';
 import mongoose from 'mongoose';
 
 /**

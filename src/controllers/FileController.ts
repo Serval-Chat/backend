@@ -11,15 +11,15 @@ import {
     UploadedFile,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { ILogger } from '../di/interfaces/ILogger';
+import { TYPES } from '@/di/types';
+import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
-import { SERVER_URL } from '../config/env';
-import { extractOriginalFilename } from '../config/multer';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { SERVER_URL } from '@/config/env';
+import { extractOriginalFilename } from '@/config/multer';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface FileMetadata {
     filename: string;
@@ -92,7 +92,9 @@ export class FileController extends Controller {
 
             // Verify the resolved path is within the uploads directory
             const realPath = fs.realpathSync(filePath);
-            if (!realPath.startsWith(uploadsDir)) {
+            const realUploadsDir = fs.realpathSync(uploadsDir);
+
+            if (!realPath.startsWith(realUploadsDir)) {
                 this.setStatus(400);
                 throw new Error(ErrorMessages.FILE.INVALID_PATH);
             }
@@ -185,7 +187,9 @@ export class FileController extends Controller {
             const filePath = path.join(uploadsDir, safeFilename);
 
             const realPath = fs.realpathSync(filePath);
-            if (!realPath.startsWith(uploadsDir)) {
+            const realUploadsDir = fs.realpathSync(uploadsDir);
+
+            if (!realPath.startsWith(realUploadsDir)) {
                 res.status(400).json({
                     error: ErrorMessages.FILE.INVALID_PATH,
                 });

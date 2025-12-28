@@ -3,8 +3,8 @@ import { Types } from 'mongoose';
 import {
     IMessageRepository,
     IMessage,
-} from '../../di/interfaces/IMessageRepository';
-import { Message } from '../../models/Message';
+} from '@/di/interfaces/IMessageRepository';
+import { Message } from '@/models/Message';
 
 /**
  * Mongoose Message Repository

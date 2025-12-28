@@ -18,24 +18,24 @@ import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { IUserRepository } from '../di/interfaces/IUserRepository';
-import { resolveSerializedCustomStatus } from '../utils/status';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { getIO } from '../socket';
-import { ErrorResponse } from './models/ErrorResponse';
-import { mapUser } from '../utils/user';
-import { ErrorMessages } from '../constants/errorMessages';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { resolveSerializedCustomStatus } from '@/utils/status';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { getIO } from '@/socket';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { mapUser } from '@/utils/user';
+import { ErrorMessages } from '@/constants/errorMessages';
 import express from 'express';
-import { Badge, type IBadge } from '../models/Badge';
+import { Badge, type IBadge } from '@/models/Badge';
 import {
     AssignBadgesRequest,
     BadgeOperationResponse,
-} from './models/BadgeTypes';
-import { StatusService } from '../realtime/services/StatusService';
-import { generateJWT, hasPermission } from '../utils/jwt';
-import { AdminPermissions } from '../routes/api/v1/admin/permissions';
-import { usernameSchema } from '../validation/schemas/common';
+} from '@/controllers/models/BadgeTypes';
+import { StatusService } from '@/realtime/services/StatusService';
+import { generateJWT, hasPermission } from '@/utils/jwt';
+import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import { usernameSchema } from '@/validation/schemas/common';
 
 interface UpdateStatusRequest {
     text?: string;
@@ -154,7 +154,7 @@ interface DisplayNameUpdate {
 
 /**
  * Controller for user profile management, customization, and status updates.
- * Enforces security boundaries via JWT ownership checks and admin permission validation.
+ * Enforces  boundaries via JWT ownership checks and admin permission validation.
  */
 @injectable()
 @Route('api/v1/profile')
@@ -325,7 +325,7 @@ export class ProfileController extends Controller {
 
     /**
      * Uploads or updates the user's profile picture.
-     * Resizes the image to 512x512 and enforces security via path sanitization.
+     * Resizes the image to 512x512 and Enforces path sanitization.
      */
     @Post('picture')
     @Security('jwt')

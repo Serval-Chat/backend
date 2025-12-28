@@ -1,5 +1,5 @@
 import { createLogger, format, transports } from 'winston';
-import { PROJECT_LEVEL, LOGS_PATH } from '../config/env';
+import { PROJECT_LEVEL, LOGS_PATH } from '@/config/env';
 import path from 'path';
 import DailyRotateFile from 'winston-daily-rotate-file';
 const { combine, timestamp, printf, colorize, errors } = format;

@@ -1,6 +1,6 @@
 import { injectable } from 'inversify';
-import { IPingRepository, IPing } from '../../di/interfaces/IPingRepository';
-import { Ping } from '../../models/Ping';
+import { IPingRepository, IPing } from '@/di/interfaces/IPingRepository';
+import { Ping } from '@/models/Ping';
 import { Types } from 'mongoose';
 
 /**

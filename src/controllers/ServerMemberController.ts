@@ -13,22 +13,22 @@ import {
     Request,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
+import { TYPES } from '@/di/types';
 import type {
     IServerMemberRepository,
     IServerMember,
-} from '../di/interfaces/IServerMemberRepository';
-import type { IServerRepository } from '../di/interfaces/IServerRepository';
-import type { IUserRepository } from '../di/interfaces/IUserRepository';
-import type { IRoleRepository } from '../di/interfaces/IRoleRepository';
-import type { IServerBanRepository } from '../di/interfaces/IServerBanRepository';
-import { PermissionService } from '../services/PermissionService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { getIO } from '../socket';
-import { mapUser } from '../utils/user';
+} from '@/di/interfaces/IServerMemberRepository';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
+import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
+import { PermissionService } from '@/services/PermissionService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { getIO } from '@/socket';
+import { mapUser } from '@/utils/user';
 import express from 'express';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface KickMemberRequest {
     reason?: string;
@@ -45,7 +45,7 @@ interface TransferOwnershipRequest {
 
 /**
  * Controller for managing server members, including kicks, bans, and role assignments.
- * Enforces security via permission checks and prevents actions against server owners.
+ * Enforces permission checks and prevents actions against server owners.
  */
 @injectable()
 @Route('api/v1/servers/{serverId}')

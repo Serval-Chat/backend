@@ -14,25 +14,25 @@ import {
     UploadedFile,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
+import { TYPES } from '@/di/types';
 import type {
     IServerRepository,
     IServer,
-} from '../di/interfaces/IServerRepository';
-import type { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '../di/interfaces/IChannelRepository';
-import type { IRoleRepository } from '../di/interfaces/IRoleRepository';
-import type { IUserRepository } from '../di/interfaces/IUserRepository';
-import type { IInviteRepository } from '../di/interfaces/IInviteRepository';
-import type { IServerMessageRepository } from '../di/interfaces/IServerMessageRepository';
-import type { IServerBanRepository } from '../di/interfaces/IServerBanRepository';
-import type { IServerChannelReadRepository } from '../di/interfaces/IServerChannelReadRepository';
-import { PermissionService } from '../services/PermissionService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { container } from '../di/container';
-import { getIO } from '../socket';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+} from '@/di/interfaces/IServerRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
+import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
+import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
+import { PermissionService } from '@/services/PermissionService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { container } from '@/di/container';
+import { getIO } from '@/socket';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -84,7 +84,7 @@ interface SetDefaultRoleRequest {
 
 /**
  * Controller for server management, membership, and statistics.
- * Enforces security via ownership checks, permission validation, and path sanitization for uploads.
+ * Enforces ownership checks, permission validation, and path sanitization for uploads.
  */
 @injectable()
 @Route('api/v1/servers')

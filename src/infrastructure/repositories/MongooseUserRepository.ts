@@ -3,13 +3,13 @@ import {
     IUserRepository,
     IUser,
     CreateUserDTO,
-} from '../../di/interfaces/IUserRepository';
-import { AdminPermissions } from '../../routes/api/v1/admin/permissions';
-import { User } from '../../models/User';
-import { Friendship, FriendRequest } from '../../models/Friendship';
-import { Ban } from '../../models/Ban';
+} from '@/di/interfaces/IUserRepository';
+import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import { User } from '@/models/User';
+import { Friendship, FriendRequest } from '@/models/Friendship';
+import { Ban } from '@/models/Ban';
 import type { Types } from 'mongoose';
-import { ErrorMessages } from '../../constants/errorMessages';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Mongoose User Repository

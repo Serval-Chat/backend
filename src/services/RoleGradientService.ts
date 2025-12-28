@@ -1,11 +1,11 @@
 import { injectable } from 'inversify';
-import type { IRole } from '../di/interfaces/IRoleRepository';
+import type { IRole } from '@/di/interfaces/IRoleRepository';
 import {
     getUserGradientColor,
     generateRoleGradientAssignments,
     RoleGradientColors,
     InterpolatedColorAssignment,
-} from '../utils/gradientUtils';
+} from '@/utils/gradientUtils';
 
 /**
  * Service for handling role color gradients

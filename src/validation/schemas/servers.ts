@@ -6,7 +6,7 @@ import {
     reasonSchema,
     optionalReasonSchema,
     colorHexSchema,
-} from './common';
+} from '@/validation/schemas/common';
 
 /**
  * Server ID parameter validation

@@ -1,5 +1,5 @@
 import type { Types } from 'mongoose';
-import type { AdminPermissions } from '../../routes/api/v1/admin/permissions';
+import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 
 /**
  * User DTO for creation

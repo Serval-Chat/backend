@@ -3,8 +3,8 @@ import {
     IRoleRepository,
     IRole,
     IRolePermissions,
-} from '../../di/interfaces/IRoleRepository';
-import { Role } from '../../models/Server';
+} from '@/di/interfaces/IRoleRepository';
+import { Role } from '@/models/Server';
 
 /**
  * Mongoose Role Repository

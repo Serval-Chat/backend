@@ -1,7 +1,7 @@
-import { User } from '../models/User';
-import { Message } from '../models/Message';
-import { totalUsersGauge, totalMessagesGauge } from './metrics';
-import logger from './logger';
+import { User } from '@/models/User';
+import { Message } from '@/models/Message';
+import { totalUsersGauge, totalMessagesGauge } from '@/utils/metrics';
+import logger from '@/utils/logger';
 
 const defaultUpdateInterval = 60000;
 

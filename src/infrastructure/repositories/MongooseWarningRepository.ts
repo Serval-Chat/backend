@@ -2,8 +2,8 @@ import { injectable } from 'inversify';
 import {
     IWarningRepository,
     IWarning,
-} from '../../di/interfaces/IWarningRepository';
-import { Warning } from '../../models/Warning';
+} from '@/di/interfaces/IWarningRepository';
+import { Warning } from '@/models/Warning';
 import { Types } from 'mongoose';
 
 @injectable()

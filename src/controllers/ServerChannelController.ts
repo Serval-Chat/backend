@@ -13,24 +13,24 @@ import {
     Request,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
+import { TYPES } from '@/di/types';
 import type {
     IChannelRepository,
     IChannel,
-} from '../di/interfaces/IChannelRepository';
-import type { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
-import type { IServerChannelReadRepository } from '../di/interfaces/IServerChannelReadRepository';
+} from '@/di/interfaces/IChannelRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import type {
     ICategoryRepository,
     ICategory,
-} from '../di/interfaces/ICategoryRepository';
-import type { IServerMessageRepository } from '../di/interfaces/IServerMessageRepository';
-import { PermissionService } from '../services/PermissionService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { getIO } from '../socket';
+} from '@/di/interfaces/ICategoryRepository';
+import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import { PermissionService } from '@/services/PermissionService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { getIO } from '@/socket';
 import express from 'express';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface CreateChannelRequest {
     name: string;

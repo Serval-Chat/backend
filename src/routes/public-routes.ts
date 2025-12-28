@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { PUBLIC_FOLDER_PATH } from '../config/env';
+import { PUBLIC_FOLDER_PATH } from '@/config/env';
 import express from 'express';
 import path from 'path';
 import { readFileSync } from 'fs';

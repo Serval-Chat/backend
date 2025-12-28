@@ -10,12 +10,12 @@ import {
     Request,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { IUserRepository } from '../di/interfaces/IUserRepository';
-import type { ILogger } from '../di/interfaces/ILogger';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface UserSettings {
     muteNotifications?: boolean;
@@ -27,11 +27,11 @@ interface UserSettings {
     otherMessageColor?: string;
 }
 
-interface UpdateSettingsRequest extends UserSettings {}
+interface UpdateSettingsRequest extends UserSettings { }
 
 /**
  * Controller for managing user-specific application settings.
- * Enforces security via JWT authentication.
+ * Enforces JWT authentication.
  */
 @injectable()
 @Route('api/v1/settings')

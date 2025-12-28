@@ -1,15 +1,15 @@
 import { injectable, inject } from 'inversify';
-import { Gateway } from '../core/decorators';
-import { SocketContext, OnGatewayConnection } from '../core/types';
-import { TYPES } from '../../di/types';
-import { IBanRepository } from '../../di/interfaces/IBanRepository';
-import { IUserRepository } from '../../di/interfaces/IUserRepository';
-import logger from '../../utils/logger';
+import { Gateway } from '@/realtime/core/decorators';
+import { SocketContext, OnGatewayConnection } from '@/realtime/core/types';
+import { TYPES } from '@/di/types';
+import { IBanRepository } from '@/di/interfaces/IBanRepository';
+import { IUserRepository } from '@/di/interfaces/IUserRepository';
+import logger from '@/utils/logger';
 
 /**
  * Security Gateway.
  *
- * Enforces security policies on connection.
+ * Enforces  policies on connection.
  * Checks for active bans and disconnects banned users.
  */
 @injectable()
@@ -18,7 +18,7 @@ export class SecurityGateway implements OnGatewayConnection {
     constructor(
         @inject(TYPES.BanRepository) private banRepo: IBanRepository,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) {}
+    ) { }
 
     /**
      * Handles new socket connection.

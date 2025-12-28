@@ -2,15 +2,15 @@ import express, { Router } from 'express';
 import {
     authenticateToken,
     type AuthenticatedRequest,
-} from '../../../../middleware/auth';
-import { generateWebhookToken } from '../../../../services/WebhookService';
-import { container } from '../../../../di/container';
-import { TYPES } from '../../../../di/types';
-import type { IWebhookRepository } from '../../../../di/interfaces/IWebhookRepository';
-import type { IServerMemberRepository } from '../../../../di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '../../../../di/interfaces/IChannelRepository';
-import type { IServerMessageRepository } from '../../../../di/interfaces/IServerMessageRepository';
-import type { PermissionService } from '../../../../services/PermissionService';
+} from '@/middleware/auth';
+import { generateWebhookToken } from '@/services/WebhookService';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import type { IWebhookRepository } from '@/di/interfaces/IWebhookRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import type { PermissionService } from '@/services/PermissionService';
 
 const webhookRepo = container.get<IWebhookRepository>(TYPES.WebhookRepository);
 const serverMemberRepo = container.get<IServerMemberRepository>(
@@ -23,26 +23,26 @@ const serverMessageRepo = container.get<IServerMessageRepository>(
 const permissionService = container.get<PermissionService>(
     TYPES.PermissionService,
 );
-import logger from '../../../../utils/logger';
+import logger from '@/utils/logger';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
-import { getIO } from '../../../../socket';
-import { validate } from '../../../../validation/middleware';
+import { getIO } from '@/socket';
+import { validate } from '@/validation/middleware';
 import {
     webhookChannelParamsSchema,
     webhookIdParamSchema,
     createWebhookSchema,
     executeWebhookSchema,
     webhookTokenParamSchema,
-} from '../../../../validation/schemas/webhooks';
+} from '@/validation/schemas/webhooks';
 import {
     messagesSentCounter,
     websocketMessagesCounter,
-} from '../../../../utils/metrics';
-import { memoryUpload } from '../../../../config/multer';
+} from '@/utils/metrics';
+import { memoryUpload } from '@/config/multer';
 
 /**
  * Webhook Management Router
@@ -490,11 +490,9 @@ topLevelRouter.post(
             const channelId = channelIdObject.toHexString();
 
             // Create message
-            // Note: Webhooks don't have a real senderId, so we use a special webhook system user ID
-            // You may want to create a dedicated "webhook" system user in your database
             const webhookSystemUserId = new mongoose.Types.ObjectId(
                 '000000000000000000000000',
-            ); // Placeholder
+            );
 
             const message = await serverMessageRepo.create({
                 serverId: serverIdObject,

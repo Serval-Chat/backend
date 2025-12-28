@@ -1,18 +1,18 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
-import { registrationLimiter } from '../../../../middleware/rateLimiting';
+import { registrationLimiter } from '@/middleware/rateLimiting';
 import fs from 'fs';
 import path from 'path';
-import { container } from '../../../../di/container';
-import { TYPES } from '../../../../di/types';
-import type { IUserRepository } from '../../../../di/interfaces/IUserRepository';
-import { generateJWT } from '../../../../utils/jwt';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { generateJWT } from '@/utils/jwt';
 import {
     registrationAttemptsCounter,
     usersCreatedCounter,
-} from '../../../../utils/metrics';
-import { validate } from '../../../../validation/middleware';
-import { registerSchema } from '../../../../validation/schemas/auth';
+} from '@/utils/metrics';
+import { validate } from '@/validation/middleware';
+import { registerSchema } from '@/validation/schemas/auth';
 
 const router: Router = Router();
 

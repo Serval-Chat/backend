@@ -1,26 +1,26 @@
 import type { Application, Request, Response, NextFunction } from 'express';
 import express from 'express';
 import { randomBytes } from 'crypto';
-import { container } from './di/container';
-import { TYPES } from './di/types';
-import type { ILogger } from './di/interfaces/ILogger';
-import type { IUserRepository } from './di/interfaces/IUserRepository';
-import type { PresenceService } from './realtime/services/PresenceService';
-import { getMetricsMiddleware } from './middleware/metrics';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { PresenceService } from '@/realtime/services/PresenceService';
+import { getMetricsMiddleware } from '@/middleware/metrics';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
-import { PROJECT_LEVEL } from './config/env';
+import { PROJECT_LEVEL } from '@/config/env';
 import path from 'path';
-import { connectDB } from './config/db';
-import { PORT, USE_HTTPS, CERTS_PATH } from './config/env';
-import routes from './routes/index';
-import { RegisterRoutes } from './routes/tsoa/routes';
+import { connectDB } from '@/config/db';
+import { PORT, USE_HTTPS, CERTS_PATH } from '@/config/env';
+import routes from '@/routes/index';
+import { RegisterRoutes } from '@/routes/tsoa/routes';
 import swaggerUi from 'swagger-ui-express';
-import { createSocketServer } from './socket';
-import { User } from './models/User';
-import { startMetricsUpdater } from './utils/metrics-updater';
-import { upload } from './config/multer';
+import { createSocketServer } from '@/socket/init';
+import { User } from '@/models/User';
+import { startMetricsUpdater } from '@/utils/metrics-updater';
+import { upload } from '@/config/multer';
 import fs from 'fs';
 import http from 'http';
 import https from 'https';
@@ -293,7 +293,7 @@ export async function startServer() {
             logger.info('Starting server with HTTP...');
         }
 
-        createSocketServer(httpServer);
+        await createSocketServer(httpServer, container);
 
         // Start metrics updater and update every 60 seconds
         startMetricsUpdater(60000);

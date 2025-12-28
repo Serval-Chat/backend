@@ -1,13 +1,13 @@
 import type { Request, Response, NextFunction } from 'express';
 import express, { Router } from 'express';
-import { upload, extractOriginalFilename } from '../../../../config/multer';
-import { authenticateToken } from '../../../../middleware/auth';
-import logger from '../../../../utils/logger';
-import { SERVER_URL } from '../../../../config/env';
+import { upload, extractOriginalFilename } from '@/config/multer';
+import { authenticateToken } from '@/middleware/auth';
+import logger from '@/utils/logger';
+import { SERVER_URL } from '@/config/env';
 import path from 'path';
 import fs from 'fs';
-import { validate } from '../../../../validation/middleware';
-import { fileParamSchema } from '../../../../validation/schemas/upload';
+import { validate } from '@/validation/middleware';
+import { fileParamSchema } from '@/validation/schemas/upload';
 
 const router: Router = Router();
 

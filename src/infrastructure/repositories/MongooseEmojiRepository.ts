@@ -1,6 +1,6 @@
 import { injectable } from 'inversify';
-import { IEmojiRepository, IEmoji } from '../../di/interfaces/IEmojiRepository';
-import { Emoji } from '../../models/Emoji';
+import { IEmojiRepository, IEmoji } from '@/di/interfaces/IEmojiRepository';
+import { Emoji } from '@/models/Emoji';
 
 /**
  * Mongoose Emoji Repository

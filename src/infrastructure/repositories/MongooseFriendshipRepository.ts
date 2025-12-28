@@ -3,12 +3,13 @@ import {
     IFriendshipRepository,
     IFriendship,
     IFriendRequest,
-} from '../../di/interfaces/IFriendshipRepository';
+} from '@/di/interfaces/IFriendshipRepository';
 import {
     Friendship,
     FriendRequest,
     areFriends as areFriendsHelper,
-} from '../../models/Friendship';
+} from '@/models/Friendship';
+import { User } from '@/models/User';
 
 /**
  * Mongoose Friendship Repository
@@ -34,9 +35,6 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
      * unique indexes and maintain backward compatibility.
      */
     async create(userId: string, friendId: string): Promise<IFriendship> {
-        // Import User model to fetch usernames (dynamic import to avoid circular dependency)
-        const { User } = await import('../../models/User');
-
         // Fetch usernames for legacy field support
         const [userDoc, friendDoc] = await Promise.all([
             User.findById(userId).select('username').lean(),
@@ -117,7 +115,6 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
      * Populates legacy 'from' and 'to' fields (usernames).
      */
     async createRequest(fromId: string, toId: string): Promise<IFriendRequest> {
-        const { User } = await import('../../models/User');
 
         // Fetch usernames for legacy field support
         const [fromUser, toUser] = await Promise.all([

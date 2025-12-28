@@ -1,11 +1,11 @@
 import { Controller, Get, Route, Path, Response, Tags } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { ILogger } from '../di/interfaces/ILogger';
+import { TYPES } from '@/di/types';
+import type { ILogger } from '@/di/interfaces/ILogger';
 import path from 'path';
 import fs from 'fs';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Controller for serving public server assets.

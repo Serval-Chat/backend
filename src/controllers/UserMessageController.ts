@@ -13,22 +13,22 @@ import {
     Body,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { IUserRepository } from '../di/interfaces/IUserRepository';
-import type { IFriendshipRepository } from '../di/interfaces/IFriendshipRepository';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type {
     IMessageRepository,
     IMessage,
-} from '../di/interfaces/IMessageRepository';
-import type { IDmUnreadRepository } from '../di/interfaces/IDmUnreadRepository';
+} from '@/di/interfaces/IMessageRepository';
+import type { IDmUnreadRepository } from '@/di/interfaces/IDmUnreadRepository';
 import type {
     IReactionRepository,
     ReactionData,
-} from '../di/interfaces/IReactionRepository';
-import type { ILogger } from '../di/interfaces/ILogger';
+} from '@/di/interfaces/IReactionRepository';
+import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface UnreadCountsResponse {
     counts: Record<string, number>;
@@ -49,7 +49,7 @@ interface UserEditMessageRequest {
 
 /**
  * Controller for managing direct messages (DMs) between users.
- * Enforces security via friendship checks and conversation membership validation.
+ * Enforces friendship checks and conversation membership validation.
  */
 @injectable()
 @Route('api/v1/messages')

@@ -1,8 +1,8 @@
-import { AuditLog } from '../../models/AuditLog';
+import { AuditLog } from '@/models/AuditLog';
 import type {
     IAuditLog,
     IAuditLogRepository,
-} from '../../di/interfaces/IAuditLogRepository';
+} from '@/di/interfaces/IAuditLogRepository';
 import { Types } from 'mongoose';
 
 /**

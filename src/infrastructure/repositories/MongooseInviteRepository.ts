@@ -3,8 +3,8 @@ import {
     IInviteRepository,
     IInvite,
     CreateInviteDTO,
-} from '../../di/interfaces/IInviteRepository';
-import { Invite } from '../../models/Server';
+} from '@/di/interfaces/IInviteRepository';
+import { Invite } from '@/models/Server';
 
 /**
  * Mongoose Invite Repository

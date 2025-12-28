@@ -1,17 +1,17 @@
 import { injectable, inject } from 'inversify';
-import { Gateway, On } from '../core/decorators';
-import { SocketContext } from '../core/types';
+import { Gateway, On } from '@/realtime/core/decorators';
+import { SocketContext } from '@/realtime/core/types';
 import {
     StatusSubscribeSchema,
     StatusUnsubscribeSchema,
     StatusRequestSchema,
-} from '../../validation/schemas/realtime/status.schema';
-import { StatusService } from '../services/StatusService';
-import { TYPES } from '../../di/types';
-import { IUserRepository } from '../../di/interfaces/IUserRepository';
-import { resolveSerializedCustomStatus } from '../../utils/status';
+} from '@/validation/schemas/realtime/status.schema';
+import { StatusService } from '@/realtime/services/StatusService';
+import { TYPES } from '@/di/types';
+import { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { resolveSerializedCustomStatus } from '@/utils/status';
 import { z } from 'zod';
-import logger from '../../utils/logger';
+import logger from '@/utils/logger';
 
 /**
  * Status Gateway.

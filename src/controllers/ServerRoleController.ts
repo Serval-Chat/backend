@@ -13,15 +13,15 @@ import {
     Request,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { IRoleRepository, IRole } from '../di/interfaces/IRoleRepository';
-import type { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
-import { PermissionService } from '../services/PermissionService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { getIO } from '../socket';
+import { TYPES } from '@/di/types';
+import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import { PermissionService } from '@/services/PermissionService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { getIO } from '@/socket';
 import express from 'express';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 export interface CreateRoleRequest {
     name: string;
@@ -52,7 +52,7 @@ export interface ReorderRolesRequest {
 
 /**
  * Controller for managing server roles and their permissions.
- * Enforces security via 'manageRoles' permission checks and protects the mandatory '@everyone' role.
+ * Enforces 'manageRoles' permission checks and protects the mandatory '@everyone' role.
  */
 @injectable()
 @Route('api/v1/servers/{serverId}/roles')

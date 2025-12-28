@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import ipaddr from 'ipaddr.js';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 const MAX_REDIRECTS = 3;
 

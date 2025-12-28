@@ -2,20 +2,20 @@ import { Router } from 'express';
 import {
     authenticateToken,
     type AuthenticatedRequest,
-} from '../../../../middleware/auth';
-import { container } from '../../../../di/container';
-import { TYPES } from '../../../../di/types';
-import type { IEmojiRepository } from '../../../../di/interfaces/IEmojiRepository';
-import type { IServerRepository } from '../../../../di/interfaces/IServerRepository';
-import type { IServerMemberRepository } from '../../../../di/interfaces/IServerMemberRepository';
-import type { PermissionService } from '../../../../services/PermissionService';
+} from '@/middleware/auth';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { PermissionService } from '@/services/PermissionService';
 import mongoose from 'mongoose';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
-import logger from '../../../../utils/logger';
-import { getIO } from '../../../../socket';
-import { memoryUpload } from '../../../../config/multer';
+import logger from '@/utils/logger';
+import { getIO } from '@/socket';
+import { memoryUpload } from '@/config/multer';
 
 const router = Router();
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads', 'emojis');

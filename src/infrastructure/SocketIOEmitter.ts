@@ -1,6 +1,6 @@
 import { injectable } from 'inversify';
-import { IEventEmitter } from '../di/interfaces/IEventEmitter';
-import { getIO } from '../socket';
+import { IEventEmitter } from '@/di/interfaces/IEventEmitter';
+import { getIO } from '@/socket';
 
 /**
  * Socket.IO Event Emitter Wrapper.

@@ -1,10 +1,10 @@
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import { IServerRepository } from '../di/interfaces/IServerRepository';
-import { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
-import { IRoleRepository } from '../di/interfaces/IRoleRepository';
-import { ICategoryRepository } from '../di/interfaces/ICategoryRepository';
-import { IChannelRepository } from '../di/interfaces/IChannelRepository';
+import { TYPES } from '@/di/types';
+import { IServerRepository } from '@/di/interfaces/IServerRepository';
+import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import { IRoleRepository } from '@/di/interfaces/IRoleRepository';
+import { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
+import { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 
 /**
  * Permission Service

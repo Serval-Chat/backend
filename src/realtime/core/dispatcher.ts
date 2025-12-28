@@ -1,13 +1,13 @@
 import type { Server, Socket } from 'socket.io';
 import type { Container } from 'inversify';
 import { ZodSchema } from 'zod';
-import { EVENT_METADATA, GATEWAY_METADATA } from './decorators';
+import { EVENT_METADATA, GATEWAY_METADATA } from '@/realtime/core/decorators';
 import type {
     EventHandlerMetadata,
     GatewayMetadata,
     SocketContext,
-} from './types';
-import logger from '../../utils/logger';
+} from '@/realtime/core/types';
+import logger from '@/utils/logger';
 
 /**
  * RealTime Dispatcher.

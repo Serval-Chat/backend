@@ -3,8 +3,8 @@ import {
     ICategoryRepository,
     ICategory,
     CreateCategoryDTO,
-} from '../../di/interfaces/ICategoryRepository';
-import { Category } from '../../models/Server';
+} from '@/di/interfaces/ICategoryRepository';
+import { Category } from '@/models/Server';
 
 /**
  * Transform MongoDB document to match ICategory interface.

@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
-import { Gateway, On } from '../core/decorators';
-import { SocketContext } from '../core/types';
+import { Gateway, On } from '@/realtime/core/decorators';
+import { SocketContext } from '@/realtime/core/types';
 import {
     JoinServerSchema,
     LeaveServerSchema,
@@ -14,25 +14,25 @@ import {
     ServerMemberJoinedSchema,
     ServerMemberLeftSchema,
     ServerOwnershipTransferredSchema,
-} from '../../validation/schemas/realtime/server.schema';
-import { TYPES } from '../../di/types';
-import { IServerRepository } from '../../di/interfaces/IServerRepository';
-import { IServerMemberRepository } from '../../di/interfaces/IServerMemberRepository';
-import { IServerMessageRepository } from '../../di/interfaces/IServerMessageRepository';
-import { IChannelRepository } from '../../di/interfaces/IChannelRepository';
-import { IServerChannelReadRepository } from '../../di/interfaces/IServerChannelReadRepository';
-import { IUserRepository } from '../../di/interfaces/IUserRepository';
-import { IRoleRepository } from '../../di/interfaces/IRoleRepository';
-import { PermissionService } from '../../services/PermissionService';
-import { PresenceService } from '../services/PresenceService';
+} from '@/validation/schemas/realtime/server.schema';
+import { TYPES } from '@/di/types';
+import { IServerRepository } from '@/di/interfaces/IServerRepository';
+import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
+import { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { IRoleRepository } from '@/di/interfaces/IRoleRepository';
+import { PermissionService } from '@/services/PermissionService';
+import { PresenceService } from '@/realtime/services/PresenceService';
 import { z } from 'zod';
-import logger from '../../utils/logger';
+import logger from '@/utils/logger';
 import {
     messagesSentCounter,
     websocketMessagesCounter,
-} from '../../utils/metrics';
-import { PingService } from '../../services/PingService';
-import { getIO } from '../../socket';
+} from '@/utils/metrics';
+import { PingService } from '@/services/PingService';
+import { getIO } from '@/socket';
 
 /**
  * Server Gateway.
@@ -249,14 +249,6 @@ export class ServerGateway {
             roleIds: mentionedRoleIds,
             everyone: mentionedEveryone,
         } = parseMentions(text);
-        console.log(
-            'Parsed mentions - users:',
-            mentionedUserIds,
-            'roles:',
-            mentionedRoleIds,
-            'everyone:',
-            mentionedEveryone,
-        );
 
         // Check permission for pinging @everyone
         if (mentionedEveryone) {
@@ -295,24 +287,11 @@ export class ServerGateway {
 
             const mentionedUser = await this.userRepo.findById(mentionedUserId);
             if (mentionedUser) {
-                console.log(
-                    'Valid mention found:',
-                    mentionedUserId,
-                    'username:',
-                    mentionedUser.username,
-                );
                 validMentions.push(mentionedUserId);
                 userMap.set(mentionedUserId, {
                     username: mentionedUser.username || '',
                     displayName: mentionedUser.displayName ?? null,
                 });
-            } else {
-                console.log(
-                    'Invalid mention:',
-                    mentionedUserId,
-                    'user exists:',
-                    !!mentionedUser,
-                );
             }
         }
 
@@ -351,14 +330,8 @@ export class ServerGateway {
             ...new Set([...validMentions, ...Array.from(roleMentionedUserIds)]),
         ];
 
-        console.log('All mentioned user IDs:', allMentionedUserIds);
-
         // Replace mentions with display format for storage
         const displayText = await replaceMentionsForDisplay(text, userMap);
-        console.log(
-            '[BACKEND] Display text after mention replacement:',
-            displayText,
-        );
 
         const created = await this.serverMessageRepo.create({
             serverId,
@@ -382,10 +355,8 @@ export class ServerGateway {
 
         // Send ping notifications to mentioned users (both direct mentions and role/everyone mentions)
         for (const mentionedUserId of allMentionedUserIds) {
-            console.log('Processing mention for user:', mentionedUserId);
             const mentionedUser = await this.userRepo.findById(mentionedUserId);
             if (mentionedUser?.username) {
-                console.log('Found mentioned user:', mentionedUser.username);
                 // Check if mentioned user is a member of the server
                 const mentionedMember =
                     await this.serverMemberRepo.findByServerAndUser(
@@ -393,8 +364,6 @@ export class ServerGateway {
                         mentionedUserId,
                     );
                 if (mentionedMember) {
-                    console.log('User is server member, sending ping');
-
                     // Store ping for ALL users (online and offline)
                     const pingData = {
                         type: 'mention' as const,
@@ -409,37 +378,20 @@ export class ServerGateway {
                         mentionedUserId,
                         pingData,
                     );
-                    console.log(
-                        'Stored server ping for user:',
-                        mentionedUserId,
-                    );
 
                     // Emit socket event only for online users
                     const mentionedSockets = this.presenceService?.getSockets(
                         mentionedUser.username,
                     );
-                    console.log(
-                        'Sockets for mentioned user:',
-                        mentionedSockets,
-                    );
                     if (mentionedSockets && mentionedSockets.length > 0) {
                         const io = getIO();
                         mentionedSockets.forEach((sid: string) => {
-                            console.log('Sending ping to socket:', sid);
                             io.to(sid).emit('ping', storedPing);
                             websocketMessagesCounter
                                 .labels('ping', 'outbound')
                                 .inc();
                         });
-                    } else {
-                        console.log(
-                            'No sockets found for mentioned user, they are offline - server ping stored for later',
-                        );
                     }
-                } else {
-                    console.log(
-                        'User is not a server member, not sending ping',
-                    );
                 }
             }
         }
@@ -451,9 +403,6 @@ export class ServerGateway {
             lastMessageAt: created.createdAt,
             senderId: userId,
         });
-        // Also emit to self for consistency if needed, but usually unread is for others.
-        // But if I have another session open, I might want it.
-        // ctx.socket.emit('channel_unread', ...) might be redundant for the sender who just sent it.
 
         return { ok: true, msg: created };
     }

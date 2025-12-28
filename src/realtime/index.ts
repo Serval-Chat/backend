@@ -1,15 +1,15 @@
 import type { Server } from 'socket.io';
 import type { Container } from 'inversify';
-import { RealTimeDispatcher } from './core/dispatcher';
-import type { RealTimeModule } from './core/types';
-import logger from '../utils/logger';
+import { RealTimeDispatcher } from '@/realtime/core/dispatcher';
+import type { RealTimeModule } from '@/realtime/core/types';
+import logger from '@/utils/logger';
 
-import { ChatGateway } from './gateways/ChatGateway';
-import { ServerGateway } from './gateways/ServerGateway';
-import { PresenceGateway } from './gateways/PresenceGateway';
-import { StatusGateway } from './gateways/StatusGateway';
-import { ReactionGateway } from './gateways/ReactionGateway';
-import { SecurityGateway } from './gateways/SecurityGateway';
+import { ChatGateway } from '@/realtime/gateways/ChatGateway';
+import { ServerGateway } from '@/realtime/gateways/ServerGateway';
+import { PresenceGateway } from '@/realtime/gateways/PresenceGateway';
+import { StatusGateway } from '@/realtime/gateways/StatusGateway';
+import { ReactionGateway } from '@/realtime/gateways/ReactionGateway';
+import { SecurityGateway } from '@/realtime/gateways/SecurityGateway';
 
 /**
  * RealTime Server.

@@ -1,12 +1,12 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
-import { authenticateToken } from '../../../../middleware/auth';
-import logger from '../../../../utils/logger';
-import { container } from '../../../../di/container';
-import { TYPES } from '../../../../di/types';
-import type { IUserRepository } from '../../../../di/interfaces/IUserRepository';
-import { Badge } from '../../../../models/Badge';
-import { requireAdmin } from './middlewares/requireAdmin';
+import { authenticateToken } from '@/middleware/auth';
+import logger from '@/utils/logger';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { Badge } from '@/models/Badge';
+import { requireAdmin } from '@/routes/api/v1/admin/middlewares/requireAdmin';
 
 const router: Router = Router();
 

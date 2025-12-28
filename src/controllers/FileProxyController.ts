@@ -1,7 +1,7 @@
 import { Controller, Get, Route, Query, Response, Tags, Request } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { ILogger } from '../di/interfaces/ILogger';
+import { TYPES } from '@/di/types';
+import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import {
@@ -11,9 +11,9 @@ import {
     validateUrl,
     fetchWithRedirects,
     readBodyWithLimit,
-} from '../services/FileProxyService';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+} from '@/services/FileProxyService';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
 const CACHE_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
