@@ -31,6 +31,15 @@ async function setup() {
     // 2. Connect Mongoose
     await mongoose.connect(uri);
 
+    // Ensure upload directories exist
+    const fs = require('fs');
+    const path = require('path');
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const bannersDir = path.join(uploadsDir, 'banners');
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+    if (!fs.existsSync(path.join(uploadsDir, 'uploads'))) fs.mkdirSync(path.join(uploadsDir, 'uploads'));
+    if (!fs.existsSync(bannersDir)) fs.mkdirSync(bannersDir);
+
     // 3. Import App and Routes
     require('reflect-metadata'); // Required for InversifyJS
     const { createApp } = require('../../src/server');

@@ -310,4 +310,8 @@ export class MongooseUserRepository implements IUserRepository {
     async countCreatedAfter(date: Date): Promise<number> {
         return await User.countDocuments({ createdAt: { $gt: date } });
     }
+
+    async updateBanner(id: string, filename: string | null): Promise<void> {
+        await User.findByIdAndUpdate(id, { banner: filename });
+    }
 }

@@ -514,6 +514,7 @@ const models: TsoaRoute.Models = {
             "bio": {"dataType":"string","required":true},
             "pronouns": {"dataType":"string","required":true},
             "badges": {"dataType":"array","array":{"dataType":"any"},"required":true},
+            "banner": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "deletedAt": {"dataType":"datetime"},
             "deletedReason": {"dataType":"string"},
         },
@@ -605,6 +606,7 @@ const models: TsoaRoute.Models = {
             "bio": {"dataType":"string","required":true},
             "pronouns": {"dataType":"string","required":true},
             "badges": {"dataType":"array","array":{"dataType":"any"},"required":true},
+            "banner": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "deletedAt": {"dataType":"datetime"},
             "deletedReason": {"dataType":"string"},
             "servers": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"isOwner":{"dataType":"boolean","required":true},"joinedAt":{"dataType":"datetime"},"ownerId":{"dataType":"string","required":true},"icon":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"name":{"dataType":"string","required":true},"_id":{"dataType":"string","required":true}}},"required":true},
@@ -694,6 +696,7 @@ const models: TsoaRoute.Models = {
             "bio": {"dataType":"string","required":true},
             "pronouns": {"dataType":"string","required":true},
             "badges": {"dataType":"array","array":{"dataType":"refObject","ref":"BadgeResponse"},"required":true},
+            "banner": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
         },
         "additionalProperties": false,
     },
@@ -3190,7 +3193,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/api/v1/admin/users/:userId/reset',
-            authenticateMiddleware([{"jwt":["resetUserProfile"]}]),
+            authenticateMiddleware([{"jwt":["manageUsers"]}]),
             ...(fetchMiddlewares<RequestHandler>(AdminController)),
             ...(fetchMiddlewares<RequestHandler>(AdminController.prototype.resetUserProfile)),
 
@@ -4222,28 +4225,28 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsProfileController_uploadProfilePicture: Record<string, TsoaRoute.ParameterSchema> = {
-                profilePicture: {"in":"formData","name":"profilePicture","required":true,"dataType":"file"},
+        const argsProfileController_uploadBanner: Record<string, TsoaRoute.ParameterSchema> = {
+                banner: {"in":"formData","name":"banner","required":true,"dataType":"file"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
-        app.post('/api/v1/profile/picture',
+        app.post('/api/v1/profile/banner',
             authenticateMiddleware([{"jwt":[]}]),
             upload.fields([
                 {
-                    name: "profilePicture",
+                    name: "banner",
                     maxCount: 1
                 }
             ]),
             ...(fetchMiddlewares<RequestHandler>(ProfileController)),
-            ...(fetchMiddlewares<RequestHandler>(ProfileController.prototype.uploadProfilePicture)),
+            ...(fetchMiddlewares<RequestHandler>(ProfileController.prototype.uploadBanner)),
 
-            async function ProfileController_uploadProfilePicture(request: ExRequest, response: ExResponse, next: any) {
+            async function ProfileController_uploadBanner(request: ExRequest, response: ExResponse, next: any) {
 
             // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsProfileController_uploadProfilePicture, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsProfileController_uploadBanner, request, response });
 
                 const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
 
@@ -4253,7 +4256,43 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
                 }
 
               await templateService.apiHandler({
-                methodName: 'uploadProfilePicture',
+                methodName: 'uploadBanner',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsProfileController_getBanner: Record<string, TsoaRoute.ParameterSchema> = {
+                filename: {"in":"path","name":"filename","required":true,"dataType":"string"},
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.get('/api/v1/profile/banner/:filename',
+            ...(fetchMiddlewares<RequestHandler>(ProfileController)),
+            ...(fetchMiddlewares<RequestHandler>(ProfileController.prototype.getBanner)),
+
+            async function ProfileController_getBanner(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsProfileController_getBanner, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<ProfileController>(ProfileController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getBanner',
                 controller,
                 response,
                 next,

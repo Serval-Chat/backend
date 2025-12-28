@@ -81,6 +81,7 @@ export interface IUser {
         ownMessageColor?: string;
         otherMessageColor?: string;
     };
+    banner?: string;
 }
 
 /**
@@ -277,4 +278,9 @@ export interface IUserRepository {
      * Count users created after a certain date
      */
     countCreatedAfter(date: Date): Promise<number>;
+
+    /**
+     * Update user's banner
+     */
+    updateBanner(id: string, filename: string | null): Promise<void>;
 }

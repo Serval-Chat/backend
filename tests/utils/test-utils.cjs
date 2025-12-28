@@ -29,7 +29,8 @@ function createMockUserRepository() {
         comparePassword: [],
         create: [],
         update: [],
-        incrementTokenVersion: []
+        incrementTokenVersion: [],
+        updateBanner: []
     };
 
     return {
@@ -60,6 +61,9 @@ function createMockUserRepository() {
         },
         incrementTokenVersion: async (id) => {
             calls.incrementTokenVersion.push(id);
+        },
+        updateBanner: async (id, filename) => {
+            calls.updateBanner.push({ id, filename });
         }
     };
 }

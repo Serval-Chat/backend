@@ -52,6 +52,7 @@ export interface IUser extends Document {
         ownMessageColor?: string;
         otherMessageColor?: string;
     };
+    banner?: string;
     comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -121,8 +122,9 @@ const schema = new Schema<IUser>(
             },
             showYouLabel: { type: Boolean, default: true },
             ownMessageColor: { type: String, default: '#5865f2' },
-            otherMessageColor: { type: String, default: '#2a2d31' },
+            otherMessageColor: { type: String, default: '#5865f2' },
         },
+        banner: { type: String, required: false },
     },
     {
         toJSON: { virtuals: true },
