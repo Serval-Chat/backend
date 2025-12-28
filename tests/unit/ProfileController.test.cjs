@@ -14,7 +14,12 @@ const mockSharpObj = {
     resize: () => mockSharpObj,
     webp: () => mockSharpObj,
     toFile: async () => ({ size: 1024 }),
-    toBuffer: async () => Buffer.from('mocked-webp-data')
+    toBuffer: async () => Buffer.from('mocked-webp-data'),
+    metadata: async () => ({
+        width: 800,
+        height: 300,
+        format: 'webp'
+    })
 };
 const mockSharp = () => mockSharpObj;
 
@@ -23,7 +28,27 @@ require.cache[require.resolve('sharp')] = {
 };
 
 const fs = require('fs');
-fs.unlinkSync = () => {}; // Mock unlinkSync
+const originalUnlinkSync = fs.unlinkSync;
+const originalRenameSync = fs.renameSync;
+const originalExistsSync = fs.existsSync;
+const originalMkdirSync = fs.mkdirSync;
+
+fs.unlinkSync = (path) => {
+    if (typeof path === 'string' && (path.includes('uploads') || path.includes('tmp'))) return;
+    return originalUnlinkSync(path);
+};
+fs.renameSync = (oldPath, newPath) => {
+    if (typeof oldPath === 'string' && (oldPath.includes('uploads') || oldPath.includes('tmp'))) return;
+    return originalRenameSync(oldPath, newPath);
+};
+fs.existsSync = (path) => {
+    if (typeof path === 'string' && (path.includes('uploads') || path.includes('tmp'))) return true;
+    return originalExistsSync(path);
+};
+fs.mkdirSync = (path, options) => {
+    if (typeof path === 'string' && (path.includes('uploads') || path.includes('tmp'))) return;
+    return originalMkdirSync(path, options);
+};
 
 const { ProfileController } = require('../../src/controllers/ProfileController');
 const {
@@ -99,19 +124,16 @@ test('ProfileController - uploadBanner calls repository and presence service', a
     // However, since we are running in a node environment with ts-node, 
     // we can try to run it and see if it works or if we need to mock sharp.
 
-    try {
-        const result = await controller.uploadBanner(mockFile, mockReq);
+    const result = await controller.uploadBanner(mockFile, mockReq);
 
-        assert.ok(result.banner);
-        assert.equal(mockUserRepo.calls.updateBanner.length, 1);
-        assert.equal(mockUserRepo.calls.updateBanner[0].id, userId);
-    } catch (err) {
-        // If sharp fails in this environment, we might need a different approach
-        // but let's see if it works first.
-        if (err.message.includes('sharp')) {
-            console.log('Sharp not available in test environment, skipping sharp-specific assertions');
-        } else {
-            throw err;
-        }
-    }
+    assert.ok(result.banner);
+    assert.equal(mockUserRepo.calls.updateBanner.length, 1);
+    assert.equal(mockUserRepo.calls.updateBanner[0].id, userId);
+});
+
+test.after(() => {
+    fs.unlinkSync = originalUnlinkSync;
+    fs.renameSync = originalRenameSync;
+    fs.existsSync = originalExistsSync;
+    fs.mkdirSync = originalMkdirSync;
 });
