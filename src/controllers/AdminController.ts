@@ -119,6 +119,7 @@ export interface ServerListItem {
     name: string;
     icon: string | null;
     ownerId: string;
+    memberCount: number;
     createdAt: Date;
     deletedAt?: Date;
     owner: {
@@ -1056,29 +1057,35 @@ export class AdminController extends Controller {
         );
         const owners = await this.userRepo.findByIds(ownerIds);
 
-        const enrichedServers = servers.map((server) => {
-            const owner = owners.find(
-                (u) => u._id.toString() === server.ownerId.toString(),
-            );
-            return {
-                _id: server._id.toString(),
-                name: server.name,
-                icon: server.icon ? `${server.icon}` : null,
-                ownerId: server.ownerId.toString(),
-                createdAt: server.createdAt || new Date(),
-                deletedAt: server.deletedAt,
-                owner: owner
-                    ? {
-                          _id: owner._id.toString(),
-                          username: owner.username || '',
-                          displayName: owner.displayName || null,
-                          profilePicture: owner.profilePicture
-                              ? `/api/v1/profile/picture/${owner.profilePicture}`
-                              : null,
-                      }
-                    : null,
-            };
-        });
+        const enrichedServers = await Promise.all(
+            servers.map(async (server) => {
+                const owner = owners.find(
+                    (u) => u._id.toString() === server.ownerId.toString(),
+                );
+                const memberCount = await this.serverMemberRepo.countByServerId(
+                    server._id.toString(),
+                );
+                return {
+                    _id: server._id.toString(),
+                    name: server.name,
+                    icon: server.icon ? `${server.icon}` : null,
+                    ownerId: server.ownerId.toString(),
+                    memberCount,
+                    createdAt: server.createdAt || new Date(),
+                    deletedAt: server.deletedAt,
+                    owner: owner
+                        ? {
+                              _id: owner._id.toString(),
+                              username: owner.username || '',
+                              displayName: owner.displayName || null,
+                              profilePicture: owner.profilePicture
+                                  ? `/api/v1/profile/picture/${owner.profilePicture}`
+                                  : null,
+                          }
+                        : null,
+                };
+            }),
+        );
 
         return enrichedServers;
     }
@@ -1191,19 +1198,25 @@ export class AdminController extends Controller {
         const serverIds = memberships.map((m) => m.serverId.toString());
         const servers = await this.serverRepo.findByIds(serverIds);
 
-        const serverList = servers.map((server) => {
-            const membership = memberships.find(
-                (m) => m.serverId.toString() === server._id.toString(),
-            );
-            return {
-                _id: server._id.toString(),
-                name: server.name,
-                icon: server.icon ? `${server.icon}` : null,
-                ownerId: server.ownerId.toString(),
-                joinedAt: membership?.joinedAt,
-                isOwner: server.ownerId.toString() === userId,
-            };
-        });
+        const serverList = await Promise.all(
+            servers.map(async (server) => {
+                const membership = memberships.find(
+                    (m) => m.serverId.toString() === server._id.toString(),
+                );
+                const memberCount = await this.serverMemberRepo.countByServerId(
+                    server._id.toString(),
+                );
+                return {
+                    _id: server._id.toString(),
+                    name: server.name,
+                    icon: server.icon ? `${server.icon}` : null,
+                    ownerId: server.ownerId.toString(),
+                    memberCount,
+                    joinedAt: membership?.joinedAt,
+                    isOwner: server.ownerId.toString() === userId,
+                };
+            }),
+        );
 
         const activeBan = await this.banRepo.findActiveByUserId(userId);
         const warningCount = await this.warningRepo.countByUserId(userId);

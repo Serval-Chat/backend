@@ -28,6 +28,10 @@ export interface IServer {
      * Historical peak of concurrent members.
      */
     allTimeHigh?: number;
+    /**
+     * Total number of members in the server.
+     */
+    memberCount?: number;
 }
 
 /**

@@ -133,7 +133,19 @@ export class ServerController extends Controller {
         const userId = req.user.id;
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
-        return await this.serverRepo.findByIds(serverIds);
+        const servers = await this.serverRepo.findByIds(serverIds);
+
+        return await Promise.all(
+            servers.map(async (server) => {
+                const memberCount = await this.serverMemberRepo.countByServerId(
+                    server._id.toString(),
+                );
+                return {
+                    ...server,
+                    memberCount,
+                };
+            }),
+        );
     }
 
     /**
@@ -311,7 +323,12 @@ export class ServerController extends Controller {
             throw new Error(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        return server;
+        const memberCount = await this.serverMemberRepo.countByServerId(serverId);
+
+        return {
+            ...server,
+            memberCount,
+        };
     }
 
     /**
