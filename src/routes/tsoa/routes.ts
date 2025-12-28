@@ -2343,7 +2343,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
                 serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                body: {"in":"body","name":"body","required":true,"ref":"KickMemberRequest"},
+                _body: {"in":"body","name":"_body","required":true,"ref":"KickMemberRequest"},
         };
         app.delete('/api/v1/servers/:serverId/members/:userId',
             authenticateMiddleware([{"jwt":[]}]),
@@ -3139,7 +3139,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_login: Record<string, TsoaRoute.ParameterSchema> = {
                 body: {"in":"body","name":"body","required":true,"ref":"LoginRequest"},
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                _req: {"in":"request","name":"_req","required":true,"dataType":"object"},
         };
         app.post('/api/v1/auth/login',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
@@ -3284,7 +3284,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsFileController_uploadFile: Record<string, TsoaRoute.ParameterSchema> = {
                 file: {"in":"formData","name":"file","required":true,"dataType":"file"},
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                _req: {"in":"request","name":"_req","required":true,"dataType":"object"},
         };
         app.post('/api/v1/files/upload',
             authenticateMiddleware([{"jwt":[]}]),

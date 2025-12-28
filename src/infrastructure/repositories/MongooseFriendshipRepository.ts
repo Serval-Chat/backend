@@ -115,7 +115,6 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
      * Populates legacy 'from' and 'to' fields (usernames).
      */
     async createRequest(fromId: string, toId: string): Promise<IFriendRequest> {
-
         // Fetch usernames for legacy field support
         const [fromUser, toUser] = await Promise.all([
             User.findById(fromId).select('username').lean(),

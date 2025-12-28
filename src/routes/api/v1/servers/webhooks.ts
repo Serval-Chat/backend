@@ -1,4 +1,4 @@
-import express, { Router } from 'express';
+import express from 'express';
 import {
     authenticateToken,
     type AuthenticatedRequest,
@@ -24,7 +24,6 @@ const permissionService = container.get<PermissionService>(
     TYPES.PermissionService,
 );
 import logger from '@/utils/logger';
-import crypto from 'crypto';
 import mongoose from 'mongoose';
 import sharp from 'sharp';
 import path from 'path';
@@ -38,10 +37,7 @@ import {
     executeWebhookSchema,
     webhookTokenParamSchema,
 } from '@/validation/schemas/webhooks';
-import {
-    messagesSentCounter,
-    websocketMessagesCounter,
-} from '@/utils/metrics';
+import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import { memoryUpload } from '@/config/multer';
 
 /**

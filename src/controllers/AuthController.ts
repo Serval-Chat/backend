@@ -7,7 +7,6 @@ import {
     Tags,
     Request,
     Response,
-    SuccessResponse,
     Security,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
@@ -23,10 +22,6 @@ import {
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
-import { getIO } from '@/socket';
-import { PresenceService } from '@/realtime/services/PresenceService';
-import type { ILogger } from '@/di/interfaces/ILogger';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
@@ -63,8 +58,6 @@ export class AuthController extends Controller {
     constructor(
         @inject(TYPES.AuthService) private authService: AuthService,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-        @inject(TYPES.PresenceService) private presenceService: PresenceService,
-        @inject(TYPES.Logger) private logger: ILogger,
     ) {
         super();
     }
@@ -81,14 +74,13 @@ export class AuthController extends Controller {
     })
     public async login(
         @Body() body: LoginRequest,
-        @Request() req: express.Request,
+        @Request() _req: express.Request,
     ): Promise<{ token: string; username: string }> {
         const { login, password } = body;
 
         const authResult = await this.authService.login(login, password);
 
         if (!authResult.success) {
-            // Tracks failed login attempts for monitoring
             loginAttemptsCounter.labels('failure').inc();
 
             if (authResult.ban) {
@@ -191,7 +183,7 @@ export class AuthController extends Controller {
             return { error: ErrorMessages.AUTH.USERNAME_EXISTS } as any;
         }
 
-        const user = await this.userRepo.create({ login, username, password });
+        await this.userRepo.create({ login, username, password });
 
         registrationAttemptsCounter.labels('success').inc();
         usersCreatedCounter.inc();

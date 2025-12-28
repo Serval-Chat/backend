@@ -27,7 +27,7 @@ interface UserSettings {
     otherMessageColor?: string;
 }
 
-interface UpdateSettingsRequest extends UserSettings { }
+interface UpdateSettingsRequest extends UserSettings {}
 
 /**
  * Controller for managing user-specific application settings.

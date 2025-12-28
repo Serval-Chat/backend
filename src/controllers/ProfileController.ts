@@ -27,13 +27,13 @@ import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { mapUser } from '@/utils/user';
 import { ErrorMessages } from '@/constants/errorMessages';
 import express from 'express';
-import { Badge, type IBadge } from '@/models/Badge';
+import { Badge } from '@/models/Badge';
 import {
     AssignBadgesRequest,
     BadgeOperationResponse,
 } from '@/controllers/models/BadgeTypes';
 import { StatusService } from '@/realtime/services/StatusService';
-import { generateJWT, hasPermission } from '@/utils/jwt';
+import { hasPermission } from '@/utils/jwt';
 import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 import { usernameSchema } from '@/validation/schemas/common';
 
@@ -947,7 +947,7 @@ export class ProfileController extends Controller {
         res.setHeader('Content-Type', contentType);
         res.setHeader('Cache-Control', 'public, max-age=86400');
 
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve, _reject) => {
             res.sendFile(filePath, (err) => {
                 if (err) {
                     if (!res.headersSent) {

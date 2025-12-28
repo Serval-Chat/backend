@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import publicRoutes from '@/routes/public-routes';
 import { topLevelRouter as webhooksTopLevelRoutes } from '@/routes/api/v1/servers/webhooks';
-import serversRoutes from '@/routes/api/v1/servers/servers';
+
 import adminRouter from '@/routes/api/v1/admin/admin';
 import { authenticateToken } from '@/middleware/auth';
 
@@ -12,7 +12,7 @@ import { authenticateToken } from '@/middleware/auth';
 const router: Router = Router();
 
 // API must become before SPA
-router.use('/api/v1/servers', serversRoutes);
+
 router.use('/api/v1/webhooks', webhooksTopLevelRoutes);
 router.use('/api/v1/admin', authenticateToken, adminRouter);
 

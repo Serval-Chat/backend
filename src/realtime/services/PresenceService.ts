@@ -1,8 +1,5 @@
 import { injectable } from 'inversify';
-import {
-    onlineUsersGauge,
-    websocketConnectionsGauge,
-} from '@/utils/metrics';
+import { onlineUsersGauge, websocketConnectionsGauge } from '@/utils/metrics';
 
 /**
  * Presence Service.

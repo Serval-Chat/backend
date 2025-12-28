@@ -1,5 +1,3 @@
-import type { Types } from 'mongoose';
-
 /**
  * Reaction Repository Interface
  *

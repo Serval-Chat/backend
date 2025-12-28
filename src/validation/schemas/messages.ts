@@ -3,8 +3,6 @@ import {
     messageContentSchema,
     objectIdSchema,
     usernameSchema,
-    limitSchema,
-    offsetSchema,
 } from '@/validation/schemas/common';
 
 /**

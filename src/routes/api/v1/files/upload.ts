@@ -1,5 +1,5 @@
-import type { Request, Response, NextFunction } from 'express';
-import express, { Router } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { upload, extractOriginalFilename } from '@/config/multer';
 import { authenticateToken } from '@/middleware/auth';
 import logger from '@/utils/logger';
@@ -15,7 +15,7 @@ const router: Router = Router();
 router.post(
     '/upload',
     authenticateToken,
-    (req: Request, res: Response, next: NextFunction) => {
+    (req: Request, res: Response) => {
         upload.single('file')(req, res, (err: any) => {
             if (err) {
                 // Handle multer errors
@@ -53,7 +53,6 @@ router.get(
                 return res.status(400).json({ error: 'Filename required' });
             }
 
-            // Security: Use path.basename to prevent directory traversal
             // This strips any path components, ensuring only the filename is used
             const safeFilename = path.basename(filename);
 
@@ -66,7 +65,7 @@ router.get(
             const uploadsDir = path.join(process.cwd(), 'uploads', 'uploads');
             const filePath = path.join(uploadsDir, safeFilename);
 
-            // Security: Verify the resolved path is still within uploads directory
+            // Verify the resolved path is still within uploads directory
             const realPath = fs.realpathSync(filePath);
             if (!realPath.startsWith(uploadsDir)) {
                 return res.status(400).json({ error: 'Invalid file path' });
@@ -158,7 +157,7 @@ router.get(
             const uploadsDir = path.join(process.cwd(), 'uploads', 'uploads');
             const filePath = path.join(uploadsDir, safeFilename);
 
-            // Security: Verify the resolved path is still within uploads directory
+            // Verify the resolved path is still within uploads directory
             const realPath = fs.realpathSync(filePath);
             if (!realPath.startsWith(uploadsDir)) {
                 return res.status(400).json({ error: 'Invalid file path' });

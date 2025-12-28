@@ -49,7 +49,7 @@ export class FileController extends Controller {
     @Security('jwt')
     public async uploadFile(
         @UploadedFile() file: Express.Multer.File,
-        @Request() req: express.Request,
+        @Request() _req: express.Request,
     ): Promise<{ url: string }> {
         if (!file) {
             this.setStatus(400);

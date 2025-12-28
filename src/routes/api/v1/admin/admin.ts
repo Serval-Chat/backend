@@ -13,7 +13,6 @@ import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepositor
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import rateLimit from 'express-rate-limit';
-import { Types } from 'mongoose';
 import { getIO } from '@/socket';
 import type { PresenceService } from '@/realtime/services/PresenceService';
 import {
@@ -34,9 +33,8 @@ import { serverIdParamSchema } from '@/validation/schemas/servers';
 import badgeRoutes from '@/routes/api/v1/admin/badges';
 import inviteRoutes from '@/routes/api/v1/admin/invites';
 import { requireAdmin } from '@/routes/api/v1/admin/middlewares/requireAdmin';
-import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
-import { Ban } from '@/models/Ban';
 import { ServerBan } from '@/models/Server';
+import { Ban } from '@/models/Ban';
 import crypto from 'crypto';
 
 const router = express.Router();
@@ -72,7 +70,8 @@ const adminRateLimit = rateLimit({
                     : userPermissions;
 
             return permissions && permissions.adminAccess ? 1000 : 100;
-        } catch (e) {
+        } catch (error) {
+            logger.error('Failed to parse user permissions:', error);
             return 100;
         }
     },
@@ -129,7 +128,6 @@ router.use(adminRateLimit);
  */
 router.get('/stats', requireAdmin('viewLogs'), async (req, res) => {
     try {
-        const authReq = req as AuthenticatedRequest;
         const now = new Date();
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -170,7 +168,7 @@ router.get('/stats', requireAdmin('viewLogs'), async (req, res) => {
             messagesTrend: calculateTrend(messages, newMessages),
         });
     } catch (error) {
-        logger.error('[ADMIN] Failed to fetch stats:', error);
+        logger.error('Failed to fetch stats:', error);
         res.status(500).json({ error: 'Failed to fetch stats' });
     }
 });
@@ -188,7 +186,6 @@ router.get(
     validate({ query: listUsersQuerySchema }),
     async (req, res) => {
         try {
-            const authReq = req as AuthenticatedRequest;
             const {
                 limit = 50,
                 offset = 0,
@@ -224,6 +221,7 @@ router.get(
 
             res.json(enrichedUsers);
         } catch (error) {
+            logger.error('Failed to list users:', error);
             res.status(500).json({ error: 'Failed to list users' });
         }
     },
@@ -336,7 +334,7 @@ router.post(
                 offlineFriends: offlineFriends.length,
             });
         } catch (error) {
-            logger.error('[ADMIN] Failed to soft delete user:', error);
+            logger.error('Failed to soft delete user:', error);
             res.status(500).json({ error: 'Failed to soft delete user' });
         }
     },
@@ -416,7 +414,7 @@ router.delete(
 
             res.json({ message: 'User deleted', anonymizedUsername });
         } catch (error) {
-            logger.error('[ADMIN] Failed to delete user:', error);
+            logger.error('Failed to delete user:', error);
             res.status(500).json({ error: 'Failed to delete user' });
         }
     },
@@ -547,7 +545,7 @@ router.post(
             });
         } catch (error) {
             await session.abortTransaction();
-            logger.error('[ADMIN] Failed to hard delete user:', error);
+            logger.error('Failed to hard delete user:', error);
             res.status(500).json({ error: 'Failed to hard delete user' });
         } finally {
             session.endSession();
@@ -591,7 +589,7 @@ router.put(
 
             res.json({ message: 'Permissions updated' });
         } catch (error) {
-            logger.error('[ADMIN] Failed to update permissions:', error);
+            logger.error('Failed to update permissions:', error);
             res.status(500).json({ error: 'Failed to update permissions' });
         }
     },
@@ -670,7 +668,7 @@ router.post(
 
             res.json(ban);
         } catch (error) {
-            logger.error('[ADMIN] Failed to ban user:', error);
+            logger.error('Failed to ban user:', error);
             res.status(500).json({ error: 'Failed to ban user' });
         }
     },
@@ -689,6 +687,7 @@ router.post(
             await logAdminAction(authReq, 'unban_user', userId);
             res.json({ message: 'User unbanned' });
         } catch (error) {
+            logger.error('Failed to unban user:', error);
             res.status(500).json({ error: 'Failed to unban user' });
         }
     },
@@ -716,6 +715,7 @@ router.get('/users/:id/bans', requireAdmin('banUsers'), async (req, res) => {
         );
         res.json(historyWithStatus);
     } catch (error) {
+        logger.error('Failed to get bans:', error);
         res.status(500).json({ error: 'Failed to get bans' });
     }
 });
@@ -730,7 +730,7 @@ router.get('/bans', requireAdmin('viewBans'), async (req, res) => {
         });
         res.json(bans);
     } catch (error) {
-        logger.error('[ADMIN] Failed to list bans:', error);
+        logger.error('Failed to list bans:', error);
         res.status(500).json({ error: 'Failed to list bans' });
     }
 });
@@ -757,7 +757,7 @@ router.get('/bans/diagnostic', requireAdmin('viewBans'), async (req, res) => {
             },
         });
     } catch (error) {
-        logger.error('[ADMIN] Failed to get bans diagnostic:', error);
+        logger.error('Failed to get bans diagnostic:', error);
         res.status(500).json({ error: 'Failed to get diagnostic' });
     }
 });
@@ -797,6 +797,7 @@ router.post(
 
             res.json(warning);
         } catch (error) {
+            logger.error('Failed to warn user:', error);
             res.status(500).json({ error: 'Failed to warn user' });
         }
     },
@@ -813,6 +814,7 @@ router.get(
             );
             res.json(warnings);
         } catch (error) {
+            logger.error('Failed to get warnings:', error);
             res.status(500).json({ error: 'Failed to get warnings' });
         }
     },
@@ -828,7 +830,7 @@ router.get('/warnings', requireAdmin('warnUsers'), async (req, res) => {
         });
         res.json(warnings);
     } catch (error) {
-        logger.error('[ADMIN] Failed to list warnings:', error);
+        logger.error('Failed to list warnings:', error);
         res.status(500).json({ error: 'Failed to list warnings' });
     }
 });
@@ -843,7 +845,7 @@ router.get('/logs', requireAdmin('viewLogs'), async (req, res) => {
         });
         res.json(logs);
     } catch (error) {
-        logger.error('[ADMIN] Failed to list audit logs:', error);
+        logger.error('Failed to list audit logs:', error);
         res.status(500).json({ error: 'Failed to list audit logs' });
     }
 });
@@ -860,8 +862,8 @@ router.get('/servers', requireAdmin('manageServer'), async (req, res) => {
         });
 
         // Collect all owner IDs and filter out invalid ones
-        const ownerIds = [...new Set(servers.map((s) => s.ownerId))].filter((id) =>
-            mongoose.Types.ObjectId.isValid(id.toString()),
+        const ownerIds = [...new Set(servers.map((s) => s.ownerId))].filter(
+            (id) => mongoose.Types.ObjectId.isValid(id.toString()),
         );
         const owners = await userRepo.findByIds(ownerIds);
 
@@ -875,20 +877,20 @@ router.get('/servers', requireAdmin('manageServer'), async (req, res) => {
                 icon: server.icon ? `${server.icon}` : null,
                 owner: owner
                     ? {
-                        _id: owner._id,
-                        username: owner.username,
-                        displayName: owner.displayName,
-                        profilePicture: owner.profilePicture
-                            ? `/api/v1/profile/picture/${owner.profilePicture}`
-                            : null,
-                    }
+                          _id: owner._id,
+                          username: owner.username,
+                          displayName: owner.displayName,
+                          profilePicture: owner.profilePicture
+                              ? `/api/v1/profile/picture/${owner.profilePicture}`
+                              : null,
+                      }
                     : null,
             };
         });
 
         res.json(enrichedServers);
     } catch (error) {
-        logger.error('[ADMIN] Failed to list servers:', error);
+        logger.error('Failed to list servers:', error);
         res.status(500).json({ error: 'Failed to list servers' });
     }
 });
@@ -921,7 +923,7 @@ router.delete(
 
             res.json({ message: 'Server deleted' });
         } catch (error) {
-            logger.error('[ADMIN] Failed to delete server:', error);
+            logger.error('Failed to delete server:', error);
             res.status(500).json({ error: 'Failed to delete server' });
         }
     },
@@ -957,7 +959,7 @@ router.post(
 
             res.json({ message: 'Server restored' });
         } catch (error) {
-            logger.error('[ADMIN] Failed to restore server:', error);
+            logger.error('Failed to restore server:', error);
             res.status(500).json({ error: 'Failed to restore server' });
         }
     },
@@ -979,8 +981,8 @@ router.get(
             const profilePictureUrl = user.deletedAt
                 ? '/images/deleted-cat.jpg'
                 : user.profilePicture
-                    ? `/api/v1/profile/picture/${user.profilePicture}`
-                    : null;
+                  ? `/api/v1/profile/picture/${user.profilePicture}`
+                  : null;
 
             // Fetch servers user is in
             const memberships = await serverMemberRepo.findByUserId(userId);
@@ -1020,7 +1022,7 @@ router.get(
 
             res.json(userDetails);
         } catch (error) {
-            logger.error('[ADMIN] Failed to fetch user details:', error);
+            logger.error('Failed to fetch user details:', error);
             res.status(500).json({ error: 'Failed to fetch user details' });
         }
     },
@@ -1115,7 +1117,7 @@ router.post(
                 updatedFields: updates,
             });
         } catch (error) {
-            logger.error('[ADMIN] Failed to reset profile fields:', error);
+            logger.error('Failed to reset profile fields:', error);
             res.status(500).json({ error: 'Failed to reset profile fields' });
         }
     },

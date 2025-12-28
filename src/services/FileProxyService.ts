@@ -3,6 +3,7 @@ import dns from 'node:dns/promises';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import ipaddr from 'ipaddr.js';
 import { ErrorMessages } from '@/constants/errorMessages';
+import logger from '@/utils/logger';
 
 const MAX_REDIRECTS = 3;
 
@@ -215,7 +216,7 @@ export async function resolveAndCheck(hostname: string) {
 
         return records.map((r) => r.address);
     } catch (err) {
-        // Normalize DNS failures
+        logger.error('Failed to resolve hostname:', err);
         throw new Error(ErrorMessages.FILE.FAILED_RESOLVE_HOSTNAME);
     }
 }

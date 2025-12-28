@@ -175,7 +175,7 @@ export class ServerMemberController extends Controller {
         @Path() serverId: string,
         @Path() userId: string,
         @Request() req: express.Request,
-        @Body() body: KickMemberRequest,
+        @Body() _body: KickMemberRequest,
     ): Promise<{ message: string }> {
         // @ts-ignore: JWT middleware attaches user object
         const currentUserId = req.user.id;

@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
-import { authenticateToken } from '@/middleware/auth';
 import logger from '@/utils/logger';
 import { container } from '@/di/container';
 import { TYPES } from '@/di/types';

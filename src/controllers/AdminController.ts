@@ -21,7 +21,6 @@ import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { PresenceService } from '@/realtime/services/PresenceService';
-import { PermissionService } from '@/services/PermissionService';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -236,7 +235,6 @@ export class AdminController extends Controller {
         );
         const activeBan = await this.banRepo.findActiveByUserId(userId);
         const warningCount = await this.warningRepo.countByUserId(userId);
-
 
         let badges: any[] = [];
         if (user.badges && user.badges.length > 0) {
