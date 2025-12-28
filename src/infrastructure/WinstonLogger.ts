@@ -1,6 +1,6 @@
 import { injectable } from 'inversify';
-import { ILogger } from '../di/interfaces/ILogger';
-import logger from '../utils/logger';
+import { ILogger } from '@/di/interfaces/ILogger';
+import logger from '@/utils/logger';
 
 /**
  * Winston Logger Wrapper.

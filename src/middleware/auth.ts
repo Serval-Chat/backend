@@ -1,10 +1,10 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
-import { JWT_SECRET } from '../config/env';
-import logger from '../utils/logger';
-import type { JWTPayload } from '../utils/jwt';
-import { Ban } from '../models/Ban';
-import { User } from '../models/User';
+import { JWT_SECRET } from '@/config/env';
+import logger from '@/utils/logger';
+import type { JWTPayload } from '@/utils/jwt';
+import { Ban } from '@/models/Ban';
+import { User } from '@/models/User';
 import { Types } from 'mongoose';
 
 declare module 'express-serve-static-core' {

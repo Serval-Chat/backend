@@ -5,7 +5,7 @@ import {
     usernameSchema,
     limitSchema,
     offsetSchema,
-} from './common';
+} from '@/validation/schemas/common';
 
 /**
  * Send message validation

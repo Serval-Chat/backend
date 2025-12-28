@@ -1,19 +1,19 @@
 import { injectable, inject } from 'inversify';
-import { Gateway, On } from '../core/decorators';
-import { SocketContext } from '../core/types';
+import { Gateway, On } from '@/realtime/core/decorators';
+import { SocketContext } from '@/realtime/core/types';
 import {
     ReactionEventSchema,
     ReactionEventData,
-} from '../../validation/schemas/realtime/reaction.schema';
-import { TYPES } from '../../di/types';
-import { IReactionRepository } from '../../di/interfaces/IReactionRepository';
-import { IMessageRepository } from '../../di/interfaces/IMessageRepository';
-import { IServerMessageRepository } from '../../di/interfaces/IServerMessageRepository';
-import { IServerMemberRepository } from '../../di/interfaces/IServerMemberRepository';
-import { IUserRepository } from '../../di/interfaces/IUserRepository';
-import { PresenceService } from '../services/PresenceService';
-import { getIO } from '../../socket';
-import logger from '../../utils/logger';
+} from '@/validation/schemas/realtime/reaction.schema';
+import { TYPES } from '@/di/types';
+import { IReactionRepository } from '@/di/interfaces/IReactionRepository';
+import { IMessageRepository } from '@/di/interfaces/IMessageRepository';
+import { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { PresenceService } from '@/realtime/services/PresenceService';
+import { getIO } from '@/socket';
+import logger from '@/utils/logger';
 
 /**
  * Reaction Gateway.

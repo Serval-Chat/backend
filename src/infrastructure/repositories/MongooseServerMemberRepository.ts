@@ -2,11 +2,11 @@ import { injectable } from 'inversify';
 import {
     IServerMemberRepository,
     IServerMember,
-} from '../../di/interfaces/IServerMemberRepository';
-import { ServerMember } from '../../models/Server';
-import { User } from '../../models/User';
-import { mapUser } from '../../utils/user';
-import { ErrorMessages } from '../../constants/errorMessages';
+} from '@/di/interfaces/IServerMemberRepository';
+import { ServerMember } from '@/models/Server';
+import { User } from '@/models/User';
+import { mapUser } from '@/utils/user';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Mongoose Server Member Repository

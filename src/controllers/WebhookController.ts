@@ -13,29 +13,29 @@ import {
     UploadedFile,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
+import { TYPES } from '@/di/types';
 import type {
     IWebhookRepository,
     IWebhook,
-} from '../di/interfaces/IWebhookRepository';
-import type { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '../di/interfaces/IChannelRepository';
-import type { IServerMessageRepository } from '../di/interfaces/IServerMessageRepository';
-import { PermissionService } from '../services/PermissionService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { generateWebhookToken } from '../services/WebhookService';
-import { getIO } from '../socket';
+} from '@/di/interfaces/IWebhookRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import { PermissionService } from '@/services/PermissionService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { generateWebhookToken } from '@/services/WebhookService';
+import { getIO } from '@/socket';
 import {
     messagesSentCounter,
     websocketMessagesCounter,
-} from '../utils/metrics';
+} from '@/utils/metrics';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import mongoose from 'mongoose';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface CreateWebhookRequest {
     name: string;

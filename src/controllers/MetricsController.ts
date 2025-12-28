@@ -1,10 +1,10 @@
 import { Controller, Get, Route, Response, Tags, Header } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import { register } from '../utils/metrics';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { TYPES } from '@/di/types';
+import { register } from '@/utils/metrics';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Controller for exposing Prometheus metrics.

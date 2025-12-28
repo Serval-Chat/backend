@@ -1,26 +1,26 @@
 import { injectable, inject } from 'inversify';
-import { Gateway, On } from '../core/decorators';
-import { SocketContext } from '../core/types';
+import { Gateway, On } from '@/realtime/core/decorators';
+import { SocketContext } from '@/realtime/core/types';
 import {
     SendMessageSchema,
     MarkReadSchema,
     TypingSchema,
     EditMessageSchema,
     DeleteMessageSchema,
-} from '../../validation/schemas/realtime/chat.schema';
-import { PresenceService } from '../services/PresenceService';
-import { TYPES } from '../../di/types';
-import { IUserRepository } from '../../di/interfaces/IUserRepository';
-import { IMessageRepository } from '../../di/interfaces/IMessageRepository';
-import { IDmUnreadRepository } from '../../di/interfaces/IDmUnreadRepository';
-import { IFriendshipRepository } from '../../di/interfaces/IFriendshipRepository';
+} from '@/validation/schemas/realtime/chat.schema';
+import { PresenceService } from '@/realtime/services/PresenceService';
+import { TYPES } from '@/di/types';
+import { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { IMessageRepository } from '@/di/interfaces/IMessageRepository';
+import { IDmUnreadRepository } from '@/di/interfaces/IDmUnreadRepository';
+import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { z } from 'zod';
 import { Types } from 'mongoose';
-import logger from '../../utils/logger';
+import logger from '@/utils/logger';
 import {
     messagesSentCounter,
     websocketMessagesCounter,
-} from '../../utils/metrics';
+} from '@/utils/metrics';
 
 /**
  * Chat Gateway.

@@ -2,9 +2,9 @@ import { injectable } from 'inversify';
 import {
     IServerMessageRepository,
     IServerMessage,
-} from '../../di/interfaces/IServerMessageRepository';
-import { ServerMessage } from '../../models/Server';
-import { Reaction } from '../../models/Reaction';
+} from '@/di/interfaces/IServerMessageRepository';
+import { ServerMessage } from '@/models/Server';
+import { Reaction } from '@/models/Reaction';
 import type { Types } from 'mongoose';
 
 /**

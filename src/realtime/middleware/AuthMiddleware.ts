@@ -1,11 +1,11 @@
 import type { Socket } from 'socket.io';
 import type { Container } from 'inversify';
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '../../config/env';
-import { TYPES } from '../../di/types';
-import type { IUserRepository } from '../../di/interfaces/IUserRepository';
-import logger from '../../utils/logger';
-import { Ban } from '../../models/Ban';
+import { JWT_SECRET } from '@/config/env';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import logger from '@/utils/logger';
+import { Ban } from '@/models/Ban';
 import { Types } from 'mongoose';
 
 /**

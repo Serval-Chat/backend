@@ -12,23 +12,23 @@ import {
     Request,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
+import { TYPES } from '@/di/types';
 import type {
     IInviteRepository,
     IInvite,
-} from '../di/interfaces/IInviteRepository';
-import type { IServerRepository } from '../di/interfaces/IServerRepository';
-import type { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '../di/interfaces/IChannelRepository';
-import type { IRoleRepository } from '../di/interfaces/IRoleRepository';
-import { PermissionService } from '../services/PermissionService';
-import type { IServerBanRepository } from '../di/interfaces/IServerBanRepository';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { getIO } from '../socket';
+} from '@/di/interfaces/IInviteRepository';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
+import { PermissionService } from '@/services/PermissionService';
+import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { getIO } from '@/socket';
 import express from 'express';
 import crypto from 'crypto';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface CreateInviteRequest {
     maxUses?: number;
@@ -38,7 +38,7 @@ interface CreateInviteRequest {
 
 /**
  * Controller for managing server invites.
- * Enforces security via 'manageInvites' permission checks and owner-only custom code restrictions.
+ * Enforces 'manageInvites' permission checks and owner-only custom code restrictions.
  */
 @injectable()
 @Route('api/v1')

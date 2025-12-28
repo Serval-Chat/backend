@@ -3,8 +3,8 @@ import {
     IServerBanRepository,
     IServerBan,
     CreateServerBanDTO,
-} from '../../di/interfaces/IServerBanRepository';
-import { ServerBan } from '../../models/Server';
+} from '@/di/interfaces/IServerBanRepository';
+import { ServerBan } from '@/models/Server';
 
 /**
  * Mongoose Server Ban Repository

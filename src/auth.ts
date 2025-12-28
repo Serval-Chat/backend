@@ -1,10 +1,10 @@
 import type * as express from 'express';
 import * as jwt from 'jsonwebtoken';
-import { JWT_SECRET } from './config/env';
-import { User } from './models/User';
-import { Ban } from './models/Ban';
+import { JWT_SECRET } from '@/config/env';
+import { User } from '@/models/User';
+import { Ban } from '@/models/Ban';
 import { Types } from 'mongoose';
-import type { JWTPayload } from './utils/jwt';
+import type { JWTPayload } from '@/utils/jwt';
 
 /**
  * Handles authentication and authorization for routes.

@@ -1,5 +1,5 @@
-import type { IUser } from '../models/User';
-import logger from './logger';
+import type { IUser } from '@/models/User';
+import logger from '@/utils/logger';
 
 export interface ActiveCustomStatus {
     text: string;

@@ -1,7 +1,7 @@
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
-import type { AdminPermissions } from '../routes/api/v1/admin/permissions';
+import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 
 /**
  * User Interface.

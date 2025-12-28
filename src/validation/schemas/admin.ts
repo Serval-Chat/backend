@@ -7,7 +7,7 @@ import {
     filterSchema,
     booleanQuerySchema,
     reasonSchema,
-} from './common';
+} from '@/validation/schemas/common';
 
 /**
  * Query parameters for listing users

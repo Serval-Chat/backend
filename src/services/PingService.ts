@@ -1,7 +1,7 @@
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import { IPingRepository } from '../di/interfaces/IPingRepository';
-import type { IPing } from '../di/interfaces/IPingRepository';
+import { TYPES } from '@/di/types';
+import { IPingRepository } from '@/di/interfaces/IPingRepository';
+import type { IPing } from '@/di/interfaces/IPingRepository';
 
 export interface PingNotification {
     id: string;

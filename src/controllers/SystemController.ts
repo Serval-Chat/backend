@@ -9,13 +9,13 @@ import {
     Header,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import { getGitCommitHash, getVersion } from '../utils/version';
-import { register } from '../utils/metrics';
-import type { ILogger } from '../di/interfaces/ILogger';
+import { TYPES } from '@/di/types';
+import { getGitCommitHash, getVersion } from '@/utils/version';
+import { register } from '@/utils/metrics';
+import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface SystemInfo {
     version: string;

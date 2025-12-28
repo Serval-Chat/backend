@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
-import { httpRequestDuration, httpRequestsTotal } from '../utils/metrics';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { container } from '../di/container';
-import { TYPES } from '../di/types';
+import { httpRequestDuration, httpRequestsTotal } from '@/utils/metrics';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
 
 /**
  * Creates a metrics middleware with dependency injection support.

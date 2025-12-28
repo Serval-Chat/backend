@@ -3,10 +3,10 @@ import { Types } from 'mongoose';
 import type {
     IReactionRepository,
     ReactionData,
-} from '../../di/interfaces/IReactionRepository';
-import { Reaction } from '../../models/Reaction';
-import { Emoji } from '../../models/Emoji';
-import { ErrorMessages } from '../../constants/errorMessages';
+} from '@/di/interfaces/IReactionRepository';
+import { Reaction } from '@/models/Reaction';
+import { Emoji } from '@/models/Emoji';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Mongoose implementation of IReactionRepository

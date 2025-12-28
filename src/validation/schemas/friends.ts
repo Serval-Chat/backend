@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { usernameSchema, objectIdSchema } from './common';
+import { usernameSchema, objectIdSchema } from '@/validation/schemas/common';
 
 /**
  * Send friend request validation

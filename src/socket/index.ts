@@ -1,9 +1,4 @@
 import { Server } from 'socket.io';
-import type http from 'http';
-import { ioConfig } from '../config/io';
-import { container } from '../di/container';
-import { RealTimeServer } from '../realtime/index';
-import { createAuthMiddleware } from '../realtime/middleware/AuthMiddleware';
 
 let ioInstance: Server | null = null;
 
@@ -19,25 +14,9 @@ export const getIO = (): Server => {
 };
 
 /**
- * Initialize Socket.IO server and attach to HTTP server.
- *
- * Flow:
- * 1. Creates Socket.IO instance with configured options
- * 2. Applies authentication middleware
- * 3. Initializes RealTimeServer (decorator-based gateway system)
- *
- * @returns Configured Socket.IO server instance
+ * Set the Socket.IO server instance.
+ * Internal use only by the socket initializer.
  */
-export const createSocketServer = (httpServer: http.Server) => {
-    const io = new Server(httpServer, ioConfig);
+export const setIO = (io: Server) => {
     ioInstance = io;
-
-    // Apply Auth Middleware
-    io.use(createAuthMiddleware(container));
-
-    // Initialize RealTime Server
-    const realTimeServer = new RealTimeServer(container);
-    realTimeServer.initialize(io);
-
-    return io;
 };

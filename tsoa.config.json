@@ -13,5 +13,13 @@
 		"iocModule": "src/ioc.ts",
 		"authentication": true,
 		"authenticationModule": "src/auth.ts"
+	},
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"@/*": [
+				"src/*"
+			]
+		}
 	}
 }

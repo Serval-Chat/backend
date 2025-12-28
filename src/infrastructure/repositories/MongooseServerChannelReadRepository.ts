@@ -2,9 +2,9 @@ import { injectable } from 'inversify';
 import {
     IServerChannelReadRepository,
     IServerChannelRead,
-} from '../../di/interfaces/IServerChannelReadRepository';
-import { ServerChannelRead } from '../../models/ServerChannelRead';
-import { ErrorMessages } from '../../constants/errorMessages';
+} from '@/di/interfaces/IServerChannelReadRepository';
+import { ServerChannelRead } from '@/models/ServerChannelRead';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Mongoose Server Channel Read Repository

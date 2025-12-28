@@ -1,4 +1,5 @@
 require('ts-node/register');
+require('tsconfig-paths/register');
 
 const test = require('node:test');
 const assert = require('node:assert/strict');

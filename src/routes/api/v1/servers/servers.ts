@@ -6,18 +6,18 @@ import { Router } from 'express';
 import {
     authenticateToken,
     type AuthenticatedRequest,
-} from '../../../../middleware/auth';
+} from '@/middleware/auth';
 import mongoose from 'mongoose';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
-import logger from '../../../../utils/logger';
-import { getIO } from '../../../../socket';
-import type { SerializedCustomStatus } from '../../../../utils/status';
-import { resolveSerializedCustomStatus } from '../../../../utils/status';
-import webhooksRoutes from './webhooks';
-import emojisRoutes from './emojis';
-import { validate } from '../../../../validation/middleware';
+import logger from '@/utils/logger';
+import { getIO } from '@/socket';
+import type { SerializedCustomStatus } from '@/utils/status';
+import { resolveSerializedCustomStatus } from '@/utils/status';
+import webhooksRoutes from '@/routes/api/v1/servers/webhooks';
+import emojisRoutes from '@/routes/api/v1/servers/emojis';
+import { validate } from '@/validation/middleware';
 import {
     serverIdParamSchema,
     createServerSchema,
@@ -52,23 +52,24 @@ import {
     serverCategoryIdParamSchema,
     reorderCategoriesSchema,
     updateChannelCategorySchema,
-} from '../../../../validation/schemas/servers';
-import { memoryUpload } from '../../../../config/multer';
-import { container } from '../../../../di/container';
-import { TYPES } from '../../../../di/types';
-import type { IServerRepository } from '../../../../di/interfaces/IServerRepository';
-import type { IServerMemberRepository } from '../../../../di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '../../../../di/interfaces/IChannelRepository';
-import type { IRoleRepository } from '../../../../di/interfaces/IRoleRepository';
-import type { IUserRepository } from '../../../../di/interfaces/IUserRepository';
-import type { IInviteRepository } from '../../../../di/interfaces/IInviteRepository';
-import type { IServerMessageRepository } from '../../../../di/interfaces/IServerMessageRepository';
-import type { IServerBanRepository } from '../../../../di/interfaces/IServerBanRepository';
-import type { IServerChannelReadRepository } from '../../../../di/interfaces/IServerChannelReadRepository';
-import type { ICategoryRepository } from '../../../../di/interfaces/ICategoryRepository';
-import type { IReactionRepository } from '../../../../di/interfaces/IReactionRepository';
-import type { PermissionService } from '../../../../services/PermissionService';
-import { ServerChannelRead } from '../../../../models/ServerChannelRead';
+} from '@/validation/schemas/servers';
+import { memoryUpload } from '@/config/multer';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
+import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
+import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
+import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
+import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
+import type { PermissionService } from '@/services/PermissionService';
+import { ServerChannelRead } from '@/models/ServerChannelRead';
+import { PresenceService } from '@/realtime/services/PresenceService';
 
 const router = Router();
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads', 'servers');
@@ -448,10 +449,9 @@ router.get(
             const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
             // Get PresenceService from container
-            const { PresenceService } = await import(
-                '../../../../realtime/services/PresenceService'
+            const presenceService = container.get<PresenceService>(
+                TYPES.PresenceService,
             );
-            const presenceService = container.get<any>(TYPES.PresenceService);
             const onlineUsernames = new Set(
                 presenceService.getAllOnlineUsers(),
             );
@@ -1080,8 +1080,8 @@ router.post(
                 position !== undefined
                     ? position
                     : maxPositionChannel
-                      ? maxPositionChannel.position + 1
-                      : 0;
+                        ? maxPositionChannel.position + 1
+                        : 0;
 
             const channel = await channelRepo.create({
                 serverId,
@@ -1434,12 +1434,6 @@ router.get(
                     .json({ error: 'Not a member of this server' });
             }
 
-            // Check channel access (simplified: if member, usually can read unless private, but for now we assume basic access or check permissions if needed)
-            // For strictness, we should check if user has 'viewChannel' or similar if implemented, but 'readMessages' is usually the one.
-            // Reusing permissionService for 'sendMessages' or just assuming read access if member for now as per existing patterns or check 'viewChannel' if it exists.
-            // Existing code checks 'manageChannels' for management. Reading usually just requires membership in public channels.
-            // Let's assume if they are a member they can read for now, or check if channel exists.
-
             const channel = await channelRepo.findById(channelId);
             if (!channel) {
                 return res.status(404).json({ error: 'Channel not found' });
@@ -1551,8 +1545,8 @@ router.post(
                 position !== undefined
                     ? position
                     : maxPositionCategory
-                      ? maxPositionCategory.position + 1
-                      : 0;
+                        ? maxPositionCategory.position + 1
+                        : 0;
 
             const category = await categoryRepo.create({
                 serverId,
@@ -2356,34 +2350,34 @@ router.post(
                 permissions:
                     permissions ||
                     (name &&
-                    (name.toLowerCase().includes('mute') ||
-                        name.toLowerCase().includes('muted'))
+                        (name.toLowerCase().includes('mute') ||
+                            name.toLowerCase().includes('muted'))
                         ? {
-                              sendMessages: false,
-                              manageMessages: false,
-                              deleteMessagesOfOthers: false,
-                              manageChannels: false,
-                              manageRoles: false,
-                              banMembers: false,
-                              kickMembers: false,
-                              manageInvites: false,
-                              manageServer: false,
-                              administrator: false,
-                              pingRolesAndEveryone: false,
-                          }
+                            sendMessages: false,
+                            manageMessages: false,
+                            deleteMessagesOfOthers: false,
+                            manageChannels: false,
+                            manageRoles: false,
+                            banMembers: false,
+                            kickMembers: false,
+                            manageInvites: false,
+                            manageServer: false,
+                            administrator: false,
+                            pingRolesAndEveryone: false,
+                        }
                         : {
-                              sendMessages: true,
-                              manageMessages: false,
-                              deleteMessagesOfOthers: false,
-                              manageChannels: false,
-                              manageRoles: false,
-                              banMembers: false,
-                              kickMembers: false,
-                              manageInvites: false,
-                              manageServer: false,
-                              administrator: false,
-                              pingRolesAndEveryone: false,
-                          }),
+                            sendMessages: true,
+                            manageMessages: false,
+                            deleteMessagesOfOthers: false,
+                            manageChannels: false,
+                            manageRoles: false,
+                            banMembers: false,
+                            kickMembers: false,
+                            manageInvites: false,
+                            manageServer: false,
+                            administrator: false,
+                            pingRolesAndEveryone: false,
+                        }),
             };
 
             const role = await roleRepo.create({
@@ -3703,10 +3697,10 @@ router.post(
                 ...banObject,
                 user: bannedUser
                     ? {
-                          _id: bannedUser._id,
-                          username: bannedUser.username,
-                          profilePicture: bannedUser.profilePicture,
-                      }
+                        _id: bannedUser._id,
+                        username: bannedUser.username,
+                        profilePicture: bannedUser.profilePicture,
+                    }
                     : null,
                 bannedByUser: currentUser
                     ? { _id: currentUser._id, username: currentUser.username }
@@ -3851,16 +3845,16 @@ router.get(
                         ...ban,
                         user: bannedUser
                             ? {
-                                  _id: bannedUser._id,
-                                  username: bannedUser.username,
-                                  profilePicture: bannedUser.profilePicture,
-                              }
+                                _id: bannedUser._id,
+                                username: bannedUser.username,
+                                profilePicture: bannedUser.profilePicture,
+                            }
                             : null,
                         bannedByUser: bannedByUser
                             ? {
-                                  _id: bannedByUser._id,
-                                  username: bannedByUser.username,
-                              }
+                                _id: bannedByUser._id,
+                                username: bannedByUser.username,
+                            }
                             : null,
                     };
                 }),

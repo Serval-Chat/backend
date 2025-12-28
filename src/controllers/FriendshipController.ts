@@ -12,22 +12,22 @@ import {
     Request,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { IUserRepository } from '../di/interfaces/IUserRepository';
-import type { IFriendshipRepository } from '../di/interfaces/IFriendshipRepository';
-import type { IMessageRepository } from '../di/interfaces/IMessageRepository';
-import { PresenceService } from '../realtime/services/PresenceService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { getIO } from '../socket';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
+import { PresenceService } from '@/realtime/services/PresenceService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { getIO } from '@/socket';
 import {
     resolveSerializedCustomStatus,
     type SerializedCustomStatus,
-} from '../utils/status';
-import { mapUser } from '../utils/user';
+} from '@/utils/status';
+import { mapUser } from '@/utils/user';
 import express from 'express';
 import { Types } from 'mongoose';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface FriendPayload {
     _id: string;
@@ -52,7 +52,7 @@ interface SendFriendRequest {
 
 /**
  * Controller for managing user friendships and friend requests.
- * Enforces security boundaries via ownership checks on requests and friendships.
+ * Enforces  boundaries via ownership checks on requests and friendships.
  */
 @injectable()
 @Route('api/v1/friends')

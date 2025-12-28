@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import logger from './logger';
+import logger from '@/utils/logger';
 
 let cachedCommitHash: { commit: string; short: string } | null = null;
 let cachedVersion: string | null = null;

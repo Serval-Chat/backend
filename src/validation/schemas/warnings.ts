@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { objectIdSchema, booleanQuerySchema } from './common';
+import { objectIdSchema, booleanQuerySchema } from '@/validation/schemas/common';
 
 /**
  * Query parameters for getting warnings

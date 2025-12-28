@@ -1,13 +1,13 @@
 import { Controller, Get, Route, Tags, Path, Request, Response } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { ILogger } from '../di/interfaces/ILogger';
+import { TYPES } from '@/di/types';
+import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
-import { extractOriginalFilename } from '../config/multer';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { extractOriginalFilename } from '@/config/multer';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Compatibility controller for file downloads.
@@ -64,7 +64,9 @@ export class FileCompatibilityController extends Controller {
 
             // Verify the resolved path is still within uploads directory
             const realPath = fs.realpathSync(filePath);
-            if (!realPath.startsWith(uploadsDir)) {
+            const realUploadsDir = fs.realpathSync(uploadsDir);
+
+            if (!realPath.startsWith(realUploadsDir)) {
                 res.status(400).json({
                     error: ErrorMessages.FILE.INVALID_PATH,
                 });

@@ -2,8 +2,8 @@ import { injectable } from 'inversify';
 import {
     IDmUnreadRepository,
     IDmUnread,
-} from '../../di/interfaces/IDmUnreadRepository';
-import { DmUnread } from '../../models/DmUnread';
+} from '@/di/interfaces/IDmUnreadRepository';
+import { DmUnread } from '@/models/DmUnread';
 
 /**
  * Mongoose DM Unread Repository.

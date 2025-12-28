@@ -6,7 +6,8 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const mongoose = require('mongoose');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
-require('ts-node/register'); // Register ts-node for importing TS files
+require('ts-node/register');
+require('tsconfig-paths/register'); // Register ts-node for importing TS files
 
 // Set environment variables for testing
 process.env.NODE_ENV = 'test';
@@ -43,8 +44,9 @@ async function setup() {
     server = createServer(app);
 
     // 5. Initialize Socket.IO
-    const { createSocketServer } = require('../../src/socket/index');
-    io = createSocketServer(server);
+    const { createSocketServer } = require('../../src/socket/init');
+    const { container } = require('../../src/di/container');
+    io = await createSocketServer(server, container);
 
     // 6. Start Server
     await new Promise((resolve) => {

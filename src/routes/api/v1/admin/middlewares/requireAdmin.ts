@@ -1,9 +1,9 @@
 import type express from 'express';
-import { container } from '../../../../../di/container';
-import { TYPES } from '../../../../../di/types';
-import type { IUserRepository } from '../../../../../di/interfaces/IUserRepository';
-import logger from '../../../../../utils/logger';
-import type { AdminPermissions } from '../permissions';
+import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import logger from '@/utils/logger';
+import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 
 const userRepo = container.get<IUserRepository>(TYPES.UserRepository);
 

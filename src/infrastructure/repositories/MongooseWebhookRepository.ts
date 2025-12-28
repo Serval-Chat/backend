@@ -2,8 +2,8 @@ import { injectable } from 'inversify';
 import {
     IWebhookRepository,
     IWebhook,
-} from '../../di/interfaces/IWebhookRepository';
-import { Webhook } from '../../models/Webhook';
+} from '@/di/interfaces/IWebhookRepository';
+import { Webhook } from '@/models/Webhook';
 
 /**
  * Mongoose Webhook Repository

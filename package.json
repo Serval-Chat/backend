@@ -4,13 +4,13 @@
   "description": "",
   "main": "src/main.ts",
   "scripts": {
-    "test": "node --test tests/**/*.test.cjs",
-    "test:integration": "node --test tests/integration/*.test.cjs",
-    "build": "npm run tsoa:gen && npm run tsoa:spec && rm -rf dist && npx tsc",
-    "tsoa:gen": "tsoa routes",
-    "tsoa:spec": "tsoa spec",
+    "test": "node -r tsconfig-paths/register --test tests/**/*.test.cjs",
+    "test:integration": "node -r tsconfig-paths/register --test tests/integration/*.test.cjs",
+    "build": "npm run tsoa:gen && npm run tsoa:spec && rm -rf dist && npx tsc && tsc-alias",
+    "tsoa:gen": "tsoa routes -c tsoa.config.json",
+    "tsoa:spec": "tsoa spec -c tsoa.config.json",
     "start": "node dist/main.js",
-    "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/main.ts",
+    "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node -r tsconfig-paths/register' src/main.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "frontend:install": "cd frontend/chat-frontend && npm install -f && cd ../../ && cp -r static/* ./public",
@@ -87,7 +87,9 @@
     "nodemon": "^3.1.10",
     "socket.io-client": "^4.8.1",
     "supertest": "^7.1.1",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0"
   },
   "repository": "https://github.com/Serval-Chat/backend"
 }

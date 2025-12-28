@@ -5,7 +5,7 @@ import {
     passwordSchema,
     bioSchema,
     objectIdSchema,
-} from './common';
+} from '@/validation/schemas/common';
 
 /**
  * Update profile validation

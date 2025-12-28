@@ -14,25 +14,25 @@ import {
     Request,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
+import { TYPES } from '@/di/types';
 import type {
     IServerMessageRepository,
     IServerMessage,
-} from '../di/interfaces/IServerMessageRepository';
-import type { IServerMemberRepository } from '../di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '../di/interfaces/IChannelRepository';
-import type { IReactionRepository } from '../di/interfaces/IReactionRepository';
-import { PermissionService } from '../services/PermissionService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { getIO } from '../socket';
+} from '@/di/interfaces/IServerMessageRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
+import { PermissionService } from '@/services/PermissionService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { getIO } from '@/socket';
 import {
     messagesSentCounter,
     websocketMessagesCounter,
-} from '../utils/metrics';
+} from '@/utils/metrics';
 import express from 'express';
 import mongoose from 'mongoose';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface SendMessageRequest {
     content?: string;
@@ -47,7 +47,7 @@ interface ServerEditMessageRequest {
 
 /**
  * Controller for managing messages within server channels.
- * Enforces security via server membership and channel-specific permission checks.
+ * Enforces server membership and channel-specific permission checks.
  */
 @injectable()
 @Route('api/v1/servers/{serverId}/channels/{channelId}/messages')
@@ -188,7 +188,7 @@ export class ServerMessageController extends Controller {
         // Update the channel's last activity timestamp for sorting and unread tracking
         await this.channelRepo.updateLastMessageAt(channelId);
 
-        // Track message metrics for monitoring and scaling
+        // Track message metrics
         messagesSentCounter.labels('server').inc();
         websocketMessagesCounter.labels('server_message', 'outbound').inc();
 

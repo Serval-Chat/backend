@@ -1,4 +1,4 @@
-import { resolveSerializedCustomStatus } from './status';
+import { resolveSerializedCustomStatus } from '@/utils/status';
 
 /**
  * Maps a raw user object from the database to a public user object.

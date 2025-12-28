@@ -3,8 +3,8 @@ import {
     IServerRepository,
     IServer,
     CreateServerDTO,
-} from '../../di/interfaces/IServerRepository';
-import { Server } from '../../models/Server';
+} from '@/di/interfaces/IServerRepository';
+import { Server } from '@/models/Server';
 
 /**
  * Mongoose Server Repository

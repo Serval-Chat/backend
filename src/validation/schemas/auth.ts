@@ -4,7 +4,7 @@ import {
     usernameSchema,
     passwordSchema,
     inviteTokenSchema,
-} from './common';
+} from '@/validation/schemas/common';
 
 /**
  * Registration request validation

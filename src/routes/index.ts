@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import publicRoutes from './public-routes';
-import { topLevelRouter as webhooksTopLevelRoutes } from './api/v1/servers/webhooks';
-import serversRoutes from './api/v1/servers/servers';
-import adminRouter from './api/v1/admin/admin';
-import { authenticateToken } from '../middleware/auth';
+import publicRoutes from '@/routes/public-routes';
+import { topLevelRouter as webhooksTopLevelRoutes } from '@/routes/api/v1/servers/webhooks';
+import serversRoutes from '@/routes/api/v1/servers/servers';
+import adminRouter from '@/routes/api/v1/admin/admin';
+import { authenticateToken } from '@/middleware/auth';
 
 /**
  * Main API Router

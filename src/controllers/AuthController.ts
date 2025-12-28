@@ -11,24 +11,24 @@ import {
     Security,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import type { IUserRepository } from '../di/interfaces/IUserRepository';
-import { AuthService } from '../services/AuthService';
-import { generateJWT } from '../utils/jwt';
+import { TYPES } from '@/di/types';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { AuthService } from '@/services/AuthService';
+import { generateJWT } from '@/utils/jwt';
 import {
     loginAttemptsCounter,
     registrationAttemptsCounter,
     usersCreatedCounter,
-} from '../utils/metrics';
+} from '@/utils/metrics';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { getIO } from '../socket';
-import { PresenceService } from '../realtime/services/PresenceService';
-import type { ILogger } from '../di/interfaces/ILogger';
-import { ErrorResponse } from './models/ErrorResponse';
-import { ErrorMessages } from '../constants/errorMessages';
+import { getIO } from '@/socket';
+import { PresenceService } from '@/realtime/services/PresenceService';
+import type { ILogger } from '@/di/interfaces/ILogger';
+import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 interface LoginRequest {
     login: string;

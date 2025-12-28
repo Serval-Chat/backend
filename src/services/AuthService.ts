@@ -1,9 +1,9 @@
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../di/types';
-import { ILogger } from '../di/interfaces/ILogger';
-import { IUserRepository } from '../di/interfaces/IUserRepository';
-import { IBanRepository } from '../di/interfaces/IBanRepository';
-import { ErrorMessages } from '../constants/errorMessages';
+import { TYPES } from '@/di/types';
+import { ILogger } from '@/di/interfaces/ILogger';
+import { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { IBanRepository } from '@/di/interfaces/IBanRepository';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Authentication result

@@ -2,9 +2,9 @@ import express from 'express';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { requireAdmin } from './middlewares/requireAdmin';
-import logger from '../../../../utils/logger';
-import { validate } from '../../../../validation/middleware';
+import { requireAdmin } from '@/routes/api/v1/admin/middlewares/requireAdmin';
+import logger from '@/utils/logger';
+import { validate } from '@/validation/middleware';
 import { z } from 'zod';
 
 const router = express.Router();
