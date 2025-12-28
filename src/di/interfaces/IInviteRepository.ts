@@ -16,7 +16,7 @@ export interface IInvite {
      * Custom invite code
      */
     customPath?: string;
-    createdBy: Types.ObjectId | string;
+    createdByUserId: Types.ObjectId | string;
     maxUses?: number;
     uses: number;
     expiresAt?: Date;
@@ -30,7 +30,7 @@ export interface CreateInviteDTO {
     serverId: string;
     code: string;
     customPath?: string;
-    createdBy: string | Types.ObjectId;
+    createdByUserId: string | Types.ObjectId;
     maxUses?: number;
     expiresAt?: Date;
 }

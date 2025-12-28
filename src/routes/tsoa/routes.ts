@@ -430,7 +430,7 @@ const models: TsoaRoute.Models = {
             "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "code": {"dataType":"string","required":true},
             "customPath": {"dataType":"string"},
-            "createdBy": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
+            "createdByUserId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "maxUses": {"dataType":"double"},
             "uses": {"dataType":"double","required":true},
             "expiresAt": {"dataType":"datetime"},
@@ -444,7 +444,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "maxUses": {"dataType":"double"},
             "expiresIn": {"dataType":"double"},
-            "customCode": {"dataType":"string"},
+            "customPath": {"dataType":"string"},
         },
         "additionalProperties": false,
     },
@@ -2842,7 +2842,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         const argsServerInviteController_getInviteDetails: Record<string, TsoaRoute.ParameterSchema> = {
                 code: {"in":"path","name":"code","required":true,"dataType":"string"},
         };
-        app.get('/api/v1/servers/invite/:code',
+        app.get('/api/v1/invites/:code',
             ...(fetchMiddlewares<RequestHandler>(ServerInviteController)),
             ...(fetchMiddlewares<RequestHandler>(ServerInviteController.prototype.getInviteDetails)),
 
@@ -2878,7 +2878,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
                 code: {"in":"path","name":"code","required":true,"dataType":"string"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
-        app.post('/api/v1/servers/join/:code',
+        app.post('/api/v1/invites/:code/join',
             authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<RequestHandler>(ServerInviteController)),
             ...(fetchMiddlewares<RequestHandler>(ServerInviteController.prototype.joinServer)),
