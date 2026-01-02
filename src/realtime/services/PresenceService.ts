@@ -1,23 +1,19 @@
 import { injectable } from 'inversify';
 import { onlineUsersGauge, websocketConnectionsGauge } from '@/utils/metrics';
 
-/**
- * Presence Service.
- *
- * Manages the online/offline status of users.
- * Tracks active socket connections for each user.
- */
+// Presence service
+//
+// Manages the online/offline status of users
+// Tracks active socket connections for each user
 @injectable()
 export class PresenceService {
     private onlineUsers = new Map<string, Set<string>>();
 
-    /**
-     * Adds a user to the online list.
-     *
-     * @param username - The username of the connected user.
-     * @param socketId - The socket ID of the new connection.
-     * @returns True if the user was previously offline (i.e., this is their first connection).
-     */
+    // Adds a user to the online list
+    //
+    // @param username - The username of the connected user
+    // @param socketId - The socket ID of the new connection
+    // @returns True if the user was previously offline (i.e., this is their first connection)
     addOnline(username: string, socketId: string): boolean {
         const set = this.onlineUsers.get(username) || new Set<string>();
         const wasOnline = set.size > 0;
@@ -30,13 +26,11 @@ export class PresenceService {
         return !wasOnline;
     }
 
-    /**
-     * Removes a socket connection for a user.
-     *
-     * @param username - The username of the disconnected user.
-     * @param socketId - The socket ID to remove.
-     * @returns True if the user is now completely offline (i.e., no more active connections).
-     */
+    // Removes a socket connection for a user
+    //
+    // @param username - The username of the disconnected user
+    // @param socketId - The socket ID to remove
+    // @returns True if the user is now completely offline (i.e., no more active connections)
     removeOnline(username: string, socketId: string): boolean {
         const set = this.onlineUsers.get(username);
         if (!set) return false;
@@ -51,12 +45,10 @@ export class PresenceService {
         return false;
     }
 
-    /**
-     * Gets all active socket IDs for a user.
-     *
-     * @param username - The username to look up.
-     * @returns An array of socket IDs.
-     */
+    // Gets all active socket IDs for a user
+    //
+    // @param username - The username to look up
+    // @returns An array of socket IDs
     getSockets(username: string): string[] {
         const set = this.onlineUsers.get(username);
         return set ? Array.from(set) : [];

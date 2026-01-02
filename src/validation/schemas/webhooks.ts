@@ -5,26 +5,20 @@ import {
     optionalUrlSchema,
 } from '@/validation/schemas/common';
 
-/**
- * Webhook channel parameters validation
- */
+// Webhook channel parameters validation
 export const webhookChannelParamsSchema = z.object({
     serverId: objectIdSchema,
     channelId: objectIdSchema,
 });
 
-/**
- * Webhook ID parameter validation
- */
+// Webhook ID parameter validation
 export const webhookIdParamSchema = z.object({
     serverId: objectIdSchema,
     channelId: objectIdSchema,
     webhookId: objectIdSchema,
 });
 
-/**
- * Create webhook validation
- */
+// Create webhook validation
 export const createWebhookSchema = z.object({
     name: z
         .string()
@@ -34,17 +28,13 @@ export const createWebhookSchema = z.object({
     avatarUrl: optionalUrlSchema,
 });
 
-/**
- * Update webhook validation
- */
+// Update webhook validation
 export const updateWebhookSchema = z.object({
     name: nameSchema.optional(),
     avatar: optionalUrlSchema,
 });
 
-/**
- * Execute webhook validation (for POST /:token)
- */
+// Execute webhook validation (for POST /:token)
 export const executeWebhookSchema = z.object({
     content: z
         .string()
@@ -55,9 +45,7 @@ export const executeWebhookSchema = z.object({
     avatarUrl: z.string().url().optional(),
 });
 
-/**
- * Webhook token parameter validation
- */
+// Webhook token parameter validation
 export const webhookTokenParamSchema = z.object({
     token: z.string().regex(/^[a-f0-9]{128}$/i, 'Invalid webhook token format'),
 });

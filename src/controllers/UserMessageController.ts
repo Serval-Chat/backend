@@ -47,10 +47,8 @@ interface UserEditMessageRequest {
     content: string;
 }
 
-/**
- * Controller for managing direct messages (DMs) between users.
- * Enforces friendship checks and conversation membership validation.
- */
+// Controller for managing direct messages (DMs) between users
+// Enforces friendship checks and conversation membership validation
 @injectable()
 @Route('api/v1/messages')
 @Tags('User Messages')
@@ -71,9 +69,7 @@ export class UserMessageController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves unread DM counts for the current user, grouped by peer.
-     */
+    // Retrieves unread DM counts for the current user, grouped by peer
     @Get('unread')
     public async getUnreadCounts(
         @Request() req: express.Request,
@@ -91,10 +87,8 @@ export class UserMessageController extends Controller {
         return { counts: unreadCounts };
     }
 
-    /**
-     * Retrieves messages between the current user and a specific peer.
-     * Enforces that both users are friends.
-     */
+    // Retrieves messages between the current user and a specific peer
+    // Enforces that both users are friends
     @Get()
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: 'User ID is required',
@@ -160,10 +154,8 @@ export class UserMessageController extends Controller {
         return messagesWithReactions;
     }
 
-    /**
-     * Retrieves a specific message by ID.
-     * Enforces friendship and conversation membership.
-     */
+    // Retrieves a specific message by ID
+    // Enforces friendship and conversation membership
     @Get('{id}')
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: 'Invalid message ID',
@@ -234,10 +226,8 @@ export class UserMessageController extends Controller {
         return { message: targetMessage, repliedMessage };
     }
 
-    /**
-     * Retrieves a single message by ID with friendship check (alternative route).
-     * Enforces conversation membership.
-     */
+    // Retrieves a single message by ID with friendship check (alternative route)
+    // Enforces conversation membership
     @Get('{userId}/{messageId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
@@ -292,10 +282,8 @@ export class UserMessageController extends Controller {
         return { message, repliedMessage };
     }
 
-    /**
-     * Edits an existing direct message.
-     * Enforces that only the original sender can edit their message.
-     */
+    // Edits an existing direct message
+    // Enforces that only the original sender can edit their message
     @Patch('{id}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.AUTH.UNAUTHORIZED,
@@ -339,10 +327,8 @@ export class UserMessageController extends Controller {
         return updated;
     }
 
-    /**
-     * Deletes a direct message.
-     * Enforces that only the original sender can delete their message.
-     */
+    // Deletes a direct message
+    // Enforces that only the original sender can delete their message
     @Delete('{id}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.AUTH.UNAUTHORIZED,

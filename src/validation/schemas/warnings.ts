@@ -4,16 +4,12 @@ import {
     booleanQuerySchema,
 } from '@/validation/schemas/common';
 
-/**
- * Query parameters for getting warnings
- */
+// Query parameters for getting warnings
 export const getWarningsQuerySchema = z.object({
     acknowledged: booleanQuerySchema,
 });
 
-/**
- * Warning ID parameter validation
- */
+// Warning ID parameter validation
 export const warningIdParamSchema = z.object({
     id: objectIdSchema,
 });

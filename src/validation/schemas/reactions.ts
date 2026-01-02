@@ -1,10 +1,7 @@
 import { z } from 'zod';
 
-/**
- * Validation Schemas for Reaction APIs
- *
- * Validates emoji reactions including Unicode and custom emojis.
- */
+// Validation schemas for reaction APIs
+// Validates emoji reactions including Unicode and custom emojis.
 
 // Validate MongoDB ObjectId format
 const objectIdSchema = z
@@ -17,9 +14,7 @@ const unicodeEmojiSchema = z
     .regex(/^[\p{Emoji}\p{Emoji_Component}]+$/u, 'Invalid Unicode emoji')
     .max(10, 'Emoji too long');
 
-/**
- * Schema for adding a reaction
- */
+// Schema for adding a reaction
 export const addReactionBodySchema = z
     .object({
         emoji: z.string().min(1).max(100),
@@ -44,9 +39,7 @@ export const addReactionBodySchema = z
         },
     );
 
-/**
- * Schema for removing a reaction
- */
+// Schema for removing a reaction
 export const removeReactionBodySchema = z
     .object({
         emoji: z.string().optional(),
@@ -57,16 +50,12 @@ export const removeReactionBodySchema = z
         message: 'Either emoji or emojiId must be provided',
     });
 
-/**
- * Schema for message ID parameter
- */
+// Schema for message ID parameter
 export const messageIdParamSchema = z.object({
     messageId: objectIdSchema,
 });
 
-/**
- * Schema for server reaction parameters
- */
+// Schema for server reaction parameters
 export const serverReactionParamsSchema = z.object({
     serverId: objectIdSchema,
     channelId: objectIdSchema,

@@ -50,10 +50,8 @@ export interface ReorderRolesRequest {
     rolePositions: { roleId: string; position: number }[];
 }
 
-/**
- * Controller for managing server roles and their permissions.
- * Enforces 'manageRoles' permission checks and protects the mandatory '@everyone' role.
- */
+// Controller for managing server roles and their permissions
+// Enforces 'manageRoles' permission checks and protects the mandatory '@everyone' role
 @injectable()
 @Route('api/v1/servers/{serverId}/roles')
 @Tags('Server Roles')
@@ -70,10 +68,8 @@ export class ServerRoleController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves all roles for a specific server.
-     * Enforces server membership.
-     */
+    // Retrieves all roles for a specific server
+    // Enforces server membership
     @Get()
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -96,10 +92,8 @@ export class ServerRoleController extends Controller {
         return await this.roleRepo.findByServerId(serverId);
     }
 
-    /**
-     * Creates a new role in a server.
-     * Enforces 'manageRoles' permission and automatically calculates the next position.
-     */
+    // Creates a new role in a server
+    // Enforces 'manageRoles' permission and automatically calculates the next position
     @Post()
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -129,8 +123,8 @@ export class ServerRoleController extends Controller {
 
         const roleColor =
             body.startColor ||
-            body.endColor ||
-            (body.colors && body.colors.length > 0)
+                body.endColor ||
+                (body.colors && body.colors.length > 0)
                 ? null
                 : body.color || '#99aab5';
 
@@ -153,10 +147,8 @@ export class ServerRoleController extends Controller {
         return role;
     }
 
-    /**
-     * Reorders roles within a server's hierarchy.
-     * Enforces 'manageRoles' permission.
-     */
+    // Reorders roles within a server's hierarchy
+    // Enforces 'manageRoles' permission
     @Patch('reorder')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -193,10 +185,8 @@ export class ServerRoleController extends Controller {
         return await this.roleRepo.findByServerId(serverId);
     }
 
-    /**
-     * Updates an existing role's properties.
-     * Enforces 'manageRoles' permission.
-     */
+    // Updates an existing role's properties
+    // Enforces 'manageRoles' permission
     @Patch('{roleId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -268,9 +258,7 @@ export class ServerRoleController extends Controller {
         return updatedRole;
     }
 
-    /**
-     * Delete a role.
-     */
+    // Delete a role
     @Delete('{roleId}')
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE,

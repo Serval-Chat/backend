@@ -17,7 +17,6 @@ import logger from '@/utils/logger';
  * Status Gateway.
  *
  * Manages user custom status updates and subscriptions.
- * Allows clients to subscribe to status changes of other users.
  */
 @injectable()
 @Gateway()
@@ -25,7 +24,7 @@ export class StatusGateway {
     constructor(
         @inject(TYPES.StatusService) private statusService: StatusService,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) {}
+    ) { }
 
     /**
      * Handles 'status_subscribe' event.

@@ -6,15 +6,12 @@ import {
 import { ServerChannelRead } from '@/models/ServerChannelRead';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Mongoose Server Channel Read Repository
- *
- * Implements IServerChannelReadRepository using Mongoose ServerChannelRead model.
- */
+// Mongoose Server Channel Read repository
+//
+// Implements IServerChannelReadRepository using Mongoose ServerChannelRead model
 @injectable()
 export class MongooseServerChannelReadRepository
-    implements IServerChannelReadRepository
-{
+    implements IServerChannelReadRepository {
     async findByServerAndUser(
         serverId: string,
         userId: string,
@@ -31,12 +28,10 @@ export class MongooseServerChannelReadRepository
         }).lean()) as unknown as IServerChannelRead[];
     }
 
-    /**
-     * Update or create a read record for a channel.
-     *
-     * Sets the 'lastReadAt' timestamp to the current time.
-     * Uses upsert to ensure the record exists.
-     */
+    // Update or create a read record for a channel
+    //
+    // Sets the 'lastReadAt' timestamp to the current time
+    // Uses upsert to ensure the record exists
     async upsert(
         serverId: string,
         channelId: string,
@@ -56,9 +51,7 @@ export class MongooseServerChannelReadRepository
         return result;
     }
 
-    /**
-     * Mark all channels in a server as read for a user.
-     */
+    // Mark all channels in a server as read for a user
     async markServerAsRead(serverId: string, userId: string): Promise<void> {
         await ServerChannelRead.updateMany(
             { serverId, userId },

@@ -6,11 +6,9 @@ import {
 } from '@/di/interfaces/IRoleRepository';
 import { Role } from '@/models/Server';
 
-/**
- * Mongoose Role Repository
- *
- * Implements IRoleRepository using Mongoose Role model.
- */
+// Mongoose Role repository
+//
+// Implements IRoleRepository using Mongoose Role model
 @injectable()
 export class MongooseRoleRepository implements IRoleRepository {
     async findById(id: string): Promise<IRole | null> {
@@ -21,11 +19,9 @@ export class MongooseRoleRepository implements IRoleRepository {
         return await Role.find({ serverId }).sort({ position: -1 }).lean();
     }
 
-    /**
-     * Create a new role.
-     *
-     * Sets default color and empty permissions if not provided.
-     */
+    // Create a new role
+    //
+    // Sets default color and empty permissions if not provided
     async create(data: {
         serverId: string;
         name: string;
@@ -41,9 +37,7 @@ export class MongooseRoleRepository implements IRoleRepository {
         const role = new Role({
             serverId: data.serverId,
             name: data.name,
-            /**
-             * Default color is a grey if none specified.
-             */
+            // Default color is a grey if none specified
             color: data.color || '#99aab5',
             startColor: data.startColor,
             endColor: data.endColor,

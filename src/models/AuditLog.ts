@@ -1,11 +1,9 @@
 import type { Types, Document } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
-/**
- * Audit Log Interface.
- *
- * Represents a record of an administrative action for accountability.
- */
+// Audit Log interface
+//
+// Represents a record of an administrative action for accountability
 export interface IAuditLog extends Document {
     adminId: Types.ObjectId;
     actionType: string;
@@ -22,9 +20,7 @@ const schema = new Schema<IAuditLog>({
     timestamp: { type: Date, default: Date.now },
 });
 
-/**
- * Audit Log Model.
- *
- * Tracks administrative actions (e.g., bans, role changes, server deletions).
- */
+// Audit Log model
+//
+// Tracks administrative actions (e.g., bans, role changes, server deletions)
 export const AuditLog = model<IAuditLog>('AuditLog', schema);

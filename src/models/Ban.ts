@@ -1,11 +1,9 @@
 import type { Types, Document, Model } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
-/**
- * Ban History Entry Interface.
- *
- * Tracks a single ban event for a user's history.
- */
+// Ban History Entry interface
+//
+// Tracks a single ban event for a user's history
 export interface IBanHistoryEntry {
     reason: string;
     issuedBy: Types.ObjectId;
@@ -14,11 +12,9 @@ export interface IBanHistoryEntry {
     endedAt?: Date;
 }
 
-/**
- * Ban Interface.
- *
- * Represents an active or past ban for a user.
- */
+// Ban interface
+//
+// Represents an active or past ban for a user
 export interface IBan extends Document {
     userId: Types.ObjectId;
     issuedBy: Types.ObjectId;
@@ -61,11 +57,9 @@ const schema = new Schema<IBan>({
     },
 });
 
-/**
- * Check and deactivate expired bans for a user.
- *
- * @returns true if any ban state was changed (expired), false otherwise.
- */
+// Check and deactivate expired bans for a user
+//
+// @returns true if any ban state was changed (expired), false otherwise
 schema.statics.checkExpired = async function (userId: Types.ObjectId | string) {
     const now = new Date();
     // Find active bans that have expired

@@ -13,23 +13,19 @@ declare module 'express-serve-static-core' {
     }
 }
 
-/**
- * Request interface for authenticated requests where 'user' is guaranteed to exist.
- */
+// Request interface for authenticated requests where 'user' is guaranteed to exist.
 export interface AuthenticatedRequest extends Request {
     user: JWTPayload;
 }
 
-/**
- * Authenticate JWT token from request headers.
- *
- * Security Mitigations:
- * - Validates token existence and format (Bearer).
- * - Checks if the account is soft-deleted.
- * - Validates 'tokenVersion' to support global logout/session invalidation.
- * - Checks for active bans (including automated expiration).
- * - Prevents re-authentication if 'req.user' is already set.
- */
+// Authenticate JWT token from request headers.
+//
+// Security mitigations:
+// - validates token existence and format (Bearer).
+// - checks if the account is soft-deleted.
+// - validates 'tokenVersion' to support global logout/session invalidation.
+// - checks for active bans (including automated expiration).
+// - prevents re-authentication if 'req.user' is already set.
 export const authenticateToken = async (
     req: Request,
     res: Response,

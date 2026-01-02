@@ -1,11 +1,9 @@
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
-/**
- * DM Unread Interface.
- *
- * Tracks the number of unread messages for a user from a specific peer.
- */
+// DM Unread Interface
+//
+// Tracks the number of unread messages for a user from a specific peer
 export interface IDmUnread extends Document {
     user: Types.ObjectId;
     peer: Types.ObjectId;
@@ -32,7 +30,5 @@ const schema = new Schema<IDmUnread>(
 
 schema.index({ user: 1, peer: 1 }, { unique: true });
 
-/**
- * DM Unread Model.
- */
+// DM Unread Model
 export const DmUnread = model<IDmUnread>('DmUnread', schema);

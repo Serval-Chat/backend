@@ -27,12 +27,10 @@ interface UserSettings {
     otherMessageColor?: string;
 }
 
-interface UpdateSettingsRequest extends UserSettings {}
+interface UpdateSettingsRequest extends UserSettings { }
 
-/**
- * Controller for managing user-specific application settings.
- * Enforces JWT authentication.
- */
+// Controller for managing user-specific application settings
+// Enforces JWT authentication
 @injectable()
 @Route('api/v1/settings')
 @Tags('Settings')
@@ -45,10 +43,8 @@ export class SettingsController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves the current user's settings.
-     * Returns default values if no custom settings are configured.
-     */
+    // Retrieves the current user's settings
+    // Returns default values if no custom settings are configured
     @Get()
     @Response<ErrorResponse>('404', 'User Not Found', {
         error: ErrorMessages.AUTH.USER_NOT_FOUND,
@@ -79,10 +75,8 @@ export class SettingsController extends Controller {
         );
     }
 
-    /**
-     * Updates the current user's settings.
-     * Performs a partial update of the settings object.
-     */
+    // Updates the current user's settings
+    // Performs a partial update of the settings object
     @Post()
     @Response<ErrorResponse>('404', 'User Not Found', {
         error: ErrorMessages.AUTH.USER_NOT_FOUND,

@@ -1,18 +1,16 @@
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
-/**
- * Reaction Model.
- *
- * Stores emoji reactions for messages (both DM and server messages).
- * Supports Unicode emojis and custom emojis from servers.
- *
- * Key Features:
- * - Maximum 20 unique emoji types per message.
- * - Users can only react once per emoji per message.
- * - Custom emojis reference the Emoji model by ID.
- * - Reactions are automatically cleaned up when messages are deleted.
- */
+// Reaction model
+//
+// Stores emoji reactions for messages (both DM and server messages)
+// Supports Unicode emojis and custom emojis from servers
+//
+// Key features:
+// - Maximum 20 unique emoji types per message
+// - Users can only react once per emoji per message
+// - Custom emojis reference the Emoji model by ID
+// - Reactions are automatically cleaned up when messages are deleted
 
 export interface IReaction extends Document {
     _id: Types.ObjectId;
@@ -62,7 +60,7 @@ const reactionSchema = new Schema<IReaction>({
 });
 
 // Compound index: ensure user can only react once per emoji per message
-// For unicode emoji: (messageId, messageType, userId, emoji)
+// For Unicode emoji: (messageId, messageType, userId, emoji)
 // For custom emoji: (messageId, messageType, userId, emojiId)
 reactionSchema.index(
     { messageId: 1, messageType: 1, userId: 1, emoji: 1, emojiId: 1 },

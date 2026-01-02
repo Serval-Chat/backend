@@ -47,10 +47,8 @@ interface ChangePasswordRequest {
     newPassword: string;
 }
 
-/**
- * Controller for user authentication and account management.
- * Handles login, registration, and credential updates.
- */
+// Controller for user authentication and account management
+// Handles login, registration, and credential updates
 @injectable()
 @Route('api/v1/auth')
 @Tags('Authentication')
@@ -62,9 +60,7 @@ export class AuthController extends Controller {
         super();
     }
 
-    /**
-     * Authenticates a user and returns a JWT.
-     */
+    // Authenticates a user and returns a JWT
     @Post('login')
     @Response<ErrorResponse>('401', 'Invalid credentials', {
         error: ErrorMessages.AUTH.INVALID_LOGIN_PASSWORD,
@@ -116,9 +112,7 @@ export class AuthController extends Controller {
         };
     }
 
-    /**
-     * Registers a new user using an invite token.
-     */
+    // Registers a new user using an invite token
     @Post('register')
     @Response<ErrorResponse>('400', 'Validation Error', {
         error: ErrorMessages.AUTH.USERNAME_EXISTS,
@@ -205,9 +199,7 @@ export class AuthController extends Controller {
         return { token };
     }
 
-    /**
-     * Updates the current user's login identifier.
-     */
+    // Updates the current user's login identifier
     @Patch('login')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Invalid input', {
@@ -303,9 +295,7 @@ export class AuthController extends Controller {
         };
     }
 
-    /**
-     * Updates the current user's password.
-     */
+    // Updates the current user's password
     @Patch('password')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Invalid input', {

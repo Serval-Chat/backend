@@ -6,23 +6,19 @@ import {
     collectDefaultMetrics,
 } from 'prom-client';
 
-/**
- * Prometheus Metrics Registry
- * Collects and exposes application metrics for monitoring.
- */
+// Prometheus metrics registry
+// Collects and exposes application metrics for monitoring
 export const register = new Registry();
 
 collectDefaultMetrics({ register });
 
-/**
- * Application metrics for Serchat.
- */
+// Application metrics for Serchat
 
 // Counter for total messages sent
 export const messagesSentCounter = new Counter({
     name: 'chat_messages_sent_total',
     help: 'Total number of messages sent',
-    labelNames: ['type'], // type can be 'direct', 'group', etc.
+    labelNames: ['type'], // Type can be 'direct', 'group', etc.
     registers: [register],
 });
 
@@ -44,7 +40,7 @@ export const onlineUsersGauge = new Gauge({
 export const loginAttemptsCounter = new Counter({
     name: 'chat_login_attempts_total',
     help: 'Total number of login attempts',
-    labelNames: ['status'], // status can be 'success' or 'failure'
+    labelNames: ['status'], // Status can be 'success' or 'failure'
     registers: [register],
 });
 
@@ -52,7 +48,7 @@ export const loginAttemptsCounter = new Counter({
 export const registrationAttemptsCounter = new Counter({
     name: 'chat_registration_attempts_total',
     help: 'Total number of registration attempts',
-    labelNames: ['status'], // status can be 'success' or 'failure'
+    labelNames: ['status'], // Status can be 'success' or 'failure'
     registers: [register],
 });
 
@@ -60,7 +56,7 @@ export const registrationAttemptsCounter = new Counter({
 export const friendRequestsCounter = new Counter({
     name: 'chat_friend_requests_total',
     help: 'Total number of friend requests',
-    labelNames: ['action'], // action can be 'sent', 'accepted', 'rejected'
+    labelNames: ['action'], // Action can be 'sent', 'accepted', 'rejected'
     registers: [register],
 });
 
@@ -98,7 +94,7 @@ export const websocketConnectionsGauge = new Gauge({
 export const websocketMessagesCounter = new Counter({
     name: 'websocket_messages_total',
     help: 'Total number of WebSocket messages',
-    labelNames: ['event', 'direction'], // direction can be 'inbound' or 'outbound'
+    labelNames: ['event', 'direction'], // Direction can be 'inbound' or 'outbound'
     registers: [register],
 });
 

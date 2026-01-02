@@ -17,10 +17,8 @@ import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Controller for emoji management.
- * Provides access to server-specific and global emojis.
- */
+// Controller for emoji management
+// Provides access to server-specific and global emojis
 @injectable()
 @Route('api/v1/emojis')
 @Tags('Emojis')
@@ -35,9 +33,7 @@ export class EmojiController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves all emojis from all servers the user is a member of.
-     */
+    // Retrieves all emojis from all servers the user is a member of
     @Get()
     public async getAllEmojis(@Request() req: express.Request): Promise<any[]> {
         // @ts-ignore: JWT middleware attaches user object, not typed in Express.Request
@@ -55,9 +51,7 @@ export class EmojiController extends Controller {
         return await this.emojiRepo.findByServerIds(serverIds);
     }
 
-    /**
-     * Retrieves a specific emoji by ID.
-     */
+    // Retrieves a specific emoji by ID
     @Get('{emojiId}')
     @Response<ErrorResponse>('404', 'Emoji Not Found', {
         error: ErrorMessages.EMOJI.NOT_FOUND,

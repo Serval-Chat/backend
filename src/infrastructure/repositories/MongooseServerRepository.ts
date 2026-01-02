@@ -6,11 +6,9 @@ import {
 } from '@/di/interfaces/IServerRepository';
 import { Server } from '@/models/Server';
 
-/**
- * Mongoose Server Repository
- *
- * Implements IServerRepository using Mongoose Server model.
- */
+// Mongoose Server repository
+//
+// Implements IServerRepository using Mongoose Server model
 @injectable()
 export class MongooseServerRepository implements IServerRepository {
     async findById(
@@ -56,11 +54,9 @@ export class MongooseServerRepository implements IServerRepository {
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
-    /**
-     * Soft delete a server.
-     *
-     * Marks the server as deleted by setting 'deletedAt' timestamp.
-     */
+    // Soft delete a server
+    //
+    // Marks the server as deleted by setting 'deletedAt' timestamp
     async softDelete(id: string): Promise<boolean> {
         const result = await Server.updateOne(
             { _id: id },
@@ -69,9 +65,7 @@ export class MongooseServerRepository implements IServerRepository {
         return result.modifiedCount > 0;
     }
 
-    /**
-     * Restore a soft-deleted server.
-     */
+    // Restore a soft-deleted server
     async restore(id: string): Promise<boolean> {
         const result = await Server.updateOne(
             { _id: id },

@@ -2,11 +2,9 @@ import { injectable } from 'inversify';
 import { IEmojiRepository, IEmoji } from '@/di/interfaces/IEmojiRepository';
 import { Emoji } from '@/models/Emoji';
 
-/**
- * Mongoose Emoji Repository
- *
- * Implements IEmojiRepository using Mongoose Emoji model.
- */
+// Mongoose Emoji repository
+//
+// Implements IEmojiRepository using Mongoose Emoji model
 @injectable()
 export class MongooseEmojiRepository implements IEmojiRepository {
     async findById(id: string): Promise<IEmoji | null> {
@@ -32,9 +30,7 @@ export class MongooseEmojiRepository implements IEmojiRepository {
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
-    /**
-     * Find all emojis for a server with creator info populated.
-     */
+    // Find all emojis for a server with creator info populated
     async findByServerIdWithCreator(serverId: string): Promise<IEmoji[]> {
         return await Emoji.find({ serverId })
             .populate('createdBy', 'username')
@@ -42,9 +38,7 @@ export class MongooseEmojiRepository implements IEmojiRepository {
             .lean();
     }
 
-    /**
-     * Find emoji by ID with creator info populated.
-     */
+    // Find emoji by ID with creator info populated
     async findByIdWithCreator(id: string): Promise<IEmoji | null> {
         return await Emoji.findById(id)
             .populate('createdBy', 'username')

@@ -7,15 +7,12 @@ import { ServerMessage } from '@/models/Server';
 import { Reaction } from '@/models/Reaction';
 import type { Types } from 'mongoose';
 
-/**
- * Mongoose Server Message Repository
- *
- * Implements IServerMessageRepository using Mongoose ServerMessage model.
- */
+// Mongoose Server Message repository
+//
+// Implements IServerMessageRepository using Mongoose ServerMessage model
 @injectable()
 export class MongooseServerMessageRepository
-    implements IServerMessageRepository
-{
+    implements IServerMessageRepository {
     async create(data: {
         serverId: string | Types.ObjectId;
         channelId: string | Types.ObjectId;
@@ -59,15 +56,13 @@ export class MongooseServerMessageRepository
         };
     }
 
-    /**
-     * Find messages in a channel with pagination.
-     *
-     * Supports:
-     * - 'before': Older messages before a specific ID or date.
-     * - 'around': Contextual messages around a specific message (split limit).
-     *
-     * Automatically fetches and attaches aggregated reactions.
-     */
+    // Find messages in a channel with pagination
+    //
+    // Supports:
+    // - 'Before': Older messages before a specific ID or date
+    // - 'Around': Contextual messages around a specific message (split limit)
+    //
+    // Automatically fetches and attaches aggregated reactions */
     async findByChannelId(
         channelId: string,
         limit = 50,
@@ -155,11 +150,9 @@ export class MongooseServerMessageRepository
         };
     }
 
-    /**
-     * Helper to fetch aggregated reactions for multiple messages.
-     *
-     * Groups reactions by emoji type and collects user IDs.
-     */
+    // Helper to fetch aggregated reactions for multiple messages
+    //
+    // Groups reactions by emoji type and collects user IDs */
     private async getReactionsForMessages(
         messageIds: any[],
     ): Promise<Record<string, any[]>> {

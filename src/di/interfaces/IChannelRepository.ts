@@ -1,23 +1,17 @@
 import type { Types } from 'mongoose';
 
-/**
- * Channel interface.
- *
- * Represents a text or voice communication channel within a server.
- */
+// Channel interface
+//
+// Represents a text or voice communication channel within a server
 export interface IChannel {
     _id: any;
     serverId: Types.ObjectId | string;
     name: string;
     type: 'text' | 'voice';
     position: number;
-    /**
-     * Optionally parent category ID.
-     */
+    // Optionally parent category ID
     categoryId?: string | null;
-    /**
-     * Role-based permission overrides specific to this channel.
-     */
+    // Role-based permission overrides specific to this channel
     permissions?: {
         [roleId: string]: {
             sendMessages?: boolean;
@@ -26,18 +20,14 @@ export interface IChannel {
         };
     };
     createdAt: Date;
-    /**
-     * Timestamp of the last message sent in this channel.
-     * Used for unread tracking and channel sorting.
-     */
+    // Timestamp of the last message sent in this channel
+    // Used for unread tracking and channel sorting
     lastMessageAt?: Date;
     icon?: string;
     description?: string;
 }
 
-/**
- * Channel creation DTO
- */
+// Channel creation DTO
 export interface CreateChannelDTO {
     serverId: string;
     name: string;
@@ -54,70 +44,44 @@ export interface CreateChannelDTO {
     description?: string;
 }
 
-/**
- * Channel Repository Interface
- *
- * Encapsulates channel operations
- */
+// Channel Repository Interface
+//
+// Encapsulates channel operations
 export interface IChannelRepository {
-    /**
-     * Find channel by ID
-     */
+    // Find channel by ID
     findById(id: string): Promise<IChannel | null>;
 
-    /**
-     * Find channel by ID and Server ID
-     */
+    // Find channel by ID and Server ID
     findByIdAndServer(id: string, serverId: string): Promise<IChannel | null>;
 
-    /**
-     * Find all channels for a server
-     */
+    // Find all channels for a server
     findByServerId(serverId: string): Promise<IChannel[]>;
 
-    /**
-     * Find all channels for multiple servers
-     */
+    // Find all channels for multiple servers
     findByServerIds(serverIds: string[]): Promise<IChannel[]>;
 
-    /**
-     * Find channel with maximum position for a server
-     */
+    // Find channel with maximum position for a server
     findMaxPositionByServerId(serverId: string): Promise<IChannel | null>;
 
-    /**
-     * Create a new channel
-     */
+    // Create a new channel
     create(data: CreateChannelDTO): Promise<IChannel>;
 
-    /**
-     * Update channel by ID
-     */
+    // Update channel by ID
     update(id: string, data: Partial<IChannel>): Promise<IChannel | null>;
 
-    /**
-     * Delete channel by ID
-     */
+    // Delete channel by ID
     delete(id: string): Promise<boolean>;
 
-    /**
-     * Update channel position
-     */
+    // Update channel position
     updatePosition(id: string, position: number): Promise<IChannel | null>;
 
-    /**
-     * Update last message timestamp.
-     */
+    // Update last message timestamp
     updateLastMessageAt(id: string, date?: Date): Promise<IChannel | null>;
 
-    /**
-     * Delete all channels for a server (bulk delete)
-     */
+    // Delete all channels for a server (bulk delete)
     deleteByServerId(serverId: string): Promise<number>;
 
-    /**
-     * Update channels in a category (bulk update)
-     */
+    // Update channels in a category (bulk update)
     updateChannelsInCategory(
         categoryId: string,
         updates: Partial<IChannel>,

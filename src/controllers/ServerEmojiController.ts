@@ -28,10 +28,8 @@ import mongoose from 'mongoose';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Controller for managing server-specific emojis.
- * Enforces server membership and 'manageServer' permission checks.
- */
+// Controller for managing server-specific emojis
+// Enforces server membership and 'manageServer' permission checks
 @injectable()
 @Route('api/v1/servers/{serverId}/emojis')
 @Tags('Server Emojis')
@@ -59,10 +57,8 @@ export class ServerEmojiController extends Controller {
         }
     }
 
-    /**
-     * Retrieves all emojis for a specific server.
-     * Enforces server membership.
-     */
+    // Retrieves all emojis for a specific server
+    // Enforces server membership
     @Get()
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -88,10 +84,8 @@ export class ServerEmojiController extends Controller {
         return await this.emojiRepo.findByServerIdWithCreator(serverId);
     }
 
-    /**
-     * Uploads a new emoji to a server.
-     * Resizes the image to 128x128 and enforces 'manageServer' permission.
-     */
+    // Uploads a new emoji to a server
+    // Resizes the image to 128x128 and enforces 'manageServer' permission
     @Post()
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.EMOJI.FILE_REQUIRED,
@@ -211,10 +205,8 @@ export class ServerEmojiController extends Controller {
         return populatedEmoji;
     }
 
-    /**
-     * Retrieves a specific emoji by ID.
-     * Enforces server membership.
-     */
+    // Retrieves a specific emoji by ID
+    // Enforces server membership
     @Get('{emojiId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -247,10 +239,8 @@ export class ServerEmojiController extends Controller {
         return emoji;
     }
 
-    /**
-     * Deletes an emoji from a server.
-     * Enforces 'manageServer' permission.
-     */
+    // Deletes an emoji from a server
+    // Enforces 'manageServer' permission
     @Delete('{emojiId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,

@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-/**
- * File parameter validation schema and fuckoffs to people who try to break the upload endpoint :3
- */
+// File parameter validation schema
 export const fileParamSchema = z.object({
     filename: z
         .string()

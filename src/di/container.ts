@@ -83,16 +83,14 @@ import { UserWarningController } from '@/controllers/UserWarningController';
 import { UserPingController } from '@/controllers/UserPingController';
 import { FileCompatibilityController } from '@/controllers/FileCompatibilityController';
 
-/**
- * Dependency Injection Container
- *
- * Central container for managing all application dependencies.
- * Configured during application startup in main.ts.
- *
- * Strategy:
- * - Singleton: Core infrastructure and services that maintain state or are expensive to create.
- * - Transient: Repositories and controllers that should be fresh for each request/use.
- */
+// Dependency Injection Container
+//
+// Central container for managing all application dependencies
+// Configured during application startup in main.ts
+//
+// Strategy:
+// - Singleton: Core infrastructure and services that maintain state or are expensive to create
+// - Transient: Repositories and controllers that should be fresh for each request/use
 const container = new Container();
 
 // ====================

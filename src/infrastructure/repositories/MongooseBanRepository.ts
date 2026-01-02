@@ -4,12 +4,10 @@ import { Ban } from '@/models/Ban';
 import { Types } from 'mongoose';
 import logger from '@/utils/logger';
 
-/**
- * Mongoose Ban Repository
- *
- * Implements IBanRepository using Mongoose Ban model.
- * Encapsulates all ban-related database operations.
- */
+// Mongoose Ban repository
+//
+// Implements IBanRepository using Mongoose Ban model
+// Encapsulates all ban-related database operations
 @injectable()
 export class MongooseBanRepository implements IBanRepository {
     async findActiveByUserId(userId: string): Promise<IBan | null> {
@@ -49,12 +47,10 @@ export class MongooseBanRepository implements IBanRepository {
             .lean();
     }
 
-    /**
-     * Create or update a ban with history tracking.
-     *
-     * If a ban already exists for the user, it is updated and the new ban
-     * is added to the history array. If no ban exists, a new one is created.
-     */
+    // Create or update a ban with history tracking.
+    //
+    // If a ban already exists for the user, it is updated and the new ban
+    // Is added to the history array. If no ban exists, a new one is created.
     async createOrUpdateWithHistory(data: {
         userId: string;
         reason: string;
@@ -148,10 +144,8 @@ export class MongooseBanRepository implements IBanRepository {
                 ])
                 .lean();
         } catch (error) {
-            /**
-             * Fallback to unpopulated query if there are issues with population
-             * (e.g., missing users).
-             */
+            // Fallback to unpopulated query if there are issues with population
+            // (e.g., missing users).
 
             logger.error(
                 'Failed to populate ban data. Fallback to unpopulated query.',

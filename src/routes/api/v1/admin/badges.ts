@@ -12,10 +12,7 @@ const router: Router = Router();
 // Get repositories from DI container
 const userRepo = container.get<IUserRepository>(TYPES.UserRepository);
 
-// GET /api/v1/admin/badges - Get all available badges
 /**
- * GET /api/v1/admin/badges
- *
  * Retrieves all available badges, sorted by creation date.
  */
 router.get(
@@ -32,12 +29,8 @@ router.get(
     },
 );
 
-// POST /api/v1/admin/badges - Create a new badge
 /**
- * POST /api/v1/admin/badges
- *
  * Creates a new badge with the specified details.
- * Validates that the badge ID is unique.
  */
 router.post(
     '/badges',

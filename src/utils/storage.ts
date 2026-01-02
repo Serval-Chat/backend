@@ -1,25 +1,17 @@
-/**
- * Abstract storage driver interface for avatar management if I wanna use some other storage driver in the future
- */
+// Abstract storage driver interface for future extensions
 export interface IAvatarStorage {
-    /**
-     * Delete an avatar from storage
-     * @param avatarPath - Path of the avatar
-     */
+    // Delete an avatar from storage
+    // @param avatarPath - Path of the avatar
     deleteAvatar(avatarPath: string): Promise<void>;
 
-    /**
-     * Upload an avatar to storage
-     * @param file - File buffer or path
-     * @param userId - User ID for naming
-     * @returns Path to the uploaded avatar
-     */
+    // Upload an avatar to storage
+    // @param file - File buffer or path
+    // @param userId - User ID for naming
+    // @returns Path to the uploaded avatar
     uploadAvatar(file: Buffer | string, userId: string): Promise<string>;
 }
 
-/**
- * Filesystem-based avatar storage implementation
- */
+// Filesystem-based avatar storage implementation
 import fs from 'fs/promises';
 import path from 'path';
 import logger from '@/utils/logger';
@@ -65,9 +57,7 @@ export class FilesystemAvatarStorage implements IAvatarStorage {
     }
 }
 
-/**
- * Get the configured avatar storage driver
- */
+// Get the configured avatar storage driver
 let storageDriver: IAvatarStorage;
 
 export function getAvatarStorage(): IAvatarStorage {

@@ -6,11 +6,9 @@ import {
 } from '@/di/interfaces/ICategoryRepository';
 import { Category } from '@/models/Server';
 
-/**
- * Transform MongoDB document to match ICategory interface.
- *
- * Ensures that ObjectIds are converted to strings for the domain model.
- */
+// Transform MongoDB document to match ICategory interface
+//
+// Ensures that ObjectIds are converted to strings for the domain model
 const transformCategory = (doc: any): ICategory | null => {
     if (!doc) return null;
 
@@ -21,11 +19,9 @@ const transformCategory = (doc: any): ICategory | null => {
     };
 };
 
-/**
- * Mongoose Category Repository
- *
- * Implements ICategoryRepository using Mongoose Category model.
- */
+// Mongoose Category repository
+//
+// Implements ICategoryRepository using Mongoose Category model
 @injectable()
 export class MongooseCategoryRepository implements ICategoryRepository {
     async findById(id: string): Promise<ICategory | null> {

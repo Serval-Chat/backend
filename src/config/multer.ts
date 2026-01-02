@@ -2,9 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 
-/**
- * Sanitizes filenames by removing path separators, null bytes, and dots. Limits to 200 chars.
- */
+// Sanitizes filenames by removing path separators, null bytes, and dots. Limits to 200 chars
 function sanitizeFilename(filename: string): string {
     // Remove path separators and null bytes
     let sanitized = filename.replace(/[/\\:\0]/g, '_');
@@ -21,26 +19,20 @@ function sanitizeFilename(filename: string): string {
     return sanitized || 'file';
 }
 
-/**
- * Generates unique filename with random prefix.
- */
+// Generates unique filename with random prefix
 function generateSecureFilename(originalname: string): string {
     const randomPrefix = crypto.randomBytes(10).toString('hex');
     const sanitized = sanitizeFilename(originalname);
     return `${randomPrefix}-${sanitized}`;
 }
 
-/**
- * Extracts original filename from prefixed format.
- */
+// Extracts original filename from prefixed format
 export function extractOriginalFilename(secureFilename: string): string {
     const match = secureFilename.match(/^[a-f0-9]{20}-(.+)$/);
     return match?.[1] ?? secureFilename;
 }
 
-/**
- * Disk storage for general file uploads.
- */
+// Disk storage for general file uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, path.join(__dirname, '../../uploads/uploads/'));
@@ -51,9 +43,7 @@ const storage = multer.diskStorage({
     },
 });
 
-/**
- * Accepts all file types. Type validation occurs downstream.
- */
+// Accepts all file types. Type validation occurs downstream
 function fileFilter(
     req: any,
     file: Express.Multer.File,
@@ -62,9 +52,7 @@ function fileFilter(
     cb(null, true);
 }
 
-/**
- * General file upload handler. Max size: 60MiB, 1 file.
- */
+// General file upload handler. Max size: 60MiB, 1 file
 export const upload = multer({
     storage,
     limits: {
@@ -74,9 +62,7 @@ export const upload = multer({
     fileFilter,
 });
 
-/**
- * Disk storage for profile pictures with randomized filenames.
- */
+// Disk storage for profile pictures with randomized filenames
 const profileStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadDir = path.join(process.cwd(), 'uploads', 'profiles');
@@ -93,9 +79,7 @@ const profileStorage = multer.diskStorage({
     },
 });
 
-/**
- * Restricts to JPEG, PNG, and GIF formats.
- */
+// Restricts to JPEG, PNG, and GIF formats
 const profileFileFilter = (
     req: any,
     file: Express.Multer.File,
@@ -113,9 +97,7 @@ const profileFileFilter = (
     }
 };
 
-/**
- * Profile picture upload handler. Max size: 10MiB, 1 file.
- */
+// Profile picture upload handler. Max size: 10MiB, 1 file
 export const profilePictureUpload = multer({
     storage: profileStorage,
     fileFilter: profileFileFilter,
@@ -125,9 +107,7 @@ export const profilePictureUpload = multer({
     },
 });
 
-/**
- * Memory storage for image processing (e.g., Sharp).
- */
+// Memory storage for image processing (e.g., Sharp)
 export const memoryUpload = multer({
     storage: multer.memoryStorage(),
     limits: {

@@ -21,9 +21,7 @@ import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Controller for managing user warnings.
- */
+// Controller for managing user warnings
 @injectable()
 @Route('api/v1/warnings')
 @Tags('Warnings')
@@ -37,12 +35,9 @@ export class UserWarningController extends Controller {
         super();
     }
 
-    /**
-     * Sanitizes warning data for the current user.
-     *
-     * Hides the specific issuer identity for privacy
-     * labeling all warnings as issued by 'System'.
-     */
+    // Sanitizes warning data for the current user
+    //
+    // Hides the specific issuer identity for privacy, labeling all warnings as issued by 'System'
     private sanitizeWarning(warning: IWarning): any {
         if (!warning) return warning;
         const sanitized = { ...warning };
@@ -50,9 +45,7 @@ export class UserWarningController extends Controller {
         return sanitized;
     }
 
-    /**
-     * Get current user's warnings.
-     */
+    // Get current user's warnings
     @Get('me')
     public async getMyWarnings(
         @Request() req: express.Request,
@@ -77,9 +70,7 @@ export class UserWarningController extends Controller {
         }
     }
 
-    /**
-     * Acknowledge a warning.
-     */
+    // Acknowledge a warning
     @Post('{id}/acknowledge')
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.SYSTEM.WARNING_ID_REQUIRED,

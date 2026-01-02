@@ -41,15 +41,19 @@ import {
 } from '@/utils/deletion';
 import express from 'express';
 
-/**
- * Request body for resetting user profile fields.
- */
+// Profile fields that can be reset by an administrator
+export type ResetProfileRequestFieldType =
+    | 'username'
+    | 'displayName'
+    | 'pronouns'
+    | 'bio'
+    | 'banner';
+
+// Request body for resetting user profile fields
 export interface ResetProfileRequest {
-    /**
-     * Fields to reset (e.g., 'username', 'displayName', 'pronouns', 'bio').
-     * Resetting 'username' forces a logout.
-     */
-    fields: string[];
+    // Fields to reset: 'username', 'displayName', 'pronouns', 'bio', 'banner'
+    // Resetting 'username' forces a logout
+    fields: ResetProfileRequestFieldType[];
 }
 
 export interface DashboardStats {
@@ -77,9 +81,7 @@ export interface UserListItem {
     warningCount: number;
 }
 
-/**
- * Extended user details for administrative view.
- */
+// Extended user details for administrative view
 export interface UserDetails extends UserListItem {
     bio: string;
     pronouns: string;
@@ -146,10 +148,8 @@ export interface ExtendedUserDetails extends UserDetails {
     }>;
 }
 
-/**
- * Controller for administrative actions and dashboard statistics.
- * Enforces 'viewLogs', 'viewUsers', and 'resetUserProfile' permissions.
- */
+// Controller for administrative actions and dashboard statistics
+// Enforces 'viewLogs', 'viewUsers', and 'resetUserProfile' permissions
 @injectable()
 @Route('api/v1/admin')
 @Tags('Admin')
@@ -175,9 +175,7 @@ export class AdminController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves high-level statistics for the admin dashboard.
-     */
+    // Retrieves high-level statistics for the admin dashboard
     @Get('stats')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -225,9 +223,7 @@ export class AdminController extends Controller {
         };
     }
 
-    /**
-     * Lists users with optional search and filtering.
-     */
+    // Lists users with optional search and filtering
     @Get('users')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -277,9 +273,7 @@ export class AdminController extends Controller {
         return enrichedUsers;
     }
 
-    /**
-     * Retrieves detailed information about a specific user.
-     */
+    // Retrieves detailed information about a specific user
     @Get('users/{userId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -333,10 +327,8 @@ export class AdminController extends Controller {
         };
     }
 
-    /**
-     * Resets specific profile fields for a user.
-     * Resetting the username forces a logout and requires the user to log in again.
-     */
+    // Resets specific profile fields for a user
+    // Resetting the username forces a logout and requires the user to log in again
     @Post('users/{userId}/reset')
     @Response<ErrorResponse>('400', 'Invalid fields', {
         error: ErrorMessages.ADMIN.INVALID_FIELDS,
@@ -433,9 +425,7 @@ export class AdminController extends Controller {
         return { message: 'User profile fields reset', fields };
     }
 
-    /**
-     * Helper method to log admin actions to audit log
-     */
+    // Helper method to log admin actions to audit log
     private async logAdminAction(
         req: express.Request,
         actionType: string,
@@ -475,9 +465,7 @@ export class AdminController extends Controller {
         }
     }
 
-    /**
-     * Soft deletes a user account.
-     */
+    // Soft deletes a user account
     @Post('users/{userId}/soft-delete')
     @Response<ErrorResponse>('400', 'User already deleted', {
         error: ErrorMessages.AUTH.USER_ALREADY_DELETED,
@@ -588,9 +576,7 @@ export class AdminController extends Controller {
         };
     }
 
-    /**
-     * Legacy delete endpoint that forwards to soft delete.
-     */
+    // Legacy delete endpoint that forwards to soft delete
     @Delete('users/{userId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -611,9 +597,7 @@ export class AdminController extends Controller {
         };
     }
 
-    /**
-     * Hard deletes a user account completely.
-     */
+    // Hard deletes a user account completely
     @Post('users/{userId}/hard-delete')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -739,9 +723,7 @@ export class AdminController extends Controller {
         }
     }
 
-    /**
-     * Updates a user's permissions.
-     */
+    // Updates a user's permissions
     @Put('users/{userId}/permissions')
     @Response<ErrorResponse>('400', 'Invalid permissions', {
         error: ErrorMessages.ADMIN.INVALID_PERMISSIONS,
@@ -785,9 +767,7 @@ export class AdminController extends Controller {
         return { message: 'Permissions updated' };
     }
 
-    /**
-     * Bans a user for a specified duration.
-     */
+    // Bans a user for a specified duration
     @Post('users/{userId}/ban')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -855,9 +835,7 @@ export class AdminController extends Controller {
         return ban;
     }
 
-    /**
-     * Unbans a user.
-     */
+    // Unbans a user
     @Post('users/{userId}/unban')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -872,9 +850,7 @@ export class AdminController extends Controller {
         return { message: 'User unbanned' };
     }
 
-    /**
-     * Retrieves ban history for a user.
-     */
+    // Retrieves ban history for a user
     @Get('users/{userId}/bans')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -901,9 +877,7 @@ export class AdminController extends Controller {
         return historyWithStatus;
     }
 
-    /**
-     * Lists all bans with pagination.
-     */
+    // Lists all bans with pagination
     @Get('bans')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -920,9 +894,7 @@ export class AdminController extends Controller {
         return bans;
     }
 
-    /**
-     * Diagnostic endpoint for ban collections.
-     */
+    // Diagnostic endpoint for ban collections
     @Get('bans/diagnostic')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -947,9 +919,7 @@ export class AdminController extends Controller {
         };
     }
 
-    /**
-     * Warns a user.
-     */
+    // Warns a user
     @Post('users/{userId}/warn')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -990,9 +960,7 @@ export class AdminController extends Controller {
         return warning;
     }
 
-    /**
-     * Retrieves warnings for a user.
-     */
+    // Retrieves warnings for a user
     @Get('users/{userId}/warnings')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -1003,9 +971,7 @@ export class AdminController extends Controller {
         return warnings;
     }
 
-    /**
-     * Lists all warnings with pagination.
-     */
+    // Lists all warnings with pagination
     @Get('warnings')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -1022,9 +988,7 @@ export class AdminController extends Controller {
         return warnings;
     }
 
-    /**
-     * Lists audit logs with pagination.
-     */
+    // Lists audit logs with pagination
     @Get('logs')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -1041,9 +1005,7 @@ export class AdminController extends Controller {
         return logs;
     }
 
-    /**
-     * Lists servers with owner details.
-     */
+    // Lists servers with owner details
     @Get('servers')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -1100,9 +1062,7 @@ export class AdminController extends Controller {
         return enrichedServers;
     }
 
-    /**
-     * Soft deletes a server.
-     */
+    // Soft deletes a server
     @Delete('servers/{serverId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -1136,9 +1096,7 @@ export class AdminController extends Controller {
         return { message: 'Server deleted' };
     }
 
-    /**
-     * Restores a deleted server.
-     */
+    // Restores a deleted server
     @Post('servers/{serverId}/restore')
     @Response<ErrorResponse>('400', 'Server not deleted', {
         error: ErrorMessages.SERVER.NOT_DELETED,
@@ -1178,9 +1136,7 @@ export class AdminController extends Controller {
         return { message: 'Server restored' };
     }
 
-    /**
-     * Extended user details with servers.
-     */
+    // Extended user details with servers
     @Get('users/{userId}/details')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,

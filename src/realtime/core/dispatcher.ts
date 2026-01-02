@@ -8,21 +8,17 @@ import type {
 } from '@/realtime/core/types';
 import logger from '@/utils/logger';
 
-/**
- * RealTime Dispatcher.
- *
- * Handles the registration and dispatching of WebSocket events to gateway handlers.
- * Manages dependency injection, validation, and error handling for all events.
- */
+// RealTime dispatcher
+//
+// Handles the registration and dispatching of WebSocket events to gateway handlers
+// Manages dependency injection, validation, and error handling for all events
 export class RealTimeDispatcher {
-    constructor(private container: Container) {}
+    constructor(private container: Container) { }
 
-    /**
-     * Registers all gateway classes with the Socket.IO server.
-     *
-     * @param io - The Socket.IO server instance.
-     * @param gateways - List of gateway classes to register.
-     */
+    // Registers all gateway classes with the Socket.IO server
+    //
+    // @param io - The Socket.IO server instance
+    // @param gateways - List of gateway classes to register
     registerGateways(io: Server, gateways: Function[]) {
         gateways.forEach((GatewayClass) => {
             const gatewayMetadata: GatewayMetadata = Reflect.getMetadata(

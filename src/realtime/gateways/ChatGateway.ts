@@ -23,7 +23,6 @@ import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
  * Chat Gateway.
  *
  * Handles real-time direct messaging events.
- * Manages message sending, editing, deleting, typing indicators, and read receipts.
  */
 @injectable()
 @Gateway()
@@ -37,7 +36,7 @@ export class ChatGateway {
         private dmUnreadRepo: IDmUnreadRepository,
         @inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-    ) {}
+    ) { }
 
     /**
      * Handles 'message' event.
@@ -131,7 +130,6 @@ export class ChatGateway {
      * Handles 'mark_read' event.
      *
      * Marks a DM conversation as read.
-     * Resets unread count and notifies all user sessions.
      */
     @On('mark_read', MarkReadSchema)
     async onMarkRead(

@@ -6,12 +6,10 @@ import { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
 import { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 
-/**
- * Permission Service
- *
- * Handles server permission checks and role hierarchy.
- * Refactored from serverPermissions.ts to use dependency injection.
- */
+// Permission Service
+//
+// Handles server permission checks and role hierarchy.
+// Refactored from serverPermissions.ts to use dependency injection.
 @injectable()
 export class PermissionService {
     constructor(
@@ -23,22 +21,17 @@ export class PermissionService {
         private categoryRepo: ICategoryRepository,
         @inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-    ) {}
+    ) { }
 
-    /**
-     * Get user's highest role position in a server.
-     *
-     * @param serverId - The ID of the server to check
-     * @param userId - The ID of the user to check
-     *
-     * @returns The highest role position of the user in the server, or -1 if the user is not a member
-     *
-     * Logic:
-     * - Owner always has MAX_SAFE_INTEGER position
-     * - Checks all roles assigned to the user
-     * - Returns the highest position value found
-     * - Returns -1 if user is not a member
-     */
+    // Get user's highest role position in a server.
+    //
+    // Returns the highest role position of the user in the server, or -1 if the user is not a member
+    //
+    // Logic:
+    // - Owner always has MAX_SAFE_INTEGER position
+    // - Checks all roles assigned to the user
+    // - Returns the highest position value found
+    // - Returns -1 if user is not a member
     async getHighestRolePosition(
         serverId: string,
         userId: string,
@@ -76,21 +69,15 @@ export class PermissionService {
         return highestPosition;
     }
 
-    /**
-     * Check if user has a specific permission in a server.
-     *
-     * @param serverId - The ID of the server to check
-     * @param userId - The ID of the user to check
-     * @param permission - The permission to check
-     *
-     * @returns true if permission is granted, false otherwise
-     *
-     * Hierarchy (highest to lowest priority):
-     * 1. Server Owner (Always has all permissions)
-     * 2. Administrator Role (Always has all permissions)
-     * 3. Role Hierarchy (Higher position roles override lower ones)
-     * 4. @everyone Role
-     */
+    // Check if user has a specific permission in a server.
+    //
+    // Returns true if permission is granted, false otherwise
+    //
+    // Hierarchy (highest to lowest priority):
+    // 1. Server Owner (Always has all permissions)
+    // 2. Administrator Role (Always has all permissions)
+    // 3. Role Hierarchy (Higher position roles override lower ones)
+    // 4. @everyone Role
     async hasPermission(
         serverId: string,
         userId: string,
@@ -147,23 +134,16 @@ export class PermissionService {
         return false;
     }
 
-    /**
-     * Check if user has a specific permission in a channel.
-     *
-     * @param serverId - The ID of the server to check
-     * @param userId - The ID of the user to check
-     * @param channelId - The ID of the channel to check
-     * @param permission - The permission to check
-     *
-     * @returns true if permission is granted, false otherwise
-     *
-     * Hierarchy (highest to lowest priority):
-     * 1. Server Owner
-     * 2. Administrator Role
-     * 3. Channel Overrides (Specific to channel)
-     * 4. Category Overrides (Inherited from category)
-     * 5. Role Permissions (Base server permissions)
-     */
+    // Check if user has a specific permission in a channel.
+    //
+    // Returns true if permission is granted, false otherwise
+    //
+    // Hierarchy (highest to lowest priority):
+    // 1. Server Owner
+    // 2. Administrator Role
+    // 3. Channel Overrides (Specific to channel)
+    // 4. Category Overrides (Inherited from category)
+    // 5. Role Permissions (Base server permissions)
     async hasChannelPermission(
         serverId: string,
         userId: string,

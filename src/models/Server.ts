@@ -1,11 +1,9 @@
 import type { Document, Model } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
-/**
- * Server Interface.
- *
- * Represents a chat server.
- */
+// Server interface
+//
+// Represents a chat server
 export interface IServer extends Document {
     _id: mongoose.Types.ObjectId;
     name: string;
@@ -22,12 +20,10 @@ export interface IServer extends Document {
     allTimeHigh?: number;
 }
 
-/**
- * Category Interface.
- *
- * Represents a channel category.
- * Can override permissions for channels within it.
- */
+// Category interface
+//
+// Represents a channel category
+// Can override permissions for channels within it
 export interface ICategory extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: mongoose.Types.ObjectId;
@@ -52,11 +48,9 @@ export interface ICategory extends Document {
     createdAt: Date;
 }
 
-/**
- * Channel Interface.
- *
- * Represents a text or voice channel within a server.
- */
+// Channel interface
+//
+// Represents a text or voice channel within a server
 export interface IChannel extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: mongoose.Types.ObjectId;
@@ -79,11 +73,9 @@ export interface IChannel extends Document {
     description?: string;
 }
 
-/**
- * Server Member Interface.
- *
- * Represents a user's membership in a server, including their roles.
- */
+// Server member interface
+//
+// Represents a user's membership in a server, including their roles
 export interface IServerMember extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: mongoose.Types.ObjectId;
@@ -92,11 +84,9 @@ export interface IServerMember extends Document {
     joinedAt: Date;
 }
 
-/**
- * Role Interface.
- *
- * Represents a role within a server, defining permissions and styling.
- */
+// Role interface
+//
+// Represents a role within a server, defining permissions and styling
 export interface IRole extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: mongoose.Types.ObjectId;
@@ -126,11 +116,9 @@ export interface IRole extends Document {
     createdAt: Date;
 }
 
-/**
- * Invite Interface.
- *
- * Represents an invitation link to join a server.
- */
+// Invite interface
+//
+// Represents an invitation link to join a server
 export interface IInvite extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: mongoose.Types.ObjectId;
@@ -143,11 +131,9 @@ export interface IInvite extends Document {
     createdAt: Date;
 }
 
-/**
- * Server Message Interface.
- *
- * Represents a message sent in a server channel.
- */
+// Server message interface
+//
+// Represents a message sent in a server channel
 export interface IServerMessage extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: mongoose.Types.ObjectId;
@@ -164,11 +150,9 @@ export interface IServerMessage extends Document {
     webhookAvatarUrl?: string;
 }
 
-/**
- * Server Ban Interface.
- *
- * Represents a user banned from a specific server.
- */
+// Server ban interface
+//
+// Represents a user banned from a specific server
 export interface IServerBan extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: mongoose.Types.ObjectId;

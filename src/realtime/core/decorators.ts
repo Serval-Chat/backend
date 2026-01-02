@@ -5,27 +5,23 @@ export const GATEWAY_METADATA = Symbol('GATEWAY_METADATA');
 export const EVENT_METADATA = Symbol('EVENT_METADATA');
 export const MIDDLEWARE_METADATA = Symbol('MIDDLEWARE_METADATA');
 
-/**
- * Gateway Class Decorator.
- *
- * Marks a class as a WebSocket gateway.
- *
- * @param namespace - The namespace for this gateway (default: '/').
- */
+// Gateway Class decorator
+//
+// Marks a class as a WebSocket gateway
+//
+// @param namespace - The namespace for this gateway (default: '/')
 export function Gateway(namespace: string = '/'): ClassDecorator {
     return (target) => {
         Reflect.defineMetadata(GATEWAY_METADATA, { namespace }, target);
     };
 }
 
-/**
- * Event Handler Decorator.
- *
- * Marks a method as a handler for a specific WebSocket event.
- *
- * @param event - The event name to listen for.
- * @param schema - Optional Zod schema for payload validation.
- */
+// Event Handler decorator
+//
+// Marks a method as a handler for a specific WebSocket event
+//
+// @param event - The event name to listen for
+// @param schema - Optional Zod schema for payload validation
 export function On(event: string, schema?: ZodSchema): MethodDecorator {
     return (target, propertyKey, _descriptor) => {
         const events =
@@ -35,13 +31,11 @@ export function On(event: string, schema?: ZodSchema): MethodDecorator {
     };
 }
 
-/**
- * Middleware Decorator.
- *
- * Applies middleware to a specific event handler.
- *
- * @param middleware - The middleware function to apply.
- */
+// Middleware decorator
+//
+// Applies middleware to a specific event handler
+//
+// @param middleware - The middleware function to apply
 export function UseMiddleware(middleware: Function): MethodDecorator {
     return (target, propertyKey, _descriptor) => {
         const middlewares =

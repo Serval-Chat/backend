@@ -1,16 +1,12 @@
 import { z } from 'zod';
 import { objectIdSchema } from '@/validation/schemas/common';
 
-/**
- * Get emoji by ID parameter validation
- */
+// Get emoji by ID parameter validation
 export const getEmojiByIdParamsSchema = z.object({
     emojiId: objectIdSchema,
 });
 
-/**
- * Get all emojis query validation
- */
+// Get all emojis query validation
 export const getAllEmojisQuerySchema = z.object({
     search: z.string().optional(),
     serverId: objectIdSchema.optional(),

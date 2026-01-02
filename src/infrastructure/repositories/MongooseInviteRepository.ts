@@ -6,11 +6,9 @@ import {
 } from '@/di/interfaces/IInviteRepository';
 import { Invite } from '@/models/Server';
 
-/**
- * Mongoose Invite Repository
- *
- * Implements IInviteRepository using Mongoose Invite model.
- */
+// Mongoose Invite repository
+//
+// Implements IInviteRepository using Mongoose Invite model
 @injectable()
 export class MongooseInviteRepository implements IInviteRepository {
     async findByCode(code: string): Promise<IInvite | null> {
@@ -25,12 +23,10 @@ export class MongooseInviteRepository implements IInviteRepository {
         return (await Invite.findOne({ customPath }).lean()) as IInvite | null;
     }
 
-    /**
-     * Find invite by code or custom path.
-     *
-     * Query that checks 'code', 'customPath', and optionally '_id'
-     * if the input is a valid ObjectId.
-     */
+    // Find invite by code or custom path
+    //
+    // Query that checks 'code', 'customPath', and optionally '_id'
+    // If the input is a valid ObjectId
     async findByCodeOrCustomPath(codeOrPath: string): Promise<IInvite | null> {
         const query: any = {
             $or: [{ code: codeOrPath }, { customPath: codeOrPath }],

@@ -6,14 +6,12 @@ import { Ban } from '@/models/Ban';
 import { Types } from 'mongoose';
 import type { JWTPayload } from '@/utils/jwt';
 
-/**
- * Handles authentication and authorization for routes.
- * Enforces boundaries including JWT verification, bans, deletion, and permission scopes.
- * Rejects on authentication failure or if the user lacks required scopes.
- *
- * @returns Decoded JWT payload
- * @throws {Error | {status: number, message: string}} Rejects with mixed error shapes.
- */
+// Handles authentication and authorization for routes
+// Enforces boundaries including JWT verification, bans, deletion, and permission scopes
+// Rejects on authentication failure or if the user lacks required scopes
+//
+// @returns Decoded JWT payload
+// @throws {Error | {status: number, message: string}} Rejects with mixed error shapes
 export async function expressAuthentication(
     request: express.Request,
     securityName: string,

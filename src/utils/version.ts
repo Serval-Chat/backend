@@ -6,11 +6,9 @@ import logger from '@/utils/logger';
 let cachedCommitHash: { commit: string; short: string } | null = null;
 let cachedVersion: string | null = null;
 
-/**
- * Get git commit hash information.
- *
- * @returns Full and short commit hash, or 'unknown' if git is (somehow) unavailable
- */
+// Get git commit hash information
+//
+// @returns Full and short commit hash, or 'unknown' if git is (somehow) unavailable
 export function getGitCommitHash(): { commit: string; short: string } {
     if (cachedCommitHash) {
         return cachedCommitHash;
@@ -40,11 +38,9 @@ export function getGitCommitHash(): { commit: string; short: string } {
     }
 }
 
-/**
- * Get application version from package.json.
- *
- * @returns Version string, defaults to 'unknown' if unavailable
- */
+// Get application version from package.json
+//
+// @returns Version string, defaults to 'unknown' if unavailable
 export function getVersion(): string {
     if (cachedVersion) {
         return cachedVersion;

@@ -1,8 +1,6 @@
 import type { Types } from 'mongoose';
 
-/**
- * Ban interface.
- */
+// Ban interface
 export interface IBan {
     _id: any; // Mongoose ObjectId type
     userId: Types.ObjectId | string;
@@ -12,9 +10,7 @@ export interface IBan {
     createdAt?: Date;
     issuedBy?: Types.ObjectId | string;
     timestamp?: Date;
-    /**
-     * Historical record of previous bans or updates to this ban.
-     */
+    // Historical record of previous bans or updates to this ban
     history?: Array<{
         reason: string;
         issuedBy: Types.ObjectId | string;
@@ -24,49 +20,33 @@ export interface IBan {
     }>;
 }
 
-/**
- * Ban Repository Interface
- *
- * Encapsulates all ban-related database operations
- */
+// Ban Repository Interface
+//
+// Encapsulates all ban-related database operations
 export interface IBanRepository {
-    /**
-     * Find active ban for a user
-     */
+    // Find active ban for a user
     findActiveByUserId(userId: string): Promise<IBan | null>;
 
-    /**
-     * Create a new ban
-     */
+    // Create a new ban
     create(
         userId: string,
         reason: string,
         expirationTimestamp?: Date,
     ): Promise<IBan>;
 
-    /**
-     * Expire (deactivate) a ban
-     */
+    // Expire (deactivate) a ban
     expire(banId: string): Promise<boolean>;
 
-    /**
-     * Check and expire bans that have passed their expiration time.
-     */
+    // Check and expire bans that have passed their expiration time
     checkExpired(userId: string): Promise<void>;
 
-    /**
-     * Find all active bans
-     */
+    // Find all active bans
     findAllActive(): Promise<IBan[]>;
 
-    /**
-     * Find ban by user ID with history
-     */
+    // Find ban by user ID with history
     findByUserIdWithHistory(userId: string): Promise<IBan | null>;
 
-    /**
-     * Create or update ban with history
-     */
+    // Create or update ban with history
     createOrUpdateWithHistory(data: {
         userId: string;
         reason: string;
@@ -74,28 +54,18 @@ export interface IBanRepository {
         expirationTimestamp?: Date;
     }): Promise<IBan>;
 
-    /**
-     * Deactivate all bans for a user
-     */
+    // Deactivate all bans for a user
     deactivateAllForUser(userId: string): Promise<{ modifiedCount: number }>;
 
-    /**
-     * Delete all bans for a user (for hard delete)
-     */
+    // Delete all bans for a user (for hard delete)
     deleteAllForUser(userId: string): Promise<{ deletedCount: number }>;
 
-    /**
-     * Find all bans with pagination
-     */
+    // Find all bans with pagination
     findAll(options: { limit?: number; offset?: number }): Promise<IBan[]>;
 
-    /**
-     * Count active bans
-     */
+    // Count active bans
     countActive(): Promise<number>;
 
-    /**
-     * Count bans created after a certain date
-     */
+    // Count bans created after a certain date
     countCreatedAfter(date: Date): Promise<number>;
 }

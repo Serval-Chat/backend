@@ -32,14 +32,12 @@ import { ErrorMessages } from '@/constants/errorMessages';
 
 interface CreateInviteRequest {
     maxUses?: number;
-    expiresIn?: number; // in seconds
+    expiresIn?: number; // In seconds
     customPath?: string;
 }
 
-/**
- * Controller for managing server invites.
- * Enforces 'manageInvites' permission checks and owner-only custom code restrictions.
- */
+// Controller for managing server invites
+// Enforces 'manageInvites' permission checks and owner-only custom code restrictions
 @injectable()
 @Route('api/v1')
 @Tags('Server Invites')
@@ -61,10 +59,8 @@ export class ServerInviteController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves all active invites for a server.
-     * Enforces 'manageInvites' permission.
-     */
+    // Retrieves all active invites for a server
+    // Enforces 'manageInvites' permission
     @Get('servers/{serverId}/invites')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -94,10 +90,8 @@ export class ServerInviteController extends Controller {
         return await this.inviteRepo.findByServerId(serverId);
     }
 
-    /**
-     * Creates a new invite for a server.
-     * Enforces 'manageInvites' permission; custom codes require server ownership.
-     */
+    // Creates a new invite for a server
+    // Enforces 'manageInvites' permission; custom codes require server ownership
     @Post('servers/{serverId}/invites')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Bad Request', {
@@ -171,10 +165,8 @@ export class ServerInviteController extends Controller {
         });
     }
 
-    /**
-     * Deletes an invite.
-     * Enforces 'manageInvites' permission.
-     */
+    // Deletes an invite
+    // Enforces 'manageInvites' permission
     @Delete('servers/{serverId}/invites/{inviteId}')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -218,9 +210,7 @@ export class ServerInviteController extends Controller {
         return { message: 'Invite deleted' };
     }
 
-    /**
-     * Retrieves public details for an invite code.
-     */
+    // Retrieves public details for an invite code
     @Get('invites/{code}')
     @Response<ErrorResponse>('404', 'Invite Not Found', {
         error: ErrorMessages.INVITE.NOT_FOUND,
@@ -289,10 +279,8 @@ export class ServerInviteController extends Controller {
         };
     }
 
-    /**
-     * Joins a server using an invite code.
-     * Enforces ban checks and automatically assigns default roles.
-     */
+    // Joins a server using an invite code
+    // Enforces ban checks and automatically assigns default roles
     @Post('invites/{code}/join')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Bad Request', {

@@ -3,12 +3,10 @@ import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
 import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 
-/**
- * User Interface.
- *
- * Represents a registered user in the system.
- * Includes profile settings, permissions, and security fields.
- */
+// User interface
+//
+// Represents a registered user in the system
+// Includes profile settings, permissions, and security fields
 export interface IUser extends Document {
     _id: Types.ObjectId;
     login: string;
@@ -137,12 +135,10 @@ schema.virtual('deleted').get(function () {
     return !!this.deletedAt;
 });
 
-/**
- * Virtual getter for display username.
- *
- * Returns the anonymized username if the user is soft-deleted,
- * otherwise returns the real username.
- */
+// Virtual getter for display username
+//
+// Returns the anonymized username if the user is soft-deleted,
+// Otherwise returns the real username
 schema.virtual('displayUsername').get(function () {
     return this.deletedAt && this.anonymizedUsername
         ? this.anonymizedUsername
@@ -160,7 +156,5 @@ schema.methods.comparePassword = function (candidate: string) {
     return bcrypt.compare(candidate, this.password);
 };
 
-/**
- * User Model.
- */
+// User model
 export const User = model<IUser>('User', schema);

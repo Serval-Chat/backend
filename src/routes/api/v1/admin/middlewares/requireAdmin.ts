@@ -10,9 +10,6 @@ const userRepo = container.get<IUserRepository>(TYPES.UserRepository);
 /**
  * Middleware to require admin permissions.
  *
- * Checks if the authenticated user has the required permission.
- * Also allows access if the user has 'adminAccess' (super admin).
- *
  * @param requiredPermission - The specific permission required for the route.
  */
 export const requireAdmin = (requiredPermission: keyof AdminPermissions) => {

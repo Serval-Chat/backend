@@ -1,6 +1,4 @@
-/**
- * Utility script to generate VAPID keys for Web Push notifications.
- */
+// Utility script to generate VAPID keys for Web Push notifications
 import webpush from 'web-push';
 
 const vapidKeys = webpush.generateVAPIDKeys();

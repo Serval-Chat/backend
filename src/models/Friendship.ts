@@ -1,14 +1,12 @@
 import type { Document, Model } from 'mongoose';
 import mongoose, { Schema, Types } from 'mongoose';
 
-/**
- * Friendship Interface.
- *
- * Represents friendship between two users.
- * Supports legacy string-based IDs and new ObjectId references.
- *
- * Legacy remains because I am TOO LAZY to remove it & migrate the database. I will do it in the future tho
- */
+// Friendship interface
+//
+// Represents friendship between two users
+// Supports legacy string-based IDs and new ObjectId references
+//
+// Legacy support due to existing database structure
 interface IFriendship extends Document {
     user: string; // Keep for backward compatibility
     friend: string; // Keep for backward compatibility
@@ -17,11 +15,9 @@ interface IFriendship extends Document {
     createdAt: Date;
 }
 
-/**
- * Friend Request Interface.
- *
- * Represents a pending, accepted, or rejected friend request.
- */
+// Friend Request interface
+//
+// Represents a pending, accepted, or rejected friend request
 interface IFriendRequest extends Document {
     from: string; // Keep for backward compatibility
     to: string; // Keep for backward compatibility
@@ -62,18 +58,16 @@ friendRequestSchema.index(
     { unique: true, sparse: true },
 );
 
-/**
- * Check if two users are friends.
- *
- * Handles both new ObjectId-based friendships and legacy username-based ones.
- *
- * @param user1 - ID or username of first user
- * @param user2 - ID or username of second user
- * @param username1 - Optional username of first user
- * @param username2 - Optional username of second user
- *
- * @returns Promise<boolean> - True if users are friends, false otherwise
- */
+// Check if two users are friends
+//
+// Handles both new ObjectId-based friendships and legacy username-based ones
+//
+// @param user1 - ID or username of first user
+// @param user2 - ID or username of second user
+// @param username1 - Optional username of first user
+// @param username2 - Optional username of second user
+//
+// @returns Promise<boolean> - True if users are friends, false otherwise
 export const areFriends = async (
     user1: string,
     user2: string,

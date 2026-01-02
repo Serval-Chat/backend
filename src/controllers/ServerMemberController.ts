@@ -43,10 +43,8 @@ interface TransferOwnershipRequest {
     newOwnerId: string;
 }
 
-/**
- * Controller for managing server members, including kicks, bans, and role assignments.
- * Enforces permission checks and prevents actions against server owners.
- */
+// Controller for managing server members, including kicks, bans, and role assignments
+// Enforces permission checks and prevents actions against server owners
 @injectable()
 @Route('api/v1/servers/{serverId}')
 @Tags('Server Members')
@@ -67,10 +65,8 @@ export class ServerMemberController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves all members of a server.
-     * Enforces server membership.
-     */
+    // Retrieves all members of a server
+    // Enforces server membership
     @Get('members')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -93,10 +89,8 @@ export class ServerMemberController extends Controller {
         return await this.serverMemberRepo.findByServerIdWithUserInfo(serverId);
     }
 
-    /**
-     * Searches for members in a server by username or display name.
-     * Enforces server membership.
-     */
+    // Searches for members in a server by username or display name
+    // Enforces server membership
     @Get('members/search')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -120,10 +114,8 @@ export class ServerMemberController extends Controller {
         return await this.serverMemberRepo.searchMembers(serverId, q);
     }
 
-    /**
-     * Retrieves details for a specific server member.
-     * Enforces server membership.
-     */
+    // Retrieves details for a specific server member
+    // Enforces server membership
     @Get('members/{userId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -160,10 +152,8 @@ export class ServerMemberController extends Controller {
         return { ...member, user: user ? mapUser(user) : null };
     }
 
-    /**
-     * Kicks a member from the server.
-     * Enforces 'kickMembers' permission and prevents kicking the server owner.
-     */
+    // Kicks a member from the server
+    // Enforces 'kickMembers' permission and prevents kicking the server owner
     @Delete('members/{userId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_KICK,
@@ -217,10 +207,8 @@ export class ServerMemberController extends Controller {
         return { message: 'Member kicked' };
     }
 
-    /**
-     * Bans a member from the server.
-     * Enforces 'banMembers' permission and prevents banning the server owner.
-     */
+    // Bans a member from the server
+    // Enforces 'banMembers' permission and prevents banning the server owner
     @Post('bans')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_BAN,
@@ -273,10 +261,8 @@ export class ServerMemberController extends Controller {
         return { message: 'Member banned' };
     }
 
-    /**
-     * Unbans a user from the server.
-     * Enforces 'banMembers' permission.
-     */
+    // Unbans a user from the server
+    // Enforces 'banMembers' permission
     @Delete('bans/{userId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_UNBAN,
@@ -310,10 +296,8 @@ export class ServerMemberController extends Controller {
         return { message: 'Member unbanned' };
     }
 
-    /**
-     * Retrieves all active bans for a server.
-     * Enforces 'banMembers' permission.
-     */
+    // Retrieves all active bans for a server
+    // Enforces 'banMembers' permission
     @Get('bans')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_VIEW_BANS,
@@ -338,9 +322,7 @@ export class ServerMemberController extends Controller {
         return await this.serverBanRepo.findByServerId(serverId);
     }
 
-    /**
-     * Add a role to a member.
-     */
+    // Add a role to a member
     @Post('members/{userId}/roles/{roleId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -402,9 +384,7 @@ export class ServerMemberController extends Controller {
         return updatedMember;
     }
 
-    /**
-     * Remove a role from a member.
-     */
+    // Remove a role from a member
     @Delete('members/{userId}/roles/{roleId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -456,10 +436,8 @@ export class ServerMemberController extends Controller {
         return updatedMember;
     }
 
-    /**
-     * Removes the current user from the server.
-     * Enforces that the server owner cannot leave without transferring ownership.
-     */
+    // Removes the current user from the server
+    // Enforces that the server owner cannot leave without transferring ownership
     @Delete('members/me')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
@@ -487,10 +465,8 @@ export class ServerMemberController extends Controller {
         return { message: 'Left server' };
     }
 
-    /**
-     * Transfers server ownership to another member.
-     * Enforces that only the current owner can perform this action.
-     */
+    // Transfers server ownership to another member
+    // Enforces that only the current owner can perform this action
     @Post('transfer-ownership')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.TRANSFER_OWNERSHIP_ONLY_OWNER,

@@ -69,10 +69,8 @@ interface UpdatePermissionsRequest {
     permissions: { [roleId: string]: any };
 }
 
-/**
- * Controller for managing server channels and categories.
- * Enforcing server membership and 'manageChannels' permission checks.
- */
+// Controller for managing server channels and categories
+// Enforcing server membership and 'manageChannels' permission checks
 @injectable()
 @Route('api/v1/servers/{serverId}')
 @Tags('Server Channels')
@@ -96,9 +94,7 @@ export class ServerChannelController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves all channels for a server, including unread status for the requester.
-     */
+    // Retrieves all channels for a server, including unread status for the requester
     @Get('channels')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -147,9 +143,7 @@ export class ServerChannelController extends Controller {
         });
     }
 
-    /**
-     * Retrieves all categories for a server.
-     */
+    // Retrieves all categories for a server
     @Get('categories')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -172,10 +166,8 @@ export class ServerChannelController extends Controller {
         return await this.categoryRepo.findByServerId(serverId);
     }
 
-    /**
-     * Creates a new channel in a server.
-     * Enforces 'manageChannels' permission.
-     */
+    // Creates a new channel in a server
+    // Enforces 'manageChannels' permission
     @Post('channels')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -205,8 +197,8 @@ export class ServerChannelController extends Controller {
             body.position !== undefined
                 ? body.position
                 : maxPositionChannel
-                  ? maxPositionChannel.position + 1
-                  : 0;
+                    ? maxPositionChannel.position + 1
+                    : 0;
 
         const channel = await this.channelRepo.create({
             serverId,
@@ -229,10 +221,8 @@ export class ServerChannelController extends Controller {
         return channel;
     }
 
-    /**
-     * Reorders channels within a server.
-     * Enforces 'manageChannels' permission.
-     */
+    // Reorders channels within a server
+    // Enforces 'manageChannels' permission
     @Patch('channels/reorder')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -268,9 +258,7 @@ export class ServerChannelController extends Controller {
         return { message: 'Channels reordered' };
     }
 
-    /**
-     * Retrieves statistics for a specific channel.
-     */
+    // Retrieves statistics for a specific channel
     @Get('channels/{channelId}/stats')
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.CHANNEL.NOT_IN_SERVER,
@@ -320,10 +308,8 @@ export class ServerChannelController extends Controller {
         };
     }
 
-    /**
-     * Updates channel settings.
-     * Enforces 'manageChannels' permission.
-     */
+    // Updates channel settings
+    // Enforces 'manageChannels' permission
     @Patch('channels/{channelId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -372,10 +358,8 @@ export class ServerChannelController extends Controller {
         return channel;
     }
 
-    /**
-     * Deletes a channel from a server.
-     * Enforces 'manageChannels' permission.
-     */
+    // Deletes a channel from a server
+    // Enforces 'manageChannels' permission
     @Delete('channels/{channelId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -412,10 +396,8 @@ export class ServerChannelController extends Controller {
         return { message: 'Channel deleted' };
     }
 
-    /**
-     * Creates a new category in a server.
-     * Enforces 'manageChannels' permission.
-     */
+    // Creates a new category in a server
+    // Enforces 'manageChannels' permission
     @Post('categories')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -444,8 +426,8 @@ export class ServerChannelController extends Controller {
             body.position !== undefined
                 ? body.position
                 : maxPositionCategory
-                  ? maxPositionCategory.position + 1
-                  : 0;
+                    ? maxPositionCategory.position + 1
+                    : 0;
 
         const category = await this.categoryRepo.create({
             serverId,
@@ -462,10 +444,8 @@ export class ServerChannelController extends Controller {
         return category;
     }
 
-    /**
-     * Updates category settings.
-     * Enforces 'manageChannels' permission.
-     */
+    // Updates category settings
+    // Enforces 'manageChannels' permission
     @Patch('categories/{categoryId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -511,10 +491,8 @@ export class ServerChannelController extends Controller {
         return category;
     }
 
-    /**
-     * Deletes a category from a server.
-     * Enforces 'manageChannels' permission.
-     */
+    // Deletes a category from a server
+    // Enforces 'manageChannels' permission
     @Delete('categories/{categoryId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -561,10 +539,8 @@ export class ServerChannelController extends Controller {
         return { message: 'Category deleted' };
     }
 
-    /**
-     * Reorders categories within a server.
-     * Enforces 'manageChannels' permission.
-     */
+    // Reorders categories within a server
+    // Enforces 'manageChannels' permission
     @Patch('categories/reorder')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -600,10 +576,8 @@ export class ServerChannelController extends Controller {
         return { message: 'Categories reordered' };
     }
 
-    /**
-     * Retrieves permission overrides for a specific channel.
-     * Enforces 'manageChannels' permission.
-     */
+    // Retrieves permission overrides for a specific channel
+    // Enforces 'manageChannels' permission
     @Get('channels/{channelId}/permissions')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -647,10 +621,8 @@ export class ServerChannelController extends Controller {
         return { permissions: channel.permissions || {} };
     }
 
-    /**
-     * Updates permission overrides for a specific channel.
-     * Enforces 'manageChannels' permission.
-     */
+    // Updates permission overrides for a specific channel
+    // Enforces 'manageChannels' permission
     @Patch('channels/{channelId}/permissions')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -697,10 +669,8 @@ export class ServerChannelController extends Controller {
         return { permissions: body.permissions || {} };
     }
 
-    /**
-     * Retrieves permission overrides for a specific category.
-     * Enforces 'manageChannels' permission.
-     */
+    // Retrieves permission overrides for a specific category
+    // Enforces 'manageChannels' permission
     @Get('categories/{categoryId}/permissions')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
@@ -744,10 +714,8 @@ export class ServerChannelController extends Controller {
         return { permissions: category.permissions || {} };
     }
 
-    /**
-     * Updates permission overrides for a specific category.
-     * Enforces 'manageChannels' permission.
-     */
+    // Updates permission overrides for a specific category
+    // Enforces 'manageChannels' permission
     @Patch('categories/{categoryId}/permissions')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,

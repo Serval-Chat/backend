@@ -29,7 +29,7 @@ export const DEFAULT_PERMISSIONS: AdminPermissions = {
     manageInvites: false,
 };
 
-// Keep for reference if needed, but we should use keys now
+// Array of permission keys for reference
 export const PERMISSION_KEYS = [
     'adminAccess',
     'viewUsers',

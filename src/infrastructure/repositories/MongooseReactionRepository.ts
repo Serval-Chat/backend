@@ -8,15 +8,12 @@ import { Reaction } from '@/models/Reaction';
 import { Emoji } from '@/models/Emoji';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Mongoose implementation of IReactionRepository
- *
- * Handles all database operations for emoji reactions.
- * Enforces rules:
- * - Maximum 20 unique emoji types per message
- * - Users can only react once per emoji per message
- * - Custom emojis must exist in the Emoji collection
- */
+// Mongoose implementation of IReactionRepository
+// Handles all database operations for emoji reactions
+// Enforces rules:
+// - Maximum 20 unique emoji types per message
+// - Users can only react once per emoji per message
+// - Custom emojis must exist in the Emoji collection
 
 @injectable()
 export class MongooseReactionRepository implements IReactionRepository {
@@ -127,12 +124,9 @@ export class MongooseReactionRepository implements IReactionRepository {
         messageType: 'dm' | 'server',
         _currentUserId?: string,
     ): Promise<ReactionData[]> {
-        /**
-         * Groups reactions by emoji.
-         *
-         * For each emoji (unicode or custom emojiId), counts how many times
-         * it appears and collects the users who reacted with it.
-         */
+        // Groups reactions by emoji
+        // For each emoji (unicode or custom emojiId), counts how many times
+        // It appears and collects the users who reacted with it
         const pipeline: any[] = [
             {
                 $match: {
@@ -302,11 +296,8 @@ export class MongooseReactionRepository implements IReactionRepository {
         messageId: string,
         messageType: 'dm' | 'server',
     ): Promise<number> {
-        /**
-         * Count unique emoji types (not total reactions).
-         *
-         * Used to enforce the MAX_REACTIONS_PER_MESSAGE limit.
-         */
+        // Count unique emoji types (not total reactions)
+        // Used to enforce the MAX_REACTIONS_PER_MESSAGE limit
         const pipeline = [
             {
                 $match: {

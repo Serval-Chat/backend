@@ -1,10 +1,8 @@
 import { z } from 'zod';
 
-/**
- * Schema for reaction events (add/remove).
- * Supports both standard unicode emojis and custom emojis.
- * Applicable to both DM and Server messages.
- */
+// Schema for reaction events (add/remove)
+// Supports both standard unicode emojis and custom emojis
+// Applicable to both DM and server messages
 export const ReactionEventSchema = z.object({
     messageId: z.string(),
     messageType: z.enum(['dm', 'server']),

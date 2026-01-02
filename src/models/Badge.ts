@@ -1,14 +1,12 @@
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
-/**
- * Badge Interface.
- *
- * Represents a decorative badge that can be awarded to users (e.g., 'Bug Hunter').
- */
+// Badge interface
+//
+// Represents a decorative badge that can be awarded to users (e.g., 'Bug Hunter')
 export interface IBadge extends Document {
     _id: Types.ObjectId;
-    id: string; // Unique identifier like 'furry' (hi luk)
+    id: string; // Unique identifier
     name: string; // Display name
     description: string; // Hover tooltip description
     icon: string; // Icon name
@@ -25,7 +23,5 @@ const badgeSchema = new Schema<IBadge>({
     createdAt: { type: Date, default: Date.now },
 });
 
-/**
- * Badge Model.
- */
+// Badge model
 export const Badge = model<IBadge>('Badge', badgeSchema);

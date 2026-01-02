@@ -5,22 +5,18 @@ import {
 } from '@/di/interfaces/IWebhookRepository';
 import { Webhook } from '@/models/Webhook';
 
-/**
- * Mongoose Webhook Repository
- *
- * Implements IWebhookRepository using Mongoose Webhook model.
- */
+// Mongoose Webhook repository
+//
+// Implements IWebhookRepository using Mongoose Webhook model
 @injectable()
 export class MongooseWebhookRepository implements IWebhookRepository {
     async findById(id: string): Promise<IWebhook | null> {
         return await Webhook.findById(id).lean();
     }
 
-    /**
-     * Find webhook by its secret token.
-     *
-     * Used to authenticate incoming webhook execution requests.
-     */
+    // Find webhook by its secret token
+    //
+    // Used to authenticate incoming webhook execution requests */
     async findByToken(token: string): Promise<IWebhook | null> {
         return await Webhook.findOne({ token }).lean();
     }

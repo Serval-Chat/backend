@@ -77,9 +77,7 @@ interface UpdateLanguageRequest {
     language: string;
 }
 
-/**
- * User profile information including badges and customization
- */
+// User profile information including badges and customization
 interface BadgeResponse {
     _id: any;
     id: string;
@@ -91,57 +89,57 @@ interface BadgeResponse {
 }
 
 interface UserProfile {
-    /** User's unique identifier */
+    // User's unique identifier
     id: string;
 
-    /** Username (unique identifier) */
+    // Username (unique identifier)
     username: string;
 
-    /** Login name (if different from username) */
+    // Login name (if different from username)
     login: string;
 
-    /** Display name shown to other users */
+    // Display name shown to other users
     displayName: string | null;
 
-    /** URL to the user's profile picture */
+    // URL to the user's profile picture
     profilePicture: string | null;
 
-    /** Font used for username display */
+    // Font used for username display
     usernameFont: string;
 
-    /** Gradient settings for username */
+    // Gradient settings for username
     usernameGradient: {
         enabled: boolean;
         colors: string[];
         angle: number;
     };
 
-    /** Glow effect settings for username */
+    // Glow effect settings for username
     usernameGlow: {
         enabled: boolean;
         color: string;
         intensity: number;
     };
 
-    /** User's current custom status */
+    // User's current custom status
     customStatus: any;
 
-    /** User's permission level */
+    // User's permission level
     permissions: string | AdminPermissions;
 
-    /** When the user account was created */
+    // When the user account was created
     createdAt: Date;
 
-    /** User's biography */
+    // User's biography
     bio: string;
 
-    /** User's pronouns */
+    // User's pronouns
     pronouns: string;
 
-    /** List of badges assigned to the user */
+    // List of badges assigned to the user
     badges: BadgeResponse[];
 
-    /** URL to the user's profile banner */
+    // URL to the user's profile banner
     banner: string | null;
 }
 
@@ -157,10 +155,8 @@ interface DisplayNameUpdate {
     displayName: string;
 }
 
-/**
- * Controller for user profile management, customization, and status updates.
- * Enforces  boundaries via JWT ownership checks and admin permission validation.
- */
+// Controller for user profile management, customization, and status updates
+// Enforces boundaries via JWT ownership checks and admin permission validation
 @injectable()
 @Route('api/v1/profile')
 @Tags('Profile')
@@ -177,9 +173,7 @@ export class ProfileController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves the current authenticated user's profile.
-     */
+    // Retrieves the current authenticated user's profile
     @Get('me')
     @Security('jwt')
     @Response<ErrorResponse>('404', 'User not found', {
@@ -193,9 +187,7 @@ export class ProfileController extends Controller {
         return this.getUserProfile(userId);
     }
 
-    /**
-     * Retrieves a user's profile by their unique ID.
-     */
+    // Retrieves a user's profile by their unique ID
     @Get('{userId}')
     @Security('jwt')
     @Response<ErrorResponse>('404', 'User not found', {
@@ -213,10 +205,8 @@ export class ProfileController extends Controller {
         return this.mapToProfile(user);
     }
 
-    /**
-     * Updates a user's badges.
-     * Enforces 'MANAGE_USERS' admin permission.
-     */
+    // Updates a user's badges
+    // Enforces 'MANAGE_USERS' admin permission
     @Post('{id}/badges')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Bad Request - Invalid badge IDs', {
@@ -332,10 +322,8 @@ export class ProfileController extends Controller {
         }
     }
 
-    /**
-     * Uploads or updates the user's profile banner.
-     * Resizes the image to 1200x300 and Enforces path sanitization.
-     */
+    // Uploads or updates the user's profile banner
+    // Validates compliance with dimensions (max 1136x400) and format (WebP). enforces path sanitization
     @Post('banner')
     @Security('jwt')
     public async uploadBanner(
@@ -477,9 +465,7 @@ export class ProfileController extends Controller {
         }
     }
 
-    /**
-     * Serves a profile banner file.
-     */
+    // Serves a profile banner file
     @Get('banner/{filename}')
     public async getBanner(
         @Path() filename: string,
@@ -527,9 +513,7 @@ export class ProfileController extends Controller {
         });
     }
 
-    /**
-     * Updates the current user's biography.
-     */
+    // Updates the current user's biography
     @Patch('bio')
     @Security('jwt')
     public async updateBio(
@@ -548,9 +532,7 @@ export class ProfileController extends Controller {
         };
     }
 
-    /**
-     * Updates the current user's pronouns.
-     */
+    // Updates the current user's pronouns
     @Patch('pronouns')
     @Security('jwt')
     public async updatePronouns(
@@ -569,9 +551,7 @@ export class ProfileController extends Controller {
         };
     }
 
-    /**
-     * Updates the current user's display name.
-     */
+    // Updates the current user's display name
     @Patch('display-name')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Invalid display name', {
@@ -610,9 +590,7 @@ export class ProfileController extends Controller {
         };
     }
 
-    /**
-     * Updates the current user's custom status.
-     */
+    // Updates the current user's custom status
     @Patch('status')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Invalid status', {
@@ -748,9 +726,7 @@ export class ProfileController extends Controller {
         return { customStatus: serialized };
     }
 
-    /**
-     * Clears the current user's custom status.
-     */
+    // Clears the current user's custom status
     @Delete('status')
     @Security('jwt')
     @Response<ErrorResponse>('404', 'User not found', {
@@ -782,9 +758,7 @@ export class ProfileController extends Controller {
         return { customStatus: null };
     }
 
-    /**
-     * Retrieves custom statuses for multiple users in bulk.
-     */
+    // Retrieves custom statuses for multiple users in bulk
     @Post('status/bulk')
     public async getBulkStatuses(
         @Body() body: BulkStatusRequest,
@@ -822,9 +796,7 @@ export class ProfileController extends Controller {
         return { statuses };
     }
 
-    /**
-     * Updates the current user's username styling (font, gradient, glow).
-     */
+    // Updates the current user's username styling (font, gradient, glow)
     @Patch('style')
     @Security('jwt')
     public async updateUsernameStyle(
@@ -871,9 +843,7 @@ export class ProfileController extends Controller {
         };
     }
 
-    /**
-     * Resolves a username to its corresponding user ID.
-     */
+    // Resolves a username to its corresponding user ID
     @Get('lookup/{username}')
     @Security('jwt')
     @Response<ErrorResponse>('404', 'User not found', {
@@ -892,10 +862,8 @@ export class ProfileController extends Controller {
         return { _id: user._id.toString() };
     }
 
-    /**
-     * Changes the current user's username.
-     * Enforces strict format validation and uniqueness.
-     */
+    // Changes the current user's username
+    // Enforces strict format validation and uniqueness
     @Patch('username')
     @Security('jwt')
     public async changeUsername(
@@ -961,9 +929,7 @@ export class ProfileController extends Controller {
         };
     }
 
-    /**
-     * Updates the current user's language preference.
-     */
+    // Updates the current user's language preference
     @Patch('language')
     @Security('jwt')
     public async updateLanguage(
@@ -993,9 +959,7 @@ export class ProfileController extends Controller {
         };
     }
 
-    /**
-     * Serves a profile picture file.
-     */
+    // Serves a profile picture file
     @Get('picture/{filename}')
     public async getProfilePicture(
         @Path() filename: string,
@@ -1063,9 +1027,7 @@ export class ProfileController extends Controller {
         });
     }
 
-    /**
-     * Maps a user document to a public UserProfile payload.
-     */
+    // Maps a user document to a public UserProfile payload
     private async mapToProfile(user: any): Promise<UserProfile> {
         const mapped = mapUser(user);
         if (!mapped) {
