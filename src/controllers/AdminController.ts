@@ -27,7 +27,6 @@ import { PresenceService } from '@/realtime/services/PresenceService';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 import crypto from 'crypto';
 import { getIO } from '@/socket';
 import { Badge } from '@/models/Badge';
@@ -40,116 +39,46 @@ import {
     deleteAvatarFile,
 } from '@/utils/deletion';
 import express from 'express';
-
-// Profile fields that can be reset by an administrator
-export type ResetProfileRequestFieldType =
-    | 'username'
-    | 'displayName'
-    | 'pronouns'
-    | 'bio'
-    | 'banner';
-
-// Request body for resetting user profile fields
-export interface ResetProfileRequest {
-    // Fields to reset: 'username', 'displayName', 'pronouns', 'bio', 'banner'
-    // Resetting 'username' forces a logout
-    fields: ResetProfileRequestFieldType[];
-}
-
-export interface DashboardStats {
-    users: number;
-    usersTrend: number;
-    activeUsers: number;
-    activeUsersTrend: number;
-    bans: number;
-    bansTrend: number;
-    servers: number;
-    serversTrend: number;
-    messages: number;
-    messagesTrend: number;
-}
-
-export interface UserListItem {
-    _id: string;
-    username: string;
-    login: string;
-    displayName: string | null;
-    profilePicture: string | null;
-    permissions: string | AdminPermissions;
-    createdAt: Date;
-    banExpiry?: Date;
-    warningCount: number;
-}
-
-// Extended user details for administrative view
-export interface UserDetails extends UserListItem {
-    bio: string;
-    pronouns: string;
-    badges: any[];
-    banner: string | null;
-    deletedAt?: Date;
-    deletedReason?: string;
-}
-
-export interface SoftDeleteUserRequest {
-    reason?: string;
-}
-
-export interface UpdateUserPermissionsRequest {
-    permissions: AdminPermissions;
-}
-
-export interface BanUserRequest {
-    reason: string;
-    duration: number;
-}
-
-export interface WarnUserRequest {
-    message: string;
-}
-
-export interface BanHistoryItem {
-    _id: string;
-    reason: string;
-    timestamp: Date;
-    expirationTimestamp: Date;
-    issuedBy: string;
-    active: boolean;
-}
-
-export interface ServerListItem {
-    _id: string;
-    name: string;
-    icon: string | null;
-    banner?: {
-        type: 'color' | 'image' | 'gif' | 'gradient';
-        value: string;
-    };
-    ownerId: string;
-    memberCount: number;
-    createdAt: Date;
-    deletedAt?: Date;
-    owner: {
-        _id: string;
-        username: string;
-        displayName: string | null;
-        profilePicture: string | null;
-    } | null;
-}
-
-export interface ExtendedUserDetails extends UserDetails {
-    servers: Array<{
-        _id: string;
-        name: string;
-        icon: string | null;
-        ownerId: string;
-        joinedAt?: Date;
-        isOwner: boolean;
-    }>;
-}
+import { DashBoardStatsDTO } from './dto/admin-dashboard-stats.response.dto';
+import {
+    AdminUserListItemDTO,
+    AdminUserDetailsDTO,
+    AdminExtendedUserDetailsDTO,
+} from './dto/admin-users.response.dto';
+import {
+    AdminResetProfileRequestDTO,
+    AdminSoftDeleteUserRequestDTO,
+    AdminUpdateUserPermissionsRequestDTO,
+    AdminBanUserRequestDTO,
+    AdminWarnUserRequestDTO,
+} from './dto/admin-user-actions.request.dto';
+import {
+    AdminResetProfileResponseDTO,
+    AdminSoftDeleteUserResponseDTO,
+    AdminDeleteUserResponseDTO,
+    AdminHardDeleteUserResponseDTO,
+    AdminUpdateUserPermissionsResponseDTO,
+    AdminBanUserResponseDTO,
+    AdminUnbanUserResponseDTO,
+    AdminWarnUserResponseDTO,
+} from './dto/admin-user-actions.response.dto';
+import {
+    AdminUserBanHistoryResponseDTO,
+    AdminBanListResponseDTO,
+    AdminBansDiagnosticResponseDTO,
+} from './dto/admin-bans.response.dto';
+import {
+    AdminUserWarningsResponseDTO,
+    AdminWarningListResponseDTO,
+} from './dto/admin-warnings.response.dto';
+import { AdminAuditLogListResponseDTO } from './dto/admin-audit-logs.response.dto';
+import {
+    AdminServerListResponseDTO,
+    AdminDeleteServerResponseDTO,
+    AdminRestoreServerResponseDTO,
+} from './dto/admin-servers.response.dto';
 
 // Controller for administrative actions and dashboard statistics
-// Enforces 'viewLogs', 'viewUsers', and 'resetUserProfile' permissions
 @injectable()
 @Route('api/v1/admin')
 @Tags('Admin')
@@ -181,7 +110,7 @@ export class AdminController extends Controller {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
     })
     @Security('jwt', ['viewLogs'])
-    public async getStats(): Promise<DashboardStats> {
+    public async getStats(): Promise<DashBoardStatsDTO> {
         const now = new Date();
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -235,11 +164,11 @@ export class AdminController extends Controller {
         @Query() search?: string,
         @Query() filter?: 'banned' | 'admin' | 'recent',
         @Query() includeDeleted?: boolean,
-    ): Promise<UserListItem[]> {
+    ): Promise<AdminUserListItemDTO[]> {
         // Build query options based on query parameters
         const options: any = {
-            limit,
-            offset,
+            limit: Number(limit),
+            offset: Number(offset),
             includeDeleted: includeDeleted === true,
         };
         if (search) options.search = search;
@@ -249,21 +178,21 @@ export class AdminController extends Controller {
 
         // Enriched users include ban status and warning counts
         const enrichedUsers = await Promise.all(
-            users.map(async (u) => {
+            users.map(async (user) => {
                 const activeBan = await this.banRepo.findActiveByUserId(
-                    u._id.toString(),
+                    user._id.toString(),
                 );
                 const warningCount = await this.warningRepo.countByUserId(
-                    u._id.toString(),
+                    user._id.toString(),
                 );
                 return {
-                    _id: u._id.toString(),
-                    username: u.username || '',
-                    login: u.login || '',
-                    displayName: u.displayName || null,
-                    profilePicture: u.profilePicture || null,
-                    permissions: u.permissions || '0',
-                    createdAt: u.createdAt || new Date(),
+                    _id: user._id.toString(),
+                    username: user.username || '',
+                    login: user.login || '',
+                    displayName: user.displayName || null,
+                    profilePicture: user.profilePicture || null,
+                    permissions: user.permissions || '0',
+                    createdAt: user.createdAt || new Date(),
                     banExpiry: activeBan?.expirationTimestamp,
                     warningCount,
                 };
@@ -285,7 +214,7 @@ export class AdminController extends Controller {
     public async getUserDetails(
         @Path() userId: string,
         @Request() req: express.Request,
-    ): Promise<UserDetails> {
+    ): Promise<AdminUserDetailsDTO> {
         const user = await this.userRepo.findById(userId);
         if (!user) {
             this.setStatus(404);
@@ -342,9 +271,9 @@ export class AdminController extends Controller {
     @Security('jwt', ['manageUsers'])
     public async resetUserProfile(
         @Path() userId: string,
-        @Body() requestBody: ResetProfileRequest,
+        @Body() requestBody: AdminResetProfileRequestDTO,
         @Request() req: express.Request,
-    ): Promise<{ message: string; fields: string[] }> {
+    ): Promise<AdminResetProfileResponseDTO> {
         const { fields } = requestBody;
         const user = await this.userRepo.findById(userId);
         if (!user) {
@@ -479,13 +408,9 @@ export class AdminController extends Controller {
     @Security('jwt', ['manageUsers'])
     public async softDeleteUser(
         @Path() userId: string,
-        @Body() body: SoftDeleteUserRequest,
+        @Body() body: AdminSoftDeleteUserRequestDTO,
         @Request() req: express.Request,
-    ): Promise<{
-        message: string;
-        anonymizedUsername: string;
-        offlineFriends: number;
-    }> {
+    ): Promise<AdminSoftDeleteUserResponseDTO> {
         const { reason = 'No reason provided' } = body;
 
         const user = await this.userRepo.findById(userId);
@@ -587,9 +512,9 @@ export class AdminController extends Controller {
     @Security('jwt', ['manageUsers'])
     public async deleteUser(
         @Path() userId: string,
-        @Body() body: SoftDeleteUserRequest,
+        @Body() body: AdminSoftDeleteUserRequestDTO,
         @Request() req: express.Request,
-    ): Promise<{ message: string; anonymizedUsername: string }> {
+    ): Promise<AdminDeleteUserResponseDTO> {
         const result = await this.softDeleteUser(userId, body, req);
         return {
             message: 'User deleted',
@@ -608,14 +533,9 @@ export class AdminController extends Controller {
     @Security('jwt', ['manageUsers'])
     public async hardDeleteUser(
         @Path() userId: string,
-        @Body() body: SoftDeleteUserRequest,
+        @Body() body: AdminSoftDeleteUserRequestDTO,
         @Request() req: express.Request,
-    ): Promise<{
-        message: string;
-        sentMessagesAnonymized: number;
-        receivedMessagesAnonymized: number;
-        offlineFriends: number;
-    }> {
+    ): Promise<AdminHardDeleteUserResponseDTO> {
         const session = await mongoose.startSession();
         session.startTransaction();
 
@@ -737,9 +657,9 @@ export class AdminController extends Controller {
     @Security('jwt', ['manageUsers'])
     public async updateUserPermissions(
         @Path() userId: string,
-        @Body() body: UpdateUserPermissionsRequest,
+        @Body() body: AdminUpdateUserPermissionsRequestDTO,
         @Request() req: express.Request,
-    ): Promise<{ message: string }> {
+    ): Promise<AdminUpdateUserPermissionsResponseDTO> {
         const { permissions } = body;
 
         if (!permissions || typeof permissions !== 'object') {
@@ -778,9 +698,9 @@ export class AdminController extends Controller {
     @Security('jwt', ['banUsers'])
     public async banUser(
         @Path() userId: string,
-        @Body() body: BanUserRequest,
+        @Body() body: AdminBanUserRequestDTO,
         @Request() req: express.Request,
-    ): Promise<any> {
+    ): Promise<AdminBanUserResponseDTO> {
         const { reason, duration } = body;
 
         const targetUser = await this.userRepo.findById(userId);
@@ -832,7 +752,15 @@ export class AdminController extends Controller {
             });
         }
 
-        return ban;
+        return {
+            _id: ban._id.toString(),
+            userId: ban.userId.toString(),
+            reason: ban.reason || '',
+            issuedBy: ban.issuedBy?.toString() || 'unknown',
+            expirationTimestamp: ban.expirationTimestamp || new Date(),
+            active: ban.active || false,
+            history: ban.history || [],
+        };
     }
 
     // Unbans a user
@@ -844,7 +772,7 @@ export class AdminController extends Controller {
     public async unbanUser(
         @Path() userId: string,
         @Request() req: express.Request,
-    ): Promise<{ message: string }> {
+    ): Promise<AdminUnbanUserResponseDTO> {
         await this.banRepo.deactivateAllForUser(userId);
         await this.logAdminAction(req, 'unban_user', userId);
         return { message: 'User unbanned' };
@@ -858,20 +786,20 @@ export class AdminController extends Controller {
     @Security('jwt', ['viewBans'])
     public async getUserBanHistory(
         @Path() userId: string,
-    ): Promise<BanHistoryItem[]> {
+    ): Promise<AdminUserBanHistoryResponseDTO> {
         const ban = await this.banRepo.findByUserIdWithHistory(userId);
         if (!ban || !ban.history || ban.history.length === 0) {
             return [];
         }
 
-        const historyWithStatus = ban.history!.map(
+        const historyWithStatus: AdminUserBanHistoryResponseDTO = ban.history!.map(
             (entry: any, index: number) => ({
-                _id: entry._id,
-                reason: entry.reason,
-                timestamp: entry.timestamp,
-                expirationTimestamp: entry.expirationTimestamp,
-                issuedBy: entry.issuedBy,
-                active: index === ban.history!.length - 1 && ban.active,
+                _id: entry._id.toString(),
+                reason: entry.reason || '',
+                timestamp: entry.timestamp || new Date(),
+                expirationTimestamp: entry.expirationTimestamp || new Date(),
+                issuedBy: entry.issuedBy?.toString() || 'unknown',
+                active: index === ban.history!.length - 1 && (ban.active || false),
             }),
         );
         return historyWithStatus;
@@ -886,7 +814,7 @@ export class AdminController extends Controller {
     public async listBans(
         @Query() limit: number = 50,
         @Query() offset: number = 0,
-    ): Promise<any[]> {
+    ): Promise<AdminBanListResponseDTO> {
         const bans = await this.banRepo.findAll({
             limit: Number(limit),
             offset: Number(offset),
@@ -900,7 +828,7 @@ export class AdminController extends Controller {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
     })
     @Security('jwt', ['viewBans'])
-    public async getBansDiagnostic(): Promise<any> {
+    public async getBansDiagnostic(): Promise<AdminBansDiagnosticResponseDTO> {
         const appBansCount = await Ban.countDocuments();
         const appBansSample = await Ban.find({}).limit(5).lean();
 
@@ -927,9 +855,9 @@ export class AdminController extends Controller {
     @Security('jwt', ['warnUsers'])
     public async warnUser(
         @Path() userId: string,
-        @Body() body: WarnUserRequest,
+        @Body() body: AdminWarnUserRequestDTO,
         @Request() req: express.Request,
-    ): Promise<any> {
+    ): Promise<AdminWarnUserResponseDTO> {
         const { message } = body;
 
         // @ts-ignore
@@ -957,7 +885,13 @@ export class AdminController extends Controller {
             }
         }
 
-        return warning;
+        return {
+            _id: warning._id.toString(),
+            userId: warning.userId.toString(),
+            issuedBy: warning.issuedBy.toString(),
+            message: warning.message,
+            timestamp: warning.timestamp,
+        };
     }
 
     // Retrieves warnings for a user
@@ -966,7 +900,7 @@ export class AdminController extends Controller {
         error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
     })
     @Security('jwt', ['warnUsers'])
-    public async getUserWarnings(@Path() userId: string): Promise<any[]> {
+    public async getUserWarnings(@Path() userId: string): Promise<AdminUserWarningsResponseDTO> {
         const warnings = await this.warningRepo.findByUserId(userId);
         return warnings;
     }
@@ -980,7 +914,7 @@ export class AdminController extends Controller {
     public async listWarnings(
         @Query() limit: number = 50,
         @Query() offset: number = 0,
-    ): Promise<any[]> {
+    ): Promise<AdminWarningListResponseDTO> {
         const warnings = await this.warningRepo.findAll({
             limit: Number(limit),
             offset: Number(offset),
@@ -997,7 +931,7 @@ export class AdminController extends Controller {
     public async listAuditLogs(
         @Query() limit: number = 100,
         @Query() offset: number = 0,
-    ): Promise<any[]> {
+    ): Promise<AdminAuditLogListResponseDTO> {
         const logs = await this.auditLogRepo.find({
             limit: Number(limit),
             offset: Number(offset),
@@ -1015,7 +949,7 @@ export class AdminController extends Controller {
         @Query() limit: number = 50,
         @Query() offset: number = 0,
         @Query() search?: string,
-    ): Promise<ServerListItem[]> {
+    ): Promise<AdminServerListResponseDTO> {
         const servers = await this.serverRepo.findMany({
             limit: Number(limit),
             offset: Number(offset),
@@ -1074,7 +1008,7 @@ export class AdminController extends Controller {
     public async deleteServer(
         @Path() serverId: string,
         @Request() req: express.Request,
-    ): Promise<{ message: string }> {
+    ): Promise<AdminDeleteServerResponseDTO> {
         const server = await this.serverRepo.findById(serverId, true);
         if (!server) {
             this.setStatus(404);
@@ -1111,7 +1045,7 @@ export class AdminController extends Controller {
     public async restoreServer(
         @Path() serverId: string,
         @Request() req: express.Request,
-    ): Promise<{ message: string }> {
+    ): Promise<AdminRestoreServerResponseDTO> {
         const server = await this.serverRepo.findById(serverId, true);
 
         if (!server) {
@@ -1147,7 +1081,7 @@ export class AdminController extends Controller {
     @Security('jwt', ['viewUsers'])
     public async getExtendedUserDetails(
         @Path() userId: string,
-    ): Promise<ExtendedUserDetails> {
+    ): Promise<AdminExtendedUserDetailsDTO> {
         const user = await this.userRepo.findById(userId);
         if (!user) {
             this.setStatus(404);

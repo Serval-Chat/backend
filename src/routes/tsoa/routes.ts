@@ -449,7 +449,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DashboardStats": {
+    "DashBoardStatsDTO": {
         "dataType": "refObject",
         "properties": {
             "users": {"dataType":"double","required":true},
@@ -483,7 +483,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "UserListItem": {
+    "AdminUserListItemDTO": {
         "dataType": "refObject",
         "properties": {
             "_id": {"dataType":"string","required":true},
@@ -499,7 +499,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "UserDetails": {
+    "AdminUserDetailsDTO": {
         "dataType": "refObject",
         "properties": {
             "_id": {"dataType":"string","required":true},
@@ -521,12 +521,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminResetProfileResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+            "fields": {"dataType":"array","array":{"dataType":"string"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ResetProfileRequestFieldType": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["username"]},{"dataType":"enum","enums":["displayName"]},{"dataType":"enum","enums":["pronouns"]},{"dataType":"enum","enums":["bio"]},{"dataType":"enum","enums":["banner"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ResetProfileRequest": {
+    "AdminResetProfileRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "fields": {"dataType":"array","array":{"dataType":"refAlias","ref":"ResetProfileRequestFieldType"},"required":true},
@@ -534,7 +543,17 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "SoftDeleteUserRequest": {
+    "AdminSoftDeleteUserResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+            "anonymizedUsername": {"dataType":"string","required":true},
+            "offlineFriends": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminSoftDeleteUserRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "reason": {"dataType":"string"},
@@ -542,7 +561,35 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "UpdateUserPermissionsRequest": {
+    "AdminDeleteUserResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+            "anonymizedUsername": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminHardDeleteUserResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+            "sentMessagesAnonymized": {"dataType":"double","required":true},
+            "receivedMessagesAnonymized": {"dataType":"double","required":true},
+            "offlineFriends": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminUpdateUserPermissionsResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminUpdateUserPermissionsRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "permissions": {"ref":"AdminPermissions","required":true},
@@ -550,7 +597,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "BanUserRequest": {
+    "AdminBanUserResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "_id": {"dataType":"string","required":true},
+            "userId": {"dataType":"string","required":true},
+            "reason": {"dataType":"string","required":true},
+            "issuedBy": {"dataType":"string","required":true},
+            "expirationTimestamp": {"dataType":"datetime","required":true},
+            "active": {"dataType":"boolean","required":true},
+            "history": {"dataType":"array","array":{"dataType":"any"}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminBanUserRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "reason": {"dataType":"string","required":true},
@@ -559,7 +620,15 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "BanHistoryItem": {
+    "AdminUnbanUserResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminBanHistoryItemDTO": {
         "dataType": "refObject",
         "properties": {
             "_id": {"dataType":"string","required":true},
@@ -572,7 +641,38 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "WarnUserRequest": {
+    "AdminUserBanHistoryResponseDTO": {
+        "dataType": "refAlias",
+        "type": {"dataType":"array","array":{"dataType":"refObject","ref":"AdminBanHistoryItemDTO"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminBanListResponseDTO": {
+        "dataType": "refAlias",
+        "type": {"dataType":"array","array":{"dataType":"any"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminBansDiagnosticResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "appBans": {"dataType":"nestedObjectLiteral","nestedProperties":{"sample":{"dataType":"array","array":{"dataType":"any"},"required":true},"count":{"dataType":"double","required":true}},"required":true},
+            "serverBans": {"dataType":"nestedObjectLiteral","nestedProperties":{"sample":{"dataType":"array","array":{"dataType":"any"},"required":true},"count":{"dataType":"double","required":true}},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminWarnUserResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "_id": {"dataType":"string","required":true},
+            "userId": {"dataType":"string","required":true},
+            "issuedBy": {"dataType":"string","required":true},
+            "message": {"dataType":"string","required":true},
+            "timestamp": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminWarnUserRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "message": {"dataType":"string","required":true},
@@ -580,7 +680,22 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ServerListItem": {
+    "AdminUserWarningsResponseDTO": {
+        "dataType": "refAlias",
+        "type": {"dataType":"array","array":{"dataType":"any"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminWarningListResponseDTO": {
+        "dataType": "refAlias",
+        "type": {"dataType":"array","array":{"dataType":"any"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminAuditLogListResponseDTO": {
+        "dataType": "refAlias",
+        "type": {"dataType":"array","array":{"dataType":"any"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminServerListItemDTO": {
         "dataType": "refObject",
         "properties": {
             "_id": {"dataType":"string","required":true},
@@ -596,7 +711,28 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ExtendedUserDetails": {
+    "AdminServerListResponseDTO": {
+        "dataType": "refAlias",
+        "type": {"dataType":"array","array":{"dataType":"refObject","ref":"AdminServerListItemDTO"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminDeleteServerResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminRestoreServerResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminExtendedUserDetailsDTO": {
         "dataType": "refObject",
         "properties": {
             "_id": {"dataType":"string","required":true},
@@ -614,7 +750,7 @@ const models: TsoaRoute.Models = {
             "banner": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "deletedAt": {"dataType":"datetime"},
             "deletedReason": {"dataType":"string"},
-            "servers": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"isOwner":{"dataType":"boolean","required":true},"joinedAt":{"dataType":"datetime"},"ownerId":{"dataType":"string","required":true},"icon":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"name":{"dataType":"string","required":true},"_id":{"dataType":"string","required":true}}},"required":true},
+            "servers": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"memberCount":{"dataType":"double","required":true},"isOwner":{"dataType":"boolean","required":true},"joinedAt":{"dataType":"datetime"},"ownerId":{"dataType":"string","required":true},"icon":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"name":{"dataType":"string","required":true},"_id":{"dataType":"string","required":true}}},"required":true},
         },
         "additionalProperties": false,
     },
@@ -3194,7 +3330,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAdminController_resetUserProfile: Record<string, TsoaRoute.ParameterSchema> = {
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
-                requestBody: {"in":"body","name":"requestBody","required":true,"ref":"ResetProfileRequest"},
+                requestBody: {"in":"body","name":"requestBody","required":true,"ref":"AdminResetProfileRequestDTO"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/api/v1/admin/users/:userId/reset',
@@ -3232,7 +3368,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAdminController_softDeleteUser: Record<string, TsoaRoute.ParameterSchema> = {
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
-                body: {"in":"body","name":"body","required":true,"ref":"SoftDeleteUserRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"AdminSoftDeleteUserRequestDTO"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/api/v1/admin/users/:userId/soft-delete',
@@ -3270,7 +3406,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAdminController_deleteUser: Record<string, TsoaRoute.ParameterSchema> = {
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
-                body: {"in":"body","name":"body","required":true,"ref":"SoftDeleteUserRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"AdminSoftDeleteUserRequestDTO"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.delete('/api/v1/admin/users/:userId',
@@ -3308,7 +3444,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAdminController_hardDeleteUser: Record<string, TsoaRoute.ParameterSchema> = {
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
-                body: {"in":"body","name":"body","required":true,"ref":"SoftDeleteUserRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"AdminSoftDeleteUserRequestDTO"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/api/v1/admin/users/:userId/hard-delete',
@@ -3346,7 +3482,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAdminController_updateUserPermissions: Record<string, TsoaRoute.ParameterSchema> = {
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
-                body: {"in":"body","name":"body","required":true,"ref":"UpdateUserPermissionsRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"AdminUpdateUserPermissionsRequestDTO"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.put('/api/v1/admin/users/:userId/permissions',
@@ -3384,7 +3520,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAdminController_banUser: Record<string, TsoaRoute.ParameterSchema> = {
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
-                body: {"in":"body","name":"body","required":true,"ref":"BanUserRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"AdminBanUserRequestDTO"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/api/v1/admin/users/:userId/ban',
@@ -3567,7 +3703,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAdminController_warnUser: Record<string, TsoaRoute.ParameterSchema> = {
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
-                body: {"in":"body","name":"body","required":true,"ref":"WarnUserRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"AdminWarnUserRequestDTO"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/api/v1/admin/users/:userId/warn',
