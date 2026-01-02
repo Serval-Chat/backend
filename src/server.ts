@@ -23,10 +23,8 @@ import fs from 'fs';
 import http from 'http';
 import https from 'https';
 
-/**
- * Creates and configures the Express application with dependency injection
- * @returns Configured Express application instance
- */
+// Creates and configures the Express application with dependency injection
+// @returns Configured Express application instance
 export function createApp(): Application {
     // Get logger from DI container
     const logger = container.get<ILogger>(TYPES.Logger);
@@ -96,7 +94,7 @@ export function createApp(): Application {
                         'https://fonts.gstatic.com',
                         'https://cdn.jsdelivr.net',
                         'https://cdnjs.cloudflare.com',
-                        'data:', // allow inline fonts like base64 woff2
+                        'data:', // Allow inline fonts like base64 woff2
                     ],
                     objectSrc: ["'none'"],
                     mediaSrc: [
@@ -125,7 +123,7 @@ export function createApp(): Application {
     // Gzip compression
     app.use(compression());
 
-    // Basic middlewarez
+    // Basic middleware
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
@@ -135,7 +133,7 @@ export function createApp(): Application {
     // TSOA Routes
     RegisterRoutes(app, { multer: upload });
 
-    // Manual Routes
+    // Manual routes
     app.use('/', routes);
 
     // Swagger UI
@@ -222,9 +220,7 @@ async function addUsernameToExistingUsers() {
     logger.info(`Updated ${users.length} users with a username.`);
 }
 
-/**
- * Start the Express
- */
+// Start the Express server
 export async function startServer() {
     const logger = container.get<ILogger>(TYPES.Logger);
 

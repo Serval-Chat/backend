@@ -17,9 +17,7 @@ import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Controller for managing user pings (mentions and notifications).
- */
+// Controller for managing user pings (mentions and notifications)
 @injectable()
 @Route('api/v1/pings')
 @Tags('Pings')
@@ -32,9 +30,7 @@ export class UserPingController extends Controller {
         super();
     }
 
-    /**
-     * Get all pings for the current user.
-     */
+    // Get all pings for the current user
     @Get()
     public async getPings(
         @Request() req: express.Request,
@@ -53,9 +49,7 @@ export class UserPingController extends Controller {
         }
     }
 
-    /**
-     * Delete a specific ping.
-     */
+    // Delete a specific ping
     @Delete('{id}')
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.PING.ID_REQUIRED,
@@ -86,9 +80,7 @@ export class UserPingController extends Controller {
         }
     }
 
-    /**
-     * Clear all pings for a specific channel.
-     */
+    // Clear all pings for a specific channel
     @Delete('channel/{channelId}')
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.PING.CHANNEL_ID_REQUIRED,
@@ -124,9 +116,7 @@ export class UserPingController extends Controller {
         }
     }
 
-    /**
-     * Clear all pings for the current user.
-     */
+    // Clear all pings for the current user
     @Delete()
     public async clearAllPings(
         @Request() req: express.Request,

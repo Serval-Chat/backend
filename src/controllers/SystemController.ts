@@ -8,10 +8,8 @@ interface SystemInfo {
     partialCommitHash: string;
 }
 
-/**
- * Controller for retrieving system-level information and versioning.
- * Provides public endpoints for monitoring and version tracking.
- */
+// Controller for retrieving system-level information and versioning
+// Provides public endpoints for monitoring and version tracking
 @injectable()
 @Route('api/v1')
 @Tags('System')
@@ -20,9 +18,7 @@ export class SystemController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves commit hash, version and partial commit hash.
-     */
+    // Retrieves commit hash, version and partial commit hash
     @Get('system/info')
     public async getSystemInfo(): Promise<SystemInfo> {
         const version = getVersion();

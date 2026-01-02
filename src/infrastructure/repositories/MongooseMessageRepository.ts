@@ -6,25 +6,21 @@ import {
 } from '@/di/interfaces/IMessageRepository';
 import { Message } from '@/models/Message';
 
-/**
- * Mongoose Message Repository
- *
- * Implements IMessageRepository using Mongoose Message model.
- * Encapsulates all direct message operations.
- */
+// Mongoose Message repository
+//
+// Implements IMessageRepository using Mongoose Message model
+// Encapsulates all direct message operations
 @injectable()
 export class MongooseMessageRepository implements IMessageRepository {
     async findById(id: string): Promise<IMessage | null> {
         return await Message.findById(id).lean();
     }
 
-    /**
-     * Find messages between two users with pagination.
-     *
-     * Supports:
-     * - 'before': Older messages before a specific ID or date.
-     * - 'around': Contextual messages around a specific message (split limit).
-     */
+    // Find messages between two users with pagination
+    //
+    // Supports:
+    // - 'Before': Older messages before a specific ID or date
+    // - 'Around': Contextual messages around a specific message (split limit)
     async findByConversation(
         user1Id: string,
         user2Id: string,

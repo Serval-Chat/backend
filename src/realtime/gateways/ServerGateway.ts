@@ -32,9 +32,7 @@ import { getIO } from '@/socket';
 /**
  * Server Gateway.
  *
- * Handles real-time server events.
- * Manages channels, messages, roles, and member updates.
- * Handles complex logic for mentions, permissions, and broadcasting.
+ * Handles real-time server events including channels, messages, role updates, and member management.
  */
 @injectable()
 @Gateway()
@@ -54,7 +52,7 @@ export class ServerGateway {
         private permissionService: PermissionService,
         @inject(TYPES.PresenceService) private presenceService: PresenceService,
         @inject(TYPES.PingService) private pingService: PingService,
-    ) {}
+    ) { }
 
     /**
      * Handles 'join_server' event.

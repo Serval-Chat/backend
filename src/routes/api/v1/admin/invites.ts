@@ -37,8 +37,6 @@ const writeTokens = (tokens: string[]) => {
 };
 
 /**
- * GET /api/v1/admin/invites
- *
  * Lists all active invite tokens.
  */
 router.get('/', requireAdmin('manageInvites'), async (req, res) => {
@@ -52,10 +50,7 @@ router.get('/', requireAdmin('manageInvites'), async (req, res) => {
 });
 
 /**
- * POST /api/v1/admin/invites
- *
  * Generates a new random invite token.
- * Ensures the token is unique (though collision is unlikely).
  */
 router.post('/', requireAdmin('manageInvites'), async (req, res) => {
     try {
@@ -80,8 +75,6 @@ router.post('/', requireAdmin('manageInvites'), async (req, res) => {
 });
 
 /**
- * DELETE /api/v1/admin/invites/:token
- *
  * Deletes a specific invite token.
  */
 router.delete('/:token', requireAdmin('manageInvites'), async (req, res) => {

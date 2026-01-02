@@ -46,10 +46,8 @@ interface SendFriendRequest {
     username: string;
 }
 
-/**
- * Controller for managing user friendships and friend requests.
- * Enforces  boundaries via ownership checks on requests and friendships.
- */
+// Controller for managing user friendships and friend requests
+// Enforces boundaries via ownership checks on requests and friendships
 @injectable()
 @Route('api/v1/friends')
 @Tags('Friends')
@@ -67,9 +65,7 @@ export class FriendshipController extends Controller {
         super();
     }
 
-    /**
-     * Maps a user document to a public friend payload.
-     */
+    // Maps a user document to a public friend payload
     private mapUserToFriendPayload(user: any): FriendPayload | null {
         const mapped = mapUser(user);
         if (!mapped) return null;
@@ -84,9 +80,7 @@ export class FriendshipController extends Controller {
         };
     }
 
-    /**
-     * Retrieves the current user's friends list, sorted by latest message activity.
-     */
+    // Retrieves the current user's friends list, sorted by latest message activity
     @Get()
     public async getFriends(
         @Request() req: express.Request,
@@ -105,7 +99,6 @@ export class FriendshipController extends Controller {
         const legacyUsernames = new Set<string>();
 
         // Extract friend identifiers from both modern (ID-based) and legacy (username-based) friendships
-        // Legacy this legacy that legacy please
         friendships.forEach((rel: any) => {
             const userIdStr = rel.userId?.toString() || rel.userId;
             const friendIdStr = rel.friendId?.toString() || rel.friendId;
@@ -185,9 +178,7 @@ export class FriendshipController extends Controller {
             .filter((p) => p !== null);
     }
 
-    /**
-     * Retrieves pending incoming friend requests.
-     */
+    // Retrieves pending incoming friend requests
     @Get('incoming')
     public async getIncomingRequests(
         @Request() req: express.Request,
@@ -217,9 +208,7 @@ export class FriendshipController extends Controller {
         );
     }
 
-    /**
-     * Sends a friend request to another user.
-     */
+    // Sends a friend request to another user
     @Post()
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.FRIENDSHIP.USERNAME_REQUIRED,
@@ -313,9 +302,7 @@ export class FriendshipController extends Controller {
         };
     }
 
-    /**
-     * Accepts a friend request and establishes a mutual friendship.
-     */
+    // Accepts a friend request and establishes a mutual friendship
     @Post('{id}/accept')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.FRIENDSHIP.NOT_ALLOWED,
@@ -410,9 +397,7 @@ export class FriendshipController extends Controller {
         };
     }
 
-    /**
-     * Rejects a pending friend request.
-     */
+    // Rejects a pending friend request
     @Post('{id}/reject')
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING,
@@ -456,9 +441,7 @@ export class FriendshipController extends Controller {
         return { message: 'friend request rejected' };
     }
 
-    /**
-     * Removes a user from the current user's friends list.
-     */
+    // Removes a user from the current user's friends list
     @Delete('{friendId}')
     @Response<ErrorResponse>('404', 'User Not Found', {
         error: ErrorMessages.AUTH.USER_NOT_FOUND,

@@ -1,12 +1,10 @@
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
-/**
- * Server Channel Read Status Interface.
- *
- * Tracks the last time a user read a specific channel.
- * Used to calculate unread message counts and display indicators.
- */
+// Server channel read status interface
+//
+// Tracks the last time a user read a specific channel
+// Used to calculate unread message counts and display indicators
 export interface IServerChannelRead extends Document {
     userId: Types.ObjectId;
     serverId: string;
@@ -35,9 +33,7 @@ const schema = new Schema<IServerChannelRead>(
 
 schema.index({ userId: 1, channelId: 1 }, { unique: true });
 
-/**
- * Server Channel Read Status Model.
- */
+// Server channel read status model
 export const ServerChannelRead = model<IServerChannelRead>(
     'ServerChannelRead',
     schema,

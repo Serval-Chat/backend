@@ -9,8 +9,7 @@ import logger from '@/utils/logger';
 /**
  * Security Gateway.
  *
- * Enforces  policies on connection.
- * Checks for active bans and disconnects banned users.
+ * Enforces connection policies and disconnects banned users.
  */
 @injectable()
 @Gateway()
@@ -18,7 +17,7 @@ export class SecurityGateway implements OnGatewayConnection {
     constructor(
         @inject(TYPES.BanRepository) private banRepo: IBanRepository,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) {}
+    ) { }
 
     /**
      * Handles new socket connection.

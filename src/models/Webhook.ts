@@ -1,12 +1,10 @@
 import type { Model, Document } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
-/**
- * Webhook Interface.
- *
- * Represents an incoming webhook integration for a channel.
- * Allows external services to post messages using a secret token.
- */
+// Webhook interface
+//
+// Represents an incoming webhook integration for a channel
+// Allows external services to post messages using a secret token
 export interface IWebhook extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: mongoose.Types.ObjectId;
@@ -31,9 +29,7 @@ const webhookSchema = new Schema<IWebhook>({
 webhookSchema.index({ serverId: 1, channelId: 1 });
 webhookSchema.index({ token: 1 }, { unique: true });
 
-/**
- * Webhook Model.
- */
+// Webhook model
 export const Webhook: Model<IWebhook> = mongoose.model(
     'Webhook',
     webhookSchema,

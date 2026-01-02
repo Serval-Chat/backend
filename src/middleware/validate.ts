@@ -8,12 +8,10 @@ interface ValidationSchemas {
     query?: ZodSchema;
 }
 
-/**
- * Request validation middleware factory.
- *
- * Replaces the original request data with the parsed
- * (and potentially transformed by some Zod shits) data from Zod.
- */
+// Request validation middleware factory.
+//
+// Replaces the original request data with the parsed
+// (and potentially transformed by schema validation) data from Zod.
 export const validate = (schemas: ValidationSchemas) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {

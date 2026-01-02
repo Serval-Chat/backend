@@ -4,9 +4,7 @@ import path from 'path';
 
 dotenv.config();
 
-/**
- * Resolves a path against the current working directory
- */
+// Resolves a path against the current working directory
 function ensureAbsolute(p: string): string {
     if (!p) return '';
     return path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);

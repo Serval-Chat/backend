@@ -30,92 +30,64 @@ import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * @example {
- *   "emoji": "👍",
- *   "emojiType": "unicode"
- * }
- */
+// @example {
+//   "emoji": "👍",
+//   "emojiType": "unicode"
+// }
 interface AddUnicodeReactionRequest {
-    /**
-     * The unicode emoji character.
-     * @example "👍"
-     */
+    // The unicode emoji character
+    // @example "👍"
     emoji: string;
-    /**
-     * The type of emoji.
-     * @example "unicode"
-     */
+    // The type of emoji
+    // @example "unicode"
     emojiType: 'unicode';
 }
 
-/**
- * @example {
- *   "emoji": "party_blob",
- *   "emojiType": "custom",
- *   "emojiId": "60d5ecb8b5c9c62b3c7c4b5e"
- * }
- */
+// @example {
+//   "emoji": "party_blob",
+//   "emojiType": "custom",
+//   "emojiId": "60d5ecb8b5c9c62b3c7c4b5e"
+// }
 interface AddCustomReactionRequest {
-    /**
-     * The name of the custom emoji.
-     * @example "party_blob"
-     */
+    // The name of the custom emoji
+    // @example "party_blob"
     emoji: string;
-    /**
-     * The type of emoji.
-     * @example "custom"
-     */
+    // The type of emoji
+    // @example "custom"
     emojiType: 'custom';
-    /**
-     * The ID of the custom emoji.
-     * @example "60d5ecb8b5c9c62b3c7c4b5e"
-     */
+    // The ID of the custom emoji
+    // @example "60d5ecb8b5c9c62b3c7c4b5e"
     emojiId: string;
 }
 
 type AddReactionRequest = AddUnicodeReactionRequest | AddCustomReactionRequest;
 
-/**
- * @example {
- *   "emoji": "👍",
- *   "scope": "me"
- * }
- */
+// @example {
+//   "emoji": "👍",
+//   "scope": "me"
+// }
 interface RemoveUnicodeReactionRequest {
-    /**
-     * The emoji to remove.
-     * @example "👍"
-     */
+    // The emoji to remove
+    // @example "👍"
     emoji: string;
-    /**
-     * Scope of removal.
-     * @example "me"
-     */
+    // Scope of removal
+    // @example "me"
     scope?: 'me' | 'all';
 }
 
-/**
- * @example {
- *   "emojiId": "60d5ecb8b5c9c62b3c7c4b5e",
- *   "scope": "me"
- * }
- */
+// @example {
+//   "emojiId": "60d5ecb8b5c9c62b3c7c4b5e",
+//   "scope": "me"
+// }
 interface RemoveCustomReactionRequest {
-    /**
-     * The ID of the custom emoji to remove.
-     * @example "60d5ecb8b5c9c62b3c7c4b5e"
-     */
+    // The ID of the custom emoji to remove
+    // @example "60d5ecb8b5c9c62b3c7c4b5e"
     emojiId: string;
-    /**
-     * Optional name of the custom emoji.
-     * @example "party_blob"
-     */
+    // Optional name of the custom emoji
+    // @example "party_blob"
     emoji?: string;
-    /**
-     * Scope of removal.
-     * @example "me"
-     */
+    // Scope of removal
+    // @example "me"
     scope?: 'me' | 'all';
 }
 
@@ -123,10 +95,8 @@ type RemoveReactionRequest =
     | RemoveUnicodeReactionRequest
     | RemoveCustomReactionRequest;
 
-/**
- * Controller for managing message reactions in DMs and servers.
- * Enforces message ownership and server/channel permission checks.
- */
+// Controller for managing message reactions in DMs and servers
+// Enforces message ownership and server/channel permission checks
 @injectable()
 @Route('api/v1')
 @Tags('Reactions')
@@ -152,10 +122,8 @@ export class ReactionController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves reactions for a specific DM message.
-     * Enforces that the requester is either the sender or receiver of the DM.
-     */
+    // Retrieves reactions for a specific DM message
+    // Enforces that the requester is either the sender or receiver of the DM
     @Get('messages/{messageId}/reactions')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.REACTION.ACCESS_DENIED,
@@ -192,10 +160,8 @@ export class ReactionController extends Controller {
         return { reactions };
     }
 
-    /**
-     * Adds a reaction to a DM message.
-     * Enforces DM participation and maximum reaction limits.
-     */
+    // Adds a reaction to a DM message
+    // Enforces DM participation and maximum reaction limits
     @Post('messages/{messageId}/reactions')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Invalid emoji or limit reached', {
@@ -283,10 +249,8 @@ export class ReactionController extends Controller {
         return { reactions };
     }
 
-    /**
-     * Removes a reaction from a DM message.
-     * Enforces DM participation and reaction existence.
-     */
+    // Removes a reaction from a DM message
+    // Enforces DM participation and reaction existence
     @Delete('messages/{messageId}/reactions')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -361,10 +325,8 @@ export class ReactionController extends Controller {
         return { reactions };
     }
 
-    /**
-     * Adds a reaction to a server message.
-     * Enforces server membership and 'addReactions' channel permission.
-     */
+    // Adds a reaction to a server message
+    // Enforces server membership and 'addReactions' channel permission
     @Post(
         'servers/{serverId}/channels/{channelId}/messages/{messageId}/reactions',
     )
@@ -464,10 +426,8 @@ export class ReactionController extends Controller {
         return { reactions };
     }
 
-    /**
-     * Removes a reaction from a server message.
-     * Enforces server membership and 'manageReactions' permission for bulk removal.
-     */
+    // Removes a reaction from a server message
+    // Enforces server membership and 'manageReactions' permission for bulk removal
     @Delete(
         'servers/{serverId}/channels/{channelId}/messages/{messageId}/reactions',
     )
@@ -572,10 +532,8 @@ export class ReactionController extends Controller {
         return { reactions };
     }
 
-    /**
-     * Retrieves reactions for a specific server message.
-     * Enforces server membership and message existence.
-     */
+    // Retrieves reactions for a specific server message
+    // Enforces server membership and message existence
     @Get(
         'servers/{serverId}/channels/{channelId}/messages/{messageId}/reactions',
     )

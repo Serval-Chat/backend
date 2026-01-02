@@ -5,9 +5,7 @@ import logger from '@/utils/logger';
 
 const defaultUpdateInterval = 60000;
 
-/**
- * Updates database-related metrics periodically
- */
+// Updates database-related metrics periodically
 export async function updateDatabaseMetrics() {
     try {
         const userCount = await User.countDocuments();
@@ -24,10 +22,8 @@ export async function updateDatabaseMetrics() {
     }
 }
 
-/**
- * Starts periodic metrics updates
- * @param intervalMs Update interval in milliseconds (default: 1 minute)
- */
+// Starts periodic metrics updates
+// @param intervalMs - update interval in milliseconds (default: 1 minute)
 export function startMetricsUpdater(
     intervalMs: number = defaultUpdateInterval,
 ) {

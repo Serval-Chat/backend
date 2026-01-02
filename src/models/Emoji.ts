@@ -1,11 +1,9 @@
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
-/**
- * Emoji Interface.
- *
- * Represents a custom emoji uploaded to a server.
- */
+// Emoji interface
+//
+// Represents a custom emoji uploaded to a server
 export interface IEmoji extends Document {
     _id: Types.ObjectId;
     name: string;
@@ -21,7 +19,7 @@ const schema = new Schema<IEmoji>(
             type: String,
             required: true,
             maxlength: 32,
-            match: /^[a-zA-Z0-9_-]+$/, // Only alphanumeric, underscore, dash. Move me to a different file??
+            match: /^[a-zA-Z0-9_-]+$/, // Only alphanumeric, underscore, dash
         },
         imageUrl: {
             type: String,
@@ -51,7 +49,5 @@ const schema = new Schema<IEmoji>(
 // Compound index for unique emoji names per server
 schema.index({ serverId: 1, name: 1 }, { unique: true });
 
-/**
- * Emoji Model.
- */
+// Emoji model
 export const Emoji = model<IEmoji>('Emoji', schema);

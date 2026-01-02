@@ -3,12 +3,10 @@ import { IPingRepository, IPing } from '@/di/interfaces/IPingRepository';
 import { Ping } from '@/models/Ping';
 import { Types } from 'mongoose';
 
-/**
- * Mongoose Ping Repository
- *
- * Implements IPingRepository using Mongoose Ping model.
- * Encapsulates all ping operations.
- */
+// Mongoose Ping repository
+//
+// Implements IPingRepository using Mongoose Ping model
+// Encapsulates all ping operations
 @injectable()
 export class MongoosePingRepository implements IPingRepository {
     async findById(id: string): Promise<IPing | null> {

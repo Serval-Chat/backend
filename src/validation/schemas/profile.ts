@@ -7,26 +7,20 @@ import {
     objectIdSchema,
 } from '@/validation/schemas/common';
 
-/**
- * Update profile validation
- */
+// Update profile validation
 export const updateProfileSchema = z.object({
     bio: z.string().max(500).optional(),
     phoneNumber: z.string().max(20).optional(),
     email: z.string().email().optional(),
 });
 
-/**
- * Change password validation
- */
+// Change password validation
 export const changePasswordSchema = z.object({
     currentPassword: passwordSchema,
     newPassword: passwordSchema,
 });
 
-/**
- * Custom status validation
- */
+// Custom status validation
 export const customStatusSchema = z.object({
     text: z.string().max(120).optional(),
     emoji: z.string().max(64).optional(),
@@ -35,33 +29,25 @@ export const customStatusSchema = z.object({
     clear: z.boolean().optional(),
 });
 
-/**
- * Bulk status fetch validation
- */
+// Bulk status fetch validation
 export const bulkStatusSchema = z.object({
     usernames: z
         .array(z.string())
         .max(200, 'Cannot fetch more than 200 statuses at once'),
 });
 
-/**
- * Change login validation
- */
+// Change login validation
 export const changeLoginSchema = z.object({
     newLogin: loginSchema,
     password: passwordSchema,
 });
 
-/**
- * User ID parameter validation
- */
+// User ID parameter validation
 export const userIdParamSchema = z.object({
     userId: objectIdSchema,
 });
 
-/**
- * Filename parameter validation
- */
+// Filename parameter validation
 export const filenameParamSchema = z.object({
     filename: z
         .string()
@@ -75,9 +61,7 @@ export const filenameParamSchema = z.object({
         ),
 });
 
-/**
- * Username style validation
- */
+// Username style validation
 export const usernameStyleSchema = z.object({
     usernameFont: z.string().max(50).optional(),
     usernameGradient: z
@@ -99,44 +83,32 @@ export const usernameStyleSchema = z.object({
         .optional(),
 });
 
-/**
- * Change username validation
- */
+// Change username validation
 export const changeUsernameSchema = z.object({
     newUsername: usernameSchema,
 });
 
-/**
- * Language preference validation
- */
+// Language preference validation
 export const languageSchema = z.object({
-    language: z.string().min(2).max(10), // e.g., "en", "es", "fr-FR"
+    language: z.string().min(2).max(10), // E.g., "en", "es", "fr-FR"
 });
 
-/**
- * Bio update validation
- */
+// Bio update validation
 export const bioUpdateSchema = z.object({
     bio: bioSchema,
 });
 
-/**
- * Pronouns update validation
- */
+// Pronouns update validation
 export const pronounsUpdateSchema = z.object({
     pronouns: z.string().max(60).optional(),
 });
 
-/**
- * Display name update validation
- */
+// Display name update validation
 export const displayNameUpdateSchema = z.object({
     displayName: z.string().min(1).max(32).optional(),
 });
 
-/**
- * Settings validation schema
- */
+// Settings validation schema
 export const settingsSchema = z.object({
     muteNotifications: z.boolean().optional(),
     useDiscordStyleMessages: z.boolean().optional(),

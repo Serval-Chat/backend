@@ -18,9 +18,7 @@ import logger from '@/utils/logger';
 /**
  * Reaction Gateway.
  *
- * Manages WebSocket events for emoji reactions.
- * Provides real-time updates when users add or remove reactions.
- * Handles both DM and Server message reactions.
+ * Manages emoji reaction events for both DM and Server messages.
  */
 @injectable()
 @Gateway()
@@ -36,7 +34,7 @@ export class ReactionGateway {
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.PresenceService) private presenceService: PresenceService,
-    ) {}
+    ) { }
 
     /**
      * Handles 'add_reaction' event.

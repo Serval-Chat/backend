@@ -5,9 +5,7 @@ import type {
 } from '@/di/interfaces/IAuditLogRepository';
 import { Types } from 'mongoose';
 
-/**
- * Mongoose implementation of Audit Log Repository
- */
+// Mongoose implementation of Audit Log repository
 export class MongooseAuditLogRepository implements IAuditLogRepository {
     async create(data: {
         adminId: string;
@@ -66,9 +64,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             .sort({ timestamp: -1 })
             .limit(options.limit || 100)
             .skip(options.offset || 0)
-            /**
-             * Populate admin and target user info for UI display.
-             */
+            // Populate admin and target user info for UI display
             .populate('adminId', 'username')
             .populate('targetUserId', 'username')
             .lean()

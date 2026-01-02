@@ -7,9 +7,7 @@ import fs from 'fs';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Controller for serving public server assets.
- */
+// Controller for serving public server assets
 @injectable()
 @Route('api/v1/servers')
 @Tags('Servers (Public)')
@@ -24,9 +22,7 @@ export class ServerPublicController extends Controller {
         super();
     }
 
-    /**
-     * Serves a server icon file.
-     */
+    // Serves a server icon file
     @Get('icon/{filename}')
     @Response<ErrorResponse>('404', 'Icon Not Found', {
         error: ErrorMessages.FILE.NOT_FOUND,
@@ -64,9 +60,7 @@ export class ServerPublicController extends Controller {
         return fs.createReadStream(filepath);
     }
 
-    /**
-     * Serves a server banner file.
-     */
+    // Serves a server banner file
     @Get('banner/{filename}')
     @Response<ErrorResponse>('404', 'Banner Not Found', {
         error: ErrorMessages.FILE.NOT_FOUND,

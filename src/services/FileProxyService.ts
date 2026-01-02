@@ -36,32 +36,20 @@ const ALLOWED_HEADERS = new Set([
     'cache-control',
 ]);
 
-/**
- * Normalize a hostname: lowercase and strip trailing dot.
- * @param hostname - The hostname to normalize.
- * @returns The normalized hostname.
- */
+// Normalize a hostname: lowercase and strip trailing dot.
 function normalizeHostname(hostname: string): string {
     return hostname.trim().toLowerCase().replace(/\.$/, '');
 }
 
-/**
- * Generate SHA256 cache key from URL.
- * @param url - The URL to hash.
- * @returns The SHA256 hash of the URL.
- */
+// Generate SHA256 cache key from URL.
 export function getCacheKey(url: string): string {
     return crypto.createHash('sha256').update(url).digest('hex');
 }
 
-/**
- * Prune expired entries from cache and enforce size limits.
- * Eviction strategy:
- * 1. Remove expired entries
- * 2. If still over limit, remove the entries with the smallest expiresAt values until <= maxEntries
- * @param map - The cache map to prune.
- * @param maxEntries - The maximum number of entries to keep.
- */
+// Prune expired entries from cache and enforce size limits.
+// Eviction strategy:
+// 1. Remove expired entries
+// 2. If still over limit, remove the entries with the smallest expiresAt values until <= maxEntries
 export function pruneCache<T extends { expiresAt: number }>(
     map: Map<string, T>,
     maxEntries: number,
@@ -95,30 +83,21 @@ export function pruneCache<T extends { expiresAt: number }>(
     }
 }
 
-/**
- * Sanitize HTTP headers to allowed list. Preserves the first seen value for each header.
- * @param headers - The Headers object to sanitize.
- * @returns A record of sanitized headers.
- */
+// Sanitize HTTP headers to allowed list. Preserves the first seen value for each header.
 export function sanitizeHeaders(headers: Headers): HeaderRecord {
     const result: HeaderRecord = {};
-    // iterate over actual headers (handles multi-value ones too)
+    // Iterate over actual headers (handles multi-value ones too)
     headers.forEach((value, key) => {
         const lower = key.toLowerCase();
         if (ALLOWED_HEADERS.has(lower) && value) {
-            // keep first occurrence
+            // Keep first occurrence
             if (!(lower in result)) result[lower] = value;
         }
     });
     return result;
 }
 
-/**
- * Extract URL string from request parameter (string or string[]).
- * @param rawUrl - The raw URL input.
- * @returns The extracted URL string.
- * @throws {Error} If the URL is missing or invalid.
- */
+// Extract URL string from request parameter (string or string[]).
 export function extractUrl(rawUrl: unknown): string {
     if (typeof rawUrl === 'string') return rawUrl;
     if (Array.isArray(rawUrl)) {
@@ -128,12 +107,7 @@ export function extractUrl(rawUrl: unknown): string {
     throw new Error(ErrorMessages.FILE.URL_REQUIRED);
 }
 
-/**
- * Validate URL format and scheme.
- * @param rawUrl - The raw URL input to validate.
- * @returns The validated URL object.
- * @throws {Error} If the URL is invalid or uses an unsupported protocol.
- */
+// Validate URL format and scheme.
 export function validateUrl(rawUrl: unknown): URL {
     const normalized = extractUrl(rawUrl);
     let target: URL;
@@ -156,11 +130,7 @@ export function validateUrl(rawUrl: unknown): URL {
     return target;
 }
 
-/**
- * Check if hostname is blocked either by exact match or by blocked suffix.
- * @param hostname - The hostname to check.
- * @returns True if the hostname is blocked, false otherwise.
- */
+// Check if hostname is blocked either by exact match or by blocked suffix.
 export function isBlockedHostname(hostname: string): boolean {
     const h = normalizeHostname(hostname);
     if (BLOCKED_HOSTNAMES.has(h)) return true;
@@ -170,11 +140,7 @@ export function isBlockedHostname(hostname: string): boolean {
     return false;
 }
 
-/**
- * Check if IP address is in disallowed ranges.
- * @param address - The IP address to check.
- * @returns True if the address is disallowed, false otherwise.
- */
+// Check if IP address is in disallowed ranges.
 export function isDisallowedAddress(address: string): boolean {
     try {
         const parsed = ipaddr.parse(address);
@@ -193,13 +159,8 @@ export function isDisallowedAddress(address: string): boolean {
     }
 }
 
-/**
- * Perform a DNS lookup with verbatim results and validate all resolved addresses.
- * Throws on any resolution error or if any resolved address is disallowed.
- * @param hostname - The hostname to resolve.
- * @returns A list of resolved IP addresses.
- * @throws {Error} If resolution fails or an address is disallowed.
- */
+// Perform a DNS lookup with verbatim results and validate all resolved addresses.
+// Throws on any resolution error or if any resolved address is disallowed.
 export async function resolveAndCheck(hostname: string) {
     try {
         const records = await dns.lookup(hostname, {
@@ -221,14 +182,10 @@ export async function resolveAndCheck(hostname: string) {
     }
 }
 
-/**
- * Ensure URL is allowed by applying a set of SSRF checks.
- * - Blocklisted hostnames/suffixes
- * - If hostname is an IP literal, validate it directly
- * - Resolve DNS (verbatim) and validate resolved addresses
- * @param url - The URL to validate.
- * @throws {Error} If the URL is disallowed.
- */
+// Ensure URL is allowed by applying a set of SSRF checks.
+// - blocklisted hostnames/suffixes
+// - if hostname is an IP literal, validate it directly
+// - resolve DNS (verbatim) and validate resolved addresses
 export async function ensureUrlAllowed(url: URL): Promise<void> {
     const hostname = normalizeHostname(url.hostname);
 
@@ -246,15 +203,9 @@ export async function ensureUrlAllowed(url: URL): Promise<void> {
     await resolveAndCheck(hostname);
 }
 
-/**
- * Fetch URL with manual redirect handling and validation.
- * Note: This re-resolves DNS before each request/redirect to reduce TOCTOU risk.
- * For stricter pinning, consider using a custom agent and pinned lookup.
- * @param url - The initial URL to fetch.
- * @param init - Optional request initialization parameters.
- * @returns The fetch response.
- * @throws {Error} If the fetch fails or violates security policies.
- */
+// Fetch URL with manual redirect handling and validation.
+// Note: This re-resolves DNS before each request/redirect to reduce TOCTOU risk.
+// For stricter pinning, consider using a custom agent and pinned lookup.
 export async function fetchWithRedirects(
     url: URL,
     init: RequestInit = {},
@@ -293,13 +244,7 @@ export async function fetchWithRedirects(
     }
 }
 
-/**
- * Read response body stream with size limit. Returns a Buffer.
- * @param stream - The readable stream to read from.
- * @param maxBytes - The maximum number of bytes to read.
- * @returns The body content as a Buffer.
- * @throws {Error} If the size limit is exceeded.
- */
+// Read response body stream with size limit. Returns a Buffer.
 export async function readBodyWithLimit(
     stream: WebReadableStream<Uint8Array> | null,
     maxBytes: number,
@@ -325,10 +270,10 @@ export async function readBodyWithLimit(
             chunks.push(value);
         }
     } finally {
-        // best-effort cancel / release
+        // Best-effort cancel / release
         try {
             await reader.cancel();
-        } catch {}
+        } catch { }
     }
 
     if (chunks.length === 0) return Buffer.alloc(0);

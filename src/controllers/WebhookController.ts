@@ -45,9 +45,7 @@ interface ExecuteWebhookRequest {
     avatarUrl?: string;
 }
 
-/**
- * Controller for managing and executing webhooks.
- */
+// Controller for managing and executing webhooks
 @injectable()
 @Route('api/v1')
 @Tags('Webhooks')
@@ -78,9 +76,7 @@ export class WebhookController extends Controller {
         }
     }
 
-    /**
-     * List all webhooks for a channel.
-     */
+    // List all webhooks for a channel
     @Get('servers/{serverId}/channels/{channelId}/webhooks')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -136,9 +132,7 @@ export class WebhookController extends Controller {
         }));
     }
 
-    /**
-     * Create a new webhook for a channel.
-     */
+    // Create a new webhook for a channel
     @Post('servers/{serverId}/channels/{channelId}/webhooks')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -211,9 +205,7 @@ export class WebhookController extends Controller {
         return webhook;
     }
 
-    /**
-     * Delete a webhook.
-     */
+    // Delete a webhook
     @Delete('servers/{serverId}/channels/{channelId}/webhooks/{webhookId}')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -265,9 +257,7 @@ export class WebhookController extends Controller {
         return { message: 'Webhook deleted successfully' };
     }
 
-    /**
-     * Upload webhook avatar.
-     */
+    // Upload webhook avatar
     @Post('servers/{serverId}/channels/{channelId}/webhooks/{webhookId}/avatar')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -329,7 +319,7 @@ export class WebhookController extends Controller {
             throw new Error(ErrorMessages.FILE.DATA_MISSING);
         }
 
-        // Process image to ensure consistent size and format to PNG (ngl i would switch to webp or i get spanked by cloudflare)
+        // Process image to ensure consistent size and format to PNG
         await sharp(input)
             .resize(128, 128, { fit: 'cover' })
             .png()
@@ -346,11 +336,9 @@ export class WebhookController extends Controller {
         return { avatarUrl };
     }
 
-    /**
-     * Get webhook avatar.
-     *
-     * Serves avatar images.
-     */
+    // Get webhook avatar
+    //
+    // Serves avatar images
     @Get('webhooks/avatar/{filename}')
     @Response<ErrorResponse>('404', 'Avatar Not Found', {
         error: ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND,
@@ -383,11 +371,9 @@ export class WebhookController extends Controller {
         return fs.createReadStream(filepath);
     }
 
-    /**
-     * Execute a webhook (public endpoint).
-     *
-     * Uses a 128-character token for authentication instead of JWT (only because those tokens don't expire unless explicitly deleted).
-     */
+    // Execute a webhook (public endpoint)
+    //
+    // Uses a 128-character token for authentication instead of JWT (only because those tokens don't expire unless explicitly deleted)
     @Post('webhooks/{token}')
     @Response<ErrorResponse>('401', 'Invalid Token', {
         error: ErrorMessages.WEBHOOK.INVALID_TOKEN,

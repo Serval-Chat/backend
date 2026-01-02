@@ -42,10 +42,8 @@ interface ServerEditMessageRequest {
     text?: string;
 }
 
-/**
- * Controller for managing messages within server channels.
- * Enforces server membership and channel-specific permission checks.
- */
+// Controller for managing messages within server channels
+// Enforces server membership and channel-specific permission checks
 @injectable()
 @Route('api/v1/servers/{serverId}/channels/{channelId}/messages')
 @Tags('Server Messages')
@@ -67,10 +65,8 @@ export class ServerMessageController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves messages for a specific channel with pagination.
-     * Enforces server membership.
-     */
+    // Retrieves messages for a specific channel with pagination
+    // Enforces server membership
     @Get()
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -121,10 +117,8 @@ export class ServerMessageController extends Controller {
         });
     }
 
-    /**
-     * Sends a new message to a channel.
-     * Enforces 'sendMessages' permission and updates channel activity.
-     */
+    // Sends a new message to a channel
+    // Enforces 'sendMessages' permission and updates channel activity
     @Post()
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.MESSAGE.TEXT_REQUIRED,
@@ -203,10 +197,8 @@ export class ServerMessageController extends Controller {
         return message;
     }
 
-    /**
-     * Retrieves a specific message and its replied-to message, if any.
-     * Enforces server membership.
-     */
+    // Retrieves a specific message and its replied-to message, if any
+    // Enforces server membership
     @Get('{messageId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -275,10 +267,8 @@ export class ServerMessageController extends Controller {
         };
     }
 
-    /**
-     * Edits an existing message.
-     * Enforces that only the original sender can edit their message.
-     */
+    // Edits an existing message
+    // Enforces that only the original sender can edit their message
     @Patch('{messageId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MESSAGE.ONLY_SENDER_EDIT,
@@ -331,10 +321,8 @@ export class ServerMessageController extends Controller {
         return updatedMessage;
     }
 
-    /**
-     * Deletes a message.
-     * Enforces that either the sender or a user with 'manageMessages' permission can delete.
-     */
+    // Deletes a message
+    // Enforces that either the sender or a user with 'manageMessages' permission can delete
     @Delete('{messageId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MESSAGE.NO_PERMISSION_DELETE,

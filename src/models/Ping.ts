@@ -1,15 +1,13 @@
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
-/**
- * Ping Interface.
- *
- * Represents a notification/mention for a user.
- */
+// Ping interface
+//
+// Represents a notification/mention for a user
 interface IPing extends Document {
     userId: Types.ObjectId; // User ID who received the ping
     type: 'mention';
-    sender: string; // Username of the sender. Todo: Remove this dependency in favor of senderId
+    sender: string; // Username of the sender. TODO: Remove this dependency in favor of senderId
     senderId: Types.ObjectId; // User ID of the sender
     serverId?: Types.ObjectId; // Server ID if ping is from a server message
     channelId?: Types.ObjectId; // Channel ID if ping is from a server message
@@ -66,7 +64,5 @@ pingSchema.index({ userId: 1, timestamp: -1 });
 // Index for deduplication checks (one ping per user per message from a sender)
 pingSchema.index({ userId: 1, senderId: 1, messageId: 1 }, { unique: true });
 
-/**
- * Ping Model.
- */
+// Ping model
 export const Ping: Model<IPing> = mongoose.model('Ping', pingSchema);

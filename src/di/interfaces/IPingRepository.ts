@@ -1,10 +1,8 @@
 import type { Types } from 'mongoose';
 
-/**
- * Ping interface (domain model).
- *
- * Represents a notification (mention) for a user.
- */
+// Ping interface (domain model)
+//
+// Represents a notification (mention) for a user
 export interface IPing {
     _id: any;
     userId: Types.ObjectId | string;
@@ -19,25 +17,17 @@ export interface IPing {
     createdAt?: Date;
 }
 
-/**
- * Ping Repository Interface
- *
- * Encapsulates all ping-related database operations
- */
+// Ping Repository Interface
+//
+// Encapsulates all ping-related database operations
 export interface IPingRepository {
-    /**
-     * Find ping by ID
-     */
+    // Find ping by ID
     findById(id: string): Promise<IPing | null>;
 
-    /**
-     * Find all pings for a user (with optional age filter)
-     */
+    // Find all pings for a user (with optional age filter)
     findByUserId(userId: string, maxAge?: number): Promise<IPing[]>;
 
-    /**
-     * Create a new ping
-     */
+    // Create a new ping
     create(data: {
         userId: string;
         type: 'mention';
@@ -50,32 +40,22 @@ export interface IPingRepository {
         timestamp?: Date;
     }): Promise<IPing>;
 
-    /**
-     * Check if a ping already exists (for deduplication).
-     */
+    // Check if a ping already exists (for deduplication)
     exists(
         userId: string,
         senderId: string,
         messageId: string,
     ): Promise<boolean>;
 
-    /**
-     * Delete a specific ping by ID
-     */
+    // Delete a specific ping by ID
     delete(id: string): Promise<boolean>;
 
-    /**
-     * Delete all pings for a specific channel
-     */
+    // Delete all pings for a specific channel
     deleteByChannelId(userId: string, channelId: string): Promise<number>;
 
-    /**
-     * Delete all pings for a user
-     */
+    // Delete all pings for a user
     deleteByUserId(userId: string): Promise<number>;
 
-    /**
-     * Delete old pings (older than specified age)
-     */
+    // Delete old pings (older than specified age)
     deleteOldPings(maxAge: number): Promise<number>;
 }

@@ -6,9 +6,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Controller for exposing Prometheus metrics.
- */
+// Controller for exposing Prometheus metrics
 @injectable()
 @Route('metrics')
 @Tags('System')
@@ -17,9 +15,7 @@ export class MetricsController extends Controller {
         super();
     }
 
-    /**
-     * Retrieves Prometheus metrics.
-     */
+    // Retrieves Prometheus metrics
     @Get()
     @Response<ErrorResponse>('401', 'Unauthorized', {
         error: ErrorMessages.AUTH.UNAUTHORIZED,

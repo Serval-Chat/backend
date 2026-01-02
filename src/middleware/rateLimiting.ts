@@ -1,13 +1,11 @@
 import type { Request } from 'express';
 import rateLimit from 'express-rate-limit';
 
-/**
- * Rate limiter for login attempts.
- *
- * Limits to 5 attempts per minute per IP+login combination.
- */
+// Rate limiter for login attempts.
+//
+// Limits to 5 attempts per minute per IP+login combination.
 export const loginLimiter = rateLimit({
-    windowMs: 60_000, // 1 minute // move me to other file so we have nice configurations
+    windowMs: 60_000, // 1 minute
     max: 5,
     keyGenerator: (req: Request) => {
         const login =
@@ -22,11 +20,9 @@ export const loginLimiter = rateLimit({
     message: 'Too many login attempts, please wait and try again.',
 });
 
-/**
- * Rate limiter for registration attempts.
- *
- * Limits to 3 attempts per minute per IP+login+invite combination.
- */
+// Rate limiter for registration attempts.
+//
+// Limits to 3 attempts per minute per IP+login+invite combination.
 export const registrationLimiter = rateLimit({
     windowMs: 60_000, // 1 minute
     max: 3,
@@ -45,12 +41,10 @@ export const registrationLimiter = rateLimit({
     message: 'Too many registration attempts, please wait and try again.',
 });
 
-/**
- * Rate limiter for sensitive authenticated operations.
- *
- * Limits to 3 attempts per hour per user for operations like password or login changes.
- * Skips successful requests to allow normal usage while blocking repeated failures.
- */
+// Rate limiter for sensitive authenticated operations.
+//
+// Limits to 3 attempts per hour per user for operations like password or login changes.
+// Skips successful requests to allow normal usage while blocking repeated failures.
 export const sensitiveOperationLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3,

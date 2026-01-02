@@ -2,10 +2,8 @@ import mongoose from 'mongoose';
 import { MONGO_URI } from '@/config/env';
 import logger from '@/utils/logger';
 
-/**
- * Connects to MangoDB (yum yum)
- * @throws {Error} If the connection to MongoDB fails.
- */
+// Connects to MongoDB
+// @throws {Error} If the connection to MongoDB fails
 export const connectDB = async () => {
     try {
         await mongoose.connect(MONGO_URI);

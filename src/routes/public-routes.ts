@@ -15,10 +15,6 @@ router.use(express.static(PUBLIC_FOLDER_PATH));
 /**
  * SPA Fallback Handler
  * Serves index.html for any unknown non-API routes to support client-side routing.
- * Excludes:
- * - /api/* (API endpoints)
- * - /docs/* (Documentation)
- * - /socket.io/* (Realtime)
  */
 router.get('*', (req, res, next) => {
     // Skip API routes - they should be handled by API router

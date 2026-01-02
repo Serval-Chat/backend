@@ -7,27 +7,15 @@ import {
     InterpolatedColorAssignment,
 } from '@/utils/gradientUtils';
 
-/**
- * Service for handling role color gradients
- */
+// Service for handling role color gradients
 @injectable()
 export class RoleGradientService {
-    /**
-     * Get the color for a specific user based on their role gradient
-     *
-     * @param role - The role with gradient colors
-     * @param userId - The user ID to get color for
-     * @param allMemberUserIds - All user IDs in the role
-     * @returns The color for the specific user
-     */
-    /**
-     * Get the color for a specific user based on their role gradient.
-     *
-     * Logic:
-     * - If role has start/end colors, calculates interpolated color
-     * - Uses HSL interpolation for smoother transitions
-     * - Falls back to solid role color if no gradient defined
-     */
+    // Get the color for a specific user based on their role gradient
+    //
+    // Logic:
+    // - if role has start/end colors, calculates interpolated color
+    // - uses HSL interpolation for smoother transitions
+    // - falls back to solid role color if no gradient defined
     getUserRoleColor(
         role: IRole,
         userId: string,
@@ -55,13 +43,7 @@ export class RoleGradientService {
         return role.color || '#99aab5';
     }
 
-    /**
-     * Generate color assignments for all members of a role
-     *
-     * @param role - The role with gradient colors
-     * @param memberUserIds - Array of user IDs in the role
-     * @returns Array of user-to-color assignments
-     */
+    // Generate color assignments for all members of a role
     generateRoleColorAssignments(
         role: IRole,
         memberUserIds: string[],
@@ -88,22 +70,12 @@ export class RoleGradientService {
         }));
     }
 
-    /**
-     * Check if a role uses gradient colors
-     *
-     * @param role - The role to check
-     * @returns True if role has both startColor and endColor
-     */
+    // Check if a role uses gradient colors
     isGradientRole(role: IRole): boolean {
         return !!(role.startColor && role.endColor);
     }
 
-    /**
-     * Get the effective colors for a role (gradient or solid)
-     *
-     * @param role - The role to get colors for
-     * @returns Object with startColor, endColor, and isGradient flag
-     */
+    // Get the effective colors for a role (gradient or solid)
     getRoleColors(role: IRole): {
         startColor: string;
         endColor: string;

@@ -1,37 +1,27 @@
 import { z } from 'zod';
 import { usernameSchema, objectIdSchema } from '@/validation/schemas/common';
 
-/**
- * Send friend request validation
- */
+// Send friend request validation
 export const sendFriendRequestSchema = z.object({
     username: usernameSchema,
 });
 
-/**
- * Friend request ID parameter validation
- */
+// Friend request ID parameter validation
 export const friendRequestIdParamSchema = z.object({
     id: objectIdSchema,
 });
 
-/**
- * Friend ID parameter validation
- */
+// Friend ID parameter validation
 export const friendIdParamSchema = z.object({
     friendId: objectIdSchema,
 });
 
-/**
- * Query parameters for filtering friend requests
- */
+// Query parameters for filtering friend requests
 export const friendRequestQuerySchema = z.object({
     status: z.enum(['pending', 'accepted', 'rejected']).optional(),
 });
 
-/**
- * Query parameters for incoming friend requests
- */
+// Query parameters for incoming friend requests
 export const incomingFriendRequestsQuerySchema = z.object({
     limit: z.string().optional(),
     offset: z.string().optional(),

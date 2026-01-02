@@ -9,9 +9,7 @@ import {
     reasonSchema,
 } from '@/validation/schemas/common';
 
-/**
- * Query parameters for listing users
- */
+// Query parameters for listing users
 export const listUsersQuerySchema = z.object({
     limit: limitSchema,
     offset: offsetSchema,
@@ -20,38 +18,28 @@ export const listUsersQuerySchema = z.object({
     includeDeleted: booleanQuerySchema,
 });
 
-/**
- * User ID parameter validation
- */
+// User ID parameter validation
 export const userIdParamSchema = z.object({
     id: objectIdSchema,
 });
 
-/**
- * Soft delete user validation
- */
+// Soft delete user validation
 export const softDeleteUserSchema = z.object({
     reason: reasonSchema.default('No reason provided'),
 });
 
-/**
- * Ban user validation
- */
+// Ban user validation
 export const banUserSchema = z.object({
     reason: reasonSchema,
     duration: z.number().int().min(1), // Duration in minutes (must be positive)
 });
 
-/**
- * Warn user validation
- */
+// Warn user validation
 export const warnUserSchema = z.object({
     message: reasonSchema, // The admin route uses 'message' field
 });
 
-/**
- * Query parameters for audit logs
- */
+// Query parameters for audit logs
 export const auditLogsQuerySchema = z.object({
     limit: limitSchema,
     offset: offsetSchema,
@@ -62,9 +50,7 @@ export const auditLogsQuerySchema = z.object({
     endDate: z.string().datetime().optional(),
 });
 
-/**
- * Query parameters for viewing bans
- */
+// Query parameters for viewing bans
 export const bansQuerySchema = z.object({
     limit: limitSchema,
     offset: offsetSchema,
@@ -72,9 +58,7 @@ export const bansQuerySchema = z.object({
     userId: objectIdSchema.optional(),
 });
 
-/**
- * Query parameters for viewing warnings
- */
+// Query parameters for viewing warnings
 export const warningsQuerySchema = z.object({
     limit: limitSchema,
     offset: offsetSchema,
@@ -83,12 +67,10 @@ export const warningsQuerySchema = z.object({
     severity: z.enum(['low', 'medium', 'high']).optional(),
 });
 
-/**
- * Reset user profile fields validation
- */
+// Reset user profile fields validation
 export const resetProfileSchema = z.object({
     fields: z
-        .array(z.enum(['username', 'displayName', 'pronouns', 'bio']))
+        .array(z.enum(['username', 'displayName', 'pronouns', 'bio', 'banner']))
         .min(1),
 });
 

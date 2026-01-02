@@ -521,10 +521,15 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ResetProfileRequestFieldType": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["username"]},{"dataType":"enum","enums":["displayName"]},{"dataType":"enum","enums":["pronouns"]},{"dataType":"enum","enums":["bio"]},{"dataType":"enum","enums":["banner"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ResetProfileRequest": {
         "dataType": "refObject",
         "properties": {
-            "fields": {"dataType":"array","array":{"dataType":"string"},"required":true},
+            "fields": {"dataType":"array","array":{"dataType":"refAlias","ref":"ResetProfileRequestFieldType"},"required":true},
         },
         "additionalProperties": false,
     },

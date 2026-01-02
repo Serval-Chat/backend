@@ -6,11 +6,9 @@ import {
 } from '@/di/interfaces/IChannelRepository';
 import { Channel } from '@/models/Server';
 
-/**
- * Transform MongoDB document to match IChannel interface.
- *
- * Ensures that ObjectIds are converted to strings and categoryId is handled.
- */
+// Transform MongoDB document to match IChannel interface
+//
+// Ensures that ObjectIds are converted to strings and categoryId is handled
 const transformChannel = (doc: any): IChannel | null => {
     if (!doc) return null;
 
@@ -22,11 +20,9 @@ const transformChannel = (doc: any): IChannel | null => {
     };
 };
 
-/**
- * Mongoose Channel Repository
- *
- * Implements IChannelRepository using Mongoose Channel model.
- */
+// Mongoose Channel repository
+//
+// Implements IChannelRepository using Mongoose Channel model
 @injectable()
 export class MongooseChannelRepository implements IChannelRepository {
     async findById(id: string): Promise<IChannel | null> {

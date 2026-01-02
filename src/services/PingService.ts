@@ -14,20 +14,16 @@ export interface PingNotification {
     timestamp: number;
 }
 
-/**
- * Ping Service - Just a nice wrapper for the ping repository
- */
+// Ping Service wrapper for the ping repository
 @injectable()
 export class PingService {
     private readonly maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
     constructor(
         @inject(TYPES.PingRepository) private pingRepo: IPingRepository,
-    ) {}
+    ) { }
 
-    /**
-     * Store a ping for a user (both online and offline)
-     */
+    // Store a ping for a user (both online and offline)
     async addPing(
         userId: string,
         pingData: Omit<PingNotification, 'id' | 'timestamp'>,
@@ -88,24 +84,18 @@ export class PingService {
         return this.mapToNotification(created);
     }
 
-    /**
-     * Get all pings for a user (with age filtering)
-     */
+    // Get all pings for a user (with age filtering)
     async getPingsForUser(userId: string): Promise<PingNotification[]> {
         const pings = await this.pingRepo.findByUserId(userId, this.maxAge);
         return pings.map((p) => this.mapToNotification(p));
     }
 
-    /**
-     * Remove a specific ping
-     */
+    // Remove a specific ping
     async removePing(userId: string, pingId: string): Promise<boolean> {
         return await this.pingRepo.delete(pingId);
     }
 
-    /**
-     * Clear all pings for a specific channel
-     */
+    // Clear all pings for a specific channel
     async clearChannelPings(
         userId: string,
         channelId: string,
@@ -113,16 +103,12 @@ export class PingService {
         return await this.pingRepo.deleteByChannelId(userId, channelId);
     }
 
-    /**
-     * Clear all pings for a user
-     */
+    // Clear all pings for a user
     async clearAllPings(userId: string): Promise<void> {
         await this.pingRepo.deleteByUserId(userId);
     }
 
-    /**
-     * Map database ping to notification format
-     */
+    // Map database ping to notification format
     private mapToNotification(ping: IPing): PingNotification {
         const notification: PingNotification = {
             id: ping._id.toString(),

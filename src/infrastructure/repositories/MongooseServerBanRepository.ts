@@ -6,11 +6,9 @@ import {
 } from '@/di/interfaces/IServerBanRepository';
 import { ServerBan } from '@/models/Server';
 
-/**
- * Mongoose Server Ban Repository
- *
- * Implements IServerBanRepository using Mongoose ServerBan model.
- */
+// Mongoose Server Ban repository
+//
+// Implements IServerBanRepository using Mongoose ServerBan model
 @injectable()
 export class MongooseServerBanRepository implements IServerBanRepository {
     async findByServerAndUser(
@@ -39,11 +37,8 @@ export class MongooseServerBanRepository implements IServerBanRepository {
         return result.deletedCount || 0;
     }
 
-    /**
-     * Unban user from server.
-     *
-     * Removes the ban record for the specified user and server.
-     */
+    // Unban user from server
+    // Removes the ban record for the specified user and server
     async unban(serverId: string, userId: string): Promise<boolean> {
         const result = await ServerBan.deleteOne({ serverId, userId });
         return result.deletedCount ? result.deletedCount > 0 : false;

@@ -36,9 +36,7 @@ interface MetaCacheEntry {
     expiresAt: number;
 }
 
-/**
- * Controller for proxying remote files to avoid CORS issues and SSRF shitz
- */
+// Controller for proxying remote files to avoid CORS issues and SSRF attacks
 @injectable()
 @Route('api/v1/file-proxy')
 @Tags('File Proxy')
@@ -50,14 +48,10 @@ export class FileProxyController extends Controller {
         super();
     }
 
-    /**
-        Rewrite the old URL to new URL so old messages that use the old URL are still valid.
-    */
+    // Rewrite the old URL to new URL so old messages that use the old URL are still valid
     private rewriteKbityUrl(url: URL): URL {
         if (url.hostname === 'kbity.catflare.cloud') {
-            // Well this one is interesting. We used to use kbity.catflare.cloud but the domain owner
-            // had a mental breakdown and deleted the sub-domain entry in the DNS.
-            // So we use catfla.re instead which I finally fully own.
+            // Rewrite legacy kbity.catflare.cloud URLs to catfla.re
             const newUrl = new URL(url.toString());
             newUrl.hostname = 'catfla.re';
             return newUrl;
@@ -65,10 +59,8 @@ export class FileProxyController extends Controller {
         return url;
     }
 
-    /**
-     * Proxies a file from a remote URL.
-     * Enforces MAX_FILE_SIZE_BYTES to prevent resource exhaustion.
-     */
+    // Proxies a file from a remote URL
+    // Enforces MAX_FILE_SIZE_BYTES to prevent resource exhaustion
     @Get()
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.FILE.URL_REQUIRED,
@@ -198,9 +190,7 @@ export class FileProxyController extends Controller {
         }
     }
 
-    /**
-     * Retrieves metadata for a remote file via HEAD request.
-     */
+    // Retrieves metadata for a remote file via HEAD request
     @Get('meta')
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.FILE.URL_REQUIRED,

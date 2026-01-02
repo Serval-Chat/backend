@@ -8,16 +8,14 @@ import logger from '@/utils/logger';
 import { Ban } from '@/models/Ban';
 import { Types } from 'mongoose';
 
-/**
- * Creates the Socket.IO authentication middleware.
- *
- * Verifies the JWT token from the handshake auth or headers.
- * Checks if the user exists, is not soft-deleted, and is not banned.
- * Ensures the token version matches the user's current version.
- *
- * @param container - The DI container to resolve dependencies.
- * @returns The middleware function.
- */
+// Creates the Socket.IO authentication middleware
+//
+// Verifies the JWT token from the handshake auth or headers
+// Checks if the user exists, is not soft-deleted, and is not banned
+// Ensures the token version matches the user's current version
+//
+// @param container - The DI container to resolve dependencies
+// @returns The middleware function
 export const createAuthMiddleware = (container: Container) => {
     const userRepo = container.get<IUserRepository>(TYPES.UserRepository);
 

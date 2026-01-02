@@ -22,17 +22,13 @@ type MutableUser = Pick<IUser, 'customStatus'> & {
 
 type CustomStatusValue = ActiveCustomStatus | null;
 
-/**
- * Check if a custom status has expired.
- */
+// Check if a custom status has expired
 const isExpired = (expiresAt: Date | null | undefined): boolean => {
     if (!expiresAt) return false;
     return expiresAt.getTime() <= Date.now();
 };
 
-/**
- * Clear expired custom status from the database.
- */
+// Clear expired custom status from the database
 const clearExpiredStatus = async (user: MutableUser): Promise<void> => {
     // Only attempt to save if the user has Mongoose methods
     if (!user.save || !user.markModified) {
@@ -48,10 +44,8 @@ const clearExpiredStatus = async (user: MutableUser): Promise<void> => {
     }
 };
 
-/**
- * Get the active custom status for a user, filtering out expired statuses.
- * Automatically clears expired statuses from the database.
- */
+// Get the active custom status for a user, filtering out expired statuses
+// Automatically clears expired statuses from the database
 export const getActiveCustomStatus = (user: MutableUser): CustomStatusValue => {
     const status = user.customStatus as ActiveCustomStatus | null | undefined;
     if (!status || (!status.text && !status.emoji)) {
@@ -89,9 +83,7 @@ export const serializeCustomStatus = (
     };
 };
 
-/**
- * Get serialized custom status for a user (for API responses).
- */
+// Get serialized custom status for a user (for API responses)
 export const getSerializedCustomStatus = (
     user: MutableUser,
 ): SerializedCustomStatus | null => {

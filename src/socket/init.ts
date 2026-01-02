@@ -7,16 +7,14 @@ import type { Container } from 'inversify';
 import { setIO } from './index';
 import { RealTimeServer } from '@/realtime/index';
 
-/**
- * Initialize Socket.IO server and attach to HTTP server.
- *
- * Flow:
- * 1. Creates Socket.IO instance with configured options
- * 2. Applies authentication middleware
- * 3. Initializes RealTimeServer (decorator-based gateway system)
- *
- * @returns Configured Socket.IO server instance
- */
+// Initialize Socket.IO server and attach to HTTP server
+//
+// Flow:
+// 1. Creates Socket.IO instance with configured options
+// 2. Applies authentication middleware
+// 3. Initializes RealTimeServer (decorator-based gateway system)
+//
+// @returns Configured Socket.IO server instance
 export const createSocketServer = async (
     httpServer: http.Server,
     container: Container,

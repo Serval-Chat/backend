@@ -10,8 +10,7 @@ import logger from '@/utils/logger';
 /**
  * Presence Gateway.
  *
- * Manages user online/offline status.
- * Handles connection lifecycle events and broadcasts status changes.
+ * Manages user online/offline status and broadcasts state changes.
  */
 @injectable()
 @Gateway()
@@ -19,7 +18,7 @@ export class PresenceGateway implements OnGatewayConnection {
     constructor(
         @inject(TYPES.PresenceService) private presenceService: PresenceService,
         @inject(TYPES.PingService) private pingService: PingService,
-    ) {}
+    ) { }
 
     /**
      * Handles new socket connection.

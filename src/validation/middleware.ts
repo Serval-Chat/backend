@@ -2,21 +2,17 @@ import type { Request, Response, NextFunction } from 'express';
 import type { z, ZodTypeAny } from 'zod';
 import { ZodError } from 'zod';
 
-/**
- * Validation schemas for different parts of the request
- */
+// Validation schemas for different parts of the request
 interface ValidationSchemas {
     body?: ZodTypeAny;
     query?: ZodTypeAny;
     params?: ZodTypeAny;
 }
 
-/**
- * Middleware factory for validating requests using Zod schemas
- *
- * @param schemas - Object containing optional Zod schemas for body, query, and params
- * @returns Express middleware function
- */
+// Middleware factory for validating requests using Zod schemas.
+//
+// Requires an object containing optional Zod schemas for body, query, and params.
+// Returns express middleware function.
 export const validate = (schemas: ValidationSchemas) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -58,16 +54,10 @@ export const validate = (schemas: ValidationSchemas) => {
     };
 };
 
-/**
- * Middleware for validating partial updates (PATCH requests)
- * Uses Zod's partial() to make all fields optional
- *
- * @param schema - Zod schema to make partial
- * @returns Express middleware function
- *
- * @example
- * router.patch('/users/:id', validatePartial(updateUserSchema), handler);
- */
+// Middleware for validating partial updates (PATCH requests).
+//
+// Requires a Zod schema to make partial.
+// Returns express middleware function.
 export const validatePartial = (schema: z.ZodObject<any>) => {
     return validate({ body: schema.partial() });
 };

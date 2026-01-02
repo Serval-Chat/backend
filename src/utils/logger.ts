@@ -4,25 +4,20 @@ import path from 'path';
 import DailyRotateFile from 'winston-daily-rotate-file';
 const { combine, timestamp, printf, colorize, errors } = format;
 
-/**
- * Log format with timestamp and error stack traces.
- */
+// Log format with timestamp and error stack traces
 const logFormat = printf(({ level, message, timestamp, stack }) => {
     return `${timestamp} ${level}: ${stack || message}`;
 });
 
-/**
- * Winston logger instance.
- * At production level, only info and error logs are logged.
- * At development level, debug and error logs are logged.
- * Max size of log file is 20MB, and it is rotated daily.
- *
- */
+// Winston logger instance
+// At production level, only info and error logs are logged
+// At development level, debug and error logs are logged
+// Max size of log file is 20MB, and it is rotated daily
 const logger = createLogger({
     level: PROJECT_LEVEL === 'production' ? 'info' : 'debug',
     format: combine(
         timestamp(),
-        errors({ stack: true }), // log error stack too
+        errors({ stack: true }), // Log error stack too
         logFormat,
     ),
     transports: [

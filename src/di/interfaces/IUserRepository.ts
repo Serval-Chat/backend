@@ -1,9 +1,7 @@
 import type { Types } from 'mongoose';
 import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 
-/**
- * User DTO for creation
- */
+// User DTO for creation
 export interface CreateUserDTO {
     login: string;
     username: string;
@@ -11,11 +9,9 @@ export interface CreateUserDTO {
     email?: string;
 }
 
-/**
- * User interface (domain model).
- *
- * Represents a registered user in the system.
- */
+// User interface (domain model)
+//
+// Represents a registered user in the system
 export interface IUser {
     _id: Types.ObjectId | string;
     login?: string;
@@ -27,17 +23,13 @@ export interface IUser {
     status?: string;
     profilePicture?: string;
     usernameFont?: string;
-    /**
-     * Visual gradient settings for the username display.
-     */
+    // Visual gradient settings for the username display
     usernameGradient?: {
         enabled: boolean;
         colors: string[];
         angle: number;
     };
-    /**
-     * Visual glow effect settings for the username display.
-     */
+    // Visual glow effect settings for the username display
     usernameGlow?: {
         enabled: boolean;
         color: string;
@@ -50,22 +42,14 @@ export interface IUser {
         expiresAt: Date | null;
         updatedAt: Date;
     } | null;
-    /**
-     * Version of the user's authentication token.
-     * Incremented to invalidate all existing JWTs (global logout).
-     */
+    // Version of the user's authentication token
+    // Incremented to invalidate all existing JWTs (global logout)
     tokenVersion?: number;
-    /**
-     * Timestamp of when the user account was soft-deleted.
-     */
+    // Timestamp of when the user account was soft-deleted
     deletedAt?: Date;
-    /**
-     * Reason for account deletion (e.g., user request, ban).
-     */
+    // Reason for account deletion (e.g., user request, ban)
     deletedReason?: string;
-    /**
-     * Anonymized username used after hard-deletion for historical message context.
-     */
+    // Anonymized username used after hard-deletion for historical message context
     anonymizedUsername?: string;
     permissions?: AdminPermissions;
     createdAt?: Date;
@@ -84,74 +68,48 @@ export interface IUser {
     banner?: string;
 }
 
-/**
- * User Repository Interface
- *
- * Encapsulates all user-related database operations
- */
+// User Repository Interface
+//
+// Encapsulates all user-related database operations
 export interface IUserRepository {
-    /**
-     * Find user by ID (lean)
-     */
+    // Find user by ID (lean)
     findById(id: string): Promise<IUser | null>;
 
-    /**
-     * Find multiple users by IDs
-     */
+    // Find multiple users by IDs
     findByIds(ids: (string | Types.ObjectId)[]): Promise<IUser[]>;
 
-    /**
-     * Find user by login (username or email)
-     */
+    // Find user by login (username or email)
     findByLogin(login: string): Promise<IUser | null>;
 
-    /**
-     * Find user by username
-     */
+    // Find user by username
     findByUsername(username: string): Promise<IUser | null>;
 
-    /**
-     * Find multiple users by usernames
-     */
+    // Find multiple users by usernames
     findByUsernames(usernames: string[]): Promise<IUser[]>;
 
-    /**
-     * Find users by username prefix from a list of user IDs
-     */
+    // Find users by username prefix from a list of user IDs
     findByUsernamePrefix(
         userIds: (string | Types.ObjectId)[],
         prefix: string,
         limit?: number,
     ): Promise<IUser[]>;
 
-    /**
-     * Create a new user
-     */
+    // Create a new user
     create(data: CreateUserDTO): Promise<IUser>;
 
-    /**
-     * Update user by ID
-     */
+    // Update user by ID
     update(id: string, data: Partial<IUser>): Promise<IUser | null>;
 
-    /**
-     * Soft delete user (mark as deleted without removing).
-     */
+    // Soft delete user (mark as deleted without removing)
     softDelete(id: string, reason: string): Promise<boolean>;
 
-    /**
-     * Hard delete user by ID.
-     */
+    // Hard delete user by ID
     delete(id: string): Promise<boolean>;
 
-    /**
-     * Compare a password against the stored hash
-     */
+    // Compare a password against the stored hash
     comparePassword(id: string, password: string): Promise<boolean>;
 
-    /**
-     * Update user's custom status
-     */
+    // Update user's custom status
     updateCustomStatus(
         id: string,
         status: {
@@ -162,24 +120,16 @@ export interface IUserRepository {
         } | null,
     ): Promise<void>;
 
-    /**
-     * Update user's profile picture
-     */
+    // Update user's profile picture
     updateProfilePicture(id: string, filename: string): Promise<void>;
 
-    /**
-     * Update user's login
-     */
+    // Update user's login
     updateLogin(id: string, newLogin: string): Promise<void>;
 
-    /**
-     * Update user's password
-     */
+    // Update user's password
     updatePassword(id: string, newPassword: string): Promise<void>;
 
-    /**
-     * Update user's username style
-     */
+    // Update user's username style
     updateUsernameStyle(
         id: string,
         style: {
@@ -197,34 +147,22 @@ export interface IUserRepository {
         },
     ): Promise<void>;
 
-    /**
-     * Update user's username
-     */
+    // Update user's username
     updateUsername(id: string, newUsername: string): Promise<void>;
 
-    /**
-     * Update user's language preference
-     */
+    // Update user's language preference
     updateLanguage(id: string, language: string): Promise<void>;
 
-    /**
-     * Update user's bio
-     */
+    // Update user's bio
     updateBio(id: string, bio: string | null): Promise<void>;
 
-    /**
-     * Update user's pronouns
-     */
+    // Update user's pronouns
     updatePronouns(id: string, pronouns: string | null): Promise<void>;
 
-    /**
-     * Update user's display name
-     */
+    // Update user's display name
     updateDisplayName(id: string, displayName: string | null): Promise<void>;
 
-    /**
-     * Find users with pagination and filtering (for admin tho)
-     */
+    // Find users with pagination and filtering (for admin)
     findMany(options: {
         limit?: number;
         offset?: number;
@@ -233,29 +171,19 @@ export interface IUserRepository {
         includeDeleted?: boolean;
     }): Promise<IUser[]>;
 
-    /**
-     * Hard delete user by ID
-     */
+    // Hard delete user by ID
     hardDelete(id: string): Promise<boolean>;
 
-    /**
-     * Update user permissions
-     */
+    // Update userPermissions
     updatePermissions(id: string, permissions: AdminPermissions): Promise<void>;
 
-    /**
-     * Increment token version.
-     */
+    // Increment token version
     incrementTokenVersion(id: string): Promise<void>;
 
-    /**
-     * Remove a specific badge from all users
-     */
+    // Remove a specific badge from all users
     removeBadgeFromAllUsers(badgeId: string): Promise<void>;
 
-    /**
-     * Update user settings
-     */
+    // Update user settings
     updateSettings(
         id: string,
         settings: {
@@ -269,18 +197,12 @@ export interface IUserRepository {
         },
     ): Promise<void>;
 
-    /**
-     * Count total users
-     */
+    // Count total users
     count(): Promise<number>;
 
-    /**
-     * Count users created after a certain date
-     */
+    // Count users created after a certain date
     countCreatedAfter(date: Date): Promise<number>;
 
-    /**
-     * Update user's banner
-     */
+    // Update user's banner
     updateBanner(id: string, filename: string | null): Promise<void>;
 }

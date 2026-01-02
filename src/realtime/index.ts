@@ -11,12 +11,9 @@ import { StatusGateway } from '@/realtime/gateways/StatusGateway';
 import { ReactionGateway } from '@/realtime/gateways/ReactionGateway';
 import { SecurityGateway } from '@/realtime/gateways/SecurityGateway';
 
-/**
- * RealTime Server.
- *
- * Entry point for the real-time (WebSocket) infrastructure.
- * Initializes the dispatcher and registers all gateway modules.
- */
+// RealTime Server
+//
+// Entry point for the real-time (WebSocket) infrastructure
 export class RealTimeServer {
     private modules: RealTimeModule[] = [];
     private dispatcher: RealTimeDispatcher;
@@ -41,13 +38,9 @@ export class RealTimeServer {
         this.modules.push(module);
     }
 
-    /**
-     * Initializes the RealTime Server.
-     *
-     * Registers all gateways with the Socket.IO server and runs initialization hooks.
-     *
-     * @param io - The Socket.IO server instance.
-     */
+    // Initializes the RealTime Server
+    //
+    // @param io - The Socket.IO server instance
     initialize(io: Server) {
         logger.info('Initializing RealTime Server...');
 

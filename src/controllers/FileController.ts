@@ -30,9 +30,7 @@ interface FileMetadata {
     modifiedAt: Date;
 }
 
-/**
- * Controller for file uploads, metadata retrieval, and downloads.
- */
+// Controller for file uploads, metadata retrieval, and downloads
 @injectable()
 @Route('api/v1/files')
 @Tags('Files')
@@ -41,10 +39,8 @@ export class FileController extends Controller {
         super();
     }
 
-    /**
-     * Uploads a file and returns a download URL.
-     * Expects a multipart/form-data request with a 'file' field.
-     */
+    // Uploads a file and returns a download URL
+    // Expects a multipart/form-data request with a 'file' field
     @Post('upload')
     @Security('jwt')
     public async uploadFile(
@@ -60,9 +56,7 @@ export class FileController extends Controller {
         return { url: fileUrl };
     }
 
-    /**
-     * Retrieves file metadata without downloading the content.
-     */
+    // Retrieves file metadata without downloading the content
     @Get('metadata/{filename}')
     @Response<ErrorResponse>('400', 'Invalid filename', {
         error: ErrorMessages.FILE.INVALID_FILENAME,
@@ -150,9 +144,7 @@ export class FileController extends Controller {
         }
     }
 
-    /**
-     * Downloads a file with its original filename.
-     */
+    // Downloads a file with its original filename
     @Get('download/{filename}')
     @Response<ErrorResponse>('400', 'Invalid filename', {
         error: ErrorMessages.FILE.INVALID_FILENAME,

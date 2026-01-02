@@ -2,10 +2,8 @@ import crypto from 'crypto';
 import { getAvatarStorage } from '@/utils/storage';
 import logger from '@/utils/logger';
 
-/**
- * Generate an anonymized username for deleted users.
- * Uses userId for consistency if available, otherwise generates random suffix.
- */
+// Generate an anonymized username for deleted users
+// Uses userId for consistency if available, otherwise generates random suffix
 export function generateAnonymizedUsername(userId?: string): string {
     if (userId) {
         return `deleted_user_${userId}`;
@@ -14,15 +12,11 @@ export function generateAnonymizedUsername(userId?: string): string {
     return `Deleted User #${suffix}`;
 }
 
-/**
- * Placeholder path for deleted user avatars.
- * Points to a static asset that represents deleted users.
- */
+// Placeholder path for deleted user avatars
+// Points to a static asset that represents deleted users
 export const DELETED_AVATAR_PATH = '/assets/deleted-user-avatar.png';
 
-/**
- * Delete user's avatar using the configured storage driver
- */
+// Delete user's avatar using the configured storage driver
 export async function deleteAvatarFile(
     avatarPath: string | undefined,
 ): Promise<void> {

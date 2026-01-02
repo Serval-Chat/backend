@@ -40,52 +40,31 @@ import sharp from 'sharp';
 import mongoose from 'mongoose';
 
 interface CreateServerRequest {
-    /**
-     * Name of the server
-     * @example "My Awesome Server"
-     */
+    // Name of the server
     name: string;
 }
 
 interface UpdateServerRequest {
-    /**
-     * New name for the server
-     * @example "Updated Server Name"
-     */
+    // New name for the server
     name?: string;
-    /**
-     * Server banner configuration
-     */
+    // Server banner configuration
     banner?: {
-        /**
-         * Type of banner (e.g., 'image')
-         * @example "image"
-         */
+        // Type of banner (e.g., 'image')
         type: string;
-        /**
-         * Value of the banner (e.g., URL)
-         */
+        // Value of the banner (e.g., URL)
         value: string;
     };
-    /**
-     * Whether to disable custom fonts on the server
-     * @example false
-     */
+    // Whether to disable custom fonts on the server
     disableCustomFonts?: boolean;
 }
 
 interface SetDefaultRoleRequest {
-    /**
-     * ID of the role to set as default, or null to remove default role
-     * @example "60d5ecb8b5c9c62b3c7c4b5e"
-     */
+    // ID of the role to set as default, or null to remove default role
     roleId: string | null;
 }
 
-/**
- * Controller for server management, membership, and statistics.
- * Enforces ownership checks, permission validation, and path sanitization for uploads.
- */
+// Controller for server management, membership, and statistics
+// Enforces ownership checks, permission validation, and path sanitization for uploads
 @injectable()
 @Route('api/v1/servers')
 @Tags('Servers')
@@ -122,9 +101,7 @@ export class ServerController extends Controller {
         }
     }
 
-    /**
-     * Retrieves all servers where the current user is a member.
-     */
+    // Retrieves all servers where the current user is a member
     @Get()
     public async getServers(
         @Request() req: express.Request,
@@ -148,9 +125,7 @@ export class ServerController extends Controller {
         );
     }
 
-    /**
-     * Creates a new server and initializes default roles and channels.
-     */
+    // Creates a new server and initializes default roles and channels
     @Post()
     public async createServer(
         @Request() req: express.Request,
@@ -208,9 +183,7 @@ export class ServerController extends Controller {
         return { server, channel };
     }
 
-    /**
-     * Retrieves unread status for all servers the user is a member of.
-     */
+    // Retrieves unread status for all servers the user is a member of
     @Get('unread')
     public async getUnreadStatus(
         @Request() req: express.Request,
@@ -248,9 +221,7 @@ export class ServerController extends Controller {
         return unreadMap;
     }
 
-    /**
-     * Marks all channels in a server as read for the current user.
-     */
+    // Marks all channels in a server as read for the current user
     @Post('{serverId}/ack')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -291,10 +262,8 @@ export class ServerController extends Controller {
         return { message: 'Server marked as read' };
     }
 
-    /**
-     * Retrieves detailed information about a server.
-     * Enforces server membership.
-     */
+    // Retrieves detailed information about a server
+    // Enforces server membership
     @Get('{serverId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NOT_MEMBER,
@@ -331,10 +300,8 @@ export class ServerController extends Controller {
         };
     }
 
-    /**
-     * Retrieves aggregated statistics for a server.
-     * Includes member counts, online status, and all-time high tracking.
-     */
+    // Retrieves aggregated statistics for a server
+    // Includes member counts, online status, and all-time high tracking
     @Get('{serverId}/stats')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -434,10 +401,8 @@ export class ServerController extends Controller {
         };
     }
 
-    /**
-     * Updates server settings.
-     * Enforces 'manageServer' permission.
-     */
+    // Updates server settings
+    // Enforces 'manageServer' permission
     @Patch('{serverId}')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -485,10 +450,8 @@ export class ServerController extends Controller {
         return server;
     }
 
-    /**
-     * Sets the default role for new members in the server.
-     * Enforces 'manageServer' permission.
-     */
+    // Sets the default role for new members in the server
+    // Enforces 'manageServer' permission
     @Post('{serverId}/roles/default')
     @Security('jwt')
     @Response<ErrorResponse>('400', 'Bad Request', {
@@ -549,10 +512,8 @@ export class ServerController extends Controller {
         return { defaultRoleId: roleId || null };
     }
 
-    /**
-     * Deletes a server and all associated data (channels, members, roles, etc.).
-     * Enforces that only the server owner can perform this action.
-     */
+    // Deletes a server and all associated data (channels, members, roles, etc.)
+    // Enforces that only the server owner can perform this action
     @Delete('{serverId}')
     @Security('jwt')
     @Response<ErrorResponse>('403', 'Forbidden', {
@@ -591,10 +552,8 @@ export class ServerController extends Controller {
         return { message: 'Server deleted' };
     }
 
-    /**
-     * Uploads or updates the server icon.
-     * Resizes the image to 256x256 and enforces 'manageServer' permission.
-     */
+    // Uploads or updates the server icon
+    // Resizes the image to 256x256 and enforces 'manageServer' permission
     @Post('{serverId}/icon')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NO_PERMISSION_MANAGE,
@@ -657,11 +616,9 @@ export class ServerController extends Controller {
         return { icon: iconUrl };
     }
 
-    /**
-     * Uploads or updates the server banner.
-     * Resizes the image to 960x540 and supports animated GIFs.
-     * Enforces 'manageServer' permission.
-     */
+    // Uploads or updates the server banner
+    // Resizes the image to 960x540 and supports animated GIFs
+    // Enforces 'manageServer' permission
     @Post('{serverId}/banner')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.SERVER.NO_PERMISSION_MANAGE,

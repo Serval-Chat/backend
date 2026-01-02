@@ -1,10 +1,8 @@
 import type { Types } from 'mongoose';
 
-/**
- * Audit Log interface.
- *
- * Represents a permanent, immutable record of actions.
- */
+// Audit Log interface
+//
+// Represents a permanent, immutable record of actions
 export interface IAuditLog {
     _id: Types.ObjectId | string;
     adminId: Types.ObjectId | string;
@@ -14,15 +12,11 @@ export interface IAuditLog {
     timestamp: Date;
 }
 
-/**
- * Audit Log Repository Interface
- *
- * Encapsulates all audit log related database operations
- */
+// Audit Log Repository Interface
+//
+// Encapsulates all audit log related database operations
 export interface IAuditLogRepository {
-    /**
-     * Create a new audit log entry
-     */
+    // Create a new audit log entry
     create(data: {
         adminId: string;
         actionType: string;
@@ -30,9 +24,7 @@ export interface IAuditLogRepository {
         additionalData?: any;
     }): Promise<IAuditLog>;
 
-    /**
-     * Find audit logs with pagination and filtering
-     */
+    // Find audit logs with pagination and filtering
     find(options: {
         limit?: number;
         offset?: number;
@@ -43,14 +35,10 @@ export interface IAuditLogRepository {
         endDate?: Date;
     }): Promise<IAuditLog[]>;
 
-    /**
-     * Find audit log by ID
-     */
+    // Find audit log by ID
     findById(id: string): Promise<IAuditLog | null>;
 
-    /**
-     * Count audit logs matching criteria
-     */
+    // Count audit logs matching criteria
     count(options: {
         adminId?: string;
         actionType?: string;

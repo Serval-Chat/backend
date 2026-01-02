@@ -29,9 +29,7 @@ export class MongooseWarningRepository implements IWarningRepository {
         ).lean()) as unknown as IWarning | null;
     }
 
-    /**
-     * Mark a warning as acknowledged by the user.
-     */
+    // Mark a warning as acknowledged by the user */
     async acknowledge(id: string): Promise<IWarning | null> {
         return (await Warning.findByIdAndUpdate(
             id,

@@ -6,9 +6,7 @@ import {
     inviteTokenSchema,
 } from '@/validation/schemas/common';
 
-/**
- * Registration request validation
- */
+// Registration request validation
 export const registerSchema = z.object({
     login: loginSchema,
     username: usernameSchema,
@@ -16,9 +14,7 @@ export const registerSchema = z.object({
     invite: inviteTokenSchema,
 });
 
-/**
- * Login request validation
- */
+// Login request validation
 export const loginRequestSchema = z.object({
     login: loginSchema,
     password: z.string().min(1, 'Password is required'),

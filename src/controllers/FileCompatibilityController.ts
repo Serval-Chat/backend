@@ -9,10 +9,8 @@ import { extractOriginalFilename } from '@/config/multer';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Compatibility controller for file downloads.
- * Provides the legacy /api/v1/download/:filename endpoint.
- */
+// Compatibility controller for file downloads
+// Provides the legacy /api/v1/download/:filename endpoint
 @injectable()
 @Route('api/v1')
 @Tags('Files')
@@ -21,9 +19,7 @@ export class FileCompatibilityController extends Controller {
         super();
     }
 
-    /**
-     * Downloads a file with its original filename (Legacy endpoint).
-     */
+    // Downloads a file with its original filename (legacy endpoint)
     @Get('download/{filename}')
     @Response<ErrorResponse>('400', 'Invalid filename', {
         error: ErrorMessages.FILE.INVALID_FILENAME,

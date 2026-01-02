@@ -8,11 +8,9 @@ import { User } from '@/models/User';
 import { mapUser } from '@/utils/user';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-/**
- * Mongoose Server Member Repository
- *
- * Implements IServerMemberRepository using Mongoose ServerMember model.
- */
+// Mongoose Server Member repository
+//
+// Implements IServerMemberRepository using Mongoose ServerMember model
 @injectable()
 export class MongooseServerMemberRepository implements IServerMemberRepository {
     async findByServerAndUser(
@@ -47,11 +45,9 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         ).lean();
     }
 
-    /**
-     * Remove a member from a server.
-     *
-     * Operation for leaving or kicking a member.
-     */
+    // Remove a member from a server
+    //
+    // Operation for leaving or kicking a member
     async remove(serverId: string, userId: string): Promise<boolean> {
         const result = await ServerMember.deleteOne({ serverId, userId });
         return result.deletedCount ? result.deletedCount > 0 : false;
@@ -81,11 +77,9 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return await ServerMember.countDocuments({ serverId });
     }
 
-    /**
-     * Delete a member record by its ID.
-     *
-     * Low-level cleanup operation.
-     */
+    // Delete a member record by its ID
+    //
+    // Low-level cleanup operation
     async deleteById(id: string): Promise<boolean> {
         const result = await ServerMember.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
@@ -121,11 +115,9 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return { deletedCount: result.deletedCount };
     }
 
-    /**
-     * Find all members of a server with user info populated.
-     *
-     * Performs manual population by fetching users in a separate query.
-     */
+    // Find all members of a server with user info populated
+    //
+    // Performs manual population by fetching users in a separate query
     async findByServerIdWithUserInfo(serverId: string): Promise<any[]> {
         const members = await ServerMember.find({ serverId }).lean();
         const userIds = members.map((m) => m.userId.toString());

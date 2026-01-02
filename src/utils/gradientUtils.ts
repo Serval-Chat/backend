@@ -1,6 +1,4 @@
-/**
- * Color interpolation utilities for role gradients
- */
+// Color interpolation utilities for role gradients
 
 export interface RoleGradientColors {
     startColor: string;
@@ -10,12 +8,10 @@ export interface RoleGradientColors {
 
 export interface InterpolatedColorAssignment {
     userId: string;
-    color: string | null; // null indicates gradient mode
+    color: string | null; // Null indicates gradient mode
 }
 
-/**
- * Convert hex color to RGB
- */
+// Convert hex color to RGB
 export function hexToRgb(
     hex: string,
 ): { r: number; g: number; b: number } | null {
@@ -30,16 +26,12 @@ export function hexToRgb(
     };
 }
 
-/**
- * Convert RGB to hex
- */
+// Convert RGB to hex
 export function rgbToHex(r: number, g: number, b: number): string {
     return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
 
-/**
- * Convert hex color to HSL
- */
+// Convert hex color to HSL
 export function hexToHsl(
     hex: string,
 ): { h: number; s: number; l: number } | null {
@@ -80,9 +72,7 @@ export function hexToHsl(
     };
 }
 
-/**
- * Convert HSL to hex
- */
+// Convert HSL to hex
 export function hslToHex(h: number, s: number, l: number): string {
     h = h / 360;
     s = s / 100;
@@ -91,7 +81,7 @@ export function hslToHex(h: number, s: number, l: number): string {
     let r, g, b;
 
     if (s === 0) {
-        r = g = b = l; // achromatic
+        r = g = b = l; // Achromatic
     } else {
         const hue2rgb = (p: number, q: number, t: number) => {
             if (t < 0) t += 1;
@@ -116,9 +106,7 @@ export function hslToHex(h: number, s: number, l: number): string {
     );
 }
 
-/**
- * Interpolate between two colors in RGB space
- */
+// Interpolate between two colors in RGB space
 export function interpolateRgb(
     color1: string,
     color2: string,
@@ -136,9 +124,7 @@ export function interpolateRgb(
     return rgbToHex(r, g, b);
 }
 
-/**
- * Interpolate between two colors in HSL space (generally smoother gradients)
- */
+// Interpolate between two colors in HSL space (generally smoother gradients)
 export function interpolateHsl(
     color1: string,
     color2: string,
@@ -167,14 +153,12 @@ export function interpolateHsl(
     return hslToHex(finalH, s, l);
 }
 
-/**
- * Generate color assignments for role members using gradient interpolation
- *
- * @param roleColors - Object containing startColor and endColor
- * @param memberUserIds - Array of user IDs in the role
- * @param options - Configuration options
- * @returns Array of user-to-color assignments
- */
+// Generate color assignments for role members using gradient interpolation
+//
+// @param roleColors - Object containing startColor and endColor
+// @param memberUserIds - Array of user IDs in the role
+// @param options - Configuration options
+// @returns Array of user-to-color assignments
 export function generateRoleGradientAssignments(
     roleColors: RoleGradientColors,
     memberUserIds: string[],
@@ -242,15 +226,13 @@ export function generateRoleGradientAssignments(
     });
 }
 
-/**
- * Get a single user's color from a role gradient
- *
- * @param roleColors - Object containing startColor and endColor
- * @param userId - The user ID to get color for
- * @param allMemberUserIds - All user IDs in the role
- * @param options - Configuration options
- * @returns The color for the specific user
- */
+// Get a single user's color from a role gradient
+//
+// @param roleColors - Object containing startColor and endColor
+// @param userId - The user ID to get color for
+// @param allMemberUserIds - All user IDs in the role
+// @param options - Configuration options
+// @returns The color for the specific user
 export function getUserGradientColor(
     roleColors: RoleGradientColors,
     userId: string,

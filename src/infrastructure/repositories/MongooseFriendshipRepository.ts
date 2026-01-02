@@ -11,11 +11,9 @@ import {
 } from '@/models/Friendship';
 import { User } from '@/models/User';
 
-/**
- * Mongoose Friendship Repository
- *
- * Implements IFriendshipRepository using Mongoose Friendship models.
- */
+// Mongoose Friendship repository
+//
+// Implements IFriendshipRepository using Mongoose Friendship models
 @injectable()
 export class MongooseFriendshipRepository implements IFriendshipRepository {
     async areFriends(user1: string, user2: string): Promise<boolean> {
@@ -28,12 +26,10 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         }).lean();
     }
 
-    /**
-     * Create a new friendship.
-     *
-     * Populates legacy 'user' and 'friend' fields (usernames) to satisfy
-     * unique indexes and maintain backward compatibility.
-     */
+    // Create a new friendship
+    //
+    // Populates legacy 'user' and 'friend' fields (usernames) to satisfy
+    // Unique indexes and maintain backward compatibility    */
     async create(userId: string, friendId: string): Promise<IFriendship> {
         // Fetch usernames for legacy field support
         const [userDoc, friendDoc] = await Promise.all([
@@ -109,11 +105,9 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         }).lean();
     }
 
-    /**
-     * Create a new friend request.
-     *
-     * Populates legacy 'from' and 'to' fields (usernames).
-     */
+    // Create a new friend request
+    //
+    // Populates legacy 'from' and 'to' fields (usernames)    */
     async createRequest(fromId: string, toId: string): Promise<IFriendRequest> {
         // Fetch usernames for legacy field support
         const [fromUser, toUser] = await Promise.all([

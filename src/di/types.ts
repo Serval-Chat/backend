@@ -1,8 +1,6 @@
-/**
- * Dependency Injection Type Identifiers.
- *
- * Symbols used to identify and resolve dependencies in the InversifyJS container.
- */
+// Dependency Injection Type Identifiers
+//
+// Symbols used to identify and resolve dependencies in the InversifyJS container
 
 export const TYPES = {
     // Infrastructure

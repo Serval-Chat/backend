@@ -1,11 +1,9 @@
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
-/**
- * Direct Message Interface.
- *
- * Represents a private message between two users.
- */
+// Direct Message interface
+//
+// Represents a private message between two users
 interface IMessage extends Document {
     senderId: Types.ObjectId; // User ID reference for sender
     receiverId: Types.ObjectId; // User ID reference for receiver
@@ -21,8 +19,7 @@ interface IMessage extends Document {
     anonymizedReceiver?: string; // "Deleted User" for hard deleted receivers
 }
 
-// Those mentions of hard deletions were before people told me that hard deleting isnt a good thing.
-// I will remove them in the future. Also hi electrode if u read this
+// Hard deletion fields preserved for backward compatibility
 
 const messageSchema = new Schema<IMessage>({
     senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -43,14 +40,12 @@ const messageSchema = new Schema<IMessage>({
     anonymizedReceiver: { type: String },
 });
 
-// Indexing is gooooood
+// Indexing for performance
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
 messageSchema.index({ receiverId: 1, senderId: 1, createdAt: -1 });
 messageSchema.index({ createdAt: -1 });
 
-/**
- * Direct Message Model.
- */
+// Direct Message model
 export const Message: Model<IMessage> = mongoose.model(
     'Message',
     messageSchema,
