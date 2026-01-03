@@ -1,4 +1,5 @@
 import { injectable } from 'inversify';
+import { Injectable } from '@nestjs/common';
 import { onlineUsersGauge, websocketConnectionsGauge } from '@/utils/metrics';
 
 // Presence service
@@ -6,6 +7,7 @@ import { onlineUsersGauge, websocketConnectionsGauge } from '@/utils/metrics';
 // Manages the online/offline status of users
 // Tracks active socket connections for each user
 @injectable()
+@Injectable()
 export class PresenceService {
     private onlineUsers = new Map<string, Set<string>>();
 

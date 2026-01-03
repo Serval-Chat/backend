@@ -1,19 +1,24 @@
-import { injectable } from 'inversify';
-import { Types } from 'mongoose';
+import { Injectable } from '@nestjs/common';
+import { Model, Types } from 'mongoose';
 import {
     IMessageRepository,
     IMessage,
 } from '@/di/interfaces/IMessageRepository';
 import { Message } from '@/models/Message';
+import { injectable } from 'inversify';
 
 // Mongoose Message repository
 //
 // Implements IMessageRepository using Mongoose Message model
 // Encapsulates all direct message operations
 @injectable()
+@Injectable()
 export class MongooseMessageRepository implements IMessageRepository {
+    private messageModel = Message;
+    constructor() { }
+
     async findById(id: string): Promise<IMessage | null> {
-        return await Message.findById(id).lean();
+        return await this.messageModel.findById(id).lean();
     }
 
     // Find messages between two users with pagination
@@ -37,7 +42,7 @@ export class MongooseMessageRepository implements IMessageRepository {
 
         if (around) {
             // Fetch context around a specific message
-            const targetMessage = await Message.findById(around);
+            const targetMessage = await this.messageModel.findById(around);
             if (!targetMessage) return [];
 
             const targetDate = targetMessage.createdAt;
@@ -47,7 +52,7 @@ export class MongooseMessageRepository implements IMessageRepository {
                 ...baseQuery,
                 createdAt: { $lt: targetDate },
             };
-            const beforeMessages = await Message.find(beforeQuery)
+            const beforeMessages = await this.messageModel.find(beforeQuery)
                 .sort({ createdAt: -1 })
                 .limit(Math.floor(limit / 2))
                 .populate('repliedToMessageId')
@@ -58,7 +63,7 @@ export class MongooseMessageRepository implements IMessageRepository {
                 ...baseQuery,
                 createdAt: { $gte: targetDate },
             };
-            const afterMessages = await Message.find(afterQuery)
+            const afterMessages = await this.messageModel.find(afterQuery)
                 .sort({ createdAt: 1 }) // Ascending to get closest to target
                 .limit(Math.ceil(limit / 2))
                 .populate('repliedToMessageId')
@@ -66,7 +71,7 @@ export class MongooseMessageRepository implements IMessageRepository {
 
             // Combine and sort ascending
             return [...beforeMessages, ...afterMessages].sort(
-                (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+                (a, b) => (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0),
             );
         }
 
@@ -85,7 +90,7 @@ export class MongooseMessageRepository implements IMessageRepository {
             }
         }
 
-        const messages = await Message.find(query)
+        const messages = await this.messageModel.find(query)
             .sort({ createdAt: -1 })
             .limit(limit)
             .populate('repliedToMessageId')
@@ -101,12 +106,12 @@ export class MongooseMessageRepository implements IMessageRepository {
         replyToId?: string;
         repliedToMessageId?: Types.ObjectId;
     }): Promise<IMessage> {
-        const message = new Message(data);
+        const message = new this.messageModel(data);
         return await message.save();
     }
 
     async update(id: string, text: string): Promise<IMessage | null> {
-        return await Message.findByIdAndUpdate(
+        return await this.messageModel.findByIdAndUpdate(
             id,
             {
                 text,
@@ -118,7 +123,7 @@ export class MongooseMessageRepository implements IMessageRepository {
     }
 
     async delete(id: string): Promise<boolean> {
-        const result = await Message.deleteOne({ _id: id });
+        const result = await this.messageModel.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
@@ -129,7 +134,7 @@ export class MongooseMessageRepository implements IMessageRepository {
             anonymizedSender?: string;
         },
     ): Promise<{ modifiedCount: number }> {
-        const result = await Message.updateMany({ senderId }, { $set: update });
+        const result = await this.messageModel.updateMany({ senderId }, { $set: update });
         return { modifiedCount: result.modifiedCount };
     }
 
@@ -137,14 +142,16 @@ export class MongooseMessageRepository implements IMessageRepository {
         receiverId: string,
         update: { receiverDeleted?: boolean; anonymizedReceiver?: string },
     ): Promise<{ modifiedCount: number }> {
-        return await Message.updateMany({ receiverId }, update);
+        const result = await this.messageModel.updateMany({ receiverId }, update);
+        return { modifiedCount: result.modifiedCount };
     }
 
     async count(): Promise<number> {
-        return await Message.countDocuments();
+        return await this.messageModel.countDocuments();
     }
 
     async countCreatedAfter(date: Date): Promise<number> {
-        return await Message.countDocuments({ createdAt: { $gt: date } });
+        return await this.messageModel.countDocuments({ createdAt: { $gt: date } });
     }
 }
+

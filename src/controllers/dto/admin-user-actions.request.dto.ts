@@ -1,22 +1,30 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AdminPermissions, ResetProfileRequestFieldType } from './common';
 
-export interface AdminResetProfileRequestDTO {
-    fields: ResetProfileRequestFieldType[];
+export class AdminResetProfileRequestDTO {
+    @ApiProperty({ enum: ['bio', 'displayName', 'profilePicture', 'banner', 'pronouns'], isArray: true })
+    fields!: ResetProfileRequestFieldType[];
 }
 
-export interface AdminSoftDeleteUserRequestDTO {
+export class AdminSoftDeleteUserRequestDTO {
+    @ApiPropertyOptional()
     reason?: string;
 }
 
-export interface AdminUpdateUserPermissionsRequestDTO {
-    permissions: AdminPermissions;
+export class AdminUpdateUserPermissionsRequestDTO {
+    @ApiProperty()
+    permissions!: AdminPermissions;
 }
 
-export interface AdminBanUserRequestDTO {
-    reason: string;
-    duration: number; // in minutes
+export class AdminBanUserRequestDTO {
+    @ApiProperty()
+    reason!: string;
+    @ApiProperty()
+    duration!: number; // in minutes
 }
 
-export interface AdminWarnUserRequestDTO {
-    message: string;
+export class AdminWarnUserRequestDTO {
+    @ApiProperty()
+    message!: string;
 }
+

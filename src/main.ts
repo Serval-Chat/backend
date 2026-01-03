@@ -1,12 +1,68 @@
-// Application entry point
-//
-// Initializes environment variables and starts the server
-// 'reflect-metadata' must be the first import to support InversifyJS decorators
 import 'reflect-metadata';
-import dotenv from 'dotenv';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { PORT, USE_HTTPS, CERTS_PATH } from '@/config/env';
+import * as fs from 'fs';
+import * as path from 'path';
+import { HttpsOptions } from '@nestjs/common/interfaces/external/https-options.interface';
+import { Logger } from '@nestjs/common';
+import { setupExpressApp } from './server';
+import { connectDB } from '@/config/db';
+import { createSocketServer } from '@/socket/init';
+import { startMetricsUpdater } from '@/utils/metrics-updater';
+import { container } from '@/di/container';
 
-dotenv.config();
+async function bootstrap() {
+    // Ensure necessary directories exist
+    const uploadDirs = ['uploads', 'uploads/uploads', 'uploads/servers', 'uploads/webhooks', 'uploads/emojis'];
+    for (const dir of uploadDirs) {
+        const fullPath = path.join(process.cwd(), dir);
+        if (!fs.existsSync(fullPath)) {
+            fs.mkdirSync(fullPath, { recursive: true });
+        }
+    }
 
-import { startServer } from '@/server';
+    // Database Connection
+    try {
+        await connectDB();
+    } catch (err) {
+        Logger.error('Database initialization failed', err, 'Bootstrap');
+        process.exit(1);
+    }
 
-startServer();
+    // Configure HTTPS if enabled
+    let httpsOptions: HttpsOptions | undefined;
+    if (USE_HTTPS === 'on') {
+        const keyPath = path.join(CERTS_PATH, 'key.pem');
+        const certPath = path.join(CERTS_PATH, 'cert.pem');
+
+        if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+            httpsOptions = {
+                key: fs.readFileSync(keyPath),
+                cert: fs.readFileSync(certPath),
+            };
+        } else {
+            Logger.error('SSL certificate files not found in CERTS_PATH.', 'Bootstrap');
+        }
+    }
+
+    // Create NestJS Application
+    const app = await NestFactory.create(AppModule, {
+        httpsOptions,
+    });
+
+    // Integrate legacy Express configuration
+    const expressApp = app.getHttpAdapter().getInstance();
+    setupExpressApp(expressApp);
+
+    // Initialize Real-time and Metrics
+    const httpServer = app.getHttpServer();
+    await createSocketServer(httpServer, container);
+    startMetricsUpdater(60000);
+
+    // Start the application
+    await app.listen(PORT);
+    Logger.log(`Application is running on: ${await app.getUrl()}`, 'Bootstrap');
+}
+
+bootstrap();

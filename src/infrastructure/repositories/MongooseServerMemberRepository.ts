@@ -1,27 +1,35 @@
-import { injectable } from 'inversify';
+import { Injectable } from '@nestjs/common';
+import { Model } from 'mongoose';
 import {
     IServerMemberRepository,
     IServerMember,
 } from '@/di/interfaces/IServerMemberRepository';
-import { ServerMember } from '@/models/Server';
-import { User } from '@/models/User';
+import { IUser } from '@/di/interfaces/IUserRepository';
 import { mapUser } from '@/utils/user';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ServerMember } from '@/models/Server';
+import { User } from '@/models/User';
+import { injectable } from 'inversify';
 
 // Mongoose Server Member repository
 //
 // Implements IServerMemberRepository using Mongoose ServerMember model
 @injectable()
+@Injectable()
 export class MongooseServerMemberRepository implements IServerMemberRepository {
+    private serverMemberModel = ServerMember;
+    private userModel = User;
+    constructor() { }
+
     async findByServerAndUser(
         serverId: string,
         userId: string,
     ): Promise<IServerMember | null> {
-        return await ServerMember.findOne({ serverId, userId }).lean();
+        return await this.serverMemberModel.findOne({ serverId, userId }).lean();
     }
 
     async findByServerId(serverId: string): Promise<IServerMember[]> {
-        return await ServerMember.find({ serverId }).lean();
+        return await this.serverMemberModel.find({ serverId }).lean();
     }
 
     async create(data: {
@@ -29,7 +37,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         userId: string;
         roles: string[];
     }): Promise<IServerMember> {
-        const member = new ServerMember(data);
+        const member = new this.serverMemberModel(data);
         return await member.save();
     }
 
@@ -38,7 +46,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         userId: string,
         roles: string[],
     ): Promise<IServerMember | null> {
-        return await ServerMember.findOneAndUpdate(
+        return await this.serverMemberModel.findOneAndUpdate(
             { serverId, userId },
             { roles },
             { new: true },
@@ -49,17 +57,17 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     //
     // Operation for leaving or kicking a member
     async remove(serverId: string, userId: string): Promise<boolean> {
-        const result = await ServerMember.deleteOne({ serverId, userId });
+        const result = await this.serverMemberModel.deleteOne({ serverId, userId });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
     async isMember(serverId: string, userId: string): Promise<boolean> {
-        const member = await ServerMember.findOne({ serverId, userId });
+        const member = await this.serverMemberModel.findOne({ serverId, userId });
         return !!member;
     }
 
     async findAllByUserId(userId: string): Promise<IServerMember[]> {
-        return await ServerMember.find({ userId }).lean();
+        return await this.serverMemberModel.find({ userId }).lean();
     }
 
     async findByUserId(userId: string): Promise<IServerMember[]> {
@@ -67,33 +75,33 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     }
 
     async findServerIdsByUserId(userId: string): Promise<string[]> {
-        const members = await ServerMember.find({ userId })
+        const members = await this.serverMemberModel.find({ userId })
             .select('serverId')
             .lean();
         return members.map((m) => m.serverId.toString());
     }
 
     async countByServerId(serverId: string): Promise<number> {
-        return await ServerMember.countDocuments({ serverId });
+        return await this.serverMemberModel.countDocuments({ serverId });
     }
 
     // Delete a member record by its ID
     //
     // Low-level cleanup operation
     async deleteById(id: string): Promise<boolean> {
-        const result = await ServerMember.deleteOne({ _id: id });
+        const result = await this.serverMemberModel.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
     async deleteByServerId(serverId: string): Promise<void> {
-        await ServerMember.deleteMany({ serverId });
+        await this.serverMemberModel.deleteMany({ serverId });
     }
 
     async removeRoleFromAllMembers(
         serverId: string,
         roleId: string,
     ): Promise<void> {
-        await ServerMember.updateMany(
+        await this.serverMemberModel.updateMany(
             { serverId },
             { $pull: { roles: roleId } },
         );
@@ -103,7 +111,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         memberId: string,
         roleId: string,
     ): Promise<IServerMember | null> {
-        return await ServerMember.findOneAndUpdate(
+        return await this.serverMemberModel.findOneAndUpdate(
             { _id: memberId },
             { $pull: { roles: roleId } },
             { new: true },
@@ -111,7 +119,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     }
 
     async deleteAllForUser(userId: string): Promise<{ deletedCount: number }> {
-        const result = await ServerMember.deleteMany({ userId });
+        const result = await this.serverMemberModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }
 
@@ -119,9 +127,9 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     //
     // Performs manual population by fetching users in a separate query
     async findByServerIdWithUserInfo(serverId: string): Promise<any[]> {
-        const members = await ServerMember.find({ serverId }).lean();
+        const members = await this.serverMemberModel.find({ serverId }).lean();
         const userIds = members.map((m) => m.userId.toString());
-        const users = await User.find({ _id: { $in: userIds } }).lean();
+        const users = await this.userModel.find({ _id: { $in: userIds } }).lean();
 
         return members.map((m) => {
             const user = users.find(
@@ -135,7 +143,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     }
 
     async searchMembers(serverId: string, query: string): Promise<any[]> {
-        const users = await User.find({
+        const users = await this.userModel.find({
             $or: [
                 { username: { $regex: query, $options: 'i' } },
                 { displayName: { $regex: query, $options: 'i' } },
@@ -145,13 +153,13 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .lean();
 
         const userIds = users.map((u) => u._id);
-        const members = await ServerMember.find({
+        const members = await this.serverMemberModel.find({
             serverId,
             userId: { $in: userIds },
         }).lean();
 
         const memberUserIds = members.map((m) => m.userId.toString());
-        const populatedUsers = await User.find({
+        const populatedUsers = await this.userModel.find({
             _id: { $in: memberUserIds },
         }).lean();
 
@@ -171,7 +179,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         userId: string,
         roleId: string,
     ): Promise<IServerMember> {
-        const member = await ServerMember.findOneAndUpdate(
+        const member = await this.serverMemberModel.findOneAndUpdate(
             { serverId, userId },
             { $addToSet: { roles: roleId } },
             { new: true },
@@ -185,7 +193,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         userId: string,
         roleId: string,
     ): Promise<IServerMember> {
-        const member = await ServerMember.findOneAndUpdate(
+        const member = await this.serverMemberModel.findOneAndUpdate(
             { serverId, userId },
             { $pull: { roles: roleId } },
             { new: true },
@@ -198,3 +206,4 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         await this.removeRoleFromAllMembers(serverId, roleId);
     }
 }
+
