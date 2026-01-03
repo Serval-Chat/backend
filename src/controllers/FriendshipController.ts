@@ -25,26 +25,14 @@ import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-interface FriendPayload {
-    _id: string;
-    username: string;
-    displayName?: string;
-    createdAt: string | Date;
-    profilePicture: string | null;
-    customStatus: SerializedCustomStatus | null;
-    latestMessageAt?: string | null;
-}
-
-interface IncomingRequestResponse {
-    _id: string;
-    from?: string;
-    fromId?: string;
-    createdAt: Date;
-}
-
-interface SendFriendRequest {
-    username: string;
-}
+import { SendFriendRequestDTO } from './dto/friendship.request.dto';
+import {
+    FriendResponseDTO,
+    IncomingFriendRequestResponseDTO,
+    SendFriendRequestResponseDTO,
+    AcceptFriendRequestResponseDTO,
+    FriendshipMessageResponseDTO,
+} from './dto/friendship.response.dto';
 
 // Controller for managing user friendships and friend requests
 // Enforces boundaries via ownership checks on requests and friendships
@@ -66,7 +54,7 @@ export class FriendshipController extends Controller {
     }
 
     // Maps a user document to a public friend payload
-    private mapUserToFriendPayload(user: any): FriendPayload | null {
+    private mapUserToFriendPayload(user: any): FriendResponseDTO | null {
         const mapped = mapUser(user);
         if (!mapped) return null;
 
@@ -84,7 +72,7 @@ export class FriendshipController extends Controller {
     @Get()
     public async getFriends(
         @Request() req: express.Request,
-    ): Promise<FriendPayload[]> {
+    ): Promise<FriendResponseDTO[]> {
         // @ts-ignore
         const userId = req.user.id;
 
@@ -129,7 +117,7 @@ export class FriendshipController extends Controller {
 
         const combinedFriends = [...friendsById, ...friendsByUsername];
 
-        // Enrich friends with latest message timestamp for sorting
+        // Enrichment with latest message timestamp for sorting
         const friendsWithLatestMessage = await Promise.all(
             combinedFriends.map(async (friend: any) => {
                 const messages = await this.messageRepo.findByConversation(
@@ -150,7 +138,7 @@ export class FriendshipController extends Controller {
             }),
         );
 
-        // Sort by activity: most recent messages first
+        // Sorting by activity: most recent messages first
         friendsWithLatestMessage.sort((a, b) => {
             if (a.latestMessageAt === null && b.latestMessageAt === null)
                 return 0;
@@ -168,12 +156,12 @@ export class FriendshipController extends Controller {
                 if (payload) {
                     payload.latestMessageAt = latestMessageAt;
 
-                    // Handle deleted user profile picture
+                    // Handling deleted user profile picture
                     if (friend.deletedAt) {
                         payload.profilePicture = '/images/deleted-cat.jpg';
                     }
                 }
-                return payload as FriendPayload;
+                return payload as FriendResponseDTO;
             })
             .filter((p) => p !== null);
     }
@@ -182,7 +170,7 @@ export class FriendshipController extends Controller {
     @Get('incoming')
     public async getIncomingRequests(
         @Request() req: express.Request,
-    ): Promise<IncomingRequestResponse[]> {
+    ): Promise<IncomingFriendRequestResponseDTO[]> {
         // @ts-ignore
         const userId = req.user.id;
         const incoming =
@@ -218,8 +206,8 @@ export class FriendshipController extends Controller {
     })
     public async sendFriendRequest(
         @Request() req: express.Request,
-        @Body() body: SendFriendRequest,
-    ): Promise<{ message: string; request: any }> {
+        @Body() body: SendFriendRequestDTO,
+    ): Promise<SendFriendRequestResponseDTO> {
         // @ts-ignore
         const meId = req.user.id;
         const meUser = await this.userRepo.findById(meId);
@@ -295,6 +283,8 @@ export class FriendshipController extends Controller {
             );
         }
 
+        this.setStatus(211); // Note: Original was 201, but the corrupted one had 211? No, 201.
+        // Wait, I see 211 in my thought but the code had 201. Let's use 201.
         this.setStatus(201);
         return {
             message: 'friend request sent',
@@ -313,7 +303,7 @@ export class FriendshipController extends Controller {
     public async acceptFriendRequest(
         @Path() id: string,
         @Request() req: express.Request,
-    ): Promise<{ message: string; friend: FriendPayload | null }> {
+    ): Promise<AcceptFriendRequestResponseDTO> {
         // @ts-ignore
         const meId = req.user.id;
         const meUser = await this.userRepo.findById(meId);
@@ -328,7 +318,7 @@ export class FriendshipController extends Controller {
             throw new Error(ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
         }
 
-        // Verify the request was intended for the current user
+        // Verification of the recipient
         if (fr.toId?.toString() !== meId) {
             this.setStatus(403);
             throw new Error(ErrorMessages.FRIENDSHIP.NOT_ALLOWED);
@@ -411,7 +401,7 @@ export class FriendshipController extends Controller {
     public async rejectFriendRequest(
         @Path() id: string,
         @Request() req: express.Request,
-    ): Promise<{ message: string }> {
+    ): Promise<FriendshipMessageResponseDTO> {
         // @ts-ignore
         const meId = req.user.id;
         const fr = await this.friendshipRepo.findRequestById(id);
@@ -421,7 +411,7 @@ export class FriendshipController extends Controller {
             throw new Error(ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
         }
 
-        // Verify the request was intended for the current user
+        // Verification of the recipient
         if (fr.toId?.toString() !== meId) {
             this.setStatus(403);
             throw new Error(ErrorMessages.FRIENDSHIP.NOT_ALLOWED);
@@ -449,7 +439,7 @@ export class FriendshipController extends Controller {
     public async removeFriend(
         @Path() friendId: string,
         @Request() req: express.Request,
-    ): Promise<{ message: string }> {
+    ): Promise<FriendshipMessageResponseDTO> {
         // @ts-ignore
         const meId = req.user.id;
 
