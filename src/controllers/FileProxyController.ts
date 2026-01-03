@@ -36,6 +36,8 @@ interface MetaCacheEntry {
     expiresAt: number;
 }
 
+import { FileProxyMetaResponseDTO } from './dto/file-proxy.response.dto';
+
 // Controller for proxying remote files to avoid CORS issues and SSRF attacks
 @injectable()
 @Route('api/v1/file-proxy')
@@ -195,7 +197,9 @@ export class FileProxyController extends Controller {
     @Response<ErrorResponse>('400', 'Bad Request', {
         error: ErrorMessages.FILE.URL_REQUIRED,
     })
-    public async getFileMeta(@Query() url: string): Promise<any> {
+    public async getFileMeta(
+        @Query() url: string,
+    ): Promise<FileProxyMetaResponseDTO> {
         try {
             const targetUrl = validateUrl(url);
             const cacheKey = getCacheKey(targetUrl.toString());

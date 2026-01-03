@@ -12,6 +12,7 @@ import {
     Tags,
     Request,
     Query,
+    Queries,
 } from 'tsoa';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
@@ -77,6 +78,7 @@ import {
     AdminDeleteServerResponseDTO,
     AdminRestoreServerResponseDTO,
 } from './dto/admin-servers.response.dto';
+import { AdminListUsersRequestDTO } from './dto/admin-list-users.request.dto';
 
 // Controller for administrative actions and dashboard statistics
 @injectable()
@@ -159,20 +161,16 @@ export class AdminController extends Controller {
     })
     @Security('jwt', ['viewUsers'])
     public async listUsers(
-        @Query() limit: number = 50,
-        @Query() offset: number = 0,
-        @Query() search?: string,
-        @Query() filter?: 'banned' | 'admin' | 'recent',
-        @Query() includeDeleted?: boolean,
+        @Queries() query: AdminListUsersRequestDTO,
     ): Promise<AdminUserListItemDTO[]> {
         // Build query options based on query parameters
         const options: any = {
-            limit: Number(limit),
-            offset: Number(offset),
-            includeDeleted: includeDeleted === true,
+            limit: Number(query.limit ?? 50),
+            offset: Number(query.offset ?? 0),
+            includeDeleted: query.includeDeleted === true,
         };
-        if (search) options.search = search;
-        if (filter) options.filter = filter;
+        if (query.search) options.search = query.search;
+        if (query.filter) options.filter = query.filter;
 
         const users = await this.userRepo.findMany(options);
 

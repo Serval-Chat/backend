@@ -17,6 +17,8 @@ import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
+import { EmojiResponseDTO } from './dto/emoji.response.dto';
+
 // Controller for emoji management
 // Provides access to server-specific and global emojis
 @injectable()
@@ -35,7 +37,9 @@ export class EmojiController extends Controller {
 
     // Retrieves all emojis from all servers the user is a member of
     @Get()
-    public async getAllEmojis(@Request() req: express.Request): Promise<any[]> {
+    public async getAllEmojis(
+        @Request() req: express.Request,
+    ): Promise<EmojiResponseDTO[]> {
         // @ts-ignore: JWT middleware attaches user object, not typed in Express.Request
         const userId = req.user.id;
 
@@ -48,7 +52,15 @@ export class EmojiController extends Controller {
         // Extract server IDs from membership objects
         const serverIds = memberships.map((m) => m.serverId.toString());
 
-        return await this.emojiRepo.findByServerIds(serverIds);
+        const emojis = await this.emojiRepo.findByServerIds(serverIds);
+        return emojis.map((e) => ({
+            _id: e._id.toString(),
+            name: e.name,
+            imageUrl: e.imageUrl,
+            serverId: e.serverId.toString(),
+            createdBy: e.createdBy.toString(),
+            createdAt: e.createdAt,
+        }));
     }
 
     // Retrieves a specific emoji by ID
@@ -59,7 +71,7 @@ export class EmojiController extends Controller {
     public async getEmojiById(
         @Path() emojiId: string,
         @Request() req: express.Request,
-    ): Promise<any> {
+    ): Promise<EmojiResponseDTO> {
         // @ts-ignore: JWT middleware attaches user object
         const userId = req.user.id;
 
@@ -75,6 +87,13 @@ export class EmojiController extends Controller {
             throw new Error(ErrorMessages.EMOJI.NOT_FOUND);
         }
 
-        return emoji;
+        return {
+            _id: emoji._id.toString(),
+            name: emoji.name,
+            imageUrl: emoji.imageUrl,
+            serverId: emoji.serverId.toString(),
+            createdBy: emoji.createdBy.toString(),
+            createdAt: emoji.createdAt,
+        };
     }
 }

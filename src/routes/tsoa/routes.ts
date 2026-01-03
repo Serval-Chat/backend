@@ -499,6 +499,18 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminListUsersRequestDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "limit": {"dataType":"double"},
+            "offset": {"dataType":"double"},
+            "search": {"dataType":"string"},
+            "filter": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["banned"]},{"dataType":"enum","enums":["admin"]},{"dataType":"enum","enums":["recent"]}]},
+            "includeDeleted": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "AdminUserDetailsDTO": {
         "dataType": "refObject",
         "properties": {
@@ -755,7 +767,16 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "LoginRequest": {
+    "LoginResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "token": {"dataType":"string","required":true},
+            "username": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "LoginRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "login": {"dataType":"string","required":true},
@@ -764,7 +785,15 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "RegisterRequest": {
+    "RegisterResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "token": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "RegisterRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "login": {"dataType":"string","required":true},
@@ -775,7 +804,17 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ChangeLoginRequest": {
+    "ChangeLoginResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+            "login": {"dataType":"string","required":true},
+            "token": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ChangeLoginRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "newLogin": {"dataType":"string","required":true},
@@ -784,7 +823,16 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ChangePasswordRequest": {
+    "ChangePasswordResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+            "token": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ChangePasswordRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "currentPassword": {"dataType":"string","required":true},
@@ -793,7 +841,15 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "FileMetadata": {
+    "FileUploadResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "url": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "FileMetadataResponseDTO": {
         "dataType": "refObject",
         "properties": {
             "filename": {"dataType":"string","required":true},
@@ -966,7 +1022,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "FriendPayload": {
+    "FriendResponseDTO": {
         "dataType": "refObject",
         "properties": {
             "_id": {"dataType":"string","required":true},
@@ -980,7 +1036,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IncomingRequestResponse": {
+    "IncomingFriendRequestResponseDTO": {
         "dataType": "refObject",
         "properties": {
             "_id": {"dataType":"string","required":true},
@@ -991,10 +1047,49 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "SendFriendRequest": {
+    "SendFriendRequestResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+            "request": {"dataType":"any","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "SendFriendRequestDTO": {
         "dataType": "refObject",
         "properties": {
             "username": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AcceptFriendRequestResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+            "friend": {"dataType":"union","subSchemas":[{"ref":"FriendResponseDTO"},{"dataType":"enum","enums":[null]}],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "FriendshipMessageResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "EmojiResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "_id": {"dataType":"string","required":true},
+            "name": {"dataType":"string","required":true},
+            "imageUrl": {"dataType":"string","required":true},
+            "serverId": {"dataType":"string","required":true},
+            "createdBy": {"dataType":"string","required":true},
+            "createdAt": {"dataType":"datetime"},
         },
         "additionalProperties": false,
     },
@@ -1139,6 +1234,21 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "permissions": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"any"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Record_string.string_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"string"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "FileProxyMetaResponseDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "status": {"dataType":"double","required":true},
+            "headers": {"ref":"Record_string.string_","required":true},
+            "size": {"dataType":"double"},
         },
         "additionalProperties": false,
     },
@@ -3252,11 +3362,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAdminController_listUsers: Record<string, TsoaRoute.ParameterSchema> = {
-                limit: {"default":50,"in":"query","name":"limit","dataType":"double"},
-                offset: {"default":0,"in":"query","name":"offset","dataType":"double"},
-                search: {"in":"query","name":"search","dataType":"string"},
-                filter: {"in":"query","name":"filter","dataType":"union","subSchemas":[{"dataType":"enum","enums":["banned"]},{"dataType":"enum","enums":["admin"]},{"dataType":"enum","enums":["recent"]}]},
-                includeDeleted: {"in":"query","name":"includeDeleted","dataType":"boolean"},
+                query: {"in":"queries","name":"query","required":true,"ref":"AdminListUsersRequestDTO"},
         };
         app.get('/api/v1/admin/users',
             authenticateMiddleware([{"jwt":["viewUsers"]}]),
@@ -3998,7 +4104,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_login: Record<string, TsoaRoute.ParameterSchema> = {
-                body: {"in":"body","name":"body","required":true,"ref":"LoginRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"LoginRequestDTO"},
                 _req: {"in":"request","name":"_req","required":true,"dataType":"object"},
         };
         app.post('/api/v1/auth/login',
@@ -4034,7 +4140,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_register: Record<string, TsoaRoute.ParameterSchema> = {
-                body: {"in":"body","name":"body","required":true,"ref":"RegisterRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"RegisterRequestDTO"},
         };
         app.post('/api/v1/auth/register',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
@@ -4070,7 +4176,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_changeLogin: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                body: {"in":"body","name":"body","required":true,"ref":"ChangeLoginRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"ChangeLoginRequestDTO"},
         };
         app.patch('/api/v1/auth/login',
             authenticateMiddleware([{"jwt":[]}]),
@@ -4107,7 +4213,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_changePassword: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                body: {"in":"body","name":"body","required":true,"ref":"ChangePasswordRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"ChangePasswordRequestDTO"},
         };
         app.patch('/api/v1/auth/password',
             authenticateMiddleware([{"jwt":[]}]),
@@ -4921,7 +5027,7 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsFriendshipController_sendFriendRequest: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                body: {"in":"body","name":"body","required":true,"ref":"SendFriendRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"SendFriendRequestDTO"},
         };
         app.post('/api/v1/friends',
             authenticateMiddleware([{"jwt":[]}]),

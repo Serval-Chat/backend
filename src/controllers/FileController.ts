@@ -21,14 +21,10 @@ import { extractOriginalFilename } from '@/config/multer';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-interface FileMetadata {
-    filename: string;
-    size: number;
-    isBinary: boolean;
-    mimeType: string;
-    createdAt: Date;
-    modifiedAt: Date;
-}
+import {
+    FileUploadResponseDTO,
+    FileMetadataResponseDTO,
+} from './dto/file.response.dto';
 
 // Controller for file uploads, metadata retrieval, and downloads
 @injectable()
@@ -46,7 +42,7 @@ export class FileController extends Controller {
     public async uploadFile(
         @UploadedFile() file: Express.Multer.File,
         @Request() _req: express.Request,
-    ): Promise<{ url: string }> {
+    ): Promise<FileUploadResponseDTO> {
         if (!file) {
             this.setStatus(400);
             throw new Error(ErrorMessages.FILE.NO_FILE_UPLOADED);
@@ -66,7 +62,7 @@ export class FileController extends Controller {
     })
     public async getFileMetadata(
         @Path() filename: string,
-    ): Promise<FileMetadata> {
+    ): Promise<FileMetadataResponseDTO> {
         try {
             if (!filename) {
                 this.setStatus(400);

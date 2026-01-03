@@ -25,27 +25,18 @@ import path from 'path';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
-interface LoginRequest {
-    login: string;
-    password: string;
-}
-
-interface RegisterRequest {
-    login: string;
-    username: string;
-    password: string;
-    invite: string;
-}
-
-interface ChangeLoginRequest {
-    newLogin: string;
-    password?: string;
-}
-
-interface ChangePasswordRequest {
-    currentPassword: string;
-    newPassword: string;
-}
+import {
+    LoginRequestDTO,
+    RegisterRequestDTO,
+    ChangeLoginRequestDTO,
+    ChangePasswordRequestDTO,
+} from './dto/auth.request.dto';
+import {
+    LoginResponseDTO,
+    RegisterResponseDTO,
+    ChangeLoginResponseDTO,
+    ChangePasswordResponseDTO,
+} from './dto/auth.response.dto';
 
 // Controller for user authentication and account management
 // Handles login, registration, and credential updates
@@ -69,9 +60,9 @@ export class AuthController extends Controller {
         error: ErrorMessages.AUTH.ACCOUNT_BANNED,
     })
     public async login(
-        @Body() body: LoginRequest,
+        @Body() body: LoginRequestDTO,
         @Request() _req: express.Request,
-    ): Promise<{ token: string; username: string }> {
+    ): Promise<LoginResponseDTO> {
         const { login, password } = body;
 
         const authResult = await this.authService.login(login, password);
@@ -124,8 +115,8 @@ export class AuthController extends Controller {
         error: ErrorMessages.SYSTEM.CANNOT_READ_TOKENS,
     })
     public async register(
-        @Body() body: RegisterRequest,
-    ): Promise<{ token: string }> {
+        @Body() body: RegisterRequestDTO,
+    ): Promise<RegisterResponseDTO> {
         const { login, username, password, invite } = body;
 
         if (!login || !login.includes('@')) {
@@ -213,8 +204,8 @@ export class AuthController extends Controller {
     })
     public async changeLogin(
         @Request() req: express.Request,
-        @Body() body: ChangeLoginRequest,
-    ): Promise<{ message: string; login: string; token: string }> {
+        @Body() body: ChangeLoginRequestDTO,
+    ): Promise<ChangeLoginResponseDTO> {
         // @ts-ignore
         const userId = req.user.id;
         const { newLogin, password } = body;
@@ -306,8 +297,8 @@ export class AuthController extends Controller {
     })
     public async changePassword(
         @Request() req: express.Request,
-        @Body() body: ChangePasswordRequest,
-    ): Promise<{ message: string; token: string }> {
+        @Body() body: ChangePasswordRequestDTO,
+    ): Promise<ChangePasswordResponseDTO> {
         // @ts-ignore
         const userId = req.user.id;
         const { currentPassword, newPassword } = body;
