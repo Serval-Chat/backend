@@ -4,17 +4,18 @@ import {
     Post,
     Delete,
     Put,
-    Route,
     Body,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
+    Param as Path,
+    UseGuards,
     Query,
-    Queries,
-} from 'tsoa';
-import { injectable, inject } from 'inversify';
+    Req as Request,
+    Inject,
+    HttpCode,
+    NotFoundException,
+    BadRequestException,
+    ForbiddenException,
+} from '@nestjs/common';
+import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
@@ -25,7 +26,6 @@ import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PresenceService } from '@/realtime/services/PresenceService';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import crypto from 'crypto';
@@ -39,7 +39,7 @@ import {
     DELETED_AVATAR_PATH,
     deleteAvatarFile,
 } from '@/utils/deletion';
-import express from 'express';
+import type { Request as ExpressRequest } from 'express';
 import { DashBoardStatsDTO } from './dto/admin-dashboard-stats.response.dto';
 import {
     AdminUserListItemDTO,
@@ -67,6 +67,7 @@ import {
     AdminUserBanHistoryResponseDTO,
     AdminBanListResponseDTO,
     AdminBansDiagnosticResponseDTO,
+    AdminBanHistoryItemDTO,
 } from './dto/admin-bans.response.dto';
 import {
     AdminUserWarningsResponseDTO,
@@ -77,41 +78,60 @@ import {
     AdminServerListResponseDTO,
     AdminDeleteServerResponseDTO,
     AdminRestoreServerResponseDTO,
+    AdminServerListItemDTO,
 } from './dto/admin-servers.response.dto';
 import { AdminListUsersRequestDTO } from './dto/admin-list-users.request.dto';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Permissions } from '@/modules/auth/permissions.decorator';
+
+import { injectable, inject } from 'inversify';
 
 // Controller for administrative actions and dashboard statistics
+@ApiTags('Admin')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @injectable()
-@Route('api/v1/admin')
-@Tags('Admin')
-@Security('jwt')
-export class AdminController extends Controller {
+@Controller('api/v1/admin')
+export class AdminController {
     constructor(
-        @inject(TYPES.UserRepository) private userRepo: IUserRepository,
+        @inject(TYPES.UserRepository)
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
         @inject(TYPES.AuditLogRepository)
+        @Inject(TYPES.AuditLogRepository)
         private auditLogRepo: IAuditLogRepository,
         @inject(TYPES.FriendshipRepository)
+        @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-        @inject(TYPES.PresenceService) private presenceService: PresenceService,
-        @inject(TYPES.Logger) private logger: ILogger,
-        @inject(TYPES.BanRepository) private banRepo: IBanRepository,
-        @inject(TYPES.ServerRepository) private serverRepo: IServerRepository,
+        @inject(TYPES.PresenceService)
+        @Inject(TYPES.PresenceService)
+        private presenceService: PresenceService,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+        @inject(TYPES.BanRepository)
+        @Inject(TYPES.BanRepository)
+        private banRepo: IBanRepository,
+        @inject(TYPES.ServerRepository)
+        @Inject(TYPES.ServerRepository)
+        private serverRepo: IServerRepository,
         @inject(TYPES.MessageRepository)
+        @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
         @inject(TYPES.WarningRepository)
+        @Inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) {
-        super();
-    }
+    ) { }
 
-    // Retrieves high-level statistics for the admin dashboard
+
     @Get('stats')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['viewLogs'])
+    @Permissions('viewLogs')
+    @ApiOperation({ summary: 'Retrieve high-level statistics for the admin dashboard' })
+    @ApiResponse({ status: 200, type: DashBoardStatsDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getStats(): Promise<DashBoardStatsDTO> {
         const now = new Date();
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -140,28 +160,28 @@ export class AdminController extends Controller {
         const activeUsersCount =
             this.presenceService.getAllOnlineUsers().length;
 
-        return {
-            users,
-            usersTrend: calculateTrend(users, newUsers),
-            activeUsers: activeUsersCount,
-            activeUsersTrend: 0,
-            bans,
-            bansTrend: calculateTrend(bans, newBans),
-            servers,
-            serversTrend: calculateTrend(servers, newServers),
-            messages,
-            messagesTrend: calculateTrend(messages, newMessages),
-        };
+        const stats = new DashBoardStatsDTO();
+        stats.users = users;
+        stats.usersTrend = calculateTrend(users, newUsers);
+        stats.activeUsers = activeUsersCount;
+        stats.activeUsersTrend = 0;
+        stats.bans = bans;
+        stats.bansTrend = calculateTrend(bans, newBans);
+        stats.servers = servers;
+        stats.serversTrend = calculateTrend(servers, newServers);
+        stats.messages = messages;
+        stats.messagesTrend = calculateTrend(messages, newMessages);
+        return stats;
     }
 
-    // Lists users with optional search and filtering
+
     @Get('users')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['viewUsers'])
+    @Permissions('viewUsers')
+    @ApiOperation({ summary: 'List users with optional search and filtering' })
+    @ApiResponse({ status: 200, type: [AdminUserListItemDTO] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async listUsers(
-        @Queries() query: AdminListUsersRequestDTO,
+        @Query() query: AdminListUsersRequestDTO,
     ): Promise<AdminUserListItemDTO[]> {
         // Build query options based on query parameters
         const options: any = {
@@ -183,43 +203,41 @@ export class AdminController extends Controller {
                 const warningCount = await this.warningRepo.countByUserId(
                     user._id.toString(),
                 );
-                return {
-                    _id: user._id.toString(),
-                    username: user.username || '',
-                    login: user.login || '',
-                    displayName: user.displayName || null,
-                    profilePicture: user.profilePicture || null,
-                    permissions: user.permissions || '0',
-                    createdAt: user.createdAt || new Date(),
-                    banExpiry: activeBan?.expirationTimestamp,
-                    warningCount,
-                };
+                const item = new AdminUserListItemDTO();
+                item._id = user._id.toString();
+                item.username = user.username || '';
+                item.login = user.login || '';
+                item.displayName = user.displayName || null;
+                item.profilePicture = user.profilePicture || null;
+                item.permissions = (user.permissions as any) || '0';
+                item.createdAt = user.createdAt || new Date();
+                item.banExpiry = activeBan?.expirationTimestamp;
+                item.warningCount = warningCount;
+                item.badges = user.badges || [];
+                return item;
             }),
         );
 
         return enrichedUsers;
     }
 
-    // Retrieves detailed information about a specific user
-    @Get('users/{userId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
-    @Security('jwt', ['viewUsers'])
+
+    @Get('users/:userId')
+    @Permissions('viewUsers')
+    @ApiOperation({ summary: 'Retrieve detailed information about a specific user' })
+    @ApiResponse({ status: 200, type: AdminUserDetailsDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async getUserDetails(
-        @Path() userId: string,
-        @Request() req: express.Request,
+        @Path('userId') userId: string,
+        @Request() req: ExpressRequest,
     ): Promise<AdminUserDetailsDTO> {
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
             this.logger.warn(
                 `Admin ${(req as any).user?.login} tried to view non-existent user ${userId}`,
             );
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         this.logger.info(
@@ -233,50 +251,47 @@ export class AdminController extends Controller {
             badges = await Badge.find({ id: { $in: user.badges } });
         }
 
-        return {
-            _id: user._id.toString(),
-            username: user.username || '',
-            login: user.login || '',
-            displayName: user.displayName || null,
-            profilePicture: user.profilePicture || null,
-            permissions: user.permissions || '0',
-            createdAt: user.createdAt || new Date(),
-            banExpiry: activeBan?.expirationTimestamp,
-            warningCount,
-            bio: user.bio || '',
-            pronouns: user.pronouns || '',
-            badges,
-            banner: user.banner
-                ? `/api/v1/profile/banner/${user.banner}`
-                : null,
-            deletedAt: user.deletedAt,
-            deletedReason: user.deletedReason,
-        };
+        const details = new AdminUserDetailsDTO();
+        details._id = user._id.toString();
+        details.username = user.username || '';
+        details.login = user.login || '';
+        details.displayName = user.displayName || null;
+        details.profilePicture = user.profilePicture || null;
+        details.permissions = (user.permissions as any) || '0';
+        details.createdAt = user.createdAt || new Date();
+        details.banExpiry = activeBan?.expirationTimestamp;
+        details.warningCount = warningCount;
+        details.bio = user.bio || '';
+        details.pronouns = user.pronouns || '';
+        details.badges = badges;
+        details.banner = user.banner
+            ? `/api/v1/profile/banner/${user.banner}`
+            : null;
+        details.deletedAt = user.deletedAt;
+        details.deletedReason = user.deletedReason;
+        return details;
     }
+
 
     // Resets specific profile fields for a user
     // Resetting the username forces a logout and requires the user to log in again
-    @Post('users/{userId}/reset')
-    @Response<ErrorResponse>('400', 'Invalid fields', {
-        error: ErrorMessages.ADMIN.INVALID_FIELDS,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
-    @Security('jwt', ['manageUsers'])
+    @Post('users/:userId/reset')
+    @HttpCode(200)
+    @Permissions('manageUsers')
+    @ApiOperation({ summary: 'Reset specific profile fields for a user' })
+    @ApiResponse({ status: 200, type: AdminResetProfileResponseDTO })
+    @ApiResponse({ status: 400, description: 'Invalid fields' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async resetUserProfile(
-        @Path() userId: string,
+        @Path('userId') userId: string,
         @Body() requestBody: AdminResetProfileRequestDTO,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<AdminResetProfileResponseDTO> {
         const { fields } = requestBody;
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const updateData: any = {};
@@ -296,22 +311,7 @@ export class AdminController extends Controller {
 
         await this.userRepo.update(userId, updateData);
 
-        try {
-            // @ts-ignore
-            const adminId = req.user?.id;
-
-            const auditData: any = {
-                adminId: adminId ? adminId.toString() : 'unknown',
-                actionType: 'reset_user_profile',
-                targetUserId: userId,
-                additionalData: { fields },
-            };
-            if (req.ip) auditData.ip = req.ip;
-
-            await this.auditLogRepo.create(auditData);
-        } catch (error) {
-            this.logger.error('Audit log error in TSOA controller:', error);
-        }
+        await this.logAdminAction(req, 'reset_user_profile', userId, { fields });
 
         if (usernameChanged) {
             try {
@@ -343,18 +343,22 @@ export class AdminController extends Controller {
                 }
             } catch (err) {
                 this.logger.error(
-                    'Failed to emit username change in TSOA controller:',
+                    'Failed to emit username change in NestJS controller:',
                     err,
                 );
             }
         }
 
-        return { message: 'User profile fields reset', fields };
+        const response = new AdminResetProfileResponseDTO();
+        response.message = 'User profile fields reset';
+        response.fields = fields;
+        return response;
     }
+
 
     // Helper method to log admin actions to audit log
     private async logAdminAction(
-        req: express.Request,
+        req: ExpressRequest,
         actionType: string,
         targetUserId?: string,
         additionalData?: any,
@@ -392,34 +396,28 @@ export class AdminController extends Controller {
         }
     }
 
-    // Soft deletes a user account
-    @Post('users/{userId}/soft-delete')
-    @Response<ErrorResponse>('400', 'User already deleted', {
-        error: ErrorMessages.AUTH.USER_ALREADY_DELETED,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
-    @Security('jwt', ['manageUsers'])
+    @Post('users/:userId/soft-delete')
+    @HttpCode(200)
+    @Permissions('manageUsers')
+    @ApiOperation({ summary: 'Soft deletes a user account' })
+    @ApiResponse({ status: 200, type: AdminSoftDeleteUserResponseDTO })
+    @ApiResponse({ status: 400, description: 'User already deleted' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async softDeleteUser(
-        @Path() userId: string,
+        @Path('userId') userId: string,
         @Body() body: AdminSoftDeleteUserRequestDTO,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<AdminSoftDeleteUserResponseDTO> {
         const { reason = 'No reason provided' } = body;
 
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         if (user.deletedAt) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.AUTH.USER_ALREADY_DELETED);
+            throw new BadRequestException(ErrorMessages.AUTH.USER_ALREADY_DELETED);
         }
 
         const oldUsername = user.username || '';
@@ -492,47 +490,43 @@ export class AdminController extends Controller {
             });
         }
 
-        return {
-            message: 'User soft deleted',
-            anonymizedUsername,
-            offlineFriends: offlineFriends.length,
-        };
+        const response = new AdminSoftDeleteUserResponseDTO();
+        response.message = 'User soft deleted';
+        response.anonymizedUsername = anonymizedUsername;
+        response.offlineFriends = offlineFriends.length;
+        return response;
     }
 
-    // Legacy delete endpoint that forwards to soft delete
-    @Delete('users/{userId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
-    @Security('jwt', ['manageUsers'])
+
+    @Delete('users/:userId')
+    @Permissions('manageUsers')
+    @ApiOperation({ summary: 'Legacy delete endpoint that forwards to soft delete' })
+    @ApiResponse({ status: 200, type: AdminDeleteUserResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async deleteUser(
-        @Path() userId: string,
+        @Path('userId') userId: string,
         @Body() body: AdminSoftDeleteUserRequestDTO,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<AdminDeleteUserResponseDTO> {
         const result = await this.softDeleteUser(userId, body, req);
-        return {
-            message: 'User deleted',
-            anonymizedUsername: result.anonymizedUsername,
-        };
+        const response = new AdminDeleteUserResponseDTO();
+        response.message = 'User deleted';
+        response.anonymizedUsername = result.anonymizedUsername;
+        return response;
     }
 
-    // Hard deletes a user account completely
-    @Post('users/{userId}/hard-delete')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
-    @Security('jwt', ['manageUsers'])
+    @Post('users/:userId/hard-delete')
+    @HttpCode(200)
+    @Permissions('manageUsers')
+    @ApiOperation({ summary: 'Hard deletes a user account completely' })
+    @ApiResponse({ status: 200, type: AdminHardDeleteUserResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async hardDeleteUser(
-        @Path() userId: string,
+        @Path('userId') userId: string,
         @Body() body: AdminSoftDeleteUserRequestDTO,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<AdminHardDeleteUserResponseDTO> {
         const session = await mongoose.startSession();
         session.startTransaction();
@@ -543,8 +537,7 @@ export class AdminController extends Controller {
             const user = await this.userRepo.findById(userId);
             if (!user) {
                 await session.abortTransaction();
-                this.setStatus(404);
-                throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+                throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
             const username = user.username || '';
@@ -626,13 +619,12 @@ export class AdminController extends Controller {
                 });
             }
 
-            return {
-                message: 'User and associated data hard deleted',
-                sentMessagesAnonymized: sentMessagesUpdated.modifiedCount,
-                receivedMessagesAnonymized:
-                    receivedMessagesUpdated.modifiedCount,
-                offlineFriends: offlineFriends.length,
-            };
+            const response = new AdminHardDeleteUserResponseDTO();
+            response.message = 'User and associated data hard deleted';
+            response.sentMessagesAnonymized = sentMessagesUpdated.modifiedCount;
+            response.receivedMessagesAnonymized = receivedMessagesUpdated.modifiedCount;
+            response.offlineFriends = offlineFriends.length;
+            return response;
         } catch (error) {
             await session.abortTransaction();
             throw error;
@@ -641,40 +633,33 @@ export class AdminController extends Controller {
         }
     }
 
+
     // Updates a user's permissions
-    @Put('users/{userId}/permissions')
-    @Response<ErrorResponse>('400', 'Invalid permissions', {
-        error: ErrorMessages.ADMIN.INVALID_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
-    @Security('jwt', ['manageUsers'])
+    @Put('users/:userId/permissions')
+    @Permissions('manageUsers')
+    @ApiOperation({ summary: "Update a user's permissions" })
+    @ApiResponse({ status: 200, type: AdminUpdateUserPermissionsResponseDTO })
+    @ApiResponse({ status: 400, description: 'Invalid permissions' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async updateUserPermissions(
-        @Path() userId: string,
+        @Path('userId') userId: string,
         @Body() body: AdminUpdateUserPermissionsRequestDTO,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<AdminUpdateUserPermissionsResponseDTO> {
         const { permissions } = body;
 
         if (!permissions || typeof permissions !== 'object') {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.ADMIN.INVALID_PERMISSIONS);
+            throw new BadRequestException(ErrorMessages.ADMIN.INVALID_PERMISSIONS);
         }
 
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        // @ts-ignore
-        if (userId === req.user?.id) {
-            this.setStatus(400);
-            throw new Error('Cannot modify your own permissions');
+        if (userId === (req as any).user?.id) {
+            throw new BadRequestException('Cannot modify your own permissions');
         }
 
         await this.userRepo.updatePermissions(userId, permissions);
@@ -682,34 +667,33 @@ export class AdminController extends Controller {
             permissions,
         });
 
-        return { message: 'Permissions updated' };
+        const response = new AdminUpdateUserPermissionsResponseDTO();
+        response.message = 'Permissions updated';
+        return response;
     }
 
-    // Bans a user for a specified duration
-    @Post('users/{userId}/ban')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
-    @Security('jwt', ['banUsers'])
+
+    @Post('users/:userId/ban')
+    @HttpCode(200)
+    @Permissions('banUsers')
+    @ApiOperation({ summary: 'Ban a user for a specified duration' })
+    @ApiResponse({ status: 200, type: AdminBanUserResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async banUser(
-        @Path() userId: string,
+        @Path('userId') userId: string,
         @Body() body: AdminBanUserRequestDTO,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<AdminBanUserResponseDTO> {
         const { reason, duration } = body;
 
         const targetUser = await this.userRepo.findById(userId);
         if (!targetUser) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const expirationTimestamp = new Date(Date.now() + duration * 60 * 1000);
-        // @ts-ignore
-        const issuedById = req.user?.id || 'unknown';
+        const issuedById = (req as any).user?.id || 'unknown';
 
         const ban = await this.banRepo.createOrUpdateWithHistory({
             userId,
@@ -742,48 +726,50 @@ export class AdminController extends Controller {
             sockets.forEach((sid) => {
                 io.to(sid).emit('ban', {
                     reason: reason.trim(),
-                    // @ts-ignore
-                    issuedBy: req.user?.username,
+                    issuedBy: (req as any).user?.username,
                     expirationTimestamp,
                 });
                 io.sockets.sockets.get(sid)?.disconnect(true);
             });
         }
 
-        return {
-            _id: ban._id.toString(),
-            userId: ban.userId.toString(),
-            reason: ban.reason || '',
-            issuedBy: ban.issuedBy?.toString() || 'unknown',
-            expirationTimestamp: ban.expirationTimestamp || new Date(),
-            active: ban.active || false,
-            history: ban.history || [],
-        };
+        const response = new AdminBanUserResponseDTO();
+        response._id = ban._id.toString();
+        response.userId = ban.userId.toString();
+        response.reason = ban.reason || '';
+        response.issuedBy = ban.issuedBy?.toString() || 'unknown';
+        response.expirationTimestamp = ban.expirationTimestamp || new Date();
+        response.active = ban.active || false;
+        response.history = ban.history || [];
+        return response;
     }
 
-    // Unbans a user
-    @Post('users/{userId}/unban')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['banUsers'])
+
+    @Post('users/:userId/unban')
+    @HttpCode(200)
+    @Permissions('banUsers')
+    @ApiOperation({ summary: 'Unban a user' })
+    @ApiResponse({ status: 200, type: AdminUnbanUserResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async unbanUser(
-        @Path() userId: string,
-        @Request() req: express.Request,
+        @Path('userId') userId: string,
+        @Request() req: ExpressRequest,
     ): Promise<AdminUnbanUserResponseDTO> {
         await this.banRepo.deactivateAllForUser(userId);
         await this.logAdminAction(req, 'unban_user', userId);
-        return { message: 'User unbanned' };
+        const response = new AdminUnbanUserResponseDTO();
+        response.message = 'User unbanned';
+        return response;
     }
 
-    // Retrieves ban history for a user
-    @Get('users/{userId}/bans')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['viewBans'])
+
+    @Get('users/:userId/bans')
+    @Permissions('viewBans')
+    @ApiOperation({ summary: 'Retrieve ban history for a user' })
+    @ApiResponse({ status: 200, type: [AdminBanHistoryItemDTO] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getUserBanHistory(
-        @Path() userId: string,
+        @Path('userId') userId: string,
     ): Promise<AdminUserBanHistoryResponseDTO> {
         const ban = await this.banRepo.findByUserIdWithHistory(userId);
         if (!ban || !ban.history || ban.history.length === 0) {
@@ -791,27 +777,28 @@ export class AdminController extends Controller {
         }
 
         const historyWithStatus: AdminUserBanHistoryResponseDTO = ban.history!.map(
-            (entry: any, index: number) => ({
-                _id: entry._id.toString(),
-                reason: entry.reason || '',
-                timestamp: entry.timestamp || new Date(),
-                expirationTimestamp: entry.expirationTimestamp || new Date(),
-                issuedBy: entry.issuedBy?.toString() || 'unknown',
-                active: index === ban.history!.length - 1 && (ban.active || false),
-            }),
+            (entry: any, index: number) => {
+                const item = new AdminBanHistoryItemDTO();
+                item._id = entry._id.toString();
+                item.reason = entry.reason || '';
+                item.timestamp = entry.timestamp || new Date();
+                item.expirationTimestamp = entry.expirationTimestamp || new Date();
+                item.issuedBy = entry.issuedBy?.toString() || 'unknown';
+                item.active = index === ban.history!.length - 1 && (ban.active || false);
+                return item;
+            },
         );
         return historyWithStatus;
     }
 
-    // Lists all bans with pagination
     @Get('bans')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['viewBans'])
+    @Permissions('viewBans')
+    @ApiOperation({ summary: 'List all bans with pagination' })
+    @ApiResponse({ status: 200, type: [Object] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async listBans(
-        @Query() limit: number = 50,
-        @Query() offset: number = 0,
+        @Query('limit') limit: number = 50,
+        @Query('offset') offset: number = 0,
     ): Promise<AdminBanListResponseDTO> {
         const bans = await this.banRepo.findAll({
             limit: Number(limit),
@@ -820,12 +807,11 @@ export class AdminController extends Controller {
         return bans;
     }
 
-    // Diagnostic endpoint for ban collections
     @Get('bans/diagnostic')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['viewBans'])
+    @Permissions('viewBans')
+    @ApiOperation({ summary: 'Diagnostic endpoint for ban collections' })
+    @ApiResponse({ status: 200, type: AdminBansDiagnosticResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getBansDiagnostic(): Promise<AdminBansDiagnosticResponseDTO> {
         const appBansCount = await Ban.countDocuments();
         const appBansSample = await Ban.find({}).limit(5).lean();
@@ -833,36 +819,35 @@ export class AdminController extends Controller {
         const serverBansCount = await ServerBan.countDocuments();
         const serverBansSample = await ServerBan.find({}).limit(5).lean();
 
-        return {
-            appBans: {
-                count: appBansCount,
-                sample: appBansSample,
-            },
-            serverBans: {
-                count: serverBansCount,
-                sample: serverBansSample,
-            },
+        const response = new AdminBansDiagnosticResponseDTO();
+        response.appBans = {
+            count: appBansCount,
+            sample: appBansSample as any[],
         };
+        response.serverBans = {
+            count: serverBansCount,
+            sample: serverBansSample as any[],
+        };
+        return response;
     }
 
-    // Warns a user
-    @Post('users/{userId}/warn')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['warnUsers'])
+
+    @Post('users/:userId/warn')
+    @HttpCode(200)
+    @Permissions('warnUsers')
+    @ApiOperation({ summary: 'Warn a user' })
+    @ApiResponse({ status: 200, type: AdminWarnUserResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async warnUser(
-        @Path() userId: string,
+        @Path('userId') userId: string,
         @Body() body: AdminWarnUserRequestDTO,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<AdminWarnUserResponseDTO> {
         const { message } = body;
 
-        // @ts-ignore
         const warning = await this.warningRepo.create({
             userId,
-            // @ts-ignore
-            issuedBy: req.user?.id,
+            issuedBy: (req as any).user?.id,
             message,
         });
 
@@ -883,35 +868,41 @@ export class AdminController extends Controller {
             }
         }
 
-        return {
-            _id: warning._id.toString(),
-            userId: warning.userId.toString(),
-            issuedBy: warning.issuedBy.toString(),
-            message: warning.message,
-            timestamp: warning.timestamp,
-        };
+        const response = new AdminWarnUserResponseDTO();
+        response._id = warning._id.toString();
+        response.userId = warning.userId.toString();
+        response.issuedBy = warning.issuedBy.toString();
+        response.message = warning.message;
+        response.timestamp = warning.timestamp;
+        return response;
     }
 
-    // Retrieves warnings for a user
-    @Get('users/{userId}/warnings')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['warnUsers'])
-    public async getUserWarnings(@Path() userId: string): Promise<AdminUserWarningsResponseDTO> {
+    @Get('users/:userId/warnings')
+    @Permissions('warnUsers')
+    @ApiOperation({ summary: 'Retrieve warnings for a user' })
+    @ApiResponse({ status: 200, type: [AdminWarnUserResponseDTO] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async getUserWarnings(@Path('userId') userId: string): Promise<AdminUserWarningsResponseDTO> {
         const warnings = await this.warningRepo.findByUserId(userId);
-        return warnings;
+        return warnings.map(w => {
+            const dto = new AdminWarnUserResponseDTO();
+            dto._id = w._id.toString();
+            dto.userId = w.userId.toString();
+            dto.issuedBy = w.issuedBy.toString();
+            dto.message = w.message;
+            dto.timestamp = w.timestamp;
+            return dto;
+        });
     }
 
-    // Lists all warnings with pagination
     @Get('warnings')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['warnUsers'])
+    @Permissions('warnUsers')
+    @ApiOperation({ summary: 'List all warnings with pagination' })
+    @ApiResponse({ status: 200, type: [Object] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async listWarnings(
-        @Query() limit: number = 50,
-        @Query() offset: number = 0,
+        @Query('limit') limit: number = 50,
+        @Query('offset') offset: number = 0,
     ): Promise<AdminWarningListResponseDTO> {
         const warnings = await this.warningRepo.findAll({
             limit: Number(limit),
@@ -920,15 +911,14 @@ export class AdminController extends Controller {
         return warnings;
     }
 
-    // Lists audit logs with pagination
     @Get('logs')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['viewLogs'])
+    @Permissions('viewLogs')
+    @ApiOperation({ summary: 'List audit logs with pagination' })
+    @ApiResponse({ status: 200, type: [Object] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async listAuditLogs(
-        @Query() limit: number = 100,
-        @Query() offset: number = 0,
+        @Query('limit') limit: number = 100,
+        @Query('offset') offset: number = 0,
     ): Promise<AdminAuditLogListResponseDTO> {
         const logs = await this.auditLogRepo.find({
             limit: Number(limit),
@@ -937,16 +927,16 @@ export class AdminController extends Controller {
         return logs;
     }
 
-    // Lists servers with owner details
+
     @Get('servers')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Security('jwt', ['manageServer'])
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'List servers with owner details' })
+    @ApiResponse({ status: 200, type: [AdminServerListItemDTO] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async listServers(
-        @Query() limit: number = 50,
-        @Query() offset: number = 0,
-        @Query() search?: string,
+        @Query('limit') limit: number = 50,
+        @Query('offset') offset: number = 0,
+        @Query('search') search?: string,
     ): Promise<AdminServerListResponseDTO> {
         const servers = await this.serverRepo.findMany({
             limit: Number(limit),
@@ -968,49 +958,46 @@ export class AdminController extends Controller {
                 const memberCount = await this.serverMemberRepo.countByServerId(
                     server._id.toString(),
                 );
-                return {
-                    _id: server._id.toString(),
-                    name: server.name,
-                    icon: server.icon ? `${server.icon}` : null,
-                    banner: server.banner,
-                    ownerId: server.ownerId.toString(),
-                    memberCount,
-                    createdAt: server.createdAt || new Date(),
-                    deletedAt: server.deletedAt,
-                    owner: owner
-                        ? {
-                            _id: owner._id.toString(),
-                            username: owner.username || '',
-                            displayName: owner.displayName || null,
-                            profilePicture: owner.profilePicture
-                                ? `/api/v1/profile/picture/${owner.profilePicture}`
-                                : null,
-                        }
-                        : null,
-                };
+                const item = new AdminServerListItemDTO();
+                item._id = server._id.toString();
+                item.name = server.name;
+                item.icon = server.icon ? `${server.icon}` : null;
+                item.banner = server.banner;
+                item.ownerId = server.ownerId.toString();
+                item.memberCount = memberCount;
+                item.createdAt = server.createdAt || new Date();
+                item.deletedAt = server.deletedAt;
+                if (owner) {
+                    item.owner = {
+                        _id: owner._id.toString(),
+                        username: owner.username || '',
+                        displayName: owner.displayName || null,
+                        profilePicture: owner.profilePicture
+                            ? `/api/v1/profile/picture/${owner.profilePicture}`
+                            : null,
+                    };
+                }
+                return item;
             }),
         );
 
         return enrichedServers;
     }
 
-    // Soft deletes a server
-    @Delete('servers/{serverId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'Server not found', {
-        error: ErrorMessages.SERVER.NOT_FOUND,
-    })
-    @Security('jwt', ['manageServer'])
+
+    @Delete('servers/:serverId')
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Soft deletes a server' })
+    @ApiResponse({ status: 200, type: AdminDeleteServerResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server not found' })
     public async deleteServer(
-        @Path() serverId: string,
-        @Request() req: express.Request,
+        @Path('serverId') serverId: string,
+        @Request() req: ExpressRequest,
     ): Promise<AdminDeleteServerResponseDTO> {
         const server = await this.serverRepo.findById(serverId, true);
         if (!server) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
         await this.serverRepo.softDelete(serverId);
@@ -1025,35 +1012,33 @@ export class AdminController extends Controller {
             { serverId, serverName: server.name },
         );
 
-        return { message: 'Server deleted' };
+        const response = new AdminDeleteServerResponseDTO();
+        response.message = 'Server deleted';
+        return response;
     }
 
+
     // Restores a deleted server
-    @Post('servers/{serverId}/restore')
-    @Response<ErrorResponse>('400', 'Server not deleted', {
-        error: ErrorMessages.SERVER.NOT_DELETED,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'Server not found', {
-        error: ErrorMessages.SERVER.NOT_FOUND,
-    })
-    @Security('jwt', ['manageServer'])
+    @Post('servers/:serverId/restore')
+    @HttpCode(200)
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Restore a deleted server' })
+    @ApiResponse({ status: 200, type: AdminRestoreServerResponseDTO })
+    @ApiResponse({ status: 400, description: 'Server not deleted' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server not found' })
     public async restoreServer(
-        @Path() serverId: string,
-        @Request() req: express.Request,
+        @Path('serverId') serverId: string,
+        @Request() req: ExpressRequest,
     ): Promise<AdminRestoreServerResponseDTO> {
         const server = await this.serverRepo.findById(serverId, true);
 
         if (!server) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
         if (!server.deletedAt) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.SERVER.NOT_DELETED);
+            throw new BadRequestException(ErrorMessages.SERVER.NOT_DELETED);
         }
 
         await this.serverRepo.restore(serverId);
@@ -1065,25 +1050,24 @@ export class AdminController extends Controller {
             { serverId, serverName: server.name },
         );
 
-        return { message: 'Server restored' };
+        const response = new AdminRestoreServerResponseDTO();
+        response.message = 'Server restored';
+        return response;
     }
 
-    // Extended user details with servers
-    @Get('users/{userId}/details')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
-    @Security('jwt', ['viewUsers'])
+
+    @Get('users/:userId/details')
+    @Permissions('viewUsers')
+    @ApiOperation({ summary: 'Retrieve extended user details including servers' })
+    @ApiResponse({ status: 200, type: AdminExtendedUserDetailsDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async getExtendedUserDetails(
-        @Path() userId: string,
+        @Path('userId') userId: string,
     ): Promise<AdminExtendedUserDetailsDTO> {
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const profilePictureUrl = user.deletedAt
@@ -1125,25 +1109,25 @@ export class AdminController extends Controller {
             badges = await Badge.find({ id: { $in: user.badges } });
         }
 
-        return {
-            _id: user._id.toString(),
-            username: user.username || '',
-            login: user.login || '',
-            displayName: user.displayName || null,
-            profilePicture: profilePictureUrl,
-            permissions: user.permissions || '0',
-            createdAt: user.createdAt || new Date(),
-            banExpiry: activeBan?.expirationTimestamp,
-            warningCount,
-            bio: user.bio || '',
-            pronouns: user.pronouns || '',
-            badges,
-            banner: user.banner
-                ? `/api/v1/profile/banner/${user.banner}`
-                : null,
-            deletedAt: user.deletedAt,
-            deletedReason: user.deletedReason,
-            servers: serverList,
-        };
+        const response = new AdminExtendedUserDetailsDTO();
+        response._id = user._id.toString();
+        response.username = user.username || '';
+        response.login = user.login || '';
+        response.displayName = user.displayName || null;
+        response.profilePicture = profilePictureUrl;
+        response.permissions = user.permissions || '0';
+        response.createdAt = user.createdAt || new Date();
+        response.banExpiry = activeBan?.expirationTimestamp;
+        response.warningCount = warningCount;
+        response.bio = user.bio || '';
+        response.pronouns = user.pronouns || '';
+        response.badges = badges;
+        response.banner = user.banner ? `/api/v1/profile/banner/${user.banner}` : null;
+        response.deletedAt = user.deletedAt;
+        response.deletedReason = user.deletedReason;
+        response.servers = serverList;
+
+        return response;
     }
 }
+

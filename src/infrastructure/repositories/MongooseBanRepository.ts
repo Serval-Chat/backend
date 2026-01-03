@@ -1,17 +1,22 @@
-import { injectable } from 'inversify';
+import { Injectable } from '@nestjs/common';
+import { Model, Types } from 'mongoose';
 import { IBanRepository, IBan } from '@/di/interfaces/IBanRepository';
-import { Ban } from '@/models/Ban';
-import { Types } from 'mongoose';
 import logger from '@/utils/logger';
+import { Ban } from '@/models/Ban';
+import { injectable } from 'inversify';
 
 // Mongoose Ban repository
 //
 // Implements IBanRepository using Mongoose Ban model
 // Encapsulates all ban-related database operations
 @injectable()
+@Injectable()
 export class MongooseBanRepository implements IBanRepository {
+    private banModel = Ban;
+    constructor() { }
+
     async findActiveByUserId(userId: string): Promise<IBan | null> {
-        return await Ban.findOne({ userId, active: true }).lean();
+        return await this.banModel.findOne({ userId, active: true }).lean();
     }
 
     async create(
@@ -19,7 +24,7 @@ export class MongooseBanRepository implements IBanRepository {
         reason: string,
         expirationTimestamp?: Date,
     ): Promise<IBan> {
-        const ban = new Ban({
+        const ban = new this.banModel({
             userId,
             reason,
             active: true,
@@ -29,20 +34,20 @@ export class MongooseBanRepository implements IBanRepository {
     }
 
     async expire(banId: string): Promise<boolean> {
-        const result = await Ban.updateOne({ _id: banId }, { active: false });
+        const result = await this.banModel.updateOne({ _id: banId }, { active: false });
         return result.modifiedCount ? result.modifiedCount > 0 : false;
     }
 
     async checkExpired(userId: string): Promise<void> {
-        await Ban.checkExpired(userId);
+        await (this.banModel as any).checkExpired(userId);
     }
 
     async findAllActive(): Promise<IBan[]> {
-        return await Ban.find({ active: true }).select('userId').lean();
+        return await this.banModel.find({ active: true }).select('userId').lean();
     }
 
     async findByUserIdWithHistory(userId: string): Promise<IBan | null> {
-        return await Ban.findOne({ userId })
+        return await this.banModel.findOne({ userId })
             .populate('history.issuedBy', 'username')
             .lean();
     }
@@ -68,7 +73,7 @@ export class MongooseBanRepository implements IBanRepository {
             expirationTimestamp,
         };
 
-        const ban = await Ban.findOne({ userId });
+        const ban = await this.banModel.findOne({ userId });
 
         if (ban) {
             if (!Array.isArray(ban.history)) {
@@ -93,7 +98,7 @@ export class MongooseBanRepository implements IBanRepository {
             await ban.save();
             return ban.toObject();
         } else {
-            const newBan = await Ban.create({
+            const newBan = await this.banModel.create({
                 userId,
                 issuedBy: issuedById,
                 reason: historyEntry.reason,
@@ -102,14 +107,14 @@ export class MongooseBanRepository implements IBanRepository {
                 active: true,
                 history: [historyEntry],
             });
-            return newBan.toObject();
+            return (newBan as any).toObject();
         }
     }
 
     async deactivateAllForUser(
         userId: string,
     ): Promise<{ modifiedCount: number }> {
-        const result = await Ban.updateMany(
+        const result = await this.banModel.updateMany(
             { userId, active: true },
             { active: false },
         );
@@ -117,7 +122,7 @@ export class MongooseBanRepository implements IBanRepository {
     }
 
     async deleteAllForUser(userId: string): Promise<{ deletedCount: number }> {
-        const result = await Ban.deleteMany({ userId });
+        const result = await this.banModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }
 
@@ -126,7 +131,7 @@ export class MongooseBanRepository implements IBanRepository {
         offset?: number;
     }): Promise<IBan[]> {
         try {
-            return await Ban.find({})
+            return await this.banModel.find({})
                 .sort({ timestamp: -1 })
                 .limit(options.limit || 50)
                 .skip(options.offset || 0)
@@ -152,7 +157,7 @@ export class MongooseBanRepository implements IBanRepository {
                 error,
             );
 
-            return await Ban.find({})
+            return await this.banModel.find({})
                 .sort({ timestamp: -1 })
                 .limit(options.limit || 50)
                 .skip(options.offset || 0)
@@ -161,10 +166,10 @@ export class MongooseBanRepository implements IBanRepository {
     }
 
     async countActive(): Promise<number> {
-        return await Ban.countDocuments({ active: true });
+        return await this.banModel.countDocuments({ active: true });
     }
 
     async countCreatedAfter(date: Date): Promise<number> {
-        return await Ban.countDocuments({ timestamp: { $gt: date } });
+        return await this.banModel.countDocuments({ timestamp: { $gt: date } });
     }
 }

@@ -42,12 +42,20 @@ async function setup() {
 
     // 3. Import App and Routes
     require('reflect-metadata'); // Required for InversifyJS
-    const { createApp } = require('../../src/server');
-    const routes = require('../../src/routes/index').default;
+    const { setupExpressApp } = require('../../src/server');
+    const { NestFactory } = require('@nestjs/core');
+    const { AppModule } = require('../../src/app.module');
 
-    // Initialize app with routes
-    app = createApp();
-    app.use('/', routes);
+    // Initialize Nest app
+    const nextApp = await NestFactory.create(AppModule);
+    const expressApp = nextApp.getHttpAdapter().getInstance();
+
+    // Apply Express setup (middleware, TSOA routes, manual routes)
+    setupExpressApp(expressApp);
+
+    await nextApp.init();
+
+    app = expressApp;
 
     // 4. Create HTTP Server
     server = createServer(app);

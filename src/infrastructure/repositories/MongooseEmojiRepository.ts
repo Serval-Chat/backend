@@ -54,7 +54,7 @@ export class MongooseEmojiRepository implements IEmojiRepository {
 
     async findByServerIds(serverIds: string[]): Promise<IEmoji[]> {
         return await Emoji.find({ serverId: { $in: serverIds } })
-            .select('_id name imageUrl serverId')
+            .select('_id name imageUrl serverId createdBy createdAt')
             .sort({ name: 1 })
             .lean();
     }

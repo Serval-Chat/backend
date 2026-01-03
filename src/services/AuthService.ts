@@ -1,4 +1,4 @@
-import { injectable, inject } from 'inversify';
+import { Injectable, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -16,23 +16,26 @@ export interface AuthResult {
     };
 }
 
+import { injectable, inject } from 'inversify';
+
 // Authentication Service
 //
 // Handles user authentication, password validation, and ban checking.
 // Uses dependency injection for better testability.
 @injectable()
+@Injectable()
 export class AuthService {
     constructor(
-        @inject(TYPES.Logger) private logger: ILogger,
-        @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-        @inject(TYPES.BanRepository) private banRepo: IBanRepository,
+        @inject(TYPES.Logger) @Inject(TYPES.Logger) private logger: ILogger,
+        @inject(TYPES.UserRepository) @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
+        @inject(TYPES.BanRepository) @Inject(TYPES.BanRepository) private banRepo: IBanRepository,
     ) { }
 
 
     // Authenticate a user with login credentials.
     //
     // Flow:
-    // 1. Find user by login (username or email)
+    // 1. Find user by login
     // 2. Verify password hash
     // 3. Check if user is soft-deleted (restore if so)
     // 4. Check for active bans

@@ -1,4 +1,5 @@
 import { injectable, inject } from 'inversify';
+import { Injectable, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { IServerRepository } from '@/di/interfaces/IServerRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -11,15 +12,23 @@ import { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 // Handles server permission checks and role hierarchy.
 // Refactored from serverPermissions.ts to use dependency injection.
 @injectable()
+@Injectable()
 export class PermissionService {
     constructor(
-        @inject(TYPES.ServerRepository) private serverRepo: IServerRepository,
+        @inject(TYPES.ServerRepository)
+        @Inject(TYPES.ServerRepository)
+        private serverRepo: IServerRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.RoleRepository) private roleRepo: IRoleRepository,
+        @inject(TYPES.RoleRepository)
+        @Inject(TYPES.RoleRepository)
+        private roleRepo: IRoleRepository,
         @inject(TYPES.CategoryRepository)
+        @Inject(TYPES.CategoryRepository)
         private categoryRepo: ICategoryRepository,
         @inject(TYPES.ChannelRepository)
+        @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
     ) { }
 

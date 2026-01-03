@@ -1,25 +1,37 @@
-export interface LoginResponseDTO {
-    token: string;
-    username: string;
+import { ApiProperty } from '@nestjs/swagger';
+
+export class LoginResponseDTO {
+    @ApiProperty()
+    token!: string;
+    @ApiProperty()
+    username!: string;
 }
 
-export interface RegisterResponseDTO {
-    token: string;
+export class RegisterResponseDTO {
+    @ApiProperty()
+    token!: string;
 }
 
-export interface ChangeLoginResponseDTO {
-    message: string;
-    login: string;
-    token: string;
+export class ChangeLoginResponseDTO {
+    @ApiProperty()
+    message!: string;
+    @ApiProperty()
+    login!: string;
+    @ApiProperty()
+    token!: string;
 }
 
-export interface ChangePasswordResponseDTO {
-    message: string;
-    token: string;
+export class ChangePasswordResponseDTO {
+    @ApiProperty()
+    message!: string;
+    @ApiProperty()
+    token!: string;
 }
 
-
-export interface AuthErrorResponseDTO {
-    error: string;
-    ban?: any; // todo: make it IBan shape
+export class AuthErrorResponseDTO {
+    @ApiProperty()
+    error!: string;
+    @ApiProperty({ required: false })
+    ban?: any;
 }
+

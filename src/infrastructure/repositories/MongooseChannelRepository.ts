@@ -1,4 +1,5 @@
 import { injectable } from 'inversify';
+import { Injectable } from '@nestjs/common';
 import {
     IChannelRepository,
     IChannel,
@@ -24,6 +25,7 @@ const transformChannel = (doc: any): IChannel | null => {
 //
 // Implements IChannelRepository using Mongoose Channel model
 @injectable()
+@Injectable()
 export class MongooseChannelRepository implements IChannelRepository {
     async findById(id: string): Promise<IChannel | null> {
         const result = await Channel.findById(id).lean();

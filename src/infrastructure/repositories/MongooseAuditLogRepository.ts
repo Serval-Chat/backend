@@ -1,19 +1,26 @@
-import { AuditLog } from '@/models/AuditLog';
+import { Injectable } from '@nestjs/common';
+import { Model, Types } from 'mongoose';
 import type {
     IAuditLog,
     IAuditLogRepository,
 } from '@/di/interfaces/IAuditLogRepository';
-import { Types } from 'mongoose';
+import { AuditLog } from '@/models/AuditLog';
+import { injectable } from 'inversify';
 
 // Mongoose implementation of Audit Log repository
+@injectable()
+@Injectable()
 export class MongooseAuditLogRepository implements IAuditLogRepository {
+    private auditLogModel = AuditLog;
+    constructor() { }
+
     async create(data: {
         adminId: string;
         actionType: string;
         targetUserId?: string;
         additionalData?: any;
     }): Promise<IAuditLog> {
-        const auditLog = new AuditLog({
+        const auditLog = new this.auditLogModel({
             adminId: new Types.ObjectId(data.adminId),
             actionType: data.actionType,
             targetUserId: data.targetUserId
@@ -60,7 +67,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             }
         }
 
-        const results = await AuditLog.find(query)
+        const results = await this.auditLogModel.find(query)
             .sort({ timestamp: -1 })
             .limit(options.limit || 100)
             .skip(options.offset || 0)
@@ -74,7 +81,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }
 
     async findById(id: string): Promise<IAuditLog | null> {
-        const result = await AuditLog.findById(id)
+        const result = await this.auditLogModel.findById(id)
             .populate('adminId', 'username')
             .populate('targetUserId', 'username')
             .lean()
@@ -114,6 +121,6 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             }
         }
 
-        return await AuditLog.countDocuments(query);
+        return await this.auditLogModel.countDocuments(query);
     }
 }

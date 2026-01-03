@@ -253,10 +253,9 @@ export class ServerInviteController extends Controller {
             invite.serverId.toString(),
         );
         if (!server) {
-            console.log(
-                'getInviteDetails: Server not found for invite:',
-                invite.serverId,
-            );
+            this.logger.warn('getInviteDetails: Server not found for invite:', {
+                serverId: invite.serverId.toString(),
+            });
             this.setStatus(404);
             const error = new Error(ErrorMessages.SERVER.NOT_FOUND) as any;
             error.status = 404;

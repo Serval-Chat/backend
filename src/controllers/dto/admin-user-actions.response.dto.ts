@@ -1,48 +1,76 @@
-export interface AdminResetProfileResponseDTO {
-    message: string;
-    fields: string[];
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class AdminResetProfileResponseDTO {
+    @ApiProperty()
+    message!: string;
+    @ApiProperty()
+    fields!: string[];
 }
 
-export interface AdminSoftDeleteUserResponseDTO {
-    message: string;
-    anonymizedUsername: string;
-    offlineFriends: number;
+export class AdminSoftDeleteUserResponseDTO {
+    @ApiProperty()
+    message!: string;
+    @ApiProperty()
+    anonymizedUsername!: string;
+    @ApiProperty()
+    offlineFriends!: number;
 }
 
-export interface AdminDeleteUserResponseDTO {
-    message: string;
-    anonymizedUsername: string;
+export class AdminDeleteUserResponseDTO {
+    @ApiProperty()
+    message!: string;
+    @ApiProperty()
+    anonymizedUsername!: string;
 }
 
-export interface AdminHardDeleteUserResponseDTO {
-    message: string;
-    sentMessagesAnonymized: number;
-    receivedMessagesAnonymized: number;
-    offlineFriends: number;
+export class AdminHardDeleteUserResponseDTO {
+    @ApiProperty()
+    message!: string;
+    @ApiProperty()
+    sentMessagesAnonymized!: number;
+    @ApiProperty()
+    receivedMessagesAnonymized!: number;
+    @ApiProperty()
+    offlineFriends!: number;
 }
 
-export interface AdminUpdateUserPermissionsResponseDTO {
-    message: string;
+export class AdminUpdateUserPermissionsResponseDTO {
+    @ApiProperty()
+    message!: string;
 }
 
-export interface AdminBanUserResponseDTO {
-    _id: string;
-    userId: string;
-    reason: string;
-    issuedBy: string;
-    expirationTimestamp: Date;
-    active: boolean;
+export class AdminBanUserResponseDTO {
+    @ApiProperty()
+    _id!: string;
+    @ApiProperty()
+    userId!: string;
+    @ApiProperty()
+    reason!: string;
+    @ApiProperty()
+    issuedBy!: string;
+    @ApiProperty()
+    expirationTimestamp!: Date;
+    @ApiProperty()
+    active!: boolean;
+    @ApiPropertyOptional({ type: [Object] })
     history?: any[];
 }
 
-export interface AdminUnbanUserResponseDTO {
-    message: string;
+export class AdminUnbanUserResponseDTO {
+    @ApiProperty()
+    message!: string;
 }
 
-export interface AdminWarnUserResponseDTO {
-    _id: string;
-    userId: string;
-    issuedBy: string;
-    message: string;
-    timestamp: Date;
+export class AdminWarnUserResponseDTO {
+    @ApiProperty()
+    _id!: string;
+    @ApiProperty()
+    userId!: string;
+    @ApiProperty()
+    issuedBy!: string;
+    @ApiProperty()
+    message!: string;
+    @ApiProperty()
+    timestamp!: Date;
 }
+
