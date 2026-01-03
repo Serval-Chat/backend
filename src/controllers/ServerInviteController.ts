@@ -267,7 +267,10 @@ export class ServerInviteController extends Controller {
         );
 
         return {
-            code: invite.code,
+            code: invite.customPath || invite.code,
+            expiresAt: invite.expiresAt,
+            maxUses: invite.maxUses,
+            uses: invite.uses,
             server: {
                 id: server._id,
                 name: server.name,
