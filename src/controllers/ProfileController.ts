@@ -390,11 +390,11 @@ export class ProfileController extends Controller {
                     throw new Error(`Profile picture dimensions must be at most 1024x1024px. Received: ${metadata.width}x${metadata.height}px`);
                 }
 
-                // Check if the profile picture is webp
-                if (metadata.format !== 'webp') {
+                // Check if the profile picture is webp or gif
+                if (metadata.format !== 'webp' && metadata.format !== 'gif') {
                     fs.unlinkSync(uploadedPath);
                     this.setStatus(400);
-                    throw new Error('Invalid file format. Only WebP is allowed.');
+                    throw new Error('Invalid file format. Only WebP and GIF are allowed.');
                 }
             } catch (validationErr: any) {
                 if (fs.existsSync(uploadedPath)) {
@@ -405,7 +405,7 @@ export class ProfileController extends Controller {
                 throw new Error(validationErr.message || 'Failed to validate profile picture image');
             }
 
-            const ext = '.webp';
+            const ext = `.${(await sharp(uploadedPath).metadata()).format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(profilesDir, filename);
 
