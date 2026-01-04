@@ -24,7 +24,6 @@ import { EmojiResponseDTO } from './dto/emoji.response.dto';
 @injectable()
 @Route('api/v1/emojis')
 @Tags('Emojis')
-@Security('jwt')
 export class EmojiController extends Controller {
     constructor(
         @inject(TYPES.EmojiRepository) private emojiRepo: IEmojiRepository,
@@ -37,6 +36,7 @@ export class EmojiController extends Controller {
 
     // Retrieves all emojis from all servers the user is a member of
     @Get()
+    @Security('jwt')
     public async getAllEmojis(
         @Request() req: express.Request,
     ): Promise<EmojiResponseDTO[]> {
@@ -70,16 +70,7 @@ export class EmojiController extends Controller {
     })
     public async getEmojiById(
         @Path() emojiId: string,
-        @Request() req: express.Request,
     ): Promise<EmojiResponseDTO> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
-
-        if (!userId) {
-            this.setStatus(401);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
-        }
-
         // Fetch emoji by its unique ID
         const emoji = await this.emojiRepo.findById(emojiId);
         if (!emoji) {
