@@ -30,7 +30,8 @@ function createMockUserRepository() {
         create: [],
         update: [],
         incrementTokenVersion: [],
-        updateBanner: []
+        updateBanner: [],
+        updateProfilePicture: []
     };
 
     return {
@@ -64,6 +65,9 @@ function createMockUserRepository() {
         },
         updateBanner: async (id, filename) => {
             calls.updateBanner.push({ id, filename });
+        },
+        updateProfilePicture: async (id, filename) => {
+            calls.updateProfilePicture.push({ id, filename });
         }
     };
 }
@@ -482,7 +486,8 @@ function createMockServerMemberRepository() {
         findByServerAndUser: [],
         findByServer: [],
         create: [],
-        delete: []
+        delete: [],
+        findServerIdsByUserId: []
     };
 
     return {
@@ -502,6 +507,10 @@ function createMockServerMemberRepository() {
         delete: async (serverId, userId) => {
             calls.delete.push({ serverId, userId });
             return true;
+        },
+        findServerIdsByUserId: async (userId) => {
+            calls.findServerIdsByUserId.push(userId);
+            return [];
         }
     };
 }
