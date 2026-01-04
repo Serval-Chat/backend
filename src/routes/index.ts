@@ -4,6 +4,7 @@ import publicRoutes from '@/routes/public-routes';
 import badgeRoutes from '@/routes/api/v1/admin/badges';
 import inviteRoutes from '@/routes/api/v1/admin/invites';
 import { authenticateToken } from '@/middleware/auth';
+import { discordCrawlerPreview } from '@/middleware/crawlerPreview';
 
 /**
  * Main API Router.
@@ -16,6 +17,8 @@ const router: Router = Router();
 
 router.use('/api/v1/admin', authenticateToken, badgeRoutes);
 router.use('/api/v1/admin/invites', authenticateToken, inviteRoutes);
+
+router.use(discordCrawlerPreview);
 
 // Public routes (static files and SPA fallback) - comes after API routes
 router.use('/', publicRoutes);
