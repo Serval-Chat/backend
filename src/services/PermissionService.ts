@@ -162,6 +162,11 @@ export class PermissionService {
         const server = await this.serverRepo.findById(serverId);
         if (!server) return false;
 
+        const channel = await this.channelRepo.findById(channelId);
+        if (!channel || channel.serverId.toString() !== serverId) {
+            return false;
+        }
+
         // Owner has all permissions
         if (server.ownerId.toString() === userId) {
             return true;
@@ -205,8 +210,8 @@ export class PermissionService {
         }
 
         // Check @everyone role if no other role matched
+        const everyoneRole = await this.roleRepo.findEveryoneRole(serverId);
         if (rolePermissionValue === undefined) {
-            const everyoneRole = await this.roleRepo.findEveryoneRole(serverId);
             if (everyoneRole) {
                 if (everyoneRole.permissions.administrator === true)
                     return true;
@@ -217,7 +222,6 @@ export class PermissionService {
         }
 
         // Step 2: Check category overrides (if any)
-        const channel = await this.channelRepo.findById(channelId);
         if (!channel) return rolePermissionValue || false;
 
         let categoryPermissionValue: boolean | undefined;
@@ -227,7 +231,8 @@ export class PermissionService {
             );
             if (category?.permissions) {
                 // Check category permissions for user's roles
-                for (const role of validRoles) {
+                const rolesForOverride = everyoneRole ? [...validRoles, everyoneRole] : validRoles;
+                for (const role of rolesForOverride) {
                     const roleId = role._id?.toString();
                     if (roleId && category.permissions[roleId]) {
                         const permValue = (category.permissions[roleId] as any)[
@@ -250,7 +255,8 @@ export class PermissionService {
         let channelPermissionValue: boolean | undefined;
         if (channel.permissions) {
             // Check channel permissions for user's roles
-            for (const role of validRoles) {
+            const rolesForOverride = everyoneRole ? [...validRoles, everyoneRole] : validRoles;
+            for (const role of rolesForOverride) {
                 const roleId = role._id?.toString();
                 if (roleId && channel.permissions[roleId]) {
                     const permValue = (channel.permissions[roleId] as any)[
