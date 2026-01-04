@@ -322,6 +322,157 @@ export class ProfileController extends Controller {
         }
     }
 
+    // Uploads or updates the user's profile picture
+    // Validates compliance with dimensions (max 512x512) and format (WebP).
+    @Post('picture')
+    @Security('jwt')
+    public async uploadProfilePicture(
+        @UploadedFile() profilePicture: Express.Multer.File,
+        @Request() req: express.Request,
+    ): Promise<{ message: string; profilePicture: string }> {
+        try {
+            // @ts-ignore: JWT middleware attaches user object
+            const username = req.user.username;
+            // @ts-ignore: JWT middleware attaches user object
+            const userId = req.user.id;
+
+            if (!profilePicture) {
+                this.setStatus(400);
+                throw new Error(ErrorMessages.FILE.NO_FILE_UPLOADED);
+            }
+
+            // Allow profile pictures up to 5MB
+            const MAX_SIZE = 5 * 1024 * 1024;
+            if (profilePicture.size > MAX_SIZE) {
+                this.setStatus(400);
+                throw new Error('File size too large. Max 5MB allowed.');
+            }
+
+            const user = await this.userRepo.findById(userId);
+            if (!user) {
+                this.setStatus(404);
+                throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            }
+
+            // Remove old profile picture
+            if (user.profilePicture) {
+                const oldPath = path.join(
+                    process.cwd(),
+                    'uploads',
+                    'profiles',
+                    path.basename(user.profilePicture),
+                );
+                if (fs.existsSync(oldPath)) {
+                    fs.unlinkSync(oldPath);
+                }
+            }
+
+            const profilesDir = path.join(process.cwd(), 'uploads', 'profiles');
+            if (!fs.existsSync(profilesDir)) {
+                fs.mkdirSync(profilesDir, { recursive: true });
+            }
+
+            const uploadedPath = profilePicture.path;
+
+            // Validate dimensions
+            try {
+                const metadata = await sharp(uploadedPath).metadata();
+
+                if (!metadata.width || !metadata.height) {
+                    fs.unlinkSync(uploadedPath);
+                    this.setStatus(400);
+                    throw new Error('Could not read image dimensions');
+                }
+
+                if (metadata.width > 1024 || metadata.height > 1024) {
+                    fs.unlinkSync(uploadedPath);
+                    this.setStatus(400);
+                    throw new Error(`Profile picture dimensions must be at most 1024x1024px. Received: ${metadata.width}x${metadata.height}px`);
+                }
+
+                // Check if the profile picture is webp
+                if (metadata.format !== 'webp') {
+                    fs.unlinkSync(uploadedPath);
+                    this.setStatus(400);
+                    throw new Error('Invalid file format. Only WebP is allowed.');
+                }
+            } catch (validationErr: any) {
+                if (fs.existsSync(uploadedPath)) {
+                    fs.unlinkSync(uploadedPath);
+                }
+                this.logger.error('Profile picture validation error:', validationErr);
+                this.setStatus(400);
+                throw new Error(validationErr.message || 'Failed to validate profile picture image');
+            }
+
+            const ext = '.webp';
+            const filename = `${randomBytes(16).toString('hex')}${ext}`;
+            const targetPath = path.join(profilesDir, filename);
+
+            try {
+                fs.renameSync(uploadedPath, targetPath);
+            } catch (moveErr) {
+                this.logger.error('Profile picture file move error:', moveErr);
+                if (fs.existsSync(uploadedPath)) {
+                    fs.unlinkSync(uploadedPath);
+                }
+                this.setStatus(500);
+                throw new Error('Failed to save profile picture image');
+            }
+
+            await this.userRepo.updateProfilePicture(userId, filename);
+
+            const profilePictureUrl = `/api/v1/profile/picture/${filename}`;
+
+            try {
+                const io = getIO();
+                const serverIds = await this.serverMemberRepo.findServerIdsByUserId(userId);
+                const friendships = await this.friendshipRepo.findAllByUserId(userId);
+
+                const updatePayload = {
+                    username,
+                    profilePicture: profilePictureUrl,
+                };
+
+                // Emit to all servers the user is in
+                serverIds.forEach(serverId => {
+                    io.to(`server:${serverId}`).emit('user_updated', {
+                        userId,
+                        profilePicture: profilePictureUrl
+                    });
+                });
+
+                // Emit to all friends
+                friendships.forEach(friendship => {
+                    const friendId = friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                    io.to(`user:${friendId}`).emit('user_updated', {
+                        userId,
+                        profilePicture: profilePictureUrl
+                    });
+                });
+
+                // Also emit to the user themselves (for other sessions)
+                io.to(`user:${userId}`).emit('user_updated', {
+                    userId,
+                    profilePicture: profilePictureUrl
+                });
+
+            } catch (err) {
+                this.logger.error('Failed to emit profile picture update:', err);
+            }
+
+            return {
+                message: 'Profile picture updated successfully',
+                profilePicture: profilePictureUrl,
+            };
+        } catch (err: any) {
+            this.logger.error('Profile picture upload error:', err);
+            throw err;
+        }
+    }
+
     // Uploads or updates the user's profile banner
     // Validates compliance with dimensions (max 1136x400) and format (WebP). enforces path sanitization
     @Post('banner')
