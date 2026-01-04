@@ -1,6 +1,6 @@
 # WebSocket Protocol Documentation
 
-> **Version**: 2.1  
+> **Version**: 2.2  
 > **Protocol**: Native WebSocket + Protobuf  
 > **Status**: Specification
 
@@ -23,13 +23,13 @@ Serchat uses a native WebSocket infrastructure designed for high performance and
 
 ### Connection URL
 ```
-ws://api.serchat.io/ws
+ws://catfla.re/ws
 ```
 
 ### Authentication
 Authentication is performed immediately upon connection. The client must verify identity in one of two ways:
 
-1.  **Query Parameter**: `ws://api.serchat.io/ws?token=<JWT>` (Recommended for browsers)
+1.  **Query Parameter**: `ws://catfla.re/ws?token=<JWT>` (Recommended for browsers)
 2.  **Auth Frame**: Sending an `AuthRequest` message as the first frame.
 
 **Failure**: If authentication fails, the server sends an error frame and closes the connection with code `4001`.
@@ -53,6 +53,7 @@ enum EventType {
   CHAT_DELETE = 15;
   CHAT_MESSAGE_EDITED = 16;
   CHAT_MESSAGE_DELETED = 17;
+  DM_UNREAD_UPDATE = 18;  // DM unread count change
 
   // Server (Channel) Subscription & Actions
   SERVER_JOIN = 20;       // Subscribe to server events
@@ -62,11 +63,29 @@ enum EventType {
   SERVER_SEND = 24;       // Send message to channel
   SERVER_MESSAGE = 25;    // Incoming server message
   SERVER_TYPING = 26;     // Incoming typing indicator
+  SERVER_EDIT = 27;
+  SERVER_DELETE = 28;
+  SERVER_MESSAGE_EDITED = 29;
+  SERVER_MESSAGE_DELETED = 30;
+  CHANNEL_MARK_READ = 31;
+  CHANNEL_UNREAD_UPDATE = 32;
 
   // Presence & Status
-  PRESENCE_SUB = 30;      // Subscribe to user presence
-  STATUS_SET = 31;        // Set own status
-  PRESENCE_UPDATE = 32;   // Incoming presence update
+  PRESENCE_SYNC = 40;     // Initial state sync (all online users)
+  PRESENCE_UPDATE = 41;   // Incoming presence update (online/offline)
+  STATUS_SET = 42;        // Set own status
+  STATUS_SUB = 43;        // Subscribe to specific users status
+  STATUS_UNSUB = 44;      // Unsubscribe from status
+  STATUS_UPDATE = 45;     // Incoming status update
+
+  // Reactions
+  REACTION_ADD = 50;
+  REACTION_REMOVE = 51;
+  REACTION_UPDATED = 52;  // Broadcast when reactions on a message change
+
+  // System & Security
+  PING_NOTIFICATION = 60; // Mention/Notification (different from WS heartbeat)
+  SECURITY_BAN = 61;      // User was banned, connection will close
 }
 
 message WebSocketFrame {
@@ -85,11 +104,14 @@ message WebSocketFrame {
 }
 ```
 
-### Heartbeats (`ws-heartbeat`)
+### Initial State & Heartbeats
+Upon successful connection, the server immediately sends:
+1.  **PRESENCE_SYNC**: A list of all currently online users.
+2.  **Stored Pings**: Any pings (mentions) the user received while offline.
+
 Connection health is managed by `ws-heartbeat`.
-*   **Server**: Sends `ping` control frames (or custom ping messages depending on config) every 30 seconds.
-*   **Client**: Must respond with `pong` within the timeout window (default 5s).
-*   **Timeout**: Connections failing to respond are forcibly terminated to prevent ghost connections.
+*   **Server**: Sends `ping` control frames every 30 seconds.
+*   **Client**: Must respond with `pong` within 5s.
 
 ---
 
@@ -103,12 +125,41 @@ message User {
   string username = 2;
   string display_name = 3;
   string avatar_url = 4;
+  string bio = 5;
+  Status status = 6;
+  UserAppearance appearance = 7;
+}
+
+message UserAppearance {
+  string username_font = 1;
+  Gradient username_gradient = 2;
+  Glow username_glow = 3;
 }
 
 message Status {
   string text = 1;
   string emoji = 2;
-  int64 expires_at = 3;
+  int64 expires_at = 3; // Timestamp in MS
+}
+
+message Reaction {
+  string emoji = 1;
+  string emoji_type = 2; // "unicode" or "custom"
+  string emoji_id = 3;   // ID if custom
+  repeated string user_ids = 4; // Users who reacted with this emoji
+  int32 count = 5;
+}
+
+message Gradient {
+  bool enabled = 1;
+  repeated string colors = 2;
+  int32 angle = 3;
+}
+
+message Glow {
+  bool enabled = 1;
+  string color = 2;
+  int32 intensity = 3;
 }
 ```
 
@@ -118,51 +169,54 @@ message Status {
 message Message {
   string id = 1;
   string sender_id = 2;
-  string receiver_id = 3;  // User ID or Channel ID
-  string content = 4;
+  string receiver_id = 3;  // User ID (DM) or Channel ID (Server)
+  string text = 4;
   string reply_to_id = 5;
   int64 created_at = 6;
   int64 updated_at = 7;
   bool is_edited = 8;
   repeated Reaction reactions = 9;
+  string server_id = 10;   // Optional (only for server messages)
 }
 
 message SendMessageRequest {
   string receiver_id = 1;  // User ID or Channel ID
-  string content = 2;
+  string text = 2;
   string reply_to_id = 3;
+  string server_id = 4;    // Required for server messages
 }
 
-message SendMessageResponse {
-  bool success = 1;
-  Message message = 2;
-  string error = 3;
+message UnreadUpdate {
+  string peer_id = 1;      // User ID (for DMs)
+  string server_id = 2;    // For server channels
+  string channel_id = 3; 
+  int32 count = 4;
+  int64 last_message_at = 5;
 }
 ```
 
-### Server & Channels
+### Reactions & Notifications
 
 ```protobuf
-message ServerEvent {
-  string server_id = 1;
-  string channel_id = 2;
+message ReactionRequest {
+  string message_id = 1;
+  string message_type = 2; // "dm" or "server"
+  string emoji = 3;
+  string emoji_type = 4;  // "unicode" or "custom"
+  string emoji_id = 5;
+  string server_id = 6;
+  string channel_id = 7;
 }
 
-message JoinServerRequest {
-  string server_id = 1;
-}
-
-message JoinChannelRequest {
-  string channel_id = 1;
-}
-
-message ServerMessage {
+message Ping {
   string id = 1;
-  string server_id = 2;
-  string channel_id = 3;
+  string type = 2; // "mention"
+  string sender = 3;
   string sender_id = 4;
-  string content = 5;
-  // ... mentions handled by client parsing of content
+  string server_id = 5;
+  string channel_id = 6;
+  Message message = 7; // The message that triggered the ping
+  int64 timestamp = 8;
 }
 ```
 
@@ -172,102 +226,44 @@ message ServerMessage {
 
 ### 4.1 Chat (Direct Messages)
 
-| Event Enum | Request Proto | Response Proto | Description |
+| Event Enum | Request Proto | Response/Broadcast Proto | Description |
 | :--- | :--- | :--- | :--- |
-| `CHAT_SEND` | `SendMessageRequest` | `SendMessageResponse` | Send a DM. |
-| `CHAT_TYPING` | `TypingIndicator` | N/A | Signal typing status. |
-| `CHAT_MARK_READ`| `MarkReadRequest` | `MarkReadResponse` | Mark DM conversation as read. |
-| `CHAT_EDIT` | `EditMessageRequest` | `EditMessageResponse` | Edit a previously sent message. |
-| `CHAT_DELETE` | `DeleteMessageRequest`| `DeleteMessageResponse` | Delete a message. |
+| `CHAT_SEND` | `SendMessageRequest` | `Message` | Send a DM. |
+| `CHAT_MESSAGE` | N/A | `Message` | Incoming DM. |
+| `CHAT_TYPING` | `TypingRequest` | `TypingBroadcast` | Signal typing status. |
+| `DM_UNREAD_UPDATE`| N/A | `UnreadUpdate` | DM unread count changed. |
+| `CHAT_EDIT` | `EditMessageRequest` | `Message` | Edit a DM. |
+| `CHAT_DELETE` | `DeleteMessageRequest`| `DeleteMessageBroadcast`| Delete a DM. |
 
-### 4.2 Server (Channels) Subscription Model
+### 4.2 Server (Channels)
 
-> **Important**: The "Join" and "Leave" actions below correspond to **Event Subscriptions**. 
-> *   **Joining a Server**: Subscribes the socket to that server's room to receive real-time updates (messages, member changes) for that server.
-> *   **Joining a Channel**: Subscribes to granular ephemeral events like "typing indicators" for that channel.
-
-| Event Enum | Request Proto | Response Proto | Description |
+| Event Enum | Request Proto | Response/Broadcast Proto | Description |
 | :--- | :--- | :--- | :--- |
-| `SERVER_JOIN` | `JoinServerRequest` | `StatusResponse` | **Subscribe** to server-wide real-time events. |
-| `SERVER_LEAVE` | `LeaveServerRequest` | `StatusResponse` | **Unsubscribe** from server events. |
-| `CHANNEL_JOIN` | `JoinChannelRequest` | `StatusResponse` | **Subscribe** to channel ephemeral events (e.g. typing).|
-| `CHANNEL_LEAVE`| `LeaveChannelRequest`| `StatusResponse` | **Unsubscribe** from channel events. |
-| `SERVER_SEND` | `SendMessageRequest` | `SendMessageResponse` | Send message to a channel. |
+| `SERVER_JOIN` | `JoinServerRequest` | `StatusResponse` | Subscribe to server events. |
+| `CHANNEL_JOIN` | `JoinChannelRequest` | `StatusResponse` | Subscribe to channel events. |
+| `SERVER_SEND` | `SendMessageRequest` | `Message` | Send message to channel. |
+| `SERVER_MESSAGE` | N/A | `Message` | Incoming channel message. |
+| `REACTION_ADD` | `ReactionRequest` | `ReactionUpdate` | Add reaction to message. |
+| `PING_NOTIFICATION`| N/A| `Ping` | Received a mention/ping. |
 
-### 4.3 Presence & Status
+### 4.3 System & Presence
 
-| Event Enum | Request Proto | Response Proto | Description |
+| Event Enum | Request Proto | Response/Broadcast Proto | Description |
 | :--- | :--- | :--- | :--- |
-| `PRESENCE_SUB` | `SubscribeRequest` | N/A | Subscribe to user online/offline status. |
-| `STATUS_SET` | `SetStatusRequest` | `StatusResponse` | Update own custom status. |
+| `PRESENCE_SYNC` | N/A | `PresenceSync` | Initial list of online users. |
+| `PRESENCE_UPDATE` | N/A | `PresenceUpdate` | User came online/offline. |
+| `SECURITY_BAN` | N/A | `BanInfo` | User banned, disconnected. |
 
 ---
 
-## 5. Client Implementation Guide
-
-### 1. Connection Setup
-Using the `ws` library or standard browser `WebSocket`:
-
-```typescript
-const ws = new WebSocket('ws://api.serchat.io/ws?token=' + jwt);
-```
-
-### 2. Message Encoding
-All payloads must be wrapped in `WebSocketFrame` using the `EventType` enum.
-
-```typescript
-import { WebSocketFrame, EventType, SendMessageRequest } from './proto/compiled';
-
-function sendChatMessage(text: string, receiverId: string) {
-  // 1. Create specific payload
-  const msgReq = SendMessageRequest.create({
-    content: text,
-    receiverId: receiverId
-  });
-  const payloadBytes = SendMessageRequest.encode(msgReq).finish();
-
-  // 2. Wrap in Frame with Enum Event
-  const frame = WebSocketFrame.create({
-    type: WebSocketFrame.Type.REQUEST,
-    id: uuid(),
-    event: EventType.CHAT_SEND, // Using Enum
-    payload: payloadBytes
-  });
-
-  const buffer = WebSocketFrame.encode(frame).finish();
-  ws.send(buffer);
-}
-```
-
-### 3. Message Decoding
-```typescript
-ws.onmessage = (event) => {
-  const buffer = new Uint8Array(event.data);
-  const frame = WebSocketFrame.decode(buffer);
-
-  switch(frame.event) {
-    case EventType.CHAT_MESSAGE:
-      const msg = Message.decode(frame.payload);
-      handleNewMessage(msg);
-      break;
-    
-    case EventType.SERVER_MESSAGE:
-      // ...
-      break;
-  }
-};
-```
-
----
-
-## 6. Error Handling
+## 5. Error Handling
 
 Errors are returned as `WebSocketFrame` with `Type.ERROR`.
 
 **Error Payload Definition**:
 ```protobuf
 message ErrorPayload {
-  string code = 1;     // e.g. "PERMISSION_DENIED"
+  string code = 1;     // e.g. "PERMISSION_DENIED", "NOT_FRIENDS"
   string message = 2;  // Human readable
   map<string, string> details = 3;
 }
