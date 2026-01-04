@@ -11,6 +11,7 @@
     "tsoa:spec": "tsoa spec -c tsoa.config.json",
     "start": "node dist/main.js",
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node -r tsconfig-paths/register' src/main.ts",
+    "generate:openapi": "tsoa spec -c tsoa.config.json && mv public/swagger.yaml ./openapi.yaml",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "frontend:install": "cd frontend/chat-frontend && npm install -f && cd ../../ && cp -r static/* ./public",
