@@ -2,42 +2,53 @@ import {
     Controller,
     Get,
     Delete,
-    Route,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
-} from 'tsoa';
-import { injectable, inject } from 'inversify';
+    Param,
+    Req,
+    UseGuards,
+    Inject,
+} from '@nestjs/common';
 import { TYPES } from '@/di/types';
-import { PingService, type PingNotification } from '@/services/PingService';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
-import { ErrorMessages } from '@/constants/errorMessages';
-import { ApiError } from '@/utils/ApiError';
-import type { Request as ExpressRequest } from 'express';
+import { PingService } from '@/services/PingService';
+import { ILogger } from '@/di/interfaces/ILogger';
+import { ApiTags, ApiResponse, ApiSecurity, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { ApiError } from '@/utils/ApiError';
+import {
+    GetPingsResponseDTO,
+    DeletePingResponseDTO,
+    ClearChannelPingsResponseDTO,
+} from './dto/ping.response.dto';
+import { injectable, inject } from 'inversify';
+
+interface RequestWithUser extends Request {
+    user: JWTPayload;
+}
 
 // Controller for managing user pings (mentions and notifications)
+@ApiTags('Pings')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @injectable()
-@Route('api/v1/pings')
-@Tags('Pings')
-@Security('jwt')
-export class UserPingController extends Controller {
+@Controller('api/v1/pings')
+export class UserPingController {
     constructor(
-        @inject(TYPES.PingService) private pingService: PingService,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.PingService)
+        @Inject(TYPES.PingService)
+        private pingService: PingService,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
-    // Get all pings for the current user
     @Get()
+    @ApiOperation({ summary: 'Get all pings for the current user' })
+    @ApiResponse({ status: 200, type: GetPingsResponseDTO })
     public async getPings(
-        @Request() req: ExpressRequest,
-    ): Promise<{ pings: PingNotification[] }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        @Req() req: Request,
+    ): Promise<GetPingsResponseDTO> {
+        const userId = (req as unknown as RequestWithUser).user.id;
         try {
             const pings = await this.pingService.getPingsForUser(userId);
             return { pings };
@@ -47,16 +58,15 @@ export class UserPingController extends Controller {
         }
     }
 
-    // Delete a specific ping
-    @Delete('{id}')
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.PING.ID_REQUIRED,
-    })
+    @Delete(':id')
+    @ApiOperation({ summary: 'Delete a specific ping' })
+    @ApiResponse({ status: 200, type: DeletePingResponseDTO })
+    @ApiResponse({ status: 400, description: 'Ping ID is required' })
     public async deletePing(
-        @Path() id: string,
-        @Request() req: ExpressRequest,
-    ): Promise<{ success: boolean }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        @Param('id') id: string,
+        @Req() req: Request,
+    ): Promise<DeletePingResponseDTO> {
+        const userId = (req as unknown as RequestWithUser).user.id;
 
         if (!id) {
             throw new ApiError(400, 'Ping ID is required');
@@ -71,16 +81,15 @@ export class UserPingController extends Controller {
         }
     }
 
-    // Clear all pings for a specific channel
-    @Delete('channel/{channelId}')
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.PING.CHANNEL_ID_REQUIRED,
-    })
+    @Delete('channel/:channelId')
+    @ApiOperation({ summary: 'Clear all pings for a specific channel' })
+    @ApiResponse({ status: 200, type: ClearChannelPingsResponseDTO })
+    @ApiResponse({ status: 400, description: 'Channel ID is required' })
     public async clearChannelPings(
-        @Path() channelId: string,
-        @Request() req: ExpressRequest,
-    ): Promise<{ success: boolean; clearedCount: number }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        @Param('channelId') channelId: string,
+        @Req() req: Request,
+    ): Promise<ClearChannelPingsResponseDTO> {
+        const userId = (req as unknown as RequestWithUser).user.id;
 
         if (!channelId) {
             throw new ApiError(400, 'Channel ID is required');
@@ -98,12 +107,13 @@ export class UserPingController extends Controller {
         }
     }
 
-    // Clear all pings for the current user
     @Delete()
+    @ApiOperation({ summary: 'Clear all pings for the current user' })
+    @ApiResponse({ status: 200, type: DeletePingResponseDTO })
     public async clearAllPings(
-        @Request() req: ExpressRequest,
-    ): Promise<{ success: boolean }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        @Req() req: Request,
+    ): Promise<DeletePingResponseDTO> {
+        const userId = (req as unknown as RequestWithUser).user.id;
 
         try {
             await this.pingService.clearAllPings(userId);
