@@ -11,6 +11,7 @@ import { MongooseServerMemberRepository } from '@/infrastructure/repositories/Mo
 import { MongooseRoleRepository } from '@/infrastructure/repositories/MongooseRoleRepository';
 import { MongooseCategoryRepository } from '@/infrastructure/repositories/MongooseCategoryRepository';
 import { MongooseChannelRepository } from '@/infrastructure/repositories/MongooseChannelRepository';
+import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePingRepository';
 
 @Global()
 @Module({
@@ -59,6 +60,10 @@ import { MongooseChannelRepository } from '@/infrastructure/repositories/Mongoos
             provide: TYPES.ChannelRepository,
             useClass: MongooseChannelRepository,
         },
+        {
+            provide: TYPES.PingRepository,
+            useClass: MongoosePingRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -72,6 +77,7 @@ import { MongooseChannelRepository } from '@/infrastructure/repositories/Mongoos
         TYPES.RoleRepository,
         TYPES.CategoryRepository,
         TYPES.ChannelRepository,
+        TYPES.PingRepository,
     ],
 })
 export class RepositoryModule { }

@@ -1,4 +1,5 @@
 import { injectable, inject } from 'inversify';
+import { Injectable, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { IPingRepository } from '@/di/interfaces/IPingRepository';
 import type { IPing } from '@/di/interfaces/IPingRepository';
@@ -16,11 +17,14 @@ export interface PingNotification {
 
 // Ping Service wrapper for the ping repository
 @injectable()
+@Injectable()
 export class PingService {
     private readonly maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
     constructor(
-        @inject(TYPES.PingRepository) private pingRepo: IPingRepository,
+        @inject(TYPES.PingRepository)
+        @Inject(TYPES.PingRepository)
+        private pingRepo: IPingRepository,
     ) { }
 
     // Store a ping for a user (both online and offline)
@@ -28,7 +32,7 @@ export class PingService {
         userId: string,
         pingData: Omit<PingNotification, 'id' | 'timestamp'>,
     ): Promise<PingNotification> {
-        // Check if ping already exists (deduplication)
+        // Check if ping already exists
         const messageId =
             typeof pingData.message._id === 'string'
                 ? pingData.message._id

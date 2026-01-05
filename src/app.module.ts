@@ -9,6 +9,8 @@ import { ServicesModule } from './modules/services/services.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthController } from './controllers/AuthController';
 import { AdminController } from './controllers/AdminController';
+import { UserPingController } from './controllers/UserPingController';
+import { UserWarningController } from './controllers/UserWarningController';
 
 @Module({
     imports: [
@@ -22,7 +24,12 @@ import { AdminController } from './controllers/AdminController';
         ServicesModule,
         AuthModule,
     ],
-    controllers: [AuthController, AdminController],
+    controllers: [
+        AuthController,
+        AdminController,
+        UserPingController,
+        UserWarningController,
+    ],
     providers: [],
 })
 export class AppModule { }

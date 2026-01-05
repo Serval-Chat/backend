@@ -2,58 +2,70 @@ import {
     Controller,
     Get,
     Post,
-    Route,
-    Path,
+    Param,
     Query,
-    Security,
-    Response,
-    Tags,
-    Request,
-} from 'tsoa';
-import { injectable, inject } from 'inversify';
+    Req,
+    UseGuards,
+    Inject,
+} from '@nestjs/common';
 import { TYPES } from '@/di/types';
-import type {
+import {
     IWarningRepository,
     IWarning,
 } from '@/di/interfaces/IWarningRepository';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import express from 'express';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { ILogger } from '@/di/interfaces/ILogger';
+import { ApiTags, ApiResponse, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Request } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
+import { UserWarningResponseDTO } from './dto/warning.response.dto';
+import { JWTPayload } from '@/utils/jwt';
+import { injectable, inject } from 'inversify';
+
+interface RequestWithUser extends Request {
+    user: JWTPayload;
+}
 
 // Controller for managing user warnings
+@ApiTags('Warnings')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @injectable()
-@Route('api/v1/warnings')
-@Tags('Warnings')
-@Security('jwt')
-export class UserWarningController extends Controller {
+@Controller('api/v1/warnings')
+export class UserWarningController {
     constructor(
         @inject(TYPES.WarningRepository)
+        @Inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
     // Sanitizes warning data for the current user
-    //
     // Hides the specific issuer identity for privacy, labeling all warnings as issued by 'System'
-    private sanitizeWarning(warning: IWarning): Record<string, unknown> {
-        if (!warning) return warning as unknown as Record<string, unknown>;
-        const sanitized = { ...warning } as Record<string, unknown>;
-        sanitized.issuedBy = { username: 'System' };
-        return sanitized;
+    private sanitizeWarning(warning: IWarning): UserWarningResponseDTO {
+        return {
+            _id: warning._id.toString(),
+            userId: warning.userId.toString(),
+            message: warning.message,
+            issuedBy: { username: 'System' },
+            acknowledged: warning.acknowledged,
+            acknowledgedAt: warning.acknowledgedAt,
+            timestamp: warning.timestamp,
+        };
     }
 
-    // Get current user's warnings
     @Get('me')
+    @ApiOperation({ summary: "Get current user's warnings" })
+    @ApiQuery({ name: 'acknowledged', required: false, type: Boolean })
+    @ApiResponse({ status: 200, type: [UserWarningResponseDTO] })
     public async getMyWarnings(
-        @Request() req: express.Request,
-        @Query() acknowledged?: boolean,
-    ): Promise<Record<string, unknown>[]> {
-        // @ts-ignore
-        const userId = req.user.id;
+        @Req() req: Request,
+        @Query('acknowledged') acknowledged?: boolean,
+    ): Promise<UserWarningResponseDTO[]> {
+        const userId = (req as unknown as RequestWithUser).user.id;
         try {
             const warnings = await this.warningRepo.findByUserId(
                 userId,
@@ -66,23 +78,17 @@ export class UserWarningController extends Controller {
         }
     }
 
-    // Acknowledge a warning
-    @Post('{id}/acknowledge')
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.SYSTEM.WARNING_ID_REQUIRED,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.AUTH.FORBIDDEN,
-    })
-    @Response<ErrorResponse>('404', 'Warning Not Found', {
-        error: ErrorMessages.SYSTEM.WARNING_NOT_FOUND,
-    })
+    @Post(':id/acknowledge')
+    @ApiOperation({ summary: 'Acknowledge a warning' })
+    @ApiResponse({ status: 200, type: UserWarningResponseDTO })
+    @ApiResponse({ status: 400, description: 'Warning ID is required' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Warning Not Found' })
     public async acknowledgeWarning(
-        @Path() id: string,
-        @Request() req: express.Request,
-    ): Promise<Record<string, unknown>> {
-        // @ts-ignore
-        const userId = req.user.id;
+        @Param('id') id: string,
+        @Req() req: Request,
+    ): Promise<UserWarningResponseDTO> {
+        const userId = (req as unknown as RequestWithUser).user.id;
 
         if (!id) {
             throw new ApiError(400, 'Warning ID is required');
