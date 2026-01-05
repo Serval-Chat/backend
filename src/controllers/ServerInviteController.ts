@@ -29,6 +29,7 @@ import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { ApiError } from '@/utils/ApiError';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 
@@ -97,8 +98,7 @@ export class ServerInviteController extends Controller {
                 'manageInvites',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
         }
 
         return await this.inviteRepo.findByServerId(serverId);
@@ -128,8 +128,7 @@ export class ServerInviteController extends Controller {
                 'manageInvites',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
         }
 
         const { maxUses, expiresIn, customPath } = body;
@@ -139,14 +138,12 @@ export class ServerInviteController extends Controller {
             // Restrict custom invite codes to the server owner to prevent squatting/abuse
             const server = await this.serverRepo.findById(serverId);
             if (server?.ownerId.toString() !== userId) {
-                this.setStatus(403);
-                throw new Error(ErrorMessages.INVITE.ONLY_OWNER_CUSTOM);
+                throw new ApiError(403, ErrorMessages.INVITE.ONLY_OWNER_CUSTOM);
             }
 
             const existing = await this.inviteRepo.findByCode(code);
             if (existing) {
-                this.setStatus(400);
-                throw new Error(ErrorMessages.INVITE.ALREADY_EXISTS);
+                throw new ApiError(400, ErrorMessages.INVITE.ALREADY_EXISTS);
             }
         } else {
             // Generate a random 8-character hex code if no custom code is provided
@@ -189,14 +186,12 @@ export class ServerInviteController extends Controller {
                 'manageInvites',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
         }
 
         const invite = await this.inviteRepo.findById(inviteId);
         if (!invite || invite.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.INVITE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.INVITE.NOT_FOUND);
         }
 
         await this.inviteRepo.delete(inviteId);
@@ -215,14 +210,12 @@ export class ServerInviteController extends Controller {
     public async getInviteDetails(@Path() code: string): Promise<InviteDetailsResponse> {
         const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
         if (!invite) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.INVITE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.INVITE.NOT_FOUND);
         }
 
         // Check if the invite has reached its expiration date
         if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
-            this.setStatus(410);
-            throw new Error(ErrorMessages.INVITE.EXPIRED);
+            throw new ApiError(410, ErrorMessages.INVITE.EXPIRED);
         }
 
         // Check if the invite has exceeded its maximum allowed uses
@@ -231,8 +224,7 @@ export class ServerInviteController extends Controller {
             invite.maxUses > 0 &&
             invite.uses >= invite.maxUses
         ) {
-            this.setStatus(410);
-            throw new Error(ErrorMessages.INVITE.MAX_USES_REACHED);
+            throw new ApiError(410, ErrorMessages.INVITE.MAX_USES_REACHED);
         }
 
         const server = await this.serverRepo.findById(
@@ -242,8 +234,7 @@ export class ServerInviteController extends Controller {
             this.logger.warn('getInviteDetails: Server not found for invite:', {
                 serverId: invite.serverId.toString(),
             });
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
         const memberCount = await this.serverMemberRepo.countByServerId(
@@ -288,13 +279,11 @@ export class ServerInviteController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
         if (!invite) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.INVITE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.INVITE.NOT_FOUND);
         }
 
         if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
-            this.setStatus(410);
-            throw new Error(ErrorMessages.INVITE.EXPIRED);
+            throw new ApiError(410, ErrorMessages.INVITE.EXPIRED);
         }
 
         if (
@@ -302,8 +291,7 @@ export class ServerInviteController extends Controller {
             invite.maxUses > 0 &&
             invite.uses >= invite.maxUses
         ) {
-            this.setStatus(410);
-            throw new Error(ErrorMessages.INVITE.MAX_USES_REACHED);
+            throw new ApiError(410, ErrorMessages.INVITE.MAX_USES_REACHED);
         }
 
         const serverId = invite.serverId.toString();
@@ -312,8 +300,7 @@ export class ServerInviteController extends Controller {
             userId,
         );
         if (existingMember) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.SERVER.ALREADY_MEMBER);
+            throw new ApiError(400, ErrorMessages.SERVER.ALREADY_MEMBER);
         }
 
         // Prevent banned users from re-joining via invite
@@ -322,8 +309,7 @@ export class ServerInviteController extends Controller {
             userId,
         );
         if (existingBan) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.BANNED);
+            throw new ApiError(403, ErrorMessages.SERVER.BANNED);
         }
 
         const server = await this.serverRepo.findById(serverId);

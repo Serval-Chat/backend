@@ -16,6 +16,8 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
+import { JWTPayload } from '@/utils/jwt';
 
 import { EmojiResponseDTO } from './dto/emoji.response.dto';
 
@@ -40,13 +42,14 @@ export class EmojiController extends Controller {
     public async getAllEmojis(
         @Request() req: express.Request,
     ): Promise<EmojiResponseDTO[]> {
-        // @ts-ignore: JWT middleware attaches user object, not typed in Express.Request
-        const userId = req.user.id;
-
-        if (!userId) {
-            this.setStatus(401);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+        if (
+            !(req as express.Request & { user: JWTPayload }).user ||
+            !(req as express.Request & { user: JWTPayload }).user.id
+        ) {
+            throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
+
+        const userId = (req as express.Request & { user: JWTPayload }).user.id;
 
         const memberships = await this.serverMemberRepo.findAllByUserId(userId);
         // Extract server IDs from membership objects
@@ -74,8 +77,7 @@ export class EmojiController extends Controller {
         // Fetch emoji by its unique ID
         const emoji = await this.emojiRepo.findById(emojiId);
         if (!emoji) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.EMOJI.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.EMOJI.NOT_FOUND);
         }
 
         return {

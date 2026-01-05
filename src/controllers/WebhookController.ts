@@ -33,6 +33,8 @@ import sharp from 'sharp';
 import mongoose from 'mongoose';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
+import type { Request as ExpressRequest } from 'express';
 
 interface CreateWebhookRequest {
     name: string;
@@ -97,8 +99,7 @@ export class WebhookController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ApiError(403, ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         if (
@@ -108,8 +109,7 @@ export class WebhookController extends Controller {
                 'manageWebhooks',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.WEBHOOK.FORBIDDEN);
+            throw new ApiError(403, ErrorMessages.WEBHOOK.FORBIDDEN);
         }
 
         const channel = await this.channelRepo.findByIdAndServer(
@@ -117,8 +117,7 @@ export class WebhookController extends Controller {
             serverId,
         );
         if (!channel) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const webhooks = await this.webhookRepo.findByChannelId(channelId);
@@ -157,8 +156,7 @@ export class WebhookController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ApiError(403, ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         if (
@@ -168,8 +166,7 @@ export class WebhookController extends Controller {
                 'manageWebhooks',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.WEBHOOK.FORBIDDEN);
+            throw new ApiError(403, ErrorMessages.WEBHOOK.FORBIDDEN);
         }
 
         const channel = await this.channelRepo.findByIdAndServer(
@@ -177,8 +174,7 @@ export class WebhookController extends Controller {
             serverId,
         );
         if (!channel) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         let token: string;
@@ -186,9 +182,8 @@ export class WebhookController extends Controller {
         do {
             token = generateWebhookToken();
             attempts++;
-            if (attempts > 10) {
-                this.setStatus(500);
-                throw new Error(ErrorMessages.WEBHOOK.TOKEN_GENERATION_FAILED);
+            if (!token) {
+                throw new ApiError(500, ErrorMessages.WEBHOOK.TOKEN_GENERATION_FAILED);
             }
         } while (await this.webhookRepo.findByToken(token));
 
@@ -227,8 +222,7 @@ export class WebhookController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ApiError(403, ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         if (
@@ -238,8 +232,7 @@ export class WebhookController extends Controller {
                 'manageWebhooks',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.WEBHOOK.FORBIDDEN);
+            throw new ApiError(403, ErrorMessages.WEBHOOK.FORBIDDEN);
         }
 
         const webhook = await this.webhookRepo.findById(webhookId);
@@ -248,8 +241,7 @@ export class WebhookController extends Controller {
             webhook.serverId.toString() !== serverId ||
             webhook.channelId.toString() !== channelId
         ) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.WEBHOOK.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
         await this.webhookRepo.delete(webhookId);
@@ -280,20 +272,14 @@ export class WebhookController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ApiError(403, ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        if (
-            !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
-                'manageWebhooks',
-            ))
-        ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.WEBHOOK.FORBIDDEN);
-        }
+        const canManage = await this.permissionService.hasPermission(
+            serverId,
+            userId,
+            'manageWebhooks',
+        );
 
         const webhook = await this.webhookRepo.findById(webhookId);
         if (
@@ -301,13 +287,15 @@ export class WebhookController extends Controller {
             webhook.serverId.toString() !== serverId ||
             webhook.channelId.toString() !== channelId
         ) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.WEBHOOK.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.WEBHOOK.NOT_FOUND);
+        }
+
+        if (!canManage) {
+            throw new ApiError(403, ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
         }
 
         if (!avatar) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FILE.NO_FILE_UPLOADED);
+            throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
         }
 
         const filename = `${webhookId}-${Date.now()}.png`;
@@ -315,8 +303,7 @@ export class WebhookController extends Controller {
 
         const input = avatar.path || avatar.buffer;
         if (!input) {
-            this.setStatus(500);
-            throw new Error(ErrorMessages.FILE.DATA_MISSING);
+            throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
         }
 
         // Process image to ensure consistent size and format to PNG
@@ -350,15 +337,13 @@ export class WebhookController extends Controller {
             filename.includes('/') ||
             filename.includes('\\')
         ) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FILE.INVALID_FILENAME);
+            throw new ApiError(400, ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
         if (!fs.existsSync(filepath)) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND);
         }
 
         const ext = path.extname(filename).toLowerCase();
@@ -386,20 +371,17 @@ export class WebhookController extends Controller {
         @Body() body: ExecuteWebhookRequest,
     ): Promise<{ id: string; timestamp: Date }> {
         if (!token || token.length !== 128 || !/^[a-f0-9]{128}$/i.test(token)) {
-            this.setStatus(401);
-            throw new Error(ErrorMessages.WEBHOOK.INVALID_TOKEN);
+            throw new ApiError(401, ErrorMessages.WEBHOOK.INVALID_TOKEN);
         }
 
         const webhook = await this.webhookRepo.findByToken(token);
         if (!webhook) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.WEBHOOK.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
         const { content, username, avatarUrl } = body;
         if (!content || content.trim().length === 0) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.MESSAGE.CONTENT_REQUIRED);
+            throw new ApiError(400, ErrorMessages.MESSAGE.CONTENT_REQUIRED);
         }
 
         const webhookUsername = username

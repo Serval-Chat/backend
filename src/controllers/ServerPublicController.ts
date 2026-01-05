@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 
 // Controller for serving public server assets
 @injectable()
@@ -34,15 +35,13 @@ export class ServerPublicController extends Controller {
             filename.includes('/') ||
             filename.includes('\\')
         ) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FILE.INVALID_FILENAME);
+            throw new ApiError(400, ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
         if (!fs.existsSync(filepath)) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.FILE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.FILE.NOT_FOUND);
         }
 
         // TSOA doesn't have a built-in 'file' return type; we set headers manually and return a ReadStream
@@ -70,21 +69,18 @@ export class ServerPublicController extends Controller {
             filename.includes('/') ||
             filename.includes('\\')
         ) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FILE.INVALID_FILENAME);
+            throw new ApiError(400, ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         const filepath = path.resolve(this.UPLOADS_DIR, filename);
 
         // Ensure the resolved path is within the intended uploads directory
         if (!filepath.startsWith(this.UPLOADS_DIR + path.sep)) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FILE.INVALID_FILENAME);
+            throw new ApiError(400, ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         if (!fs.existsSync(filepath)) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.FILE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.FILE.NOT_FOUND);
         }
 
         const ext = path.extname(filename).toLowerCase();

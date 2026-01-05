@@ -35,6 +35,7 @@ import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { ApiError } from '@/utils/ApiError';
 import { IChannel } from '@/di/interfaces/IChannelRepository';
 import { PresenceService } from '@/realtime/services/PresenceService';
 import path from 'path';
@@ -150,9 +151,8 @@ export class ServerController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { name } = body;
 
-        if (!name || name.trim().length === 0) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.SERVER.NAME_REQUIRED);
+        if (!name || name.trim().length < 2) {
+            throw new ApiError(400, ErrorMessages.SERVER.NAME_REQUIRED);
         }
 
         const server = await this.serverRepo.create({
@@ -254,8 +254,7 @@ export class ServerController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const channels = await this.channelRepo.findByServerId(serverId);
@@ -294,14 +293,12 @@ export class ServerController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
         const memberCount = await this.serverMemberRepo.countByServerId(serverId);
@@ -332,14 +329,12 @@ export class ServerController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
         const members = await this.serverMemberRepo.findByServerId(serverId);
@@ -435,8 +430,7 @@ export class ServerController extends Controller {
                 'manageServer',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
         const updates: Record<string, unknown> = {};
@@ -447,8 +441,7 @@ export class ServerController extends Controller {
 
         const server = await this.serverRepo.update(serverId, updates);
         if (!server) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
         const io = getIO();
@@ -488,23 +481,19 @@ export class ServerController extends Controller {
                 'manageServer',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
         if (roleId) {
             const role = await this.roleRepo.findById(roleId);
             if (!role) {
-                this.setStatus(404);
-                throw new Error(ErrorMessages.ROLE.NOT_FOUND);
+                throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
             }
             if (role.serverId.toString() !== serverId) {
-                this.setStatus(400);
-                throw new Error(ErrorMessages.ROLE.NOT_IN_SERVER);
+                throw new ApiError(400, ErrorMessages.ROLE.NOT_IN_SERVER);
             }
             if (role.name && role.name.trim().toLowerCase() === '@everyone') {
-                this.setStatus(400);
-                throw new Error(ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT);
+                throw new ApiError(400, ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT);
             }
         }
 
@@ -538,13 +527,11 @@ export class ServerController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
         if (server.ownerId.toString() !== userId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.ONLY_OWNER_DELETE);
+            throw new ApiError(403, ErrorMessages.SERVER.ONLY_OWNER_DELETE);
         }
 
         await this.serverRepo.delete(serverId);
@@ -582,13 +569,11 @@ export class ServerController extends Controller {
                 'manageServer',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
         if (!icon) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FILE.NO_FILE_UPLOADED);
+            throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
         }
 
         const filename = `${serverId}-${Date.now()}.png`;
@@ -596,8 +581,7 @@ export class ServerController extends Controller {
 
         const input = icon.path || icon.buffer;
         if (!input) {
-            this.setStatus(500);
-            throw new Error(ErrorMessages.FILE.DATA_MISSING);
+            throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
         }
 
         // Normalize server icons to 256x256 PNG
@@ -646,13 +630,11 @@ export class ServerController extends Controller {
                 'manageServer',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
         if (!banner) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FILE.NO_FILE_UPLOADED);
+            throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
         }
 
         const ext = banner.mimetype === 'image/gif' ? 'gif' : 'png';
@@ -661,8 +643,7 @@ export class ServerController extends Controller {
 
         const input = banner.path || banner.buffer;
         if (!input) {
-            this.setStatus(500);
-            throw new Error(ErrorMessages.FILE.DATA_MISSING);
+            throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
         }
 
         // Normalize server banners to 960x540; preserve animation for GIFs

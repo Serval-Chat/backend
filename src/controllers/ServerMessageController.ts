@@ -31,6 +31,7 @@ import { JWTPayload } from '@/utils/jwt';
 import mongoose from 'mongoose';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 
 interface SendMessageRequest {
     content?: string;
@@ -86,8 +87,7 @@ export class ServerMessageController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         // Fetch messages using cursor-based pagination (before / around)
@@ -138,8 +138,7 @@ export class ServerMessageController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const canSend = await this.permissionService.hasChannelPermission(
@@ -149,20 +148,17 @@ export class ServerMessageController extends Controller {
             'sendMessages',
         );
         if (!canSend) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_SEND);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_SEND);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel || channel.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const messageText = (body.content || body.text || '').trim();
         if (!messageText) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.MESSAGE.TEXT_REQUIRED);
+            throw new ApiError(400, ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
         const message = await this.serverMessageRepo.create({
@@ -220,14 +216,12 @@ export class ServerMessageController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         let repliedMessage: IServerMessage | null = null;
@@ -284,19 +278,16 @@ export class ServerMessageController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         if (message.senderId.toString() !== userId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MESSAGE.ONLY_SENDER_EDIT);
+            throw new ApiError(403, ErrorMessages.MESSAGE.ONLY_SENDER_EDIT);
         }
 
         const messageText = (body.content || body.text || '').trim();
         if (!messageText) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.MESSAGE.TEXT_REQUIRED);
+            throw new ApiError(400, ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
         const updatedMessage = await this.serverMessageRepo.update(messageId, {
@@ -305,8 +296,7 @@ export class ServerMessageController extends Controller {
             isEdited: true,
         });
         if (!updatedMessage) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const io = getIO();
@@ -336,8 +326,7 @@ export class ServerMessageController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const canManage = await this.permissionService.hasChannelPermission(
@@ -346,9 +335,8 @@ export class ServerMessageController extends Controller {
             channelId,
             'manageMessages',
         );
-        if (message.senderId.toString() !== userId && !canManage) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MESSAGE.NO_PERMISSION_DELETE);
+        if (!canManage && message.senderId.toString() !== userId) {
+            throw new ApiError(403, ErrorMessages.MESSAGE.NO_PERMISSION_DELETE);
         }
 
         await this.serverMessageRepo.delete(messageId);

@@ -33,6 +33,7 @@ import { IServerBan } from '@/di/interfaces/IServerBanRepository';
 import { IUser } from '@/models/User';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 
 interface KickMemberRequest {
     reason?: string;
@@ -85,8 +86,7 @@ export class ServerMemberController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         return await this.serverMemberRepo.findByServerIdWithUserInfo(serverId);
@@ -109,8 +109,7 @@ export class ServerMemberController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         return await this.serverMemberRepo.searchMembers(serverId, q);
@@ -136,8 +135,7 @@ export class ServerMemberController extends Controller {
             currentUserId,
         );
         if (!currentMember) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -145,8 +143,7 @@ export class ServerMemberController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         const user = await this.userRepo.findById(userId);
@@ -154,7 +151,7 @@ export class ServerMemberController extends Controller {
     }
 
     // Kicks a member from the server
-    // Enforces 'kickMembers' permission and prevents kicking the server owner
+    // Enforces 'kickMembers' permission and prevents actions against server owner
     @Delete('members/{userId}')
     @Response<ErrorResponse>('403', 'Forbidden', {
         error: ErrorMessages.MEMBER.NO_PERMISSION_KICK,
@@ -176,8 +173,7 @@ export class ServerMemberController extends Controller {
                 'kickMembers',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_KICK);
+            throw new ApiError(403, ErrorMessages.MEMBER.NO_PERMISSION_KICK);
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -185,15 +181,13 @@ export class ServerMemberController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         // Prevent kicking the server owner, even by users with administrative permissions
         const server = await this.serverRepo.findById(serverId);
         if (server?.ownerId.toString() === userId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.CANNOT_KICK_OWNER);
+            throw new ApiError(403, ErrorMessages.MEMBER.CANNOT_KICK_OWNER);
         }
 
         await this.serverMemberRepo.remove(serverId, userId);
@@ -226,8 +220,7 @@ export class ServerMemberController extends Controller {
                 'banMembers',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_BAN);
+            throw new ApiError(403, ErrorMessages.MEMBER.NO_PERMISSION_BAN);
         }
 
         const { userId, reason } = body;
@@ -235,8 +228,7 @@ export class ServerMemberController extends Controller {
         // Prevent banning the server owner, even by users with administrative permissions
         const server = await this.serverRepo.findById(serverId);
         if (server?.ownerId.toString() === userId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.CANNOT_BAN_OWNER);
+            throw new ApiError(403, ErrorMessages.MEMBER.CANNOT_BAN_OWNER);
         }
 
         // Ban workflow: record ban, remove member, notify clients
@@ -271,7 +263,8 @@ export class ServerMemberController extends Controller {
         @Path() userId: string,
         @Request() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
+            .user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -279,8 +272,7 @@ export class ServerMemberController extends Controller {
                 'banMembers',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_UNBAN);
+            throw new ApiError(403, ErrorMessages.MEMBER.NO_PERMISSION_UNBAN);
         }
 
         await this.serverBanRepo.unban(serverId, userId);
@@ -304,7 +296,8 @@ export class ServerMemberController extends Controller {
         @Path() serverId: string,
         @Request() req: ExpressRequest,
     ): Promise<IServerBan[]> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
+            .user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -312,8 +305,10 @@ export class ServerMemberController extends Controller {
                 'banMembers',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_VIEW_BANS);
+            throw new ApiError(
+                403,
+                ErrorMessages.MEMBER.NO_PERMISSION_VIEW_BANS,
+            );
         }
 
         return await this.serverBanRepo.findByServerId(serverId);
@@ -333,7 +328,8 @@ export class ServerMemberController extends Controller {
         @Path() roleId: string,
         @Request() req: ExpressRequest,
     ): Promise<IServerMember> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
+            .user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -341,8 +337,10 @@ export class ServerMemberController extends Controller {
                 'manageRoles',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES);
+            throw new ApiError(
+                403,
+                ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+            );
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -350,14 +348,12 @@ export class ServerMemberController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         const role = await this.roleRepo.findById(roleId);
         if (!role || role.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.ROLE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
         }
 
         if (member.roles.includes(roleId)) {
@@ -394,7 +390,8 @@ export class ServerMemberController extends Controller {
         @Path() roleId: string,
         @Request() req: ExpressRequest,
     ): Promise<IServerMember> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
+            .user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -402,8 +399,10 @@ export class ServerMemberController extends Controller {
                 'manageRoles',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES);
+            throw new ApiError(
+                403,
+                ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+            );
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -411,8 +410,7 @@ export class ServerMemberController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         const updatedMember = await this.serverMemberRepo.removeRole(
@@ -444,8 +442,7 @@ export class ServerMemberController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (server?.ownerId.toString() === userId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.OWNER_CANNOT_LEAVE);
+            throw new ApiError(403, ErrorMessages.SERVER.OWNER_CANNOT_LEAVE);
         }
 
         await this.serverMemberRepo.remove(serverId, userId);
@@ -476,13 +473,14 @@ export class ServerMemberController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
-            this.setStatus(404);
-            throw new Error('Server not found');
+            throw new ApiError(404, 'Server not found');
         }
 
         if (server.ownerId.toString() !== userId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.TRANSFER_OWNERSHIP_ONLY_OWNER);
+            throw new ApiError(
+                403,
+                ErrorMessages.SERVER.TRANSFER_OWNERSHIP_ONLY_OWNER,
+            );
         }
 
         const { newOwnerId } = body;
@@ -491,17 +489,16 @@ export class ServerMemberController extends Controller {
             newOwnerId,
         );
         if (!newOwnerMember) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        // Ownership transfer is atomic at the server level; permissions are implicitly updated
         await this.serverRepo.update(serverId, { ownerId: newOwnerId });
 
         const io = getIO();
-        io.to(`server:${serverId}`).emit('server_updated', {
+        io.to(`server:${serverId}`).emit('ownership_transferred', {
             serverId,
-            server: { ...server, ownerId: newOwnerId },
+            oldOwnerId: userId,
+            newOwnerId,
         });
 
         return { message: 'Ownership transferred' };

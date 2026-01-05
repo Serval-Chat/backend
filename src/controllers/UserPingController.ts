@@ -15,6 +15,7 @@ import { PingService, type PingNotification } from '@/services/PingService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 
@@ -40,10 +41,9 @@ export class UserPingController extends Controller {
         try {
             const pings = await this.pingService.getPingsForUser(userId);
             return { pings };
-        } catch (err) {
-            this.logger.error('Error fetching pings:', err);
-            this.setStatus(500);
-            throw new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR);
+        } catch (error) {
+            this.logger.error('Failed to get pings:', error);
+            throw new ApiError(500, 'Internal server error');
         }
     }
 
@@ -59,17 +59,15 @@ export class UserPingController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         if (!id) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.PING.ID_REQUIRED);
+            throw new ApiError(400, 'Ping ID is required');
         }
 
         try {
             const removed = await this.pingService.removePing(userId, id);
             return { success: removed };
-        } catch (err) {
-            this.logger.error('Error deleting ping:', err);
-            this.setStatus(500);
-            throw new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR);
+        } catch (error) {
+            this.logger.error('Error deleting ping:', error);
+            throw new ApiError(500, 'Internal server error');
         }
     }
 
@@ -85,8 +83,7 @@ export class UserPingController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         if (!channelId) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.PING.CHANNEL_ID_REQUIRED);
+            throw new ApiError(400, 'Channel ID is required');
         }
 
         try {
@@ -95,10 +92,9 @@ export class UserPingController extends Controller {
                 channelId,
             );
             return { success: true, clearedCount };
-        } catch (err) {
-            this.logger.error('Error clearing channel pings:', err);
-            this.setStatus(500);
-            throw new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR);
+        } catch (error) {
+            this.logger.error('Error clearing channel pings:', error);
+            throw new ApiError(500, 'Internal server error');
         }
     }
 
@@ -112,10 +108,9 @@ export class UserPingController extends Controller {
         try {
             await this.pingService.clearAllPings(userId);
             return { success: true };
-        } catch (err) {
-            this.logger.error('Error clearing pings:', err);
-            this.setStatus(500);
-            throw new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR);
+        } catch (error) {
+            this.logger.error('Failed to clear pings:', error);
+            throw new ApiError(500, 'Internal server error');
         }
     }
 }

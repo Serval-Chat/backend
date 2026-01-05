@@ -22,6 +22,8 @@ import { getIO } from '@/socket';
 import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
+import { JWTPayload } from '@/utils/jwt';
 
 export interface CreateRoleRequest {
     name: string;
@@ -85,8 +87,7 @@ export class ServerRoleController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         return await this.roleRepo.findByServerId(serverId);
@@ -112,8 +113,10 @@ export class ServerRoleController extends Controller {
                 'manageRoles',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES);
+            throw new ApiError(
+                403,
+                ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+            );
         }
 
         // New roles are placed at the top of the hierarchy by default
@@ -167,8 +170,10 @@ export class ServerRoleController extends Controller {
                 'manageRoles',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES);
+            throw new ApiError(
+                403,
+                ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+            );
         }
 
         // Bulk update role positions to reflect the new hierarchy
@@ -209,14 +214,15 @@ export class ServerRoleController extends Controller {
                 'manageRoles',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES);
+            throw new ApiError(
+                403,
+                ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+            );
         }
 
         const role = await this.roleRepo.findById(roleId);
         if (!role || role.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.ROLE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
         }
 
         const updates: Record<string, unknown> = {};
@@ -245,8 +251,7 @@ export class ServerRoleController extends Controller {
 
         const updatedRole = await this.roleRepo.update(roleId, updates);
         if (!updatedRole) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.ROLE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
         }
 
         const io = getIO();
@@ -274,34 +279,29 @@ export class ServerRoleController extends Controller {
         @Path() roleId: string,
         @Request() req: express.Request,
     ): Promise<{ message: string }> {
-        // @ts-ignore
-        const userId = req.user.id;
-        if (
-            !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
-                'manageRoles',
-            ))
-        ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES);
+        const userId = (req as express.Request & { user: JWTPayload }).user.id;
+        const hasPermission = await this.permissionService.hasPermission(
+            serverId,
+            userId,
+            'manageRoles',
+        );
+        if (!hasPermission) {
+            throw new ApiError(
+                403,
+                ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+            );
         }
 
         const role = await this.roleRepo.findById(roleId);
         if (!role || role.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.ROLE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
         }
 
         if (role.name === '@everyone') {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE);
+            throw new ApiError(400, ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE);
         }
 
         await this.roleRepo.delete(roleId);
-
-        // Remove role from all members
-        await this.serverMemberRepo.removeRoleFromAll(serverId, roleId);
 
         const io = getIO();
         io.to(`server:${serverId}`).emit('role_deleted', { serverId, roleId });

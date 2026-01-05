@@ -5,6 +5,7 @@ import { register } from '@/utils/metrics';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 
 // Controller for exposing Prometheus metrics
 @injectable()
@@ -29,15 +30,14 @@ export class MetricsController extends Controller {
         const METRICS_TOKEN = process.env.METRICS_TOKEN;
 
         if (!METRICS_TOKEN) {
-            this.setStatus(500);
-            throw new Error(
+            throw new ApiError(
+                500,
                 ErrorMessages.SYSTEM.METRICS_SECURITY_NOT_CONFIGURED,
             );
         }
 
         if (!authorization || authorization !== `Bearer ${METRICS_TOKEN}`) {
-            this.setStatus(401);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         this.setHeader('Content-Type', register.contentType);

@@ -23,6 +23,7 @@ import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 import { ApiTags, ApiResponse, ApiSecurity } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { ILogger } from '@/di/interfaces/ILogger';
@@ -188,7 +189,7 @@ export class AuthController {
         fs.writeFileSync('tokens.txt', updatedTokens.join('\n'));
 
         const newUser = await this.userRepo.findByLogin(login);
-        if (!newUser) throw new Error('User just created but not found');
+        if (!newUser) throw new ApiError(500, 'User just created but not found');
 
         const token = generateJWT({
             id: newUser._id.toString(),
@@ -217,7 +218,7 @@ export class AuthController {
         const { newLogin, password } = body;
 
         if (!newLogin || typeof newLogin !== 'string') {
-            throw new Error(ErrorMessages.AUTH.NEW_LOGIN_REQUIRED);
+            throw new ApiError(400, ErrorMessages.AUTH.NEW_LOGIN_REQUIRED);
         }
 
         if (
@@ -225,27 +226,27 @@ export class AuthController {
             typeof password !== 'string' ||
             password.length === 0
         ) {
-            throw new Error(ErrorMessages.AUTH.PASSWORD_CONFIRM_REQUIRED);
+            throw new ApiError(400, ErrorMessages.AUTH.PASSWORD_CONFIRM_REQUIRED);
         }
 
         const trimmedLogin = newLogin.trim();
         if (trimmedLogin.length === 0) {
-            throw new Error(ErrorMessages.AUTH.NEW_LOGIN_EMPTY);
+            throw new ApiError(400, ErrorMessages.AUTH.NEW_LOGIN_EMPTY);
         }
 
         // Allow 3–24 chars: letters, numbers, dot, underscore, dash
         const loginRegex = /^[a-zA-Z0-9._-]{3,24}$/;
         if (!loginRegex.test(trimmedLogin)) {
-            throw new Error(ErrorMessages.AUTH.LOGIN_FORMAT);
+            throw new ApiError(400, ErrorMessages.AUTH.LOGIN_FORMAT);
         }
 
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         if (trimmedLogin === user.login) {
-            throw new Error(ErrorMessages.AUTH.NEW_LOGIN_SAME);
+            throw new ApiError(400, ErrorMessages.AUTH.NEW_LOGIN_SAME);
         }
 
         const passwordValid = await this.userRepo.comparePassword(
@@ -253,19 +254,19 @@ export class AuthController {
             password,
         );
         if (!passwordValid) {
-            throw new Error(ErrorMessages.AUTH.INVALID_PASSWORD);
+            throw new ApiError(401, ErrorMessages.AUTH.INVALID_PASSWORD);
         }
 
         const existingLogin = await this.userRepo.findByUsername(trimmedLogin);
         if (existingLogin) {
-            throw new Error(ErrorMessages.AUTH.LOGIN_TAKEN);
+            throw new ApiError(409, ErrorMessages.AUTH.LOGIN_TAKEN);
         }
 
         await this.userRepo.updateLogin(userId, trimmedLogin);
 
         const updatedUser = await this.userRepo.findById(userId);
         if (!updatedUser) {
-            throw new Error(ErrorMessages.AUTH.FAILED_RETRIEVE_UPDATED_USER);
+            throw new ApiError(500, ErrorMessages.AUTH.FAILED_RETRIEVE_UPDATED_USER);
         }
 
         const token = generateJWT({
@@ -298,28 +299,28 @@ export class AuthController {
         const { currentPassword, newPassword } = body;
 
         if (!currentPassword || typeof currentPassword !== 'string') {
-            throw new Error(ErrorMessages.AUTH.CURRENT_PASSWORD_REQUIRED);
+            throw new ApiError(400, ErrorMessages.AUTH.CURRENT_PASSWORD_REQUIRED);
         }
 
         if (!newPassword || typeof newPassword !== 'string') {
-            throw new Error(ErrorMessages.AUTH.NEW_PASSWORD_REQUIRED);
+            throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_REQUIRED);
         }
 
         if (newPassword.length < 8) {
-            throw new Error(ErrorMessages.AUTH.NEW_PASSWORD_TOO_SHORT);
+            throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_TOO_SHORT);
         }
 
         if (newPassword.length > 128) {
-            throw new Error(ErrorMessages.AUTH.PASSWORD_TOO_LONG);
+            throw new ApiError(400, ErrorMessages.AUTH.PASSWORD_TOO_LONG);
         }
 
         if (newPassword === currentPassword) {
-            throw new Error(ErrorMessages.AUTH.NEW_PASSWORD_SAME);
+            throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_SAME);
         }
 
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const passwordValid = await this.userRepo.comparePassword(
@@ -327,7 +328,7 @@ export class AuthController {
             currentPassword,
         );
         if (!passwordValid) {
-            throw new Error(ErrorMessages.AUTH.INVALID_CURRENT_PASSWORD);
+            throw new ApiError(401, ErrorMessages.AUTH.INVALID_CURRENT_PASSWORD);
         }
 
         // Require letters, numbers, and symbols for password strength
@@ -336,7 +337,7 @@ export class AuthController {
         const hasSymbol = /[^a-zA-Z0-9]/.test(newPassword);
 
         if (!(hasLetter && hasNumber && hasSymbol)) {
-            throw new Error(ErrorMessages.AUTH.PASSWORD_STRENGTH);
+            throw new ApiError(400, ErrorMessages.AUTH.PASSWORD_STRENGTH);
         }
 
         await this.userRepo.updatePassword(userId, newPassword);

@@ -14,6 +14,7 @@ import {
 } from '@/services/FileProxyService';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
 const CACHE_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
@@ -188,7 +189,7 @@ export class FileProxyController extends Controller {
             }
 
             this.logger.error('Failed to proxy file:', err);
-            res.status(500).json({ error: ErrorMessages.FILE.FAILED_PROXY });
+            throw new ApiError(500, ErrorMessages.FILE.FAILED_PROXY);
         }
     }
 
@@ -255,14 +256,12 @@ export class FileProxyController extends Controller {
                     err.message === ErrorMessages.FILE.INVALID_URL ||
                     err.message === ErrorMessages.FILE.ONLY_HTTP_HTTPS
                 ) {
-                    this.setStatus(400);
-                    throw err;
+                    throw new ApiError(400, err.message);
                 }
             }
 
             this.logger.error('Failed to fetch metadata:', err);
-            this.setStatus(500);
-            throw new Error(ErrorMessages.FILE.FAILED_FETCH_META);
+            throw new ApiError(500, ErrorMessages.FILE.FAILED_FETCH_META);
         }
     }
 }
