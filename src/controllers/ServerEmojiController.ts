@@ -3,15 +3,22 @@ import {
     Get,
     Post,
     Delete,
-    Route,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
+    Param,
+    UseGuards,
+    UseInterceptors,
     UploadedFile,
-    FormField,
-} from 'tsoa';
+    Body,
+    Req,
+    Inject,
+    NotFoundException,
+    ForbiddenException,
+    BadRequestException,
+    ConflictException,
+    InternalServerErrorException,
+    HttpCode,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
@@ -27,17 +34,18 @@ import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import mongoose from 'mongoose';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { ApiError } from '@/utils/ApiError';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { storage } from '@/config/multer';
 
 // Controller for managing server-specific emojis
 // Enforces server membership and 'manageServer' permission checks
 @injectable()
-@Route('api/v1/servers/{serverId}/emojis')
-@Tags('Server Emojis')
-@Security('jwt')
-export class ServerEmojiController extends Controller {
+@Controller('api/v1/servers/:serverId/emojis')
+@ApiTags('Server Emojis')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+export class ServerEmojiController {
     private readonly UPLOADS_DIR = path.join(
         process.cwd(),
         'uploads',
@@ -45,15 +53,22 @@ export class ServerEmojiController extends Controller {
     );
 
     constructor(
-        @inject(TYPES.EmojiRepository) private emojiRepo: IEmojiRepository,
-        @inject(TYPES.ServerRepository) private serverRepo: IServerRepository,
+        @inject(TYPES.EmojiRepository)
+        @Inject(TYPES.EmojiRepository)
+        private emojiRepo: IEmojiRepository,
+        @inject(TYPES.ServerRepository)
+        @Inject(TYPES.ServerRepository)
+        private serverRepo: IServerRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.PermissionService)
+        @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger) private logger: ILogger,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
     ) {
-        super();
         // Ensure emoji upload directory exists at startup to avoid runtime write failures
         if (!fs.existsSync(this.UPLOADS_DIR)) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
@@ -63,15 +78,13 @@ export class ServerEmojiController extends Controller {
     // Retrieves all emojis for a specific server
     // Enforces server membership
     @Get()
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
-    @Response<ErrorResponse>('404', 'Server Not Found', {
-        error: ErrorMessages.SERVER.NOT_FOUND,
-    })
+    @ApiOperation({ summary: 'Get all server emojis' })
+    @ApiResponse({ status: 200, description: 'Server emojis retrieved' })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
+    @ApiResponse({ status: 404, description: ErrorMessages.SERVER.NOT_FOUND })
     public async getServerEmojis(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
     ): Promise<IEmoji[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -79,7 +92,7 @@ export class ServerEmojiController extends Controller {
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         return await this.emojiRepo.findByServerIdWithCreator(serverId);
@@ -88,34 +101,42 @@ export class ServerEmojiController extends Controller {
     // Uploads a new emoji to a server
     // Resizes the image to 128x128 and enforces 'manageServer' permission
     @Post()
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.EMOJI.FILE_REQUIRED,
+    @UseInterceptors(FileInterceptor('emoji', { storage }))
+    @ApiOperation({ summary: 'Upload a server emoji' })
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                emoji: { type: 'string', format: 'binary' },
+                name: { type: 'string' },
+            },
+        },
     })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('409', 'Conflict', {
-        error: ErrorMessages.EMOJI.NAME_EXISTS,
-    })
+    @ApiResponse({ status: 201, description: 'Emoji uploaded' })
+    @ApiResponse({ status: 400, description: ErrorMessages.EMOJI.FILE_REQUIRED })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS })
+    @ApiResponse({ status: 409, description: ErrorMessages.EMOJI.NAME_EXISTS })
+    @HttpCode(201)
     public async uploadEmoji(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
         @UploadedFile() emoji: Express.Multer.File,
-        @FormField() name: string,
+        @Body('name') name: string,
     ): Promise<IEmoji> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         if (!emoji) {
-            throw new ApiError(400, ErrorMessages.EMOJI.FILE_REQUIRED);
+            throw new BadRequestException(ErrorMessages.EMOJI.FILE_REQUIRED);
         }
 
         if (!name || name.length > 32 || !/^[a-zA-Z0-9_-]+$/.test(name)) {
-            throw new ApiError(400, ErrorMessages.EMOJI.INVALID_NAME);
+            throw new BadRequestException(ErrorMessages.EMOJI.INVALID_NAME);
         }
 
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
-            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
         const isOwner = server.ownerId.toString() === userId;
@@ -127,7 +148,7 @@ export class ServerEmojiController extends Controller {
                 'manageServer',
             ))
         ) {
-            throw new ApiError(403, ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
+            throw new ForbiddenException(ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
         }
 
         const existingEmoji = await this.emojiRepo.findByServerAndName(
@@ -135,13 +156,13 @@ export class ServerEmojiController extends Controller {
             name,
         );
         if (existingEmoji) {
-            throw new ApiError(409, ErrorMessages.EMOJI.NAME_EXISTS);
+            throw new ConflictException(ErrorMessages.EMOJI.NAME_EXISTS);
         }
 
         const emojiId = new mongoose.Types.ObjectId();
         const input = emoji.path || emoji.buffer;
         if (!input) {
-            throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
+            throw new InternalServerErrorException(ErrorMessages.FILE.DATA_MISSING);
         }
 
         const metadata = await sharp(input).metadata();
@@ -193,29 +214,26 @@ export class ServerEmojiController extends Controller {
         );
 
         if (!populatedEmoji) {
-            throw new ApiError(500, ErrorMessages.EMOJI.NOT_FOUND);
+            throw new InternalServerErrorException(ErrorMessages.EMOJI.NOT_FOUND);
         }
 
         const io = getIO();
         io.to(`server:${serverId}`).emit('emoji_updated', { serverId });
 
-        this.setStatus(201);
         return populatedEmoji;
     }
 
     // Retrieves a specific emoji by ID
     // Enforces server membership
-    @Get('{emojiId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
-    @Response<ErrorResponse>('404', 'Emoji Not Found', {
-        error: ErrorMessages.EMOJI.NOT_FOUND,
-    })
+    @Get(':emojiId')
+    @ApiOperation({ summary: 'Get a specific emoji' })
+    @ApiResponse({ status: 200, description: 'Emoji retrieved' })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
+    @ApiResponse({ status: 404, description: ErrorMessages.EMOJI.NOT_FOUND })
     public async getEmoji(
-        @Path() serverId: string,
-        @Path() emojiId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('emojiId') emojiId: string,
+        @Req() req: ExpressRequest,
     ): Promise<IEmoji> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -223,12 +241,12 @@ export class ServerEmojiController extends Controller {
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const emoji = await this.emojiRepo.findById(emojiId);
         if (!emoji || emoji.serverId.toString() !== serverId) {
-            throw new ApiError(404, ErrorMessages.EMOJI.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
         }
 
         return emoji;
@@ -236,31 +254,30 @@ export class ServerEmojiController extends Controller {
 
     // Deletes an emoji from a server
     // Enforces 'manageServer' permission
-    @Delete('{emojiId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'Emoji Not Found', {
-        error: ErrorMessages.EMOJI.NOT_FOUND,
-    })
+    @Delete(':emojiId')
+    @ApiOperation({ summary: 'Delete a server emoji' })
+    @ApiResponse({ status: 204, description: 'Emoji deleted' })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS })
+    @ApiResponse({ status: 404, description: ErrorMessages.EMOJI.NOT_FOUND })
+    @HttpCode(204)
     public async deleteEmoji(
-        @Path() serverId: string,
-        @Path() emojiId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('emojiId') emojiId: string,
+        @Req() req: ExpressRequest,
     ): Promise<void> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
-            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
         if (server.ownerId.toString() !== userId) {
-            throw new ApiError(403, ErrorMessages.SERVER.ONLY_OWNER);
+            throw new ForbiddenException(ErrorMessages.SERVER.ONLY_OWNER);
         }
 
         const emoji = await this.emojiRepo.findById(emojiId);
         if (!emoji || emoji.serverId.toString() !== serverId) {
-            throw new ApiError(404, ErrorMessages.EMOJI.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
         }
 
         // Remove the physical file from disk before deleting the database record
@@ -274,7 +291,5 @@ export class ServerEmojiController extends Controller {
 
         const io = getIO();
         io.to(`server:${serverId}`).emit('emoji_updated', { serverId });
-
-        this.setStatus(204);
     }
 }

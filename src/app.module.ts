@@ -23,6 +23,9 @@ import { ProfileController } from './controllers/ProfileController';
 import { ReactionController } from './controllers/ReactionController';
 import { ServerChannelController } from './controllers/ServerChannelController';
 import { ServerController } from './controllers/ServerController';
+import { ServerMemberController } from './controllers/ServerMemberController';
+import { ServerInviteController } from './controllers/ServerInviteController';
+import { ServerEmojiController } from './controllers/ServerEmojiController';
 
 @Module({
     imports: [
@@ -51,6 +54,9 @@ import { ServerController } from './controllers/ServerController';
         ReactionController,
         ServerChannelController,
         ServerController,
+        ServerMemberController,
+        ServerInviteController,
+        ServerEmojiController,
     ],
     providers: [
         {
