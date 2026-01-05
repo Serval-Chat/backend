@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class AddUnicodeReactionRequest {
+export class AddUnicodeReactionRequestDTO {
     @ApiProperty({ example: '👍' })
     emoji!: string;
 
@@ -8,7 +8,7 @@ export class AddUnicodeReactionRequest {
     emojiType!: 'unicode';
 }
 
-export class AddCustomReactionRequest {
+export class AddCustomReactionRequestDTO {
     @ApiProperty({ example: 'party_blob' })
     emoji!: string;
 
@@ -19,9 +19,9 @@ export class AddCustomReactionRequest {
     emojiId!: string;
 }
 
-export type AddReactionRequest = AddUnicodeReactionRequest | AddCustomReactionRequest;
+export type AddReactionRequestDTO = AddUnicodeReactionRequestDTO | AddCustomReactionRequestDTO;
 
-export class RemoveUnicodeReactionRequest {
+export class RemoveUnicodeReactionRequestDTO {
     @ApiProperty({ example: '👍' })
     emoji!: string;
 
@@ -29,7 +29,7 @@ export class RemoveUnicodeReactionRequest {
     scope?: 'me' | 'all';
 }
 
-export class RemoveCustomReactionRequest {
+export class RemoveCustomReactionRequestDTO {
     @ApiProperty({ example: '60d5ecb8b5c9c62b3c7c4b5e' })
     emojiId!: string;
 
@@ -40,21 +40,4 @@ export class RemoveCustomReactionRequest {
     scope?: 'me' | 'all';
 }
 
-export type RemoveReactionRequest = RemoveUnicodeReactionRequest | RemoveCustomReactionRequest;
-
-export class ReactionResponse {
-    @ApiProperty()
-    emoji!: string;
-
-    @ApiProperty()
-    type!: 'unicode' | 'custom';
-
-    @ApiProperty({ required: false })
-    emojiId?: string;
-
-    @ApiProperty()
-    count!: number;
-
-    @ApiProperty()
-    me!: boolean;
-}
+export type RemoveReactionRequestDTO = RemoveUnicodeReactionRequestDTO | RemoveCustomReactionRequestDTO;

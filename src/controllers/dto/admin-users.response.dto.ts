@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AdminPermissions } from './common';
+import { AdminPermissions } from './common.request.dto';
 
 export class AdminUserListItemDTO {
     @ApiProperty()

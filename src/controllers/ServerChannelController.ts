@@ -33,18 +33,20 @@ import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { ErrorMessages } from '@/constants/errorMessages';
 import {
-    CreateChannelRequest,
-    UpdateChannelRequest,
-    ReorderChannelsRequest,
-    CreateCategoryRequest,
-    UpdateCategoryRequest,
-    ReorderCategoriesRequest,
-    UpdatePermissionsRequest,
-    ChannelWithReadResponse,
-    ChannelStatsResponse,
-    ChannelResponse,
-    CategoryResponse,
-} from './dto/server-channel.dto';
+    CreateChannelRequestDTO,
+    UpdateChannelRequestDTO,
+    ReorderChannelsRequestDTO,
+    CreateCategoryRequestDTO,
+    UpdateCategoryRequestDTO,
+    ReorderCategoriesRequestDTO,
+    UpdatePermissionsRequestDTO,
+} from './dto/server-channel.request.dto';
+import {
+    ChannelWithReadResponseDTO,
+    ChannelStatsResponseDTO,
+    ChannelResponseDTO,
+    CategoryResponseDTO,
+} from './dto/server-channel.response.dto';
 
 @injectable()
 @Controller('api/v1/servers/:serverId')
@@ -78,12 +80,12 @@ export class ServerChannelController {
 
     @Get('channels')
     @ApiOperation({ summary: 'Get server channels' })
-    @ApiResponse({ status: 200, type: [ChannelWithReadResponse] })
+    @ApiResponse({ status: 200, type: [ChannelWithReadResponseDTO] })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getChannels(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-    ): Promise<ChannelWithReadResponse[]> {
+    ): Promise<ChannelWithReadResponseDTO[]> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -118,13 +120,13 @@ export class ServerChannelController {
                     ? lastMessageAt.toISOString()
                     : null,
                 lastReadAt: lastReadAt ? lastReadAt.toISOString() : null,
-            } as ChannelWithReadResponse;
+            } as ChannelWithReadResponseDTO;
         });
     }
 
     @Get('categories')
     @ApiOperation({ summary: 'Get server categories' })
-    @ApiResponse({ status: 200, type: [CategoryResponse] })
+    @ApiResponse({ status: 200, type: [CategoryResponseDTO] })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getCategories(
         @Param('serverId') serverId: string,
@@ -144,12 +146,12 @@ export class ServerChannelController {
 
     @Post('channels')
     @ApiOperation({ summary: 'Create channel' })
-    @ApiResponse({ status: 201, type: ChannelResponse })
+    @ApiResponse({ status: 201, type: ChannelResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async createChannel(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-        @Body() body: CreateChannelRequest,
+        @Body() body: CreateChannelRequestDTO,
     ): Promise<IChannel> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
@@ -199,7 +201,7 @@ export class ServerChannelController {
     public async reorderChannels(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-        @Body() body: ReorderChannelsRequest,
+        @Body() body: ReorderChannelsRequestDTO,
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
@@ -227,7 +229,7 @@ export class ServerChannelController {
 
     @Get('channels/:channelId/stats')
     @ApiOperation({ summary: 'Get channel stats' })
-    @ApiResponse({ status: 200, type: ChannelStatsResponse })
+    @ApiResponse({ status: 200, type: ChannelStatsResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Channel Not Found' })
@@ -235,7 +237,7 @@ export class ServerChannelController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Req() req: Request,
-    ): Promise<ChannelStatsResponse> {
+    ): Promise<ChannelStatsResponseDTO> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -268,14 +270,14 @@ export class ServerChannelController {
 
     @Patch('channels/:channelId')
     @ApiOperation({ summary: 'Update channel' })
-    @ApiResponse({ status: 200, type: ChannelResponse })
+    @ApiResponse({ status: 200, type: ChannelResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async updateChannel(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Req() req: Request,
-        @Body() body: UpdateChannelRequest,
+        @Body() body: UpdateChannelRequestDTO,
     ): Promise<IChannel> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
@@ -343,12 +345,12 @@ export class ServerChannelController {
 
     @Post('categories')
     @ApiOperation({ summary: 'Create category' })
-    @ApiResponse({ status: 201, type: CategoryResponse })
+    @ApiResponse({ status: 201, type: CategoryResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async createCategory(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-        @Body() body: CreateCategoryRequest,
+        @Body() body: CreateCategoryRequestDTO,
     ): Promise<ICategory> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
@@ -387,14 +389,14 @@ export class ServerChannelController {
 
     @Patch('categories/:categoryId')
     @ApiOperation({ summary: 'Update category' })
-    @ApiResponse({ status: 200, type: CategoryResponse })
+    @ApiResponse({ status: 200, type: CategoryResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Category Not Found' })
     public async updateCategory(
         @Param('serverId') serverId: string,
         @Param('categoryId') categoryId: string,
         @Req() req: Request,
-        @Body() body: UpdateCategoryRequest,
+        @Body() body: UpdateCategoryRequestDTO,
     ): Promise<ICategory> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
@@ -474,7 +476,7 @@ export class ServerChannelController {
     public async reorderCategories(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-        @Body() body: ReorderCategoriesRequest,
+        @Body() body: ReorderCategoriesRequestDTO,
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
@@ -546,7 +548,7 @@ export class ServerChannelController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Req() req: Request,
-        @Body() body: UpdatePermissionsRequest,
+        @Body() body: UpdatePermissionsRequestDTO,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
@@ -624,7 +626,7 @@ export class ServerChannelController {
         @Param('serverId') serverId: string,
         @Param('categoryId') categoryId: string,
         @Req() req: Request,
-        @Body() body: UpdatePermissionsRequest,
+        @Body() body: UpdatePermissionsRequestDTO,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         if (

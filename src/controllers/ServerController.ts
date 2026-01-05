@@ -44,15 +44,17 @@ import fs from 'fs';
 import sharp from 'sharp';
 import mongoose from 'mongoose';
 import {
-    CreateServerRequest,
-    UpdateServerRequest,
-    SetDefaultRoleRequest,
-    ServerStatsResponse,
-    ServerResponse,
-    SetDefaultRoleResponse,
-    UploadIconResponse,
-    UploadBannerResponse,
-} from './dto/server.dto';
+    CreateServerRequestDTO,
+    UpdateServerRequestDTO,
+    SetDefaultRoleRequestDTO,
+} from './dto/server.request.dto';
+import {
+    ServerStatsResponseDTO,
+    ServerResponseDTO,
+    SetDefaultRoleResponseDTO,
+    UploadIconResponseDTO,
+    UploadBannerResponseDTO,
+} from './dto/server.response.dto';
 import { UpdateDefaultRoleRequestDTO } from './dto/server-default-role.request.dto';
 
 @injectable()
@@ -112,7 +114,7 @@ export class ServerController {
 
     @Get()
     @ApiOperation({ summary: 'Get user servers' })
-    @ApiResponse({ status: 200, type: [ServerResponse] })
+    @ApiResponse({ status: 200, type: [ServerResponseDTO] })
     public async getServers(
         @Req() req: Request,
     ): Promise<IServer[]> {
@@ -140,7 +142,7 @@ export class ServerController {
     @ApiResponse({ status: 400, description: 'Invalid name' })
     public async createServer(
         @Req() req: Request,
-        @Body() body: CreateServerRequest,
+        @Body() body: CreateServerRequestDTO,
     ): Promise<{ server: IServer; channel: IChannel }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const { name } = body;
@@ -267,7 +269,7 @@ export class ServerController {
 
     @Get(':serverId')
     @ApiOperation({ summary: 'Get server details' })
-    @ApiResponse({ status: 200, type: ServerResponse })
+    @ApiResponse({ status: 200, type: ServerResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async getServerDetails(
@@ -298,13 +300,13 @@ export class ServerController {
 
     @Get(':serverId/stats')
     @ApiOperation({ summary: 'Get server stats' })
-    @ApiResponse({ status: 200, type: ServerStatsResponse })
+    @ApiResponse({ status: 200, type: ServerStatsResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async getServerStats(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-    ): Promise<ServerStatsResponse> {
+    ): Promise<ServerStatsResponseDTO> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -390,13 +392,13 @@ export class ServerController {
 
     @Patch(':serverId')
     @ApiOperation({ summary: 'Update server' })
-    @ApiResponse({ status: 200, type: ServerResponse })
+    @ApiResponse({ status: 200, type: ServerResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async updateServer(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-        @Body() body: UpdateServerRequest,
+        @Body() body: UpdateServerRequestDTO,
     ): Promise<IServer> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
@@ -431,14 +433,14 @@ export class ServerController {
 
     @Post(':serverId/roles/default')
     @ApiOperation({ summary: 'Set default role' })
-    @ApiResponse({ status: 201, type: SetDefaultRoleResponse })
+    @ApiResponse({ status: 201, type: SetDefaultRoleResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server or role not found' })
     public async setDefaultRole(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-        @Body() body: SetDefaultRoleRequest,
+        @Body() body: SetDefaultRoleRequestDTO,
     ): Promise<{ defaultRoleId: string | null }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const { roleId } = body;
@@ -526,7 +528,7 @@ export class ServerController {
         },
     })
     @UseInterceptors(FileInterceptor('icon', { storage }))
-    @ApiResponse({ status: 201, type: UploadIconResponse })
+    @ApiResponse({ status: 201, type: UploadIconResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async uploadServerIcon(
@@ -595,7 +597,7 @@ export class ServerController {
         },
     })
     @UseInterceptors(FileInterceptor('banner', { storage }))
-    @ApiResponse({ status: 201, type: UploadBannerResponse })
+    @ApiResponse({ status: 201, type: UploadBannerResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async uploadServerBanner(
@@ -660,7 +662,7 @@ export class ServerController {
     }
     @Patch(':serverId/default-role')
     @ApiOperation({ summary: 'Update server default role' })
-    @ApiResponse({ status: 200, type: SetDefaultRoleResponse })
+    @ApiResponse({ status: 200, type: SetDefaultRoleResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server or role not found' })
