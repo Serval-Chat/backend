@@ -19,22 +19,24 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Request, Response } from 'express';
 import {
-    UserProfile,
-    BadgeResponse,
-    BioUpdate,
-    PronounsUpdate,
-    DisplayNameUpdate,
-    UpdateStatusRequest,
-    BulkStatusRequest,
-    UpdateStyleRequest,
-    ChangeUsernameRequest,
-    UpdateLanguageRequest,
-    UserLookupResponse,
-    UpdateProfilePictureResponse,
-    UpdateBannerResponse,
-    AssignBadgesRequest,
-    BadgeOperationResponse,
-} from './dto/profile.dto';
+    UserProfileResponseDTO,
+    BadgeResponseDTO,
+    UserLookupResponseDTO,
+    UpdateProfilePictureResponseDTO,
+    UpdateBannerResponseDTO,
+    BadgeOperationResponseDTO,
+} from './dto/profile.response.dto';
+import {
+    UpdateBioRequestDTO,
+    UpdatePronounsRequestDTO,
+    UpdateDisplayNameRequestDTO,
+    UpdateStatusRequestDTO,
+    BulkStatusRequestDTO,
+    UpdateStyleRequestDTO,
+    ChangeUsernameRequestDTO,
+    UpdateLanguageRequestDTO,
+    AssignBadgesRequestDTO,
+} from './dto/profile.request.dto';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JWTPayload, hasPermission } from '@/utils/jwt'; // Ensure hasPermission is imported
@@ -82,8 +84,8 @@ export class ProfileController {
         private friendshipRepo: IFriendshipRepository,
     ) { }
 
-    // Maps a user document to a public UserProfile payload
-    private async mapToProfile(user: IUser): Promise<UserProfile> {
+    // Maps a user document to a public UserProfileResponseDTO payload
+    private async mapToProfile(user: IUser): Promise<UserProfileResponseDTO> {
         const mapped = mapUser(user);
         if (!mapped) {
             throw new Error('User not found');
@@ -118,18 +120,18 @@ export class ProfileController {
             ? `/api/v1/profile/banner/${user.banner}`
             : null;
 
-        return mapped as unknown as UserProfile;
+        return mapped as unknown as UserProfileResponseDTO;
     }
 
     @Get('me')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Get current user profile' })
-    @ApiResponse({ status: 200, type: UserProfile })
+    @ApiResponse({ status: 200, type: UserProfileResponseDTO })
     @ApiResponse({ status: 404, description: 'User not found' })
     public async getMyProfile(
         @Req() req: Request,
-    ): Promise<UserProfile> {
+    ): Promise<UserProfileResponseDTO> {
         const userId = (req as unknown as RequestWithUser).user.id;
         const user = await this.userRepo.findById(userId);
         if (!user) {
@@ -142,9 +144,9 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Get user profile by ID' })
-    @ApiResponse({ status: 200, type: UserProfile })
+    @ApiResponse({ status: 200, type: UserProfileResponseDTO })
     @ApiResponse({ status: 404, description: 'User not found' })
-    public async getUserProfile(@Param('userId') userId: string): Promise<UserProfile> {
+    public async getUserProfileResponseDTO(@Param('userId') userId: string): Promise<UserProfileResponseDTO> {
         const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
@@ -157,15 +159,15 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Update user badges' })
-    @ApiResponse({ status: 200, type: BadgeOperationResponse })
+    @ApiResponse({ status: 200, type: BadgeOperationResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid badge IDs' })
     @ApiResponse({ status: 403, description: 'Insufficient permissions' })
     @ApiResponse({ status: 404, description: 'User not found' })
     public async updateUserBadges(
         @Param('id') id: string,
-        @Body() request: AssignBadgesRequest,
+        @Body() request: AssignBadgesRequestDTO,
         @Req() req: Request,
-    ): Promise<BadgeOperationResponse> {
+    ): Promise<BadgeOperationResponseDTO> {
         const adminUser = (req as unknown as RequestWithUser).user;
         try {
             if (!adminUser) {
@@ -278,12 +280,12 @@ export class ProfileController {
     })
     @HttpCode(200)
     @ApiOperation({ summary: 'Upload profile picture' })
-    @ApiResponse({ status: 201, type: UpdateProfilePictureResponse })
+    @ApiResponse({ status: 201, type: UpdateProfilePictureResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid file or dimensions' })
     public async uploadProfilePicture(
         @UploadedFile() profilePicture: Express.Multer.File,
         @Req() req: Request,
-    ): Promise<UpdateProfilePictureResponse> {
+    ): Promise<UpdateProfilePictureResponseDTO> {
         try {
             const userPayload = (req as unknown as RequestWithUser).user;
             const userId = userPayload.id;
@@ -431,12 +433,12 @@ export class ProfileController {
     })
     @HttpCode(200)
     @ApiOperation({ summary: 'Upload profile banner' })
-    @ApiResponse({ status: 201, type: UpdateBannerResponse })
+    @ApiResponse({ status: 201, type: UpdateBannerResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid file or dimensions' })
     public async uploadBanner(
         @UploadedFile() banner: Express.Multer.File,
         @Req() req: Request,
-    ): Promise<UpdateBannerResponse> {
+    ): Promise<UpdateBannerResponseDTO> {
         try {
             const userPayload = (req as unknown as RequestWithUser).user;
             const username = userPayload.username;
@@ -621,7 +623,7 @@ export class ProfileController {
     @ApiResponse({ status: 200, description: 'Bio updated' })
     public async updateBio(
         @Req() req: Request,
-        @Body() body: BioUpdate,
+        @Body() body: UpdateBioRequestDTO,
     ): Promise<{ message: string; bio: string }> {
         const userId = (req as unknown as RequestWithUser).user.id;
         const { bio } = body;
@@ -641,7 +643,7 @@ export class ProfileController {
     @ApiResponse({ status: 200, description: 'Pronouns updated' })
     public async updatePronouns(
         @Req() req: Request,
-        @Body() body: PronounsUpdate,
+        @Body() body: UpdatePronounsRequestDTO,
     ): Promise<{ message: string; pronouns: string }> {
         const userId = (req as unknown as RequestWithUser).user.id;
         const { pronouns } = body;
@@ -662,7 +664,7 @@ export class ProfileController {
     @ApiResponse({ status: 400, description: 'Invalid display name' })
     public async updateDisplayName(
         @Req() req: Request,
-        @Body() body: DisplayNameUpdate,
+        @Body() body: UpdateDisplayNameRequestDTO,
     ): Promise<{ message: string; displayName: string | null }> {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
@@ -697,7 +699,7 @@ export class ProfileController {
     @ApiResponse({ status: 400, description: 'Invalid status' })
     public async updateCustomStatus(
         @Req() req: Request,
-        @Body() body: UpdateStatusRequest,
+        @Body() body: UpdateStatusRequestDTO,
     ): Promise<{ customStatus: SerializedCustomStatus | null }> {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
@@ -848,9 +850,9 @@ export class ProfileController {
     @Post('status/bulk')
     @ApiOperation({ summary: 'Get bulk custom statuses' })
     @ApiResponse({ status: 200, description: 'Bulk statuses' })
-    @ApiBody({ type: BulkStatusRequest })
+    @ApiBody({ type: BulkStatusRequestDTO })
     public async getBulkStatuses(
-        @Body() body: BulkStatusRequest,
+        @Body() body: BulkStatusRequestDTO,
     ): Promise<{ statuses: Record<string, SerializedCustomStatus | null> }> {
         const { usernames } = body;
 
@@ -891,7 +893,7 @@ export class ProfileController {
     @ApiResponse({ status: 200, description: 'Style updated' })
     public async updateUsernameStyle(
         @Req() req: Request,
-        @Body() body: UpdateStyleRequest,
+        @Body() body: UpdateStyleRequestDTO,
     ): Promise<{
         message: string;
         usernameFont?: string;
@@ -944,11 +946,11 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Lookup user by username' })
-    @ApiResponse({ status: 200, type: UserLookupResponse })
+    @ApiResponse({ status: 200, type: UserLookupResponseDTO })
     @ApiResponse({ status: 404, description: 'User not found' })
     public async lookupUserByUsername(
         @Param('username') username: string,
-    ): Promise<UserLookupResponse> {
+    ): Promise<UserLookupResponseDTO> {
         const user = await this.userRepo.findByUsername(username);
 
         if (!user) {
@@ -966,7 +968,7 @@ export class ProfileController {
     @ApiResponse({ status: 409, description: 'Username taken' })
     public async changeUsername(
         @Req() req: Request,
-        @Body() body: ChangeUsernameRequest,
+        @Body() body: ChangeUsernameRequestDTO,
     ): Promise<{ message: string; username: string }> {
         const existingUsername = (req as unknown as RequestWithUser).user.username;
         const userId = (req as unknown as RequestWithUser).user.id;
@@ -1031,7 +1033,7 @@ export class ProfileController {
     @ApiResponse({ status: 200, description: 'Language updated' })
     public async updateLanguage(
         @Req() req: Request,
-        @Body() body: UpdateLanguageRequest,
+        @Body() body: UpdateLanguageRequestDTO,
     ): Promise<{ message: string; language: string }> {
         const username = (req as unknown as RequestWithUser).user.username;
         const { language } = body;

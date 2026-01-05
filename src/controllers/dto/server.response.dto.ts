@@ -1,35 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ServerBannerDTO } from './server.request.dto';
 
-export class CreateServerRequest {
-    @ApiProperty()
-    name!: string;
-}
-
-export class ServerBanner {
-    @ApiProperty()
-    type!: string;
-
-    @ApiProperty()
-    value!: string;
-}
-
-export class UpdateServerRequest {
-    @ApiProperty({ required: false })
-    name?: string;
-
-    @ApiProperty({ required: false, type: ServerBanner })
-    banner?: ServerBanner;
-
-    @ApiProperty({ required: false })
-    disableCustomFonts?: boolean;
-}
-
-export class SetDefaultRoleRequest {
-    @ApiProperty({ nullable: true, type: String })
-    roleId!: string | null;
-}
-
-export class ServerStatsResponse {
+export class ServerStatsResponseDTO {
     @ApiProperty()
     onlineCount!: number;
 
@@ -64,7 +36,7 @@ export class ServerStatsResponse {
     emojiCount!: number;
 }
 
-export class ServerResponse {
+export class ServerResponseDTO {
     @ApiProperty({ required: false })
     _id?: string;
 
@@ -77,8 +49,8 @@ export class ServerResponse {
     @ApiProperty({ required: false })
     icon?: string;
 
-    @ApiProperty({ required: false, type: ServerBanner })
-    banner?: ServerBanner;
+    @ApiProperty({ required: false, type: ServerBannerDTO })
+    banner?: ServerBannerDTO;
 
     @ApiProperty({ required: false })
     description?: string;
@@ -102,17 +74,17 @@ export class ServerResponse {
     updatedAt?: Date;
 }
 
-export class SetDefaultRoleResponse {
+export class SetDefaultRoleResponseDTO {
     @ApiProperty({ nullable: true, type: String })
     defaultRoleId!: string | null;
 }
 
-export class UploadIconResponse {
+export class UploadIconResponseDTO {
     @ApiProperty()
     icon!: string;
 }
 
-export class UploadBannerResponse {
+export class UploadBannerResponseDTO {
     @ApiProperty()
     banner!: string;
 }

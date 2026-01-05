@@ -31,12 +31,16 @@ import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import {
-    AddUnicodeReactionRequest,
-    AddCustomReactionRequest,
-    RemoveUnicodeReactionRequest,
-    RemoveCustomReactionRequest,
-    ReactionResponse,
-} from './dto/reaction.dto';
+    AddUnicodeReactionRequestDTO,
+    AddCustomReactionRequestDTO,
+    AddReactionRequestDTO,
+    RemoveUnicodeReactionRequestDTO,
+    RemoveCustomReactionRequestDTO,
+    RemoveReactionRequestDTO,
+} from './dto/reaction.request.dto';
+import {
+    ReactionResponseDTO,
+} from './dto/reaction.response.dto';
 
 @injectable()
 @Controller('api/v1')
@@ -110,8 +114,8 @@ export class ReactionController {
     @ApiBody({
         schema: {
             oneOf: [
-                { $ref: '#/components/schemas/AddUnicodeReactionRequest' },
-                { $ref: '#/components/schemas/AddCustomReactionRequest' },
+                { $ref: '#/components/schemas/AddUnicodeReactionRequestDTO' },
+                { $ref: '#/components/schemas/AddCustomReactionRequestDTO' },
             ],
         },
     })
@@ -122,11 +126,11 @@ export class ReactionController {
     public async addDmReaction(
         @Param('messageId') messageId: string,
         @Req() req: Request,
-        @Body() body: AddUnicodeReactionRequest | AddCustomReactionRequest,
+        @Body() body: AddUnicodeReactionRequestDTO | AddCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const { emoji, emojiType } = body;
-        const emojiId = emojiType === 'custom' ? (body as AddCustomReactionRequest).emojiId : undefined;
+        const emojiId = emojiType === 'custom' ? (body as AddCustomReactionRequestDTO).emojiId : undefined;
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
@@ -194,8 +198,8 @@ export class ReactionController {
     @ApiBody({
         schema: {
             oneOf: [
-                { $ref: '#/components/schemas/RemoveUnicodeReactionRequest' },
-                { $ref: '#/components/schemas/RemoveCustomReactionRequest' },
+                { $ref: '#/components/schemas/RemoveUnicodeReactionRequestDTO' },
+                { $ref: '#/components/schemas/RemoveCustomReactionRequestDTO' },
             ],
         },
     })
@@ -205,7 +209,7 @@ export class ReactionController {
     public async removeDmReaction(
         @Param('messageId') messageId: string,
         @Req() req: Request,
-        @Body() body: RemoveUnicodeReactionRequest | RemoveCustomReactionRequest,
+        @Body() body: RemoveUnicodeReactionRequestDTO | RemoveCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const emoji = body.emoji;
@@ -268,8 +272,8 @@ export class ReactionController {
     @ApiBody({
         schema: {
             oneOf: [
-                { $ref: '#/components/schemas/AddUnicodeReactionRequest' },
-                { $ref: '#/components/schemas/AddCustomReactionRequest' },
+                { $ref: '#/components/schemas/AddUnicodeReactionRequestDTO' },
+                { $ref: '#/components/schemas/AddCustomReactionRequestDTO' },
             ],
         },
     })
@@ -282,11 +286,11 @@ export class ReactionController {
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
         @Req() req: Request,
-        @Body() body: AddUnicodeReactionRequest | AddCustomReactionRequest,
+        @Body() body: AddUnicodeReactionRequestDTO | AddCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const { emoji, emojiType } = body;
-        const emojiId = emojiType === 'custom' ? (body as AddCustomReactionRequest).emojiId : undefined;
+        const emojiId = emojiType === 'custom' ? (body as AddCustomReactionRequestDTO).emojiId : undefined;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -360,8 +364,8 @@ export class ReactionController {
     @ApiBody({
         schema: {
             oneOf: [
-                { $ref: '#/components/schemas/RemoveUnicodeReactionRequest' },
-                { $ref: '#/components/schemas/RemoveCustomReactionRequest' },
+                { $ref: '#/components/schemas/RemoveUnicodeReactionRequestDTO' },
+                { $ref: '#/components/schemas/RemoveCustomReactionRequestDTO' },
             ],
         },
     })
@@ -373,7 +377,7 @@ export class ReactionController {
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
         @Req() req: Request,
-        @Body() body: RemoveUnicodeReactionRequest | RemoveCustomReactionRequest,
+        @Body() body: RemoveUnicodeReactionRequestDTO | RemoveCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const emoji = body.emoji;

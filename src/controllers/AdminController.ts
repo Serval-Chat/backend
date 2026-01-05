@@ -41,7 +41,7 @@ import {
 import type { Request as ExpressRequest } from 'express';
 import { DashBoardStatsDTO } from './dto/admin-dashboard-stats.response.dto';
 import { JWTPayload } from '@/utils/jwt';
-import { AdminPermissions } from './dto/common';
+import { AdminPermissions } from './dto/common.request.dto';
 import {
     AdminUserListItemDTO,
     AdminUserDetailsDTO,
