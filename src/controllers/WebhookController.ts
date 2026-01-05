@@ -3,15 +3,23 @@ import {
     Get,
     Post,
     Delete,
-    Route,
     Body,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
+    Param,
+    UseGuards,
+    Req,
+    Inject,
+    UseInterceptors,
     UploadedFile,
-} from 'tsoa';
+    Res,
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+    InternalServerErrorException,
+    UnauthorizedException,
+    StreamableFile,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -26,32 +34,22 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import { generateWebhookToken } from '@/services/WebhookService';
 import { getIO } from '@/socket';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
-import express from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import mongoose from 'mongoose';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { ApiError } from '@/utils/ApiError';
-import type { Request as ExpressRequest } from 'express';
-
-interface CreateWebhookRequest {
-    name: string;
-    avatarUrl?: string;
-}
-
-interface ExecuteWebhookRequest {
-    content: string;
-    username?: string;
-    avatarUrl?: string;
-}
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { JWTPayload } from '@/utils/jwt';
+import { CreateWebhookRequestDTO, ExecuteWebhookRequestDTO } from './dto/webhook.request.dto';
+import { storage } from '@/config/multer';
 
 // Controller for managing and executing webhooks
 @injectable()
-@Route('api/v1')
-@Tags('Webhooks')
-export class WebhookController extends Controller {
+@Controller('api/v1')
+@ApiTags('Webhooks')
+export class WebhookController {
     private readonly UPLOADS_DIR = path.join(
         process.cwd(),
         'uploads',
@@ -60,18 +58,24 @@ export class WebhookController extends Controller {
 
     constructor(
         @inject(TYPES.WebhookRepository)
+        @Inject(TYPES.WebhookRepository)
         private webhookRepo: IWebhookRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.ChannelRepository)
+        @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
         @inject(TYPES.ServerMessageRepository)
+        @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
         @inject(TYPES.PermissionService)
+        @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger) private logger: ILogger,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
     ) {
-        super();
         // Ensure the uploads directory exists for webhook avatars
         if (!fs.existsSync(this.UPLOADS_DIR)) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
@@ -79,27 +83,25 @@ export class WebhookController extends Controller {
     }
 
     // List all webhooks for a channel
-    @Get('servers/{serverId}/channels/{channelId}/webhooks')
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.WEBHOOK.FORBIDDEN,
-    })
-    @Response<ErrorResponse>('404', 'Channel Not Found', {
-        error: ErrorMessages.CHANNEL.NOT_FOUND,
-    })
+    @Get('servers/:serverId/channels/:channelId/webhooks')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get webhooks' })
+    @ApiResponse({ status: 200, description: 'Webhooks retrieved' })
+    @ApiResponse({ status: 403, description: ErrorMessages.WEBHOOK.FORBIDDEN })
+    @ApiResponse({ status: 404, description: ErrorMessages.CHANNEL.NOT_FOUND })
     public async getWebhooks(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Request() req: express.Request,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: ExpressRequest,
     ): Promise<Record<string, unknown>[]> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         if (
@@ -109,7 +111,7 @@ export class WebhookController extends Controller {
                 'manageWebhooks',
             ))
         ) {
-            throw new ApiError(403, ErrorMessages.WEBHOOK.FORBIDDEN);
+            throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
         }
 
         const channel = await this.channelRepo.findByIdAndServer(
@@ -117,7 +119,7 @@ export class WebhookController extends Controller {
             serverId,
         );
         if (!channel) {
-            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const webhooks = await this.webhookRepo.findByChannelId(channelId);
@@ -132,31 +134,28 @@ export class WebhookController extends Controller {
     }
 
     // Create a new webhook for a channel
-    @Post('servers/{serverId}/channels/{channelId}/webhooks')
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.WEBHOOK.FORBIDDEN,
-    })
-    @Response<ErrorResponse>('404', 'Channel Not Found', {
-        error: ErrorMessages.CHANNEL.NOT_FOUND,
-    })
+    @Post('servers/:serverId/channels/:channelId/webhooks')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Create webhook' })
+    @ApiResponse({ status: 201, description: 'Webhook created' })
+    @ApiResponse({ status: 403, description: ErrorMessages.WEBHOOK.FORBIDDEN })
     public async createWebhook(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Request() req: express.Request,
-        @Body() body: CreateWebhookRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: ExpressRequest,
+        @Body() body: CreateWebhookRequestDTO,
     ): Promise<IWebhook> {
-        // @ts-ignore
-        const userId = req.user.id;
-        // @ts-ignore
-        const username = req.user.username;
+        const user = (req as ExpressRequest & { user: JWTPayload }).user;
+        const userId = user.id;
+        const username = user.username;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         if (
@@ -166,7 +165,7 @@ export class WebhookController extends Controller {
                 'manageWebhooks',
             ))
         ) {
-            throw new ApiError(403, ErrorMessages.WEBHOOK.FORBIDDEN);
+            throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
         }
 
         const channel = await this.channelRepo.findByIdAndServer(
@@ -174,7 +173,7 @@ export class WebhookController extends Controller {
             serverId,
         );
         if (!channel) {
-            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         let token: string;
@@ -183,7 +182,7 @@ export class WebhookController extends Controller {
             token = generateWebhookToken();
             attempts++;
             if (!token) {
-                throw new ApiError(500, ErrorMessages.WEBHOOK.TOKEN_GENERATION_FAILED);
+                throw new InternalServerErrorException(ErrorMessages.WEBHOOK.TOKEN_GENERATION_FAILED);
             }
         } while (await this.webhookRepo.findByToken(token));
 
@@ -196,33 +195,30 @@ export class WebhookController extends Controller {
             createdBy: username,
         });
 
-        this.setStatus(201);
         return webhook;
     }
 
     // Delete a webhook
-    @Delete('servers/{serverId}/channels/{channelId}/webhooks/{webhookId}')
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.WEBHOOK.FORBIDDEN,
-    })
-    @Response<ErrorResponse>('404', 'Webhook Not Found', {
-        error: ErrorMessages.WEBHOOK.NOT_FOUND,
-    })
+    @Delete('servers/:serverId/channels/:channelId/webhooks/:webhookId')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Delete webhook' })
+    @ApiResponse({ status: 200, description: 'Webhook deleted' })
+    @ApiResponse({ status: 403, description: ErrorMessages.WEBHOOK.FORBIDDEN })
+    @ApiResponse({ status: 404, description: ErrorMessages.WEBHOOK.NOT_FOUND })
     public async deleteWebhook(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Path() webhookId: string,
-        @Request() req: express.Request,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('webhookId') webhookId: string,
+        @Req() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         if (
@@ -232,7 +228,7 @@ export class WebhookController extends Controller {
                 'manageWebhooks',
             ))
         ) {
-            throw new ApiError(403, ErrorMessages.WEBHOOK.FORBIDDEN);
+            throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
         }
 
         const webhook = await this.webhookRepo.findById(webhookId);
@@ -241,7 +237,7 @@ export class WebhookController extends Controller {
             webhook.serverId.toString() !== serverId ||
             webhook.channelId.toString() !== channelId
         ) {
-            throw new ApiError(404, ErrorMessages.WEBHOOK.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
         await this.webhookRepo.delete(webhookId);
@@ -250,29 +246,39 @@ export class WebhookController extends Controller {
     }
 
     // Upload webhook avatar
-    @Post('servers/{serverId}/channels/{channelId}/webhooks/{webhookId}/avatar')
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.WEBHOOK.FORBIDDEN,
+    @Post('servers/:serverId/channels/:channelId/webhooks/:webhookId/avatar')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(FileInterceptor('avatar', { storage }))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                avatar: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
     })
-    @Response<ErrorResponse>('404', 'Webhook Not Found', {
-        error: ErrorMessages.WEBHOOK.NOT_FOUND,
-    })
+    @ApiOperation({ summary: 'Upload webhook avatar' })
+    @ApiResponse({ status: 201, description: 'Avatar uploaded' })
+    @ApiResponse({ status: 403, description: ErrorMessages.WEBHOOK.FORBIDDEN })
     public async uploadWebhookAvatar(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Path() webhookId: string,
-        @Request() req: express.Request,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('webhookId') webhookId: string,
+        @Req() req: ExpressRequest,
         @UploadedFile() avatar: Express.Multer.File,
     ): Promise<{ avatarUrl: string }> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.MEMBER.NOT_FOUND);
+            throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         const canManage = await this.permissionService.hasPermission(
@@ -287,15 +293,15 @@ export class WebhookController extends Controller {
             webhook.serverId.toString() !== serverId ||
             webhook.channelId.toString() !== channelId
         ) {
-            throw new ApiError(404, ErrorMessages.WEBHOOK.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
         if (!canManage) {
-            throw new ApiError(403, ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
+            throw new ForbiddenException(ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
         }
 
         if (!avatar) {
-            throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
+            throw new BadRequestException(ErrorMessages.FILE.NO_FILE_UPLOADED);
         }
 
         const filename = `${webhookId}-${Date.now()}.png`;
@@ -303,7 +309,7 @@ export class WebhookController extends Controller {
 
         const input = avatar.path || avatar.buffer;
         if (!input) {
-            throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
+            throw new InternalServerErrorException(ErrorMessages.FILE.DATA_MISSING);
         }
 
         // Process image to ensure consistent size and format to PNG
@@ -324,64 +330,67 @@ export class WebhookController extends Controller {
     }
 
     // Get webhook avatar
-    //
-    // Serves avatar images
-    @Get('webhooks/avatar/{filename}')
-    @Response<ErrorResponse>('404', 'Avatar Not Found', {
-        error: ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND,
-    })
-    public async getWebhookAvatar(@Path() filename: string): Promise<unknown> {
+    @Get('webhooks/avatar/:filename')
+    @ApiOperation({ summary: 'Get webhook avatar' })
+    @ApiResponse({ status: 200, description: 'Avatar retrieved' })
+    @ApiResponse({ status: 404, description: ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND })
+    public async getWebhookAvatar(
+        @Param('filename') filename: string,
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<StreamableFile> {
         // Validate filename to prevent directory traversal attacks
         if (
             filename.includes('..') ||
             filename.includes('/') ||
             filename.includes('\\')
         ) {
-            throw new ApiError(400, ErrorMessages.FILE.INVALID_FILENAME);
+            throw new BadRequestException(ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
         if (!fs.existsSync(filepath)) {
-            throw new ApiError(404, ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND);
         }
 
         const ext = path.extname(filename).toLowerCase();
         if (ext === '.gif') {
-            this.setHeader('Content-Type', 'image/gif');
+            res.set({
+                'Content-Type': 'image/gif',
+            });
         } else {
-            this.setHeader('Content-Type', 'image/png');
+            res.set({
+                'Content-Type': 'image/png',
+            });
         }
 
-        return fs.createReadStream(filepath);
+        const file = fs.createReadStream(filepath);
+        return new StreamableFile(file);
     }
 
     // Execute a webhook (public endpoint)
-    //
-    // Uses a 128-character token for authentication instead of JWT (only because those tokens don't expire unless explicitly deleted)
-    @Post('webhooks/{token}')
-    @Response<ErrorResponse>('401', 'Invalid Token', {
-        error: ErrorMessages.WEBHOOK.INVALID_TOKEN,
-    })
-    @Response<ErrorResponse>('404', 'Webhook Not Found', {
-        error: ErrorMessages.WEBHOOK.NOT_FOUND,
-    })
+    // Uses a 128-character token for authentication instead of JWT
+    @Post('webhooks/:token')
+    @ApiOperation({ summary: 'Execute webhook' })
+    @ApiResponse({ status: 201, description: 'Webhook executed' })
+    @ApiResponse({ status: 401, description: ErrorMessages.WEBHOOK.INVALID_TOKEN })
+    @ApiResponse({ status: 404, description: ErrorMessages.WEBHOOK.NOT_FOUND })
     public async executeWebhook(
-        @Path() token: string,
-        @Body() body: ExecuteWebhookRequest,
+        @Param('token') token: string,
+        @Body() body: ExecuteWebhookRequestDTO,
     ): Promise<{ id: string; timestamp: Date }> {
         if (!token || token.length !== 128 || !/^[a-f0-9]{128}$/i.test(token)) {
-            throw new ApiError(401, ErrorMessages.WEBHOOK.INVALID_TOKEN);
+            throw new UnauthorizedException(ErrorMessages.WEBHOOK.INVALID_TOKEN);
         }
 
         const webhook = await this.webhookRepo.findByToken(token);
         if (!webhook) {
-            throw new ApiError(404, ErrorMessages.WEBHOOK.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
         const { content, username, avatarUrl } = body;
         if (!content || content.trim().length === 0) {
-            throw new ApiError(400, ErrorMessages.MESSAGE.CONTENT_REQUIRED);
+            throw new BadRequestException(ErrorMessages.MESSAGE.CONTENT_REQUIRED);
         }
 
         const webhookUsername = username
@@ -436,7 +445,6 @@ export class WebhookController extends Controller {
             senderId: webhookSystemUserId.toHexString(),
         });
 
-        this.setStatus(201);
         return {
             id: message._id.toString(),
             timestamp: message.createdAt,

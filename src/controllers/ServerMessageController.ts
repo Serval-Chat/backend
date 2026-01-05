@@ -4,15 +4,17 @@ import {
     Post,
     Patch,
     Delete,
-    Route,
     Body,
-    Path,
+    Param,
     Query,
-    Security,
-    Response,
-    Tags,
-    Request,
-} from 'tsoa';
+    UseGuards,
+    Req,
+    Inject,
+    NotFoundException,
+    ForbiddenException,
+    BadRequestException,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -29,57 +31,55 @@ import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import mongoose from 'mongoose';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { ApiError } from '@/utils/ApiError';
-
-interface SendMessageRequest {
-    content?: string;
-    text?: string;
-    replyToId?: string;
-}
-
-interface ServerEditMessageRequest {
-    content?: string;
-    text?: string;
-}
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { SendMessageRequestDTO, ServerEditMessageRequestDTO } from './dto/server-message.request.dto';
 
 // Controller for managing messages within server channels
 // Enforces server membership and channel-specific permission checks
 @injectable()
-@Route('api/v1/servers/{serverId}/channels/{channelId}/messages')
-@Tags('Server Messages')
-@Security('jwt')
-export class ServerMessageController extends Controller {
+@Controller('api/v1/servers/:serverId/channels/:channelId/messages')
+@ApiTags('Server Messages')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
+export class ServerMessageController {
     constructor(
         @inject(TYPES.ServerMessageRepository)
+        @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.ChannelRepository)
+        @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
         @inject(TYPES.ReactionRepository)
+        @Inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
         @inject(TYPES.PermissionService)
+        @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
     // Retrieves messages for a specific channel with pagination
     // Enforces server membership
     @Get()
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
+    @ApiOperation({ summary: 'Get channel messages' })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    @ApiQuery({ name: 'before', required: false, type: String })
+    @ApiQuery({ name: 'around', required: false, type: String })
+    @ApiResponse({ status: 200, description: 'Messages retrieved' })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getMessages(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Request() req: ExpressRequest,
-        @Query() limit: number = 50,
-        @Query() before?: string,
-        @Query() around?: string,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: ExpressRequest,
+        @Query('limit') limit: number = 50,
+        @Query('before') before?: string,
+        @Query('around') around?: string,
     ): Promise<IServerMessage[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -87,7 +87,7 @@ export class ServerMessageController extends Controller {
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         // Fetch messages using cursor-based pagination (before / around)
@@ -120,17 +120,16 @@ export class ServerMessageController extends Controller {
     // Sends a new message to a channel
     // Enforces 'sendMessages' permission and updates channel activity
     @Post()
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.MESSAGE.TEXT_REQUIRED,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_SEND,
-    })
+    @ApiOperation({ summary: 'Send a message' })
+    @ApiResponse({ status: 201, description: 'Message sent' })
+    @ApiResponse({ status: 400, description: ErrorMessages.MESSAGE.TEXT_REQUIRED })
+    @ApiResponse({ status: 403, description: ErrorMessages.CHANNEL.NO_PERMISSION_SEND })
+    @ApiResponse({ status: 404, description: ErrorMessages.CHANNEL.NOT_FOUND })
     public async sendMessage(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Request() req: ExpressRequest,
-        @Body() body: SendMessageRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: ExpressRequest,
+        @Body() body: SendMessageRequestDTO,
     ): Promise<IServerMessage> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -138,7 +137,7 @@ export class ServerMessageController extends Controller {
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const canSend = await this.permissionService.hasChannelPermission(
@@ -148,17 +147,17 @@ export class ServerMessageController extends Controller {
             'sendMessages',
         );
         if (!canSend) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_SEND);
+            throw new ForbiddenException(ErrorMessages.CHANNEL.NO_PERMISSION_SEND);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel || channel.serverId.toString() !== serverId) {
-            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const messageText = (body.content || body.text || '').trim();
         if (!messageText) {
-            throw new ApiError(400, ErrorMessages.MESSAGE.TEXT_REQUIRED);
+            throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
         const message = await this.serverMessageRepo.create({
@@ -194,18 +193,16 @@ export class ServerMessageController extends Controller {
 
     // Retrieves a specific message and its replied-to message, if any
     // Enforces server membership
-    @Get('{messageId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
-    @Response<ErrorResponse>('404', 'Message Not Found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @Get(':messageId')
+    @ApiOperation({ summary: 'Get a message' })
+    @ApiResponse({ status: 200, description: 'Message retrieved' })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getMessage(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Path() messageId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @Req() req: ExpressRequest,
     ): Promise<{
         message: IServerMessage;
         repliedMessage: IServerMessage | null;
@@ -216,12 +213,12 @@ export class ServerMessageController extends Controller {
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
-            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         let repliedMessage: IServerMessage | null = null;
@@ -261,33 +258,32 @@ export class ServerMessageController extends Controller {
 
     // Edits an existing message
     // Enforces that only the original sender can edit their message
-    @Patch('{messageId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.MESSAGE.ONLY_SENDER_EDIT,
-    })
-    @Response<ErrorResponse>('404', 'Message Not Found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @Patch(':messageId')
+    @ApiOperation({ summary: 'Edit a message' })
+    @ApiResponse({ status: 200, description: 'Message updated' })
+    @ApiResponse({ status: 400, description: ErrorMessages.MESSAGE.TEXT_REQUIRED })
+    @ApiResponse({ status: 403, description: ErrorMessages.MESSAGE.ONLY_SENDER_EDIT })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async editMessage(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Path() messageId: string,
-        @Request() req: ExpressRequest,
-        @Body() body: ServerEditMessageRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @Req() req: ExpressRequest,
+        @Body() body: ServerEditMessageRequestDTO,
     ): Promise<IServerMessage> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
-            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         if (message.senderId.toString() !== userId) {
-            throw new ApiError(403, ErrorMessages.MESSAGE.ONLY_SENDER_EDIT);
+            throw new ForbiddenException(ErrorMessages.MESSAGE.ONLY_SENDER_EDIT);
         }
 
         const messageText = (body.content || body.text || '').trim();
         if (!messageText) {
-            throw new ApiError(400, ErrorMessages.MESSAGE.TEXT_REQUIRED);
+            throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
         const updatedMessage = await this.serverMessageRepo.update(messageId, {
@@ -296,7 +292,7 @@ export class ServerMessageController extends Controller {
             isEdited: true,
         });
         if (!updatedMessage) {
-            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const io = getIO();
@@ -310,23 +306,21 @@ export class ServerMessageController extends Controller {
 
     // Deletes a message
     // Enforces that either the sender or a user with 'manageMessages' permission can delete
-    @Delete('{messageId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.MESSAGE.NO_PERMISSION_DELETE,
-    })
-    @Response<ErrorResponse>('404', 'Message Not Found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @Delete(':messageId')
+    @ApiOperation({ summary: 'Delete a message' })
+    @ApiResponse({ status: 200, description: 'Message deleted' })
+    @ApiResponse({ status: 403, description: ErrorMessages.MESSAGE.NO_PERMISSION_DELETE })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async deleteMessage(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Path() messageId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @Req() req: ExpressRequest,
     ): Promise<{ message: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
-            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const canManage = await this.permissionService.hasChannelPermission(
@@ -336,7 +330,7 @@ export class ServerMessageController extends Controller {
             'manageMessages',
         );
         if (!canManage && message.senderId.toString() !== userId) {
-            throw new ApiError(403, ErrorMessages.MESSAGE.NO_PERMISSION_DELETE);
+            throw new ForbiddenException(ErrorMessages.MESSAGE.NO_PERMISSION_DELETE);
         }
 
         await this.serverMessageRepo.delete(messageId);

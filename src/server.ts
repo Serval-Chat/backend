@@ -9,11 +9,6 @@ import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 import { PROJECT_LEVEL } from '@/config/env';
-import path from 'path';
-import { RegisterRoutes } from '@/routes/tsoa/routes';
-import swaggerUi from 'swagger-ui-express';
-import { upload } from '@/config/multer';
-import fs from 'fs';
 import routes from '@/routes/index';
 
 interface ValidateError {
@@ -128,36 +123,8 @@ export function setupExpressApp(app: Application): Application {
     // Metrics
     app.use(getMetricsMiddleware());
 
-    // TSOA Routes
-    RegisterRoutes(app, { multer: upload });
-
     // Manual routes
     app.use('/', routes);
-
-    // Swagger UI
-    try {
-        const swaggerDocument = JSON.parse(
-            fs.readFileSync(
-                path.join(process.cwd(), 'public', 'swagger.json'),
-                'utf8',
-            ),
-        );
-        app.use(
-            '/docs',
-            swaggerUi.serve,
-            swaggerUi.setup(swaggerDocument, {
-                swaggerOptions: {
-                    supportedSubmitMethods: [],
-                },
-                customCss: `
-                .swagger-ui .auth-wrapper { display: none !important; }
-                .swagger-ui .try-out { display: none !important; }
-            `,
-            }),
-        );
-    } catch (err) {
-        logger.error('Failed to load swagger.json:', err);
-    }
 
     // DI Binding
     if (!container.isBound(TYPES.ExpressApp)) {

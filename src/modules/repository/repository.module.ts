@@ -18,6 +18,7 @@ import { MongooseServerMessageRepository } from '@/infrastructure/repositories/M
 import { MongooseInviteRepository } from '@/infrastructure/repositories/MongooseInviteRepository';
 import { MongooseServerBanRepository } from '@/infrastructure/repositories/MongooseServerBanRepository';
 import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
+import { MongooseDmUnreadRepository } from '@/infrastructure/repositories/MongooseDmUnreadRepository';
 import { MongooseWebhookRepository } from '@/infrastructure/repositories/MongooseWebhookRepository';
 
 @Global()
@@ -96,6 +97,10 @@ import { MongooseWebhookRepository } from '@/infrastructure/repositories/Mongoos
             useClass: MongooseServerChannelReadRepository,
         },
         {
+            provide: TYPES.DmUnreadRepository,
+            useClass: MongooseDmUnreadRepository,
+        },
+        {
             provide: TYPES.WebhookRepository,
             useClass: MongooseWebhookRepository,
         },
@@ -119,6 +124,7 @@ import { MongooseWebhookRepository } from '@/infrastructure/repositories/Mongoos
         TYPES.InviteRepository,
         TYPES.ServerBanRepository,
         TYPES.ServerChannelReadRepository,
+        TYPES.DmUnreadRepository,
         TYPES.WebhookRepository,
     ],
 })

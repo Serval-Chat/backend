@@ -1,66 +1,88 @@
-import { Controller, Get, Route, Path, Response, Tags } from 'tsoa';
+import {
+    Controller,
+    Get,
+    Param,
+    Res,
+    BadRequestException,
+    NotFoundException,
+    Inject,
+    StreamableFile,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import path from 'path';
 import fs from 'fs';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { ApiError } from '@/utils/ApiError';
+import type { Response } from 'express';
 
 // Controller for serving public server assets
 @injectable()
-@Route('api/v1/servers')
-@Tags('Servers (Public)')
-export class ServerPublicController extends Controller {
+@Controller('api/v1/servers')
+@ApiTags('Servers (Public)')
+export class ServerPublicController {
     private readonly UPLOADS_DIR = path.join(
         process.cwd(),
         'uploads',
         'servers',
     );
 
-    constructor(@inject(TYPES.Logger) private logger: ILogger) {
-        super();
-    }
+    constructor(
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
     // Serves a server icon file
-    @Get('icon/{filename}')
-    @Response<ErrorResponse>('404', 'Icon Not Found', {
-        error: ErrorMessages.FILE.NOT_FOUND,
-    })
-    public async getServerIcon(@Path() filename: string): Promise<unknown> {
+    @Get('icon/:filename')
+    @ApiOperation({ summary: 'Get server icon' })
+    @ApiResponse({ status: 200, description: 'Icon file retrieved' })
+    @ApiResponse({ status: 404, description: ErrorMessages.FILE.NOT_FOUND })
+    public async getServerIcon(
+        @Param('filename') filename: string,
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<StreamableFile> {
         // Strict filename validation to prevent directory traversal attacks
         if (
+            !filename ||
             filename.includes('..') ||
             filename.includes('/') ||
             filename.includes('\\')
         ) {
-            throw new ApiError(400, ErrorMessages.FILE.INVALID_FILENAME);
+            throw new BadRequestException(ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
         if (!fs.existsSync(filepath)) {
-            throw new ApiError(404, ErrorMessages.FILE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.FILE.NOT_FOUND);
         }
 
-        // TSOA doesn't have a built-in 'file' return type; we set headers manually and return a ReadStream
         const ext = path.extname(filename).toLowerCase();
         if (ext === '.gif') {
-            this.setHeader('Content-Type', 'image/gif');
+            res.set({
+                'Content-Type': 'image/gif',
+            });
         } else {
-            this.setHeader('Content-Type', 'image/png');
+            res.set({
+                'Content-Type': 'image/png',
+            });
         }
 
-        return fs.createReadStream(filepath);
+        const file = fs.createReadStream(filepath);
+        return new StreamableFile(file);
     }
 
     // Serves a server banner file
-    @Get('banner/{filename}')
-    @Response<ErrorResponse>('404', 'Banner Not Found', {
-        error: ErrorMessages.FILE.NOT_FOUND,
-    })
-    public async getServerBanner(@Path() filename: string): Promise<unknown> {
+    @Get('banner/:filename')
+    @ApiOperation({ summary: 'Get server banner' })
+    @ApiResponse({ status: 200, description: 'Banner file retrieved' })
+    @ApiResponse({ status: 404, description: ErrorMessages.FILE.NOT_FOUND })
+    public async getServerBanner(
+        @Param('filename') filename: string,
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<StreamableFile> {
         // Strict filename validation to prevent directory traversal attacks
         if (
             !filename ||
@@ -69,27 +91,32 @@ export class ServerPublicController extends Controller {
             filename.includes('/') ||
             filename.includes('\\')
         ) {
-            throw new ApiError(400, ErrorMessages.FILE.INVALID_FILENAME);
+            throw new BadRequestException(ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         const filepath = path.resolve(this.UPLOADS_DIR, filename);
 
         // Ensure the resolved path is within the intended uploads directory
         if (!filepath.startsWith(this.UPLOADS_DIR + path.sep)) {
-            throw new ApiError(400, ErrorMessages.FILE.INVALID_FILENAME);
+            throw new BadRequestException(ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         if (!fs.existsSync(filepath)) {
-            throw new ApiError(404, ErrorMessages.FILE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.FILE.NOT_FOUND);
         }
 
         const ext = path.extname(filename).toLowerCase();
         if (ext === '.gif') {
-            this.setHeader('Content-Type', 'image/gif');
+            res.set({
+                'Content-Type': 'image/gif',
+            });
         } else {
-            this.setHeader('Content-Type', 'image/png');
+            res.set({
+                'Content-Type': 'image/png',
+            });
         }
 
-        return fs.createReadStream(filepath);
+        const file = fs.createReadStream(filepath);
+        return new StreamableFile(file);
     }
 }

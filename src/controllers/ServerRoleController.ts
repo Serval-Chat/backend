@@ -4,14 +4,16 @@ import {
     Post,
     Patch,
     Delete,
-    Route,
     Body,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
-} from 'tsoa';
+    Param,
+    UseGuards,
+    Req,
+    Inject,
+    NotFoundException,
+    ForbiddenException,
+    BadRequestException,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
@@ -19,75 +21,56 @@ import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepos
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
-import express from 'express';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { ApiError } from '@/utils/ApiError';
 import { JWTPayload } from '@/utils/jwt';
-
-export interface CreateRoleRequest {
-    name: string;
-    color?: string;
-    startColor?: string;
-    endColor?: string;
-    colors?: string[];
-    gradientRepeat?: number;
-    separateFromOtherRoles?: boolean;
-    permissions?: Record<string, boolean>;
-}
-
-export interface UpdateRoleRequest {
-    name?: string;
-    color?: string;
-    startColor?: string;
-    endColor?: string;
-    colors?: string[];
-    gradientRepeat?: number;
-    separateFromOtherRoles?: boolean;
-    permissions?: Record<string, boolean>;
-    position?: number;
-}
-
-export interface ReorderRolesRequest {
-    rolePositions: { roleId: string; position: number }[];
-}
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import {
+    CreateRoleRequestDTO,
+    UpdateRoleRequestDTO,
+    ReorderRolesRequestDTO,
+} from './dto/server-role.request.dto';
 
 // Controller for managing server roles and their permissions
 // Enforces 'manageRoles' permission checks and protects the mandatory '@everyone' role
 @injectable()
-@Route('api/v1/servers/{serverId}/roles')
-@Tags('Server Roles')
-@Security('jwt')
-export class ServerRoleController extends Controller {
+@Controller('api/v1/servers/:serverId/roles')
+@ApiTags('Server Roles')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
+export class ServerRoleController {
     constructor(
-        @inject(TYPES.RoleRepository) private roleRepo: IRoleRepository,
+        @inject(TYPES.RoleRepository)
+        @Inject(TYPES.RoleRepository)
+        private roleRepo: IRoleRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.PermissionService)
+        @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
     // Retrieves all roles for a specific server
     // Enforces server membership
     @Get()
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
+    @ApiOperation({ summary: 'Get server roles' })
+    @ApiResponse({ status: 200, description: 'Roles retrieved' })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getServerRoles(
-        @Path() serverId: string,
-        @Request() req: express.Request,
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
     ): Promise<IRole[]> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
         );
         if (!member) {
-            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         return await this.roleRepo.findByServerId(serverId);
@@ -96,16 +79,15 @@ export class ServerRoleController extends Controller {
     // Creates a new role in a server
     // Enforces 'manageRoles' permission and automatically calculates the next position
     @Post()
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-    })
+    @ApiOperation({ summary: 'Create a role' })
+    @ApiResponse({ status: 201, description: 'Role created' })
+    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
     public async createRole(
-        @Path() serverId: string,
-        @Request() req: express.Request,
-        @Body() body: CreateRoleRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
+        @Body() body: CreateRoleRequestDTO,
     ): Promise<IRole> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -113,8 +95,7 @@ export class ServerRoleController extends Controller {
                 'manageRoles',
             ))
         ) {
-            throw new ApiError(
-                403,
+            throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
             );
         }
@@ -153,16 +134,15 @@ export class ServerRoleController extends Controller {
     // Reorders roles within a server's hierarchy
     // Enforces 'manageRoles' permission
     @Patch('reorder')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-    })
+    @ApiOperation({ summary: 'Reorder roles' })
+    @ApiResponse({ status: 200, description: 'Roles reordered' })
+    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
     public async reorderRoles(
-        @Path() serverId: string,
-        @Request() req: express.Request,
-        @Body() body: ReorderRolesRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
+        @Body() body: ReorderRolesRequestDTO,
     ): Promise<IRole[]> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -170,8 +150,7 @@ export class ServerRoleController extends Controller {
                 'manageRoles',
             ))
         ) {
-            throw new ApiError(
-                403,
+            throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
             );
         }
@@ -192,21 +171,18 @@ export class ServerRoleController extends Controller {
 
     // Updates an existing role's properties
     // Enforces 'manageRoles' permission
-    @Patch('{roleId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-    })
-    @Response<ErrorResponse>('404', 'Role not found', {
-        error: ErrorMessages.ROLE.NOT_FOUND,
-    })
+    @Patch(':roleId')
+    @ApiOperation({ summary: 'Update a role' })
+    @ApiResponse({ status: 200, description: 'Role updated' })
+    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
+    @ApiResponse({ status: 404, description: ErrorMessages.ROLE.NOT_FOUND })
     public async updateRole(
-        @Path() serverId: string,
-        @Path() roleId: string,
-        @Request() req: express.Request,
-        @Body() body: UpdateRoleRequest,
+        @Param('serverId') serverId: string,
+        @Param('roleId') roleId: string,
+        @Req() req: ExpressRequest,
+        @Body() body: UpdateRoleRequestDTO,
     ): Promise<IRole> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -214,15 +190,14 @@ export class ServerRoleController extends Controller {
                 'manageRoles',
             ))
         ) {
-            throw new ApiError(
-                403,
+            throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
             );
         }
 
         const role = await this.roleRepo.findById(roleId);
         if (!role || role.serverId.toString() !== serverId) {
-            throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
         const updates: Record<string, unknown> = {};
@@ -251,7 +226,7 @@ export class ServerRoleController extends Controller {
 
         const updatedRole = await this.roleRepo.update(roleId, updates);
         if (!updatedRole) {
-            throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
         const io = getIO();
@@ -264,41 +239,36 @@ export class ServerRoleController extends Controller {
     }
 
     // Delete a role
-    @Delete('{roleId}')
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-    })
-    @Response<ErrorResponse>('404', 'Role not found', {
-        error: ErrorMessages.ROLE.NOT_FOUND,
-    })
+    @Delete(':roleId')
+    @ApiOperation({ summary: 'Delete a role' })
+    @ApiResponse({ status: 200, description: 'Role deleted' })
+    @ApiResponse({ status: 400, description: ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE })
+    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
+    @ApiResponse({ status: 404, description: ErrorMessages.ROLE.NOT_FOUND })
     public async deleteRole(
-        @Path() serverId: string,
-        @Path() roleId: string,
-        @Request() req: express.Request,
+        @Param('serverId') serverId: string,
+        @Param('roleId') roleId: string,
+        @Req() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        const userId = (req as express.Request & { user: JWTPayload }).user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const hasPermission = await this.permissionService.hasPermission(
             serverId,
             userId,
             'manageRoles',
         );
         if (!hasPermission) {
-            throw new ApiError(
-                403,
+            throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
             );
         }
 
         const role = await this.roleRepo.findById(roleId);
         if (!role || role.serverId.toString() !== serverId) {
-            throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
         if (role.name === '@everyone') {
-            throw new ApiError(400, ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE);
+            throw new BadRequestException(ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE);
         }
 
         await this.roleRepo.delete(roleId);
