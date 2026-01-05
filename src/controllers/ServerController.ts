@@ -4,15 +4,16 @@ import {
     Post,
     Patch,
     Delete,
-    Route,
     Body,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
+    Param,
+    Req,
+    UseGuards,
+    UseInterceptors,
     UploadedFile,
-} from 'tsoa';
+    Inject,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -28,66 +29,37 @@ import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRep
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import { PermissionService } from '@/services/PermissionService';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import { container } from '@/di/container';
+import { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
-import type { Request as ExpressRequest } from 'express';
+import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { IChannel } from '@/di/interfaces/IChannelRepository';
 import { PresenceService } from '@/realtime/services/PresenceService';
+import { storage } from '@/config/multer';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import mongoose from 'mongoose';
+import {
+    CreateServerRequest,
+    UpdateServerRequest,
+    SetDefaultRoleRequest,
+    ServerStatsResponse,
+    ServerResponse,
+    SetDefaultRoleResponse,
+    UploadIconResponse,
+    UploadBannerResponse,
+} from './dto/server.dto';
 
-interface CreateServerRequest {
-    // Name of the server
-    name: string;
-}
-
-interface UpdateServerRequest {
-    // New name for the server
-    name?: string;
-    // Server banner configuration
-    banner?: {
-        // Type of banner (e.g., 'image')
-        type: string;
-        // Value of the banner (e.g., URL)
-        value: string;
-    };
-    // Whether to disable custom fonts on the server
-    disableCustomFonts?: boolean;
-}
-
-interface SetDefaultRoleRequest {
-    // ID of the role to set as default, or null to remove default role
-    roleId: string | null;
-}
-
-interface ServerStatsResponse {
-    onlineCount: number;
-    totalCount: number;
-    bannedUserCount: number;
-    serverId: string;
-    serverName: string;
-    ownerName: string;
-    createdAt: string;
-    allTimeHigh: number;
-    newestMember: string;
-    channelCount: number;
-    emojiCount: number;
-}
-
-// Controller for server management, membership, and statistics
-// Enforces ownership checks, permission validation, and path sanitization for uploads
 @injectable()
-@Route('api/v1/servers')
-@Tags('Servers')
-@Security('jwt')
-export class ServerController extends Controller {
+@Controller('api/v1/servers')
+@ApiTags('Servers')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+export class ServerController {
     private readonly UPLOADS_DIR = path.join(
         process.cwd(),
         'uploads',
@@ -95,36 +67,55 @@ export class ServerController extends Controller {
     );
 
     constructor(
-        @inject(TYPES.ServerRepository) private serverRepo: IServerRepository,
+        @inject(TYPES.ServerRepository)
+        @Inject(TYPES.ServerRepository)
+        private serverRepo: IServerRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.ChannelRepository)
+        @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-        @inject(TYPES.RoleRepository) private roleRepo: IRoleRepository,
-        @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-        @inject(TYPES.InviteRepository) private inviteRepo: IInviteRepository,
+        @inject(TYPES.RoleRepository)
+        @Inject(TYPES.RoleRepository)
+        private roleRepo: IRoleRepository,
+        @inject(TYPES.UserRepository)
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
+        @inject(TYPES.InviteRepository)
+        @Inject(TYPES.InviteRepository)
+        private inviteRepo: IInviteRepository,
         @inject(TYPES.ServerMessageRepository)
+        @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
         @inject(TYPES.ServerBanRepository)
+        @Inject(TYPES.ServerBanRepository)
         private serverBanRepo: IServerBanRepository,
         @inject(TYPES.ServerChannelReadRepository)
+        @Inject(TYPES.ServerChannelReadRepository)
         private serverChannelReadRepo: IServerChannelReadRepository,
         @inject(TYPES.PermissionService)
+        @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger) private logger: ILogger,
+        @inject(TYPES.PresenceService)
+        @Inject(TYPES.PresenceService)
+        private presenceService: PresenceService,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
     ) {
-        super();
         if (!fs.existsSync(this.UPLOADS_DIR)) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
         }
     }
 
-    // Retrieves all servers where the current user is a member
     @Get()
+    @ApiOperation({ summary: 'Get user servers' })
+    @ApiResponse({ status: 200, type: [ServerResponse] })
     public async getServers(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
     ): Promise<IServer[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
         const servers = await this.serverRepo.findByIds(serverIds);
@@ -142,13 +133,15 @@ export class ServerController extends Controller {
         );
     }
 
-    // Creates a new server and initializes default roles and channels
     @Post()
+    @ApiOperation({ summary: 'Create server' })
+    @ApiResponse({ status: 201, description: 'Server created' })
+    @ApiResponse({ status: 400, description: 'Invalid name' })
     public async createServer(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
         @Body() body: CreateServerRequest,
     ): Promise<{ server: IServer; channel: IChannel }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const { name } = body;
 
         if (!name || name.trim().length < 2) {
@@ -198,12 +191,13 @@ export class ServerController extends Controller {
         return { server, channel };
     }
 
-    // Retrieves unread status for all servers the user is a member of
     @Get('unread')
+    @ApiOperation({ summary: 'Get unread status' })
+    @ApiResponse({ status: 200, description: 'Unread status per server' })
     public async getUnreadStatus(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
     ): Promise<Record<string, boolean>> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
 
@@ -235,20 +229,16 @@ export class ServerController extends Controller {
         return unreadMap;
     }
 
-    // Marks all channels in a server as read for the current user
-    @Post('{serverId}/ack')
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
-    @Response<ErrorResponse>('400', 'Invalid input', {
-        error: ErrorMessages.SERVER.INVALID_ID,
-    })
+    @Post(':serverId/ack')
+    @ApiOperation({ summary: 'Mark server as read' })
+    @ApiResponse({ status: 201, description: 'Server marked as read' })
+    @ApiResponse({ status: 400, description: 'Invalid ID' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async markServerAsRead(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -274,20 +264,16 @@ export class ServerController extends Controller {
         return { message: 'Server marked as read' };
     }
 
-    // Retrieves detailed information about a server
-    // Enforces server membership
-    @Get('{serverId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
-    @Response<ErrorResponse>('404', 'Server Not Found', {
-        error: ErrorMessages.SERVER.NOT_FOUND,
-    })
+    @Get(':serverId')
+    @ApiOperation({ summary: 'Get server details' })
+    @ApiResponse({ status: 200, type: ServerResponse })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async getServerDetails(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
     ): Promise<IServer> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -309,21 +295,16 @@ export class ServerController extends Controller {
         };
     }
 
-    // Retrieves aggregated statistics for a server
-    // Includes member counts, online status, and all-time high tracking
-    @Get('{serverId}/stats')
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
-    @Response<ErrorResponse>('404', 'Server not found', {
-        error: ErrorMessages.SERVER.NOT_FOUND,
-    })
+    @Get(':serverId/stats')
+    @ApiOperation({ summary: 'Get server stats' })
+    @ApiResponse({ status: 200, type: ServerStatsResponse })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async getServerStats(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
     ): Promise<ServerStatsResponse> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -344,8 +325,7 @@ export class ServerController extends Controller {
         const users = await this.userRepo.findByIds(userIds);
         const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
-        const presenceService = container.get<PresenceService>(TYPES.PresenceService);
-        const onlineUsernames = new Set(presenceService.getAllOnlineUsers());
+        const onlineUsernames = new Set(this.presenceService.getAllOnlineUsers());
 
         // Calculate online count by checking presence for each member
         let onlineCount = 0;
@@ -407,22 +387,17 @@ export class ServerController extends Controller {
         };
     }
 
-    // Updates server settings
-    // Enforces 'manageServer' permission
-    @Patch('{serverId}')
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Server not found', {
-        error: ErrorMessages.SERVER.NOT_FOUND,
-    })
+    @Patch(':serverId')
+    @ApiOperation({ summary: 'Update server' })
+    @ApiResponse({ status: 200, type: ServerResponse })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async updateServer(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
         @Body() body: UpdateServerRequest,
     ): Promise<IServer> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -453,25 +428,18 @@ export class ServerController extends Controller {
         return server;
     }
 
-    // Sets the default role for new members in the server
-    // Enforces 'manageServer' permission
-    @Post('{serverId}/roles/default')
-    @Security('jwt')
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Server or role not found', {
-        error: ErrorMessages.ROLE.NOT_FOUND,
-    })
+    @Post(':serverId/roles/default')
+    @ApiOperation({ summary: 'Set default role' })
+    @ApiResponse({ status: 201, type: SetDefaultRoleResponse })
+    @ApiResponse({ status: 400, description: 'Bad Request' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server or role not found' })
     public async setDefaultRole(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
         @Body() body: SetDefaultRoleRequest,
     ): Promise<{ defaultRoleId: string | null }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const { roleId } = body;
 
         if (
@@ -510,21 +478,16 @@ export class ServerController extends Controller {
         return { defaultRoleId: roleId || null };
     }
 
-    // Deletes a server and all associated data (channels, members, roles, etc.)
-    // Enforces that only the server owner can perform this action
-    @Delete('{serverId}')
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.ONLY_OWNER_DELETE,
-    })
-    @Response<ErrorResponse>('404', 'Server not found', {
-        error: ErrorMessages.SERVER.NOT_FOUND,
-    })
+    @Delete(':serverId')
+    @ApiOperation({ summary: 'Delete server' })
+    @ApiResponse({ status: 200, description: 'Server deleted' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async deleteServer(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
@@ -547,21 +510,30 @@ export class ServerController extends Controller {
         return { message: 'Server deleted' };
     }
 
-    // Uploads or updates the server icon
-    // Resizes the image to 256x256 and enforces 'manageServer' permission
-    @Post('{serverId}/icon')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NO_PERMISSION_MANAGE,
+    @Post(':serverId/icon')
+    @ApiOperation({ summary: 'Upload server icon' })
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                icon: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
     })
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.FILE.NO_FILE_UPLOADED,
-    })
+    @UseInterceptors(FileInterceptor('icon', { storage }))
+    @ApiResponse({ status: 201, type: UploadIconResponse })
+    @ApiResponse({ status: 400, description: 'Bad Request' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async uploadServerIcon(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
         @UploadedFile() icon: Express.Multer.File,
     ): Promise<{ icon: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -607,22 +579,30 @@ export class ServerController extends Controller {
         return { icon: iconUrl };
     }
 
-    // Uploads or updates the server banner
-    // Resizes the image to 960x540 and supports animated GIFs
-    // Enforces 'manageServer' permission
-    @Post('{serverId}/banner')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NO_PERMISSION_MANAGE,
+    @Post(':serverId/banner')
+    @ApiOperation({ summary: 'Upload server banner' })
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                banner: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
     })
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.FILE.NO_FILE_UPLOADED,
-    })
+    @UseInterceptors(FileInterceptor('banner', { storage }))
+    @ApiResponse({ status: 201, type: UploadBannerResponse })
+    @ApiResponse({ status: 400, description: 'Bad Request' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async uploadServerBanner(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
         @UploadedFile() banner: Express.Multer.File,
     ): Promise<{ banner: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,

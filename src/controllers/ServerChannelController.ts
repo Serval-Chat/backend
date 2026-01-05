@@ -4,14 +4,13 @@ import {
     Post,
     Patch,
     Delete,
-    Route,
     Body,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
-} from 'tsoa';
+    Param,
+    Req,
+    UseGuards,
+    Inject,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -28,96 +27,64 @@ import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRep
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
-import type { Request as ExpressRequest } from 'express';
+import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { ErrorMessages } from '@/constants/errorMessages';
+import {
+    CreateChannelRequest,
+    UpdateChannelRequest,
+    ReorderChannelsRequest,
+    CreateCategoryRequest,
+    UpdateCategoryRequest,
+    ReorderCategoriesRequest,
+    UpdatePermissionsRequest,
+    ChannelWithReadResponse,
+    ChannelStatsResponse,
+    ChannelResponse,
+    CategoryResponse,
+} from './dto/server-channel.dto';
 
-interface CreateChannelRequest {
-    name: string;
-    type?: 'text' | 'voice';
-    position?: number;
-    categoryId?: string;
-    description?: string;
-}
-
-interface UpdateChannelRequest {
-    name?: string;
-    position?: number;
-    categoryId?: string | null;
-    description?: string;
-}
-
-interface ReorderChannelsRequest {
-    channelPositions: { channelId: string; position: number }[];
-}
-
-interface CreateCategoryRequest {
-    name: string;
-    position?: number;
-}
-
-interface UpdateCategoryRequest {
-    name?: string;
-    position?: number;
-}
-
-interface ReorderCategoriesRequest {
-    categoryPositions: { categoryId: string; position: number }[];
-}
-
-interface UpdatePermissionsRequest {
-    permissions: Record<string, Record<string, boolean>>;
-}
-
-interface ChannelWithReadResponse extends Omit<IChannel, 'lastMessageAt'> {
-    lastMessageAt: string | null;
-    lastReadAt: string | null;
-}
-
-interface ChannelStatsResponse {
-    channelId: string;
-    channelName: string;
-    createdAt: string;
-    messageCount: number;
-}
-
-// Controller for managing server channels and categories
-// Enforcing server membership and 'manageChannels' permission checks
 @injectable()
-@Route('api/v1/servers/{serverId}')
-@Tags('Server Channels')
-@Security('jwt')
-export class ServerChannelController extends Controller {
+@Controller('api/v1/servers/:serverId')
+@ApiTags('Server Channels')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+export class ServerChannelController {
     constructor(
         @inject(TYPES.ChannelRepository)
+        @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.ServerChannelReadRepository)
+        @Inject(TYPES.ServerChannelReadRepository)
         private serverChannelReadRepo: IServerChannelReadRepository,
         @inject(TYPES.CategoryRepository)
+        @Inject(TYPES.CategoryRepository)
         private categoryRepo: ICategoryRepository,
         @inject(TYPES.ServerMessageRepository)
+        @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
         @inject(TYPES.PermissionService)
+        @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
-    // Retrieves all channels for a server, including unread status for the requester
     @Get('channels')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
+    @ApiOperation({ summary: 'Get server channels' })
+    @ApiResponse({ status: 200, type: [ChannelWithReadResponse] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getChannels(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
     ): Promise<ChannelWithReadResponse[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -155,16 +122,15 @@ export class ServerChannelController extends Controller {
         });
     }
 
-    // Retrieves all categories for a server
     @Get('categories')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
+    @ApiOperation({ summary: 'Get server categories' })
+    @ApiResponse({ status: 200, type: [CategoryResponse] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getCategories(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
     ): Promise<ICategory[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -176,18 +142,16 @@ export class ServerChannelController extends Controller {
         return await this.categoryRepo.findByServerId(serverId);
     }
 
-    // Creates a new channel in a server
-    // Enforces 'manageChannels' permission
     @Post('channels')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
+    @ApiOperation({ summary: 'Create channel' })
+    @ApiResponse({ status: 201, type: ChannelResponse })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async createChannel(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
         @Body() body: CreateChannelRequest,
     ): Promise<IChannel> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -198,7 +162,6 @@ export class ServerChannelController extends Controller {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        // Default to the end of the list if no position is specified
         const maxPositionChannel =
             await this.channelRepo.findMaxPositionByServerId(serverId);
         const finalPosition =
@@ -229,18 +192,16 @@ export class ServerChannelController extends Controller {
         return channel;
     }
 
-    // Reorders channels within a server
-    // Enforces 'manageChannels' permission
     @Patch('channels/reorder')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
+    @ApiOperation({ summary: 'Reorder channels' })
+    @ApiResponse({ status: 200, description: 'Channels reordered' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async reorderChannels(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
         @Body() body: ReorderChannelsRequest,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -264,23 +225,18 @@ export class ServerChannelController extends Controller {
         return { message: 'Channels reordered' };
     }
 
-    // Retrieves statistics for a specific channel
-    @Get('channels/{channelId}/stats')
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.CHANNEL.NOT_IN_SERVER,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_MEMBER,
-    })
-    @Response<ErrorResponse>('404', 'Channel Not Found', {
-        error: ErrorMessages.CHANNEL.NOT_FOUND,
-    })
+    @Get('channels/:channelId/stats')
+    @ApiOperation({ summary: 'Get channel stats' })
+    @ApiResponse({ status: 200, type: ChannelStatsResponse })
+    @ApiResponse({ status: 400, description: 'Bad Request' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async getChannelStats(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: Request,
     ): Promise<ChannelStatsResponse> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -310,22 +266,18 @@ export class ServerChannelController extends Controller {
         };
     }
 
-    // Updates channel settings
-    // Enforces 'manageChannels' permission
-    @Patch('channels/{channelId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Channel Not Found', {
-        error: ErrorMessages.CHANNEL.NOT_FOUND,
-    })
+    @Patch('channels/:channelId')
+    @ApiOperation({ summary: 'Update channel' })
+    @ApiResponse({ status: 200, type: ChannelResponse })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async updateChannel(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: Request,
         @Body() body: UpdateChannelRequest,
     ): Promise<IChannel> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -357,21 +309,17 @@ export class ServerChannelController extends Controller {
         return channel;
     }
 
-    // Deletes a channel from a server
-    // Enforces 'manageChannels' permission
-    @Delete('channels/{channelId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Channel Not Found', {
-        error: ErrorMessages.CHANNEL.NOT_FOUND,
-    })
+    @Delete('channels/:channelId')
+    @ApiOperation({ summary: 'Delete channel' })
+    @ApiResponse({ status: 200, description: 'Channel deleted' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async deleteChannel(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: Request,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -393,18 +341,16 @@ export class ServerChannelController extends Controller {
         return { message: 'Channel deleted' };
     }
 
-    // Creates a new category in a server
-    // Enforces 'manageChannels' permission
     @Post('categories')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
+    @ApiOperation({ summary: 'Create category' })
+    @ApiResponse({ status: 201, type: CategoryResponse })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async createCategory(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
         @Body() body: CreateCategoryRequest,
     ): Promise<ICategory> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -439,22 +385,18 @@ export class ServerChannelController extends Controller {
         return category;
     }
 
-    // Updates category settings
-    // Enforces 'manageChannels' permission
-    @Patch('categories/{categoryId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Category Not Found', {
-        error: ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND,
-    })
+    @Patch('categories/:categoryId')
+    @ApiOperation({ summary: 'Update category' })
+    @ApiResponse({ status: 200, type: CategoryResponse })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Category Not Found' })
     public async updateCategory(
-        @Path() serverId: string,
-        @Path() categoryId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('categoryId') categoryId: string,
+        @Req() req: Request,
         @Body() body: UpdateCategoryRequest,
     ): Promise<ICategory> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -483,21 +425,17 @@ export class ServerChannelController extends Controller {
         return category;
     }
 
-    // Deletes a category from a server
-    // Enforces 'manageChannels' permission
-    @Delete('categories/{categoryId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Category Not Found', {
-        error: ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND,
-    })
+    @Delete('categories/:categoryId')
+    @ApiOperation({ summary: 'Delete category' })
+    @ApiResponse({ status: 200, description: 'Category deleted' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Category Not Found' })
     public async deleteCategory(
-        @Path() serverId: string,
-        @Path() categoryId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('categoryId') categoryId: string,
+        @Req() req: Request,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -529,18 +467,16 @@ export class ServerChannelController extends Controller {
         return { message: 'Category deleted' };
     }
 
-    // Reorders categories within a server
-    // Enforces 'manageChannels' permission
     @Patch('categories/reorder')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
+    @ApiOperation({ summary: 'Reorder categories' })
+    @ApiResponse({ status: 200, description: 'Categories reordered' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
     public async reorderCategories(
-        @Path() serverId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
         @Body() body: ReorderCategoriesRequest,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -564,21 +500,17 @@ export class ServerChannelController extends Controller {
         return { message: 'Categories reordered' };
     }
 
-    // Retrieves permission overrides for a specific channel
-    // Enforces 'manageChannels' permission
-    @Get('channels/{channelId}/permissions')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Channel Not Found', {
-        error: ErrorMessages.CHANNEL.NOT_FOUND,
-    })
+    @Get('channels/:channelId/permissions')
+    @ApiOperation({ summary: 'Get channel permissions' })
+    @ApiResponse({ status: 200, description: 'Permissions retrieved' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async getChannelPermissions(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: Request,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -605,22 +537,18 @@ export class ServerChannelController extends Controller {
         return { permissions: channel.permissions || {} };
     }
 
-    // Updates permission overrides for a specific channel
-    // Enforces 'manageChannels' permission
-    @Patch('channels/{channelId}/permissions')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Channel Not Found', {
-        error: ErrorMessages.CHANNEL.NOT_FOUND,
-    })
+    @Patch('channels/:channelId/permissions')
+    @ApiOperation({ summary: 'Update channel permissions' })
+    @ApiResponse({ status: 200, description: 'Permissions updated' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async updateChannelPermissions(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: Request,
         @Body() body: UpdatePermissionsRequest,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -650,21 +578,17 @@ export class ServerChannelController extends Controller {
         return { permissions: body.permissions || {} };
     }
 
-    // Retrieves permission overrides for a specific category
-    // Enforces 'manageChannels' permission
-    @Get('categories/{categoryId}/permissions')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Category Not Found', {
-        error: ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND,
-    })
+    @Get('categories/:categoryId/permissions')
+    @ApiOperation({ summary: 'Get category permissions' })
+    @ApiResponse({ status: 200, description: 'Permissions retrieved' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Category Not Found' })
     public async getCategoryPermissions(
-        @Path() serverId: string,
-        @Path() categoryId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('categoryId') categoryId: string,
+        @Req() req: Request,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -691,22 +615,18 @@ export class ServerChannelController extends Controller {
         return { permissions: category.permissions || {} };
     }
 
-    // Updates permission overrides for a specific category
-    // Enforces 'manageChannels' permission
-    @Patch('categories/{categoryId}/permissions')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE,
-    })
-    @Response<ErrorResponse>('404', 'Category Not Found', {
-        error: ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND,
-    })
+    @Patch('categories/:categoryId/permissions')
+    @ApiOperation({ summary: 'Update category permissions' })
+    @ApiResponse({ status: 200, description: 'Permissions updated' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Category Not Found' })
     public async updateCategoryPermissions(
-        @Path() serverId: string,
-        @Path() categoryId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('categoryId') categoryId: string,
+        @Req() req: Request,
         @Body() body: UpdatePermissionsRequest,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,

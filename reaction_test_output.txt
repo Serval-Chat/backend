@@ -1,0 +1,1268 @@
+
+> chat@0.7.5 test
+> node -r tsconfig-paths/register --test tests/**/*.test.cjs tests/integration/reactions.test.cjs
+
+TAP version 13
+# [dotenv@17.2.3] injecting env (10) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+# [32m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+# [32m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMongooseModule dependencies initialized[39m[38;5;3m +49ms[39m
+# [32m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRepositoryModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mInfrastructureModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +2ms[39m
+# [32m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServicesModule dependencies initialized[39m[38;5;3m +6ms[39m
+# [32m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [32m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [31m[Nest] 347428  - [39m01/05/2026, 4:58:32 AM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mUnknownDependenciesException [Error]: Nest can't resolve dependencies of the ReactionController (?, Symbol(MessageRepository), Symbol(ServerMessageRepository), Symbol(ServerMemberRepository), Symbol(ChannelRepository), Symbol(PermissionService), Symbol(PresenceService), Symbol(UserRepository), Symbol(Logger)). Please make sure that the argument Symbol(ReactionRepository) at index [0] is available in the AppModule context.
+# Potential solutions:
+# - Is AppModule a valid NestJS module?
+# - If Symbol(ReactionRepository) is a provider, is it part of the current AppModule?
+# - If Symbol(ReactionRepository) is exported from a separate @Module, is that module imported within AppModule?
+#   @Module({
+#     imports: [ /* the Module containing Symbol(ReactionRepository) */ ]
+#   })
+# For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+#     at Injector.lookupComponentInParentModules [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:290:19[90m)[39m
+# [90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+#     at async resolveParam [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:140:38[90m)[39m
+#     at async Promise.all (index 0)
+#     at async Injector.resolveConstructorParams [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:169:27[90m)[39m
+#     at async Injector.loadInstance [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:75:13[90m)[39m
+#     at async Injector.loadController [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:94:9[90m)[39m
+#     at async [90m/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:68:13
+#     at async Promise.all (index 11)
+#     at async InstanceLoader.createInstancesOfControllers [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:67:9[90m)[39m {
+#   type: [32m'ReactionController'[39m,
+#   context: {
+#     index: [33m0[39m,
+#     dependencies: [
+#       [32mSymbol(ReactionRepository)[39m,
+#       [32mSymbol(MessageRepository)[39m,
+#       [32mSymbol(ServerMessageRepository)[39m,
+#       [32mSymbol(ServerMemberRepository)[39m,
+#       [32mSymbol(ChannelRepository)[39m,
+#       [32mSymbol(PermissionService)[39m,
+#       [32mSymbol(PresenceService)[39m,
+#       [32mSymbol(UserRepository)[39m,
+#       [32mSymbol(Logger)[39m
+#     ],
+#     name: [32mSymbol(ReactionRepository)[39m
+#   },
+#   metadata: {
+#     id: [32m'ec8b84420abf977cb388c'[39m
+#   },
+#   moduleRef: {
+#     id: [32m'902bbb66ceba1050f7f86'[39m
+#   }
+# }
+# Subtest: /home/neko/Serchat/backend/tests/integration/admin_servers.test.cjs
+not ok 1 - /home/neko/Serchat/backend/tests/integration/admin_servers.test.cjs
+  ---
+  duration_ms: 30845.48049
+  location: '/home/neko/Serchat/backend/tests/integration/admin_servers.test.cjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.2.3] injecting env (10) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+# [32m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+# [32m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMongooseModule dependencies initialized[39m[38;5;3m +26ms[39m
+# [32m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRepositoryModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mInfrastructureModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +4ms[39m
+# [32m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServicesModule dependencies initialized[39m[38;5;3m +2ms[39m
+# [32m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [31m[Nest] 347429  - [39m01/05/2026, 4:58:32 AM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mUnknownDependenciesException [Error]: Nest can't resolve dependencies of the ReactionController (?, Symbol(MessageRepository), Symbol(ServerMessageRepository), Symbol(ServerMemberRepository), Symbol(ChannelRepository), Symbol(PermissionService), Symbol(PresenceService), Symbol(UserRepository), Symbol(Logger)). Please make sure that the argument Symbol(ReactionRepository) at index [0] is available in the AppModule context.
+# Potential solutions:
+# - Is AppModule a valid NestJS module?
+# - If Symbol(ReactionRepository) is a provider, is it part of the current AppModule?
+# - If Symbol(ReactionRepository) is exported from a separate @Module, is that module imported within AppModule?
+#   @Module({
+#     imports: [ /* the Module containing Symbol(ReactionRepository) */ ]
+#   })
+# For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+#     at Injector.lookupComponentInParentModules [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:290:19[90m)[39m
+# [90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+#     at async resolveParam [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:140:38[90m)[39m
+#     at async Promise.all (index 0)
+#     at async Injector.resolveConstructorParams [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:169:27[90m)[39m
+#     at async Injector.loadInstance [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:75:13[90m)[39m
+#     at async Injector.loadController [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:94:9[90m)[39m
+#     at async [90m/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:68:13
+#     at async Promise.all (index 11)
+#     at async InstanceLoader.createInstancesOfControllers [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:67:9[90m)[39m {
+#   type: [32m'ReactionController'[39m,
+#   context: {
+#     index: [33m0[39m,
+#     dependencies: [
+#       [32mSymbol(ReactionRepository)[39m,
+#       [32mSymbol(MessageRepository)[39m,
+#       [32mSymbol(ServerMessageRepository)[39m,
+#       [32mSymbol(ServerMemberRepository)[39m,
+#       [32mSymbol(ChannelRepository)[39m,
+#       [32mSymbol(PermissionService)[39m,
+#       [32mSymbol(PresenceService)[39m,
+#       [32mSymbol(UserRepository)[39m,
+#       [32mSymbol(Logger)[39m
+#     ],
+#     name: [32mSymbol(ReactionRepository)[39m
+#   },
+#   metadata: {
+#     id: [32m'cd0e318cd283077b9ad6e'[39m
+#   },
+#   moduleRef: {
+#     id: [32m'50eeceb94bacbf83862c4'[39m
+#   }
+# }
+# Subtest: /home/neko/Serchat/backend/tests/integration/auth.test.cjs
+not ok 2 - /home/neko/Serchat/backend/tests/integration/auth.test.cjs
+  ---
+  duration_ms: 31067.848483
+  location: '/home/neko/Serchat/backend/tests/integration/auth.test.cjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.2.3] injecting env (10) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+# [32m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+# [32m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMongooseModule dependencies initialized[39m[38;5;3m +29ms[39m
+# [32m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRepositoryModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mInfrastructureModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +2ms[39m
+# [32m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServicesModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [32m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [31m[Nest] 347435  - [39m01/05/2026, 4:58:33 AM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mUnknownDependenciesException [Error]: Nest can't resolve dependencies of the ReactionController (?, Symbol(MessageRepository), Symbol(ServerMessageRepository), Symbol(ServerMemberRepository), Symbol(ChannelRepository), Symbol(PermissionService), Symbol(PresenceService), Symbol(UserRepository), Symbol(Logger)). Please make sure that the argument Symbol(ReactionRepository) at index [0] is available in the AppModule context.
+# Potential solutions:
+# - Is AppModule a valid NestJS module?
+# - If Symbol(ReactionRepository) is a provider, is it part of the current AppModule?
+# - If Symbol(ReactionRepository) is exported from a separate @Module, is that module imported within AppModule?
+#   @Module({
+#     imports: [ /* the Module containing Symbol(ReactionRepository) */ ]
+#   })
+# For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+#     at Injector.lookupComponentInParentModules [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:290:19[90m)[39m
+# [90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+#     at async resolveParam [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:140:38[90m)[39m
+#     at async Promise.all (index 0)
+#     at async Injector.resolveConstructorParams [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:169:27[90m)[39m
+#     at async Injector.loadInstance [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:75:13[90m)[39m
+#     at async Injector.loadController [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:94:9[90m)[39m
+#     at async [90m/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:68:13
+#     at async Promise.all (index 11)
+#     at async InstanceLoader.createInstancesOfControllers [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:67:9[90m)[39m {
+#   type: [32m'ReactionController'[39m,
+#   context: {
+#     index: [33m0[39m,
+#     dependencies: [
+#       [32mSymbol(ReactionRepository)[39m,
+#       [32mSymbol(MessageRepository)[39m,
+#       [32mSymbol(ServerMessageRepository)[39m,
+#       [32mSymbol(ServerMemberRepository)[39m,
+#       [32mSymbol(ChannelRepository)[39m,
+#       [32mSymbol(PermissionService)[39m,
+#       [32mSymbol(PresenceService)[39m,
+#       [32mSymbol(UserRepository)[39m,
+#       [32mSymbol(Logger)[39m
+#     ],
+#     name: [32mSymbol(ReactionRepository)[39m
+#   },
+#   metadata: {
+#     id: [32m'6747a927113908b6b0ec1'[39m
+#   },
+#   moduleRef: {
+#     id: [32m'38bfac886cd7f956adf9c'[39m
+#   }
+# }
+# Subtest: /home/neko/Serchat/backend/tests/integration/banner.test.cjs
+not ok 3 - /home/neko/Serchat/backend/tests/integration/banner.test.cjs
+  ---
+  duration_ms: 31476.815623
+  location: '/home/neko/Serchat/backend/tests/integration/banner.test.cjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.2.3] injecting env (10) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+# [32m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+# [32m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMongooseModule dependencies initialized[39m[38;5;3m +53ms[39m
+# [32m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRepositoryModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mInfrastructureModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +2ms[39m
+# [32m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServicesModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [32m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [31m[Nest] 347441  - [39m01/05/2026, 4:58:30 AM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mUnknownDependenciesException [Error]: Nest can't resolve dependencies of the ReactionController (?, Symbol(MessageRepository), Symbol(ServerMessageRepository), Symbol(ServerMemberRepository), Symbol(ChannelRepository), Symbol(PermissionService), Symbol(PresenceService), Symbol(UserRepository), Symbol(Logger)). Please make sure that the argument Symbol(ReactionRepository) at index [0] is available in the AppModule context.
+# Potential solutions:
+# - Is AppModule a valid NestJS module?
+# - If Symbol(ReactionRepository) is a provider, is it part of the current AppModule?
+# - If Symbol(ReactionRepository) is exported from a separate @Module, is that module imported within AppModule?
+#   @Module({
+#     imports: [ /* the Module containing Symbol(ReactionRepository) */ ]
+#   })
+# For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+#     at Injector.lookupComponentInParentModules [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:290:19[90m)[39m
+# [90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+#     at async resolveParam [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:140:38[90m)[39m
+#     at async Promise.all (index 0)
+#     at async Injector.resolveConstructorParams [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:169:27[90m)[39m
+#     at async Injector.loadInstance [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:75:13[90m)[39m
+#     at async Injector.loadController [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:94:9[90m)[39m
+#     at async [90m/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:68:13
+#     at async Promise.all (index 11)
+#     at async InstanceLoader.createInstancesOfControllers [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:67:9[90m)[39m {
+#   type: [32m'ReactionController'[39m,
+#   context: {
+#     index: [33m0[39m,
+#     dependencies: [
+#       [32mSymbol(ReactionRepository)[39m,
+#       [32mSymbol(MessageRepository)[39m,
+#       [32mSymbol(ServerMessageRepository)[39m,
+#       [32mSymbol(ServerMemberRepository)[39m,
+#       [32mSymbol(ChannelRepository)[39m,
+#       [32mSymbol(PermissionService)[39m,
+#       [32mSymbol(PresenceService)[39m,
+#       [32mSymbol(UserRepository)[39m,
+#       [32mSymbol(Logger)[39m
+#     ],
+#     name: [32mSymbol(ReactionRepository)[39m
+#   },
+#   metadata: {
+#     id: [32m'75d551a4303e428c03dfe'[39m
+#   },
+#   moduleRef: {
+#     id: [32m'6570bb181dda87218606c'[39m
+#   }
+# }
+# Subtest: /home/neko/Serchat/backend/tests/integration/file_compatibility.test.cjs
+not ok 4 - /home/neko/Serchat/backend/tests/integration/file_compatibility.test.cjs
+  ---
+  duration_ms: 28564.640365
+  location: '/home/neko/Serchat/backend/tests/integration/file_compatibility.test.cjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.2.3] injecting env (10) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+# [32m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+# [32m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMongooseModule dependencies initialized[39m[38;5;3m +26ms[39m
+# [32m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [32m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRepositoryModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mInfrastructureModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +2ms[39m
+# [32m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServicesModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [32m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [31m[Nest] 347447  - [39m01/05/2026, 4:58:32 AM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mUnknownDependenciesException [Error]: Nest can't resolve dependencies of the ReactionController (?, Symbol(MessageRepository), Symbol(ServerMessageRepository), Symbol(ServerMemberRepository), Symbol(ChannelRepository), Symbol(PermissionService), Symbol(PresenceService), Symbol(UserRepository), Symbol(Logger)). Please make sure that the argument Symbol(ReactionRepository) at index [0] is available in the AppModule context.
+# Potential solutions:
+# - Is AppModule a valid NestJS module?
+# - If Symbol(ReactionRepository) is a provider, is it part of the current AppModule?
+# - If Symbol(ReactionRepository) is exported from a separate @Module, is that module imported within AppModule?
+#   @Module({
+#     imports: [ /* the Module containing Symbol(ReactionRepository) */ ]
+#   })
+# For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+#     at Injector.lookupComponentInParentModules [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:290:19[90m)[39m
+# [90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+#     at async resolveParam [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:140:38[90m)[39m
+#     at async Promise.all (index 0)
+#     at async Injector.resolveConstructorParams [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:169:27[90m)[39m
+#     at async Injector.loadInstance [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:75:13[90m)[39m
+#     at async Injector.loadController [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:94:9[90m)[39m
+#     at async [90m/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:68:13
+#     at async Promise.all (index 11)
+#     at async InstanceLoader.createInstancesOfControllers [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:67:9[90m)[39m {
+#   type: [32m'ReactionController'[39m,
+#   context: {
+#     index: [33m0[39m,
+#     dependencies: [
+#       [32mSymbol(ReactionRepository)[39m,
+#       [32mSymbol(MessageRepository)[39m,
+#       [32mSymbol(ServerMessageRepository)[39m,
+#       [32mSymbol(ServerMemberRepository)[39m,
+#       [32mSymbol(ChannelRepository)[39m,
+#       [32mSymbol(PermissionService)[39m,
+#       [32mSymbol(PresenceService)[39m,
+#       [32mSymbol(UserRepository)[39m,
+#       [32mSymbol(Logger)[39m
+#     ],
+#     name: [32mSymbol(ReactionRepository)[39m
+#   },
+#   metadata: {
+#     id: [32m'b8b244e102f69efa5025f'[39m
+#   },
+#   moduleRef: {
+#     id: [32m'b0f7a8850fbf95131890b'[39m
+#   }
+# }
+# Subtest: /home/neko/Serchat/backend/tests/integration/reaction_permissions.test.cjs
+not ok 5 - /home/neko/Serchat/backend/tests/integration/reaction_permissions.test.cjs
+  ---
+  duration_ms: 31143.42823
+  location: '/home/neko/Serchat/backend/tests/integration/reaction_permissions.test.cjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.2.3] injecting env (10) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+# [32m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+# [32m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMongooseModule dependencies initialized[39m[38;5;3m +36ms[39m
+# [32m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRepositoryModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mInfrastructureModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [32m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +3ms[39m
+# [32m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServicesModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [32m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [31m[Nest] 347453  - [39m01/05/2026, 4:58:32 AM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mUnknownDependenciesException [Error]: Nest can't resolve dependencies of the ReactionController (?, Symbol(MessageRepository), Symbol(ServerMessageRepository), Symbol(ServerMemberRepository), Symbol(ChannelRepository), Symbol(PermissionService), Symbol(PresenceService), Symbol(UserRepository), Symbol(Logger)). Please make sure that the argument Symbol(ReactionRepository) at index [0] is available in the AppModule context.
+# Potential solutions:
+# - Is AppModule a valid NestJS module?
+# - If Symbol(ReactionRepository) is a provider, is it part of the current AppModule?
+# - If Symbol(ReactionRepository) is exported from a separate @Module, is that module imported within AppModule?
+#   @Module({
+#     imports: [ /* the Module containing Symbol(ReactionRepository) */ ]
+#   })
+# For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+#     at Injector.lookupComponentInParentModules [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:290:19[90m)[39m
+# [90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+#     at async resolveParam [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:140:38[90m)[39m
+#     at async Promise.all (index 0)
+#     at async Injector.resolveConstructorParams [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:169:27[90m)[39m
+#     at async Injector.loadInstance [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:75:13[90m)[39m
+#     at async Injector.loadController [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:94:9[90m)[39m
+#     at async [90m/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:68:13
+#     at async Promise.all (index 11)
+#     at async InstanceLoader.createInstancesOfControllers [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:67:9[90m)[39m {
+#   type: [32m'ReactionController'[39m,
+#   context: {
+#     index: [33m0[39m,
+#     dependencies: [
+#       [32mSymbol(ReactionRepository)[39m,
+#       [32mSymbol(MessageRepository)[39m,
+#       [32mSymbol(ServerMessageRepository)[39m,
+#       [32mSymbol(ServerMemberRepository)[39m,
+#       [32mSymbol(ChannelRepository)[39m,
+#       [32mSymbol(PermissionService)[39m,
+#       [32mSymbol(PresenceService)[39m,
+#       [32mSymbol(UserRepository)[39m,
+#       [32mSymbol(Logger)[39m
+#     ],
+#     name: [32mSymbol(ReactionRepository)[39m
+#   },
+#   metadata: {
+#     id: [32m'3fed55d5a44a55fff6e60'[39m
+#   },
+#   moduleRef: {
+#     id: [32m'287327908fbb364e537bf'[39m
+#   }
+# }
+# Subtest: /home/neko/Serchat/backend/tests/integration/reactions.test.cjs
+not ok 6 - /home/neko/Serchat/backend/tests/integration/reactions.test.cjs
+  ---
+  duration_ms: 30927.434059
+  location: '/home/neko/Serchat/backend/tests/integration/reactions.test.cjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.2.3] injecting env (10) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+# [32m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+# [32m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMongooseModule dependencies initialized[39m[38;5;3m +19ms[39m
+# [32m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRepositoryModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mInfrastructureModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [32m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServicesModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [32m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [31m[Nest] 347459  - [39m01/05/2026, 4:58:33 AM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mUnknownDependenciesException [Error]: Nest can't resolve dependencies of the ReactionController (?, Symbol(MessageRepository), Symbol(ServerMessageRepository), Symbol(ServerMemberRepository), Symbol(ChannelRepository), Symbol(PermissionService), Symbol(PresenceService), Symbol(UserRepository), Symbol(Logger)). Please make sure that the argument Symbol(ReactionRepository) at index [0] is available in the AppModule context.
+# Potential solutions:
+# - Is AppModule a valid NestJS module?
+# - If Symbol(ReactionRepository) is a provider, is it part of the current AppModule?
+# - If Symbol(ReactionRepository) is exported from a separate @Module, is that module imported within AppModule?
+#   @Module({
+#     imports: [ /* the Module containing Symbol(ReactionRepository) */ ]
+#   })
+# For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+#     at Injector.lookupComponentInParentModules [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:290:19[90m)[39m
+# [90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+#     at async resolveParam [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:140:38[90m)[39m
+#     at async Promise.all (index 0)
+#     at async Injector.resolveConstructorParams [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:169:27[90m)[39m
+#     at async Injector.loadInstance [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:75:13[90m)[39m
+#     at async Injector.loadController [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:94:9[90m)[39m
+#     at async [90m/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:68:13
+#     at async Promise.all (index 11)
+#     at async InstanceLoader.createInstancesOfControllers [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:67:9[90m)[39m {
+#   type: [32m'ReactionController'[39m,
+#   context: {
+#     index: [33m0[39m,
+#     dependencies: [
+#       [32mSymbol(ReactionRepository)[39m,
+#       [32mSymbol(MessageRepository)[39m,
+#       [32mSymbol(ServerMessageRepository)[39m,
+#       [32mSymbol(ServerMemberRepository)[39m,
+#       [32mSymbol(ChannelRepository)[39m,
+#       [32mSymbol(PermissionService)[39m,
+#       [32mSymbol(PresenceService)[39m,
+#       [32mSymbol(UserRepository)[39m,
+#       [32mSymbol(Logger)[39m
+#     ],
+#     name: [32mSymbol(ReactionRepository)[39m
+#   },
+#   metadata: {
+#     id: [32m'54bdd5f6a73f704939768'[39m
+#   },
+#   moduleRef: {
+#     id: [32m'11bfe185dc50799df2eca'[39m
+#   }
+# }
+# Subtest: /home/neko/Serchat/backend/tests/integration/server_invites.test.cjs
+not ok 7 - /home/neko/Serchat/backend/tests/integration/server_invites.test.cjs
+  ---
+  duration_ms: 31968.206838
+  location: '/home/neko/Serchat/backend/tests/integration/server_invites.test.cjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.2.3] injecting env (10) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+# [32m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+# [32m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMongooseModule dependencies initialized[39m[38;5;3m +57ms[39m
+# [32m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRepositoryModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mInfrastructureModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +3ms[39m
+# [32m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServicesModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+# [32m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +1ms[39m
+# [31m[Nest] 347460  - [39m01/05/2026, 4:58:32 AM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mUnknownDependenciesException [Error]: Nest can't resolve dependencies of the ReactionController (?, Symbol(MessageRepository), Symbol(ServerMessageRepository), Symbol(ServerMemberRepository), Symbol(ChannelRepository), Symbol(PermissionService), Symbol(PresenceService), Symbol(UserRepository), Symbol(Logger)). Please make sure that the argument Symbol(ReactionRepository) at index [0] is available in the AppModule context.
+# Potential solutions:
+# - Is AppModule a valid NestJS module?
+# - If Symbol(ReactionRepository) is a provider, is it part of the current AppModule?
+# - If Symbol(ReactionRepository) is exported from a separate @Module, is that module imported within AppModule?
+#   @Module({
+#     imports: [ /* the Module containing Symbol(ReactionRepository) */ ]
+#   })
+# For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+#     at Injector.lookupComponentInParentModules [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:290:19[90m)[39m
+# [90m    at processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+#     at async resolveParam [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:140:38[90m)[39m
+#     at async Promise.all (index 0)
+#     at async Injector.resolveConstructorParams [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:169:27[90m)[39m
+#     at async Injector.loadInstance [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:75:13[90m)[39m
+#     at async Injector.loadController [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/injector.js:94:9[90m)[39m
+#     at async [90m/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:68:13
+#     at async Promise.all (index 11)
+#     at async InstanceLoader.createInstancesOfControllers [90m(/home/neko/Serchat/backend/[39mnode_modules/[4m@nestjs[24m/core/injector/instance-loader.js:67:9[90m)[39m {
+#   type: [32m'ReactionController'[39m,
+#   context: {
+#     index: [33m0[39m,
+#     dependencies: [
+#       [32mSymbol(ReactionRepository)[39m,
+#       [32mSymbol(MessageRepository)[39m,
+#       [32mSymbol(ServerMessageRepository)[39m,
+#       [32mSymbol(ServerMemberRepository)[39m,
+#       [32mSymbol(ChannelRepository)[39m,
+#       [32mSymbol(PermissionService)[39m,
+#       [32mSymbol(PresenceService)[39m,
+#       [32mSymbol(UserRepository)[39m,
+#       [32mSymbol(Logger)[39m
+#     ],
+#     name: [32mSymbol(ReactionRepository)[39m
+#   },
+#   metadata: {
+#     id: [32m'a8a3ba1899495d4ba9214'[39m
+#   },
+#   moduleRef: {
+#     id: [32m'38bb273929946ad709ea3'[39m
+#   }
+# }
+# Subtest: /home/neko/Serchat/backend/tests/integration/tsoa_endpoints.test.cjs
+not ok 8 - /home/neko/Serchat/backend/tests/integration/tsoa_endpoints.test.cjs
+  ---
+  duration_ms: 30730.622197
+  location: '/home/neko/Serchat/backend/tests/integration/tsoa_endpoints.test.cjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.2.3] injecting env (12) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+# Subtest: AdminController - resetUserProfile resets banner
+ok 9 - AdminController - resetUserProfile resets banner
+  ---
+  duration_ms: 2.921648
+  ...
+# Subtest: AuthService - login with valid username credentials
+ok 10 - AuthService - login with valid username credentials
+  ---
+  duration_ms: 2.506904
+  ...
+# Subtest: AuthService - login with valid email credentials
+ok 11 - AuthService - login with valid email credentials
+  ---
+  duration_ms: 0.320601
+  ...
+# Subtest: AuthService - login with invalid password
+ok 12 - AuthService - login with invalid password
+  ---
+  duration_ms: 0.31163
+  ...
+# Subtest: AuthService - login with non-existent user
+ok 13 - AuthService - login with non-existent user
+  ---
+  duration_ms: 0.231608
+  ...
+# Subtest: AuthService - login with soft-deleted account
+ok 14 - AuthService - login with soft-deleted account
+  ---
+  duration_ms: 0.348921
+  ...
+# Subtest: AuthService - login with banned account (permanent ban)
+ok 15 - AuthService - login with banned account (permanent ban)
+  ---
+  duration_ms: 0.412724
+  ...
+# Subtest: AuthService - login with banned account (temporary ban)
+ok 16 - AuthService - login with banned account (temporary ban)
+  ---
+  duration_ms: 0.493857
+  ...
+# Subtest: AuthService - login calls ban expiration check
+ok 17 - AuthService - login calls ban expiration check
+  ---
+  duration_ms: 0.378583
+  ...
+# Subtest: AuthService - login without active ban succeeds
+ok 18 - AuthService - login without active ban succeeds
+  ---
+  duration_ms: 0.438574
+  ...
+# Subtest: AuthService - login calls repository methods in correct order
+ok 19 - AuthService - login calls repository methods in correct order
+  ---
+  duration_ms: 1.095076
+  ...
+# Subtest: CategoryRepository - create category
+ok 20 - CategoryRepository - create category
+  ---
+  duration_ms: 2.435912
+  ...
+# Subtest: CategoryRepository - update category
+ok 21 - CategoryRepository - update category
+  ---
+  duration_ms: 0.29436
+  ...
+# Subtest: CategoryRepository - delete category
+ok 22 - CategoryRepository - delete category
+  ---
+  duration_ms: 0.229548
+  ...
+# Subtest: CategoryRepository - find categories by server ID
+ok 23 - CategoryRepository - find categories by server ID
+  ---
+  duration_ms: 0.415384
+  ...
+# Subtest: CategoryRepository - find max position
+ok 24 - CategoryRepository - find max position
+  ---
+  duration_ms: 0.272489
+  ...
+# Subtest: CategoryRepository - update positions (bulk)
+ok 25 - CategoryRepository - update positions (bulk)
+  ---
+  duration_ms: 0.250479
+  ...
+# Subtest: ChannelRepository - create channel
+ok 26 - ChannelRepository - create channel
+  ---
+  duration_ms: 8.485545
+  ...
+# Subtest: ChannelRepository - update channel
+ok 27 - ChannelRepository - update channel
+  ---
+  duration_ms: 16.508914
+  ...
+# Subtest: ChannelRepository - delete channel
+ok 28 - ChannelRepository - delete channel
+  ---
+  duration_ms: 0.30586
+  ...
+# Subtest: ChannelRepository - delete channels by server ID
+ok 29 - ChannelRepository - delete channels by server ID
+  ---
+  duration_ms: 0.263669
+  ...
+# Subtest: ChannelRepository - find channels by server ID
+ok 30 - ChannelRepository - find channels by server ID
+  ---
+  duration_ms: 0.323041
+  ...
+# Subtest: ChannelRepository - find max position
+ok 31 - ChannelRepository - find max position
+  ---
+  duration_ms: 0.207297
+  ...
+# Subtest: DmUnreadRepository - increment unread count
+ok 32 - DmUnreadRepository - increment unread count
+  ---
+  duration_ms: 2.68369
+  ...
+# Subtest: DmUnreadRepository - reset unread count
+ok 33 - DmUnreadRepository - reset unread count
+  ---
+  duration_ms: 0.269839
+  ...
+# Subtest: DmUnreadRepository - find unread counts for user
+ok 34 - DmUnreadRepository - find unread counts for user
+  ---
+  duration_ms: 0.339881
+  ...
+# Subtest: DmUnreadRepository - find by user and peer
+ok 35 - DmUnreadRepository - find by user and peer
+  ---
+  duration_ms: 0.314191
+  ...
+# Subtest: DmUnreadRepository - find by user returns empty array when no unreads
+ok 36 - DmUnreadRepository - find by user returns empty array when no unreads
+  ---
+  duration_ms: 0.576509
+  ...
+# Subtest: DmUnreadRepository - find by user and peer returns null when no unread
+ok 37 - DmUnreadRepository - find by user and peer returns null when no unread
+  ---
+  duration_ms: 0.267489
+  ...
+# Subtest: DmUnreadRepository - multiple increment calls tracked correctly
+ok 38 - DmUnreadRepository - multiple increment calls tracked correctly
+  ---
+  duration_ms: 0.380113
+  ...
+# Subtest: EmojiRepository - create emoji
+ok 39 - EmojiRepository - create emoji
+  ---
+  duration_ms: 2.746702
+  ...
+# Subtest: EmojiRepository - delete emoji
+ok 40 - EmojiRepository - delete emoji
+  ---
+  duration_ms: 0.729655
+  ...
+# Subtest: EmojiRepository - find global emojis
+ok 41 - EmojiRepository - find global emojis
+  ---
+  duration_ms: 0.333201
+  ...
+# Subtest: EmojiRepository - find emojis by server ID
+ok 42 - EmojiRepository - find emojis by server ID
+  ---
+  duration_ms: 0.350932
+  ...
+# Subtest: EmojiRepository - find emoji by name
+ok 43 - EmojiRepository - find emoji by name
+  ---
+  duration_ms: 0.412104
+  ...
+# Subtest: FriendshipRepository - create friendship
+ok 44 - FriendshipRepository - create friendship
+  ---
+  duration_ms: 6.015422
+  ...
+# Subtest: FriendshipRepository - remove friendship (bidirectional)
+ok 45 - FriendshipRepository - remove friendship (bidirectional)
+  ---
+  duration_ms: 0.322821
+  ...
+# Subtest: FriendshipRepository - check if users are friends (returns true)
+ok 46 - FriendshipRepository - check if users are friends (returns true)
+  ---
+  duration_ms: 0.557919
+  ...
+# Subtest: FriendshipRepository - check if users are friends (returns false)
+ok 47 - FriendshipRepository - check if users are friends (returns false)
+  ---
+  duration_ms: 0.283129
+  ...
+# Subtest: FriendshipRepository - find friendships by user ID
+ok 48 - FriendshipRepository - find friendships by user ID
+  ---
+  duration_ms: 0.3104
+  ...
+# Subtest: FriendshipRepository - create friend request
+ok 49 - FriendshipRepository - create friend request
+  ---
+  duration_ms: 0.314321
+  ...
+# Subtest: FriendshipRepository - accept friend request
+ok 50 - FriendshipRepository - accept friend request
+  ---
+  duration_ms: 0.335041
+  ...
+# Subtest: FriendshipRepository - reject friend request
+ok 51 - FriendshipRepository - reject friend request
+  ---
+  duration_ms: 0.278069
+  ...
+# Subtest: FriendshipRepository - find pending requests for user
+ok 52 - FriendshipRepository - find pending requests for user
+  ---
+  duration_ms: 0.476466
+  ...
+# Subtest: FriendshipRepository - find existing request between users
+ok 53 - FriendshipRepository - find existing request between users
+  ---
+  duration_ms: 0.387463
+  ...
+# Subtest: FriendshipRepository - find request by ID
+ok 54 - FriendshipRepository - find request by ID
+  ---
+  duration_ms: 0.257678
+  ...
+# Subtest: FriendshipRepository - find request between users
+ok 55 - FriendshipRepository - find request between users
+  ---
+  duration_ms: 0.574809
+  ...
+# Subtest: FriendshipRepository - find pending requests returns empty array when none
+ok 56 - FriendshipRepository - find pending requests returns empty array when none
+  ---
+  duration_ms: 0.308811
+  ...
+# Subtest: FriendshipRepository - find existing request returns null when not found
+ok 57 - FriendshipRepository - find existing request returns null when not found
+  ---
+  duration_ms: 0.367792
+  ...
+# Subtest: FriendshipRepository - find friendships returns empty array when user has no friends
+ok 58 - FriendshipRepository - find friendships returns empty array when user has no friends
+  ---
+  duration_ms: 0.265929
+  ...
+# Subtest: InviteRepository - create invite
+ok 59 - InviteRepository - create invite
+  ---
+  duration_ms: 2.893747
+  ...
+# Subtest: InviteRepository - delete invite
+ok 60 - InviteRepository - delete invite
+  ---
+  duration_ms: 0.281479
+  ...
+# Subtest: InviteRepository - delete invites by server ID
+ok 61 - InviteRepository - delete invites by server ID
+  ---
+  duration_ms: 0.27663
+  ...
+# Subtest: InviteRepository - find invite by code
+ok 62 - InviteRepository - find invite by code
+  ---
+  duration_ms: 0.394083
+  ...
+# Subtest: InviteRepository - find invites by server ID
+ok 63 - InviteRepository - find invites by server ID
+  ---
+  duration_ms: 0.30009
+  ...
+# Subtest: InviteRepository - increment uses
+ok 64 - InviteRepository - increment uses
+  ---
+  duration_ms: 0.234538
+  ...
+# Subtest: InviteRepository - check if expired
+ok 65 - InviteRepository - check if expired
+  ---
+  duration_ms: 0.339862
+  ...
+# Subtest: InviteRepository - check if uses exceeded
+ok 66 - InviteRepository - check if uses exceeded
+  ---
+  duration_ms: 0.264559
+  ...
+# Subtest: MessageRepository - create message without replyToId
+ok 67 - MessageRepository - create message without replyToId
+  ---
+  duration_ms: 2.123741
+  ...
+# Subtest: MessageRepository - create message with replyToId
+ok 68 - MessageRepository - create message with replyToId
+  ---
+  duration_ms: 0.474115
+  ...
+# Subtest: MessageRepository - find messages by conversation with pagination
+ok 69 - MessageRepository - find messages by conversation with pagination
+  ---
+  duration_ms: 0.329732
+  ...
+# Subtest: MessageRepository - find messages by conversation with before parameter
+ok 70 - MessageRepository - find messages by conversation with before parameter
+  ---
+  duration_ms: 0.621991
+  ...
+# Subtest: MessageRepository - find message by ID
+ok 71 - MessageRepository - find message by ID
+  ---
+  duration_ms: 0.263649
+  ...
+# Subtest: MessageRepository - update message text
+ok 72 - MessageRepository - update message text
+  ---
+  duration_ms: 0.273819
+  ...
+# Subtest: MessageRepository - delete message
+ok 73 - MessageRepository - delete message
+  ---
+  duration_ms: 3.657783
+  ...
+# Subtest: MessageRepository - find by conversation returns empty array when no messages
+ok 74 - MessageRepository - find by conversation returns empty array when no messages
+  ---
+  duration_ms: 0.395173
+  ...
+# Subtest: MessageRepository - find by ID returns null when message not found
+ok 75 - MessageRepository - find by ID returns null when message not found
+  ---
+  duration_ms: 0.30691
+  ...
+# Subtest: PermissionService - owner has all permissions
+ok 76 - PermissionService - owner has all permissions
+  ---
+  duration_ms: 2.99838
+  ...
+# Subtest: PermissionService - administrator role has all permissions
+ok 77 - PermissionService - administrator role has all permissions
+  ---
+  duration_ms: 0.735865
+  ...
+# Subtest: PermissionService - check specific permission with role
+ok 78 - PermissionService - check specific permission with role
+  ---
+  duration_ms: 0.429215
+  ...
+# Subtest: PermissionService - higher position role overrides lower position
+ok 79 - PermissionService - higher position role overrides lower position
+  ---
+  duration_ms: 0.461685
+  ...
+# Subtest: PermissionService - get highest role position for owner
+ok 80 - PermissionService - get highest role position for owner
+  ---
+  duration_ms: 0.365333
+  ...
+# Subtest: PermissionService - get highest role position for member
+ok 81 - PermissionService - get highest role position for member
+  ---
+  duration_ms: 0.392784
+  ...
+# Subtest: PermissionService - non-member has no permissions
+ok 82 - PermissionService - non-member has no permissions
+  ---
+  duration_ms: 0.29206
+  ...
+# Subtest: Security - enforce sendMessages permission with @everyone channel overrides
+ok 83 - Security - enforce sendMessages permission with @everyone channel overrides
+  ---
+  duration_ms: 3.308641
+  ...
+# Subtest: Security - enforce sendMessages permission with role overrides
+ok 84 - Security - enforce sendMessages permission with role overrides
+  ---
+  duration_ms: 4.635945
+  ...
+# Subtest: PresenceService - track socket connection
+ok 85 - PresenceService - track socket connection
+  ---
+  duration_ms: 1.743219
+  ...
+# Subtest: PresenceService - track socket disconnection
+ok 86 - PresenceService - track socket disconnection
+  ---
+  duration_ms: 0.248968
+  ...
+# Subtest: PresenceService - get online users
+ok 87 - PresenceService - get online users
+  ---
+  duration_ms: 0.211797
+  ...
+# Subtest: PresenceService - get user sockets
+ok 88 - PresenceService - get user sockets
+  ---
+  duration_ms: 0.189337
+  ...
+# Subtest: PresenceService - check if user is online
+ok 89 - PresenceService - check if user is online
+  ---
+  duration_ms: 0.196567
+  ...
+# [dotenv@17.2.3] injecting env (12) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+# Subtest: ProfileController - uploadBanner calls repository and presence service
+ok 90 - ProfileController - uploadBanner calls repository and presence service
+  ---
+  duration_ms: 4.745859
+  ...
+# [dotenv@17.2.3] injecting env (12) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+# Subtest: ProfileController - uploadProfilePicture calls repository and emits event
+ok 91 - ProfileController - uploadProfilePicture calls repository and emits event
+  ---
+  duration_ms: 3.689293
+  ...
+# Subtest: RoleRepository - create role
+ok 92 - RoleRepository - create role
+  ---
+  duration_ms: 4.744579
+  ...
+# Subtest: RoleRepository - update role
+ok 93 - RoleRepository - update role
+  ---
+  duration_ms: 0.418254
+  ...
+# Subtest: RoleRepository - delete role
+ok 94 - RoleRepository - delete role
+  ---
+  duration_ms: 0.240228
+  ...
+# Subtest: RoleRepository - delete roles by server ID
+ok 95 - RoleRepository - delete roles by server ID
+  ---
+  duration_ms: 0.222508
+  ...
+# Subtest: RoleRepository - find roles by server ID
+ok 96 - RoleRepository - find roles by server ID
+  ---
+  duration_ms: 0.29081
+  ...
+# Subtest: RoleRepository - update positions (bulk reorder)
+ok 97 - RoleRepository - update positions (bulk reorder)
+  ---
+  duration_ms: 0.244818
+  ...
+# Subtest: ServerMemberRepository - create member
+ok 98 - ServerMemberRepository - create member
+  ---
+  duration_ms: 2.589117
+  ...
+# Subtest: ServerMemberRepository - delete member
+ok 99 - ServerMemberRepository - delete member
+  ---
+  duration_ms: 0.402634
+  ...
+# Subtest: ServerMemberRepository - delete members by server ID
+ok 100 - ServerMemberRepository - delete members by server ID
+  ---
+  duration_ms: 0.339032
+  ...
+# Subtest: ServerMemberRepository - find member by server and user
+ok 101 - ServerMemberRepository - find member by server and user
+  ---
+  duration_ms: 0.422724
+  ...
+# Subtest: ServerMemberRepository - find members by user ID
+ok 102 - ServerMemberRepository - find members by user ID
+  ---
+  duration_ms: 0.322401
+  ...
+# Subtest: ServerMemberRepository - find members by server ID
+ok 103 - ServerMemberRepository - find members by server ID
+  ---
+  duration_ms: 0.269419
+  ...
+# Subtest: ServerMemberRepository - update member roles
+ok 104 - ServerMemberRepository - update member roles
+  ---
+  duration_ms: 0.31593
+  ...
+# Subtest: ServerMessageRepository - create message
+ok 105 - ServerMessageRepository - create message
+  ---
+  duration_ms: 6.618171
+  ...
+# Subtest: ServerMessageRepository - update message
+ok 106 - ServerMessageRepository - update message
+  ---
+  duration_ms: 0.57812
+  ...
+# Subtest: ServerMessageRepository - delete message
+ok 107 - ServerMessageRepository - delete message
+  ---
+  duration_ms: 0.349331
+  ...
+# Subtest: ServerMessageRepository - delete by channel ID
+ok 108 - ServerMessageRepository - delete by channel ID
+  ---
+  duration_ms: 0.343021
+  ...
+# Subtest: ServerMessageRepository - delete by server ID
+ok 109 - ServerMessageRepository - delete by server ID
+  ---
+  duration_ms: 5.581247
+  ...
+# Subtest: ServerMessageRepository - find messages by channel
+ok 110 - ServerMessageRepository - find messages by channel
+  ---
+  duration_ms: 0.503557
+  ...
+# Subtest: ServerMessageRepository - find message by ID
+ok 111 - ServerMessageRepository - find message by ID
+  ---
+  duration_ms: 0.293099
+  ...
+# Subtest: ServerRepository - create server
+ok 112 - ServerRepository - create server
+  ---
+  duration_ms: 2.570686
+  ...
+# Subtest: ServerRepository - update server name
+ok 113 - ServerRepository - update server name
+  ---
+  duration_ms: 0.342622
+  ...
+# Subtest: ServerRepository - update server icon and banner
+ok 114 - ServerRepository - update server icon and banner
+  ---
+  duration_ms: 0.281109
+  ...
+# Subtest: ServerRepository - update server default role
+ok 115 - ServerRepository - update server default role
+  ---
+  duration_ms: 0.358632
+  ...
+# Subtest: ServerRepository - delete server
+ok 116 - ServerRepository - delete server
+  ---
+  duration_ms: 0.351742
+  ...
+# Subtest: ServerRepository - find server by ID
+ok 117 - ServerRepository - find server by ID
+  ---
+  duration_ms: 0.259508
+  ...
+# Subtest: ServerRepository - find servers by IDs (bulk)
+ok 118 - ServerRepository - find servers by IDs (bulk)
+  ---
+  duration_ms: 0.388113
+  ...
+# Subtest: ServerRepository - find servers by owner ID
+ok 119 - ServerRepository - find servers by owner ID
+  ---
+  duration_ms: 0.419274
+  ...
+# Subtest: ServerRepository - clear default role
+ok 120 - ServerRepository - clear default role
+  ---
+  duration_ms: 6.57244
+  ...
+# Subtest: ServerRepository - find by ID returns null when not found
+ok 121 - ServerRepository - find by ID returns null when not found
+  ---
+  duration_ms: 0.455505
+  ...
+# Subtest: ServerRepository - find by IDs returns empty array when none found
+ok 122 - ServerRepository - find by IDs returns empty array when none found
+  ---
+  duration_ms: 0.240038
+  ...
+# Subtest: WebhookRepository - create webhook
+ok 123 - WebhookRepository - create webhook
+  ---
+  duration_ms: 2.619677
+  ...
+# Subtest: WebhookRepository - delete webhook
+ok 124 - WebhookRepository - delete webhook
+  ---
+  duration_ms: 0.265499
+  ...
+# Subtest: WebhookRepository - find webhook by token
+ok 125 - WebhookRepository - find webhook by token
+  ---
+  duration_ms: 0.730525
+  ...
+# Subtest: WebhookRepository - find webhooks by channel
+ok 126 - WebhookRepository - find webhooks by channel
+  ---
+  duration_ms: 0.321321
+  ...
+# Subtest: WebhookRepository - find webhooks by server
+ok 127 - WebhookRepository - find webhooks by server
+  ---
+  duration_ms: 0.308081
+  ...
+# [dotenv@17.2.3] injecting env (12) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+# 2026-01-05T03:58:31.862Z [33mwarn[39m: Token verification failed
+# 2026-01-05T03:58:31.864Z [33mwarn[39m: Token verification failed
+# 2026-01-05T03:58:31.873Z [33mwarn[39m: Token verification failed
+# Subtest: JWT Middleware - valid token passes authentication
+ok 128 - JWT Middleware - valid token passes authentication
+  ---
+  duration_ms: 21.961322
+  ...
+# Subtest: JWT Middleware - invalid token returns 401 for API requests
+ok 129 - JWT Middleware - invalid token returns 401 for API requests
+  ---
+  duration_ms: 5.71556
+  ...
+# Subtest: JWT Middleware - invalid token redirects for web requests
+ok 130 - JWT Middleware - invalid token redirects for web requests
+  ---
+  duration_ms: 3.90107
+  ...
+# Subtest: JWT Middleware - missing token returns 401 for API requests
+ok 131 - JWT Middleware - missing token returns 401 for API requests
+  ---
+  duration_ms: 0.213397
+  ...
+# Subtest: JWT Middleware - missing token redirects for web requests
+ok 132 - JWT Middleware - missing token redirects for web requests
+  ---
+  duration_ms: 0.171136
+  ...
+# Subtest: JWT Middleware - expired token returns 401
+ok 133 - JWT Middleware - expired token returns 401
+  ---
+  duration_ms: 5.609667
+  ...
+# Subtest: JWT Middleware - token with wrong version is rejected
+ok 134 - JWT Middleware - token with wrong version is rejected
+  ---
+  duration_ms: 1.841711
+  ...
+# Subtest: JWT Middleware - deleted user token is rejected
+ok 135 - JWT Middleware - deleted user token is rejected
+  ---
+  duration_ms: 4.858422
+  ...
+# Subtest: JWT Middleware - non-existent user token is rejected
+ok 136 - JWT Middleware - non-existent user token is rejected
+  ---
+  duration_ms: 1.888143
+  ...
+# Subtest: JWT Middleware - banned user token returns ban info
+ok 137 - JWT Middleware - banned user token returns ban info
+  ---
+  duration_ms: 5.432361
+  ...
+# Subtest: JWT Middleware - token without Bearer prefix is rejected
+ok 138 - JWT Middleware - token without Bearer prefix is rejected
+  ---
+  duration_ms: 1.002443
+  ...
+# Subtest: JWT Middleware - malformed authorization header is rejected
+ok 139 - JWT Middleware - malformed authorization header is rejected
+  ---
+  duration_ms: 0.218397
+  ...
+# [dotenv@17.2.3] injecting env (12) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+# (node:348137) [MONGOOSE] Warning: Duplicate schema index on {"token":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Metrics Middleware - middleware is a function
+ok 140 - Metrics Middleware - middleware is a function
+  ---
+  duration_ms: 0.90842
+  ...
+# Subtest: Metrics Middleware - createMetricsMiddleware returns middleware
+ok 141 - Metrics Middleware - createMetricsMiddleware returns middleware
+  ---
+  duration_ms: 0.144145
+  ...
+# Subtest: Metrics Middleware - calls next immediately
+ok 142 - Metrics Middleware - calls next immediately
+  ---
+  duration_ms: 0.247458
+  ...
+# Subtest: Metrics Middleware - wraps res.end function
+ok 143 - Metrics Middleware - wraps res.end function
+  ---
+  duration_ms: 0.122784
+  ...
+# Subtest: Metrics Middleware - handles errors gracefully with logger
+ok 144 - Metrics Middleware - handles errors gracefully with logger
+  ---
+  duration_ms: 0.163835
+  ...
+# Subtest: Metrics Middleware - works without logger (fallback)
+ok 145 - Metrics Middleware - works without logger (fallback)
+  ---
+  duration_ms: 0.104614
+  ...
+# Subtest: Rate Limiting - loginLimiter has correct configuration
+ok 146 - Rate Limiting - loginLimiter has correct configuration
+  ---
+  duration_ms: 1.640115
+  ...
+# Subtest: Rate Limiting - registrationLimiter has correct configuration
+ok 147 - Rate Limiting - registrationLimiter has correct configuration
+  ---
+  duration_ms: 0.178886
+  ...
+# Subtest: Rate Limiting - sensitiveOperationLimiter has correct configuration
+ok 148 - Rate Limiting - sensitiveOperationLimiter has correct configuration
+  ---
+  duration_ms: 0.148035
+  ...
+# Subtest: Rate Limiting - limiters are distinct middlewares
+ok 149 - Rate Limiting - limiters are distinct middlewares
+  ---
+  duration_ms: 2.589297
+  ...
+# Subtest: Validation Middleware - valid body passes
+ok 150 - Validation Middleware - valid body passes
+  ---
+  duration_ms: 4.738498
+  ...
+# Subtest: Validation Middleware - invalid body returns 400
+ok 151 - Validation Middleware - invalid body returns 400
+  ---
+  duration_ms: 2.477872
+  ...
+# Subtest: Validation Middleware - invalid query returns 400
+ok 152 - Validation Middleware - invalid query returns 400
+  ---
+  duration_ms: 1.102907
+  ...
+# Subtest: Validation Middleware - invalid params returns 400
+ok 153 - Validation Middleware - invalid params returns 400
+  ---
+  duration_ms: 0.794916
+  ...
+# Subtest: Validation Middleware - valid request with multiple schemas
+ok 154 - Validation Middleware - valid request with multiple schemas
+  ---
+  duration_ms: 1.059305
+  ...
+# Subtest: Validation Middleware - Zod transforms data correctly
+ok 155 - Validation Middleware - Zod transforms data correctly
+  ---
+  duration_ms: 1.820621
+  ...
+# Subtest: Validation Middleware - missing required field
+ok 156 - Validation Middleware - missing required field
+  ---
+  duration_ms: 0.672992
+  ...
+1..156
+# tests 156
+# suites 0
+# pass 148
+# fail 8
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 34319.013114

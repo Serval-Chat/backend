@@ -13,6 +13,12 @@ import { MongooseCategoryRepository } from '@/infrastructure/repositories/Mongoo
 import { MongooseChannelRepository } from '@/infrastructure/repositories/MongooseChannelRepository';
 import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePingRepository';
 import { MongooseEmojiRepository } from '@/infrastructure/repositories/MongooseEmojiRepository';
+import { MongooseReactionRepository } from '@/infrastructure/repositories/MongooseReactionRepository';
+import { MongooseServerMessageRepository } from '@/infrastructure/repositories/MongooseServerMessageRepository';
+import { MongooseInviteRepository } from '@/infrastructure/repositories/MongooseInviteRepository';
+import { MongooseServerBanRepository } from '@/infrastructure/repositories/MongooseServerBanRepository';
+import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
+import { MongooseWebhookRepository } from '@/infrastructure/repositories/MongooseWebhookRepository';
 
 @Global()
 @Module({
@@ -69,6 +75,30 @@ import { MongooseEmojiRepository } from '@/infrastructure/repositories/MongooseE
             provide: TYPES.EmojiRepository,
             useClass: MongooseEmojiRepository,
         },
+        {
+            provide: TYPES.ReactionRepository,
+            useClass: MongooseReactionRepository,
+        },
+        {
+            provide: TYPES.ServerMessageRepository,
+            useClass: MongooseServerMessageRepository,
+        },
+        {
+            provide: TYPES.InviteRepository,
+            useClass: MongooseInviteRepository,
+        },
+        {
+            provide: TYPES.ServerBanRepository,
+            useClass: MongooseServerBanRepository,
+        },
+        {
+            provide: TYPES.ServerChannelReadRepository,
+            useClass: MongooseServerChannelReadRepository,
+        },
+        {
+            provide: TYPES.WebhookRepository,
+            useClass: MongooseWebhookRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -84,6 +114,12 @@ import { MongooseEmojiRepository } from '@/infrastructure/repositories/MongooseE
         TYPES.ChannelRepository,
         TYPES.PingRepository,
         TYPES.EmojiRepository,
+        TYPES.ReactionRepository,
+        TYPES.ServerMessageRepository,
+        TYPES.InviteRepository,
+        TYPES.ServerBanRepository,
+        TYPES.ServerChannelReadRepository,
+        TYPES.WebhookRepository,
     ],
 })
 export class RepositoryModule { }

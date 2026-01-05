@@ -20,6 +20,9 @@ import { FileProxyController } from './controllers/FileProxyController';
 import { FriendshipController } from './controllers/FriendshipController';
 import { MetricsController } from './controllers/MetricsController';
 import { ProfileController } from './controllers/ProfileController';
+import { ReactionController } from './controllers/ReactionController';
+import { ServerChannelController } from './controllers/ServerChannelController';
+import { ServerController } from './controllers/ServerController';
 
 @Module({
     imports: [
@@ -45,6 +48,9 @@ import { ProfileController } from './controllers/ProfileController';
         FriendshipController,
         MetricsController,
         ProfileController,
+        ReactionController,
+        ServerChannelController,
+        ServerController,
     ],
     providers: [
         {
