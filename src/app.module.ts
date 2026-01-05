@@ -18,6 +18,8 @@ import { FileController } from './controllers/FileController';
 import { FileCompatibilityController } from './controllers/FileCompatibilityController';
 import { FileProxyController } from './controllers/FileProxyController';
 import { FriendshipController } from './controllers/FriendshipController';
+import { MetricsController } from './controllers/MetricsController';
+import { ProfileController } from './controllers/ProfileController';
 
 @Module({
     imports: [
@@ -41,6 +43,8 @@ import { FriendshipController } from './controllers/FriendshipController';
         FileCompatibilityController,
         FileProxyController,
         FriendshipController,
+        MetricsController,
+        ProfileController,
     ],
     providers: [
         {

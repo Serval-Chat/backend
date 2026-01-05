@@ -4,6 +4,7 @@ import { AuthService } from '@/services/AuthService';
 import { PermissionService } from '@/services/PermissionService';
 import { PresenceService } from '@/realtime/services/PresenceService';
 import { PingService } from '@/services/PingService';
+import { StatusService } from '@/realtime/services/StatusService';
 
 @Global()
 @Module({
@@ -24,7 +25,11 @@ import { PingService } from '@/services/PingService';
             provide: TYPES.PingService,
             useClass: PingService,
         },
+        {
+            provide: TYPES.StatusService,
+            useClass: StatusService,
+        },
     ],
-    exports: [TYPES.AuthService, TYPES.PermissionService, TYPES.PresenceService, TYPES.PingService],
+    exports: [TYPES.AuthService, TYPES.PermissionService, TYPES.PresenceService, TYPES.PingService, TYPES.StatusService],
 })
 export class ServicesModule { }

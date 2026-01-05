@@ -2,204 +2,149 @@ import {
     Controller,
     Get,
     Patch,
-    Route,
-    Body,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
     Post,
     Delete,
+    Body,
+    Param,
+    Req,
+    UseGuards,
+    UseInterceptors,
     UploadedFile,
-} from 'tsoa';
+    Res,
+    Inject,
+    HttpCode,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Request, Response } from 'express';
+import {
+    UserProfile,
+    BadgeResponse,
+    BioUpdate,
+    PronounsUpdate,
+    DisplayNameUpdate,
+    UpdateStatusRequest,
+    BulkStatusRequest,
+    UpdateStyleRequest,
+    ChangeUsernameRequest,
+    UpdateLanguageRequest,
+    UserLookupResponse,
+    UpdateProfilePictureResponse,
+    UpdateBannerResponse,
+    AssignBadgesRequest,
+    BadgeOperationResponse,
+} from './dto/profile.dto';
+import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
+import { JWTPayload, hasPermission } from '@/utils/jwt'; // Ensure hasPermission is imported
+import { getIO } from '@/socket';
+import { mapUser } from '@/utils/user';
+import { resolveSerializedCustomStatus, SerializedCustomStatus } from '@/utils/status';
+import { usernameSchema } from '@/validation/schemas/common';
 import { randomBytes } from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
-import type {
-    IUserRepository,
-    IUser,
-} from '@/di/interfaces/IUserRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
-import { resolveSerializedCustomStatus } from '@/utils/status';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import { getIO } from '@/socket';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
-import { mapUser } from '@/utils/user';
-import { ErrorMessages } from '@/constants/errorMessages';
-import type { Request as ExpressRequest } from 'express';
-import type { JWTPayload } from '@/utils/jwt';
-import { Badge } from '@/models/Badge';
-import {
-    AssignBadgesRequest,
-    BadgeOperationResponse,
-} from '@/controllers/models/BadgeTypes';
+import { IUserRepository, IUser } from '@/di/interfaces/IUserRepository';
+import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
+import { ILogger } from '@/di/interfaces/ILogger';
 import { StatusService } from '@/realtime/services/StatusService';
-import { hasPermission } from '@/utils/jwt';
-import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
-import { usernameSchema } from '@/validation/schemas/common';
-import type { SerializedCustomStatus } from '@/utils/status';
-import { ApiError } from '@/utils/ApiError';
-import type { Types } from 'mongoose';
+import { Badge } from '@/models/Badge';
+import { storage } from '@/config/multer'; // Import existing storage config
 
-interface UpdateStatusRequest {
-    text?: string;
-    emoji?: string;
-    expiresAt?: string | null;
-    expiresInMinutes?: number;
-    clear?: boolean;
+interface RequestWithUser extends Request {
+    user: JWTPayload;
 }
 
-interface BulkStatusRequest {
-    usernames: string[];
-}
-
-interface UpdateStyleRequest {
-    usernameFont?: string;
-    usernameGradient?: {
-        enabled: boolean;
-        colors: string[];
-        angle: number;
-    };
-    usernameGlow?: {
-        enabled: boolean;
-        color: string;
-        intensity: number;
-    };
-}
-
-interface UserLookupResponse {
-    _id: string;
-}
-
-interface ChangeUsernameRequest {
-    newUsername: string;
-}
-
-interface UpdateLanguageRequest {
-    language: string;
-}
-
-// User profile information including badges and customization
-interface BadgeResponse {
-    _id: Types.ObjectId | string;
-    id: string;
-    name: string;
-    description: string;
-    icon: string;
-    color: string;
-    createdAt: Date;
-}
-
-interface UserProfile {
-    // User's unique identifier
-    id: string;
-
-    // Username (unique identifier)
-    username: string;
-
-    // Login name (if different from username)
-    login: string;
-
-    // Display name shown to other users
-    displayName: string | null;
-
-    // URL to the user's profile picture
-    profilePicture: string | null;
-
-    // Font used for username display
-    usernameFont: string;
-
-    // Gradient settings for username
-    usernameGradient: {
-        enabled: boolean;
-        colors: string[];
-        angle: number;
-    };
-
-    // Glow effect settings for username
-    usernameGlow: {
-        enabled: boolean;
-        color: string;
-        intensity: number;
-    };
-
-    // User's current custom status
-    customStatus: SerializedCustomStatus | null;
-
-    // User's permission level
-    permissions: string | AdminPermissions;
-
-    // When the user account was created
-    createdAt: Date;
-
-    // User's biography
-    bio: string;
-
-    // User's pronouns
-    pronouns: string;
-
-    // List of badges assigned to the user
-    badges: BadgeResponse[];
-
-    // URL to the user's profile banner
-    banner: string | null;
-}
-
-interface BioUpdate {
-    bio: string;
-}
-
-interface PronounsUpdate {
-    pronouns: string;
-}
-
-interface DisplayNameUpdate {
-    displayName: string;
-}
-
-// Controller for user profile management, customization, and status updates
-// Enforces boundaries via JWT ownership checks and admin permission validation
+@ApiTags('Profile')
 @injectable()
-@Route('api/v1/profile')
-@Tags('Profile')
-export class ProfileController extends Controller {
+@Controller('api/v1/profile')
+export class ProfileController {
     constructor(
-        @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-        @inject(TYPES.Logger) private logger: ILogger,
-        @inject(TYPES.StatusService) private statusService: StatusService,
+        @inject(TYPES.UserRepository)
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+        @inject(TYPES.StatusService)
+        @Inject(TYPES.StatusService)
+        private statusService: StatusService,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.FriendshipRepository)
+        @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-    ) {
-        super();
+    ) { }
+
+    // Maps a user document to a public UserProfile payload
+    private async mapToProfile(user: IUser): Promise<UserProfile> {
+        const mapped = mapUser(user);
+        if (!mapped) {
+            throw new Error('User not found');
+        }
+
+        if (
+            user.badges &&
+            Array.isArray(user.badges) &&
+            user.badges.length > 0
+        ) {
+            try {
+                const badgeDocs = await Badge.find({ id: { $in: user.badges } })
+                    .lean()
+                    .exec();
+                // @ts-ignore - badges type mismatch in mapUser vs DTO but compatible at runtime
+                mapped.badges = badgeDocs.map((doc) => ({
+                    _id: doc._id,
+                    id: doc.id,
+                    name: doc.name,
+                    description: doc.description,
+                    icon: doc.icon,
+                    color: doc.color,
+                    createdAt: doc.createdAt,
+                }));
+            } catch (error) {
+                this.logger.error('Error fetching user badges:', error);
+            }
+        }
+
+        // @ts-ignore
+        mapped.banner = user.banner
+            ? `/api/v1/profile/banner/${user.banner}`
+            : null;
+
+        return mapped as unknown as UserProfile;
     }
 
-    // Retrieves the current authenticated user's profile
     @Get('me')
-    @Security('jwt')
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Get current user profile' })
+    @ApiResponse({ status: 200, type: UserProfile })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async getMyProfile(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
     ): Promise<UserProfile> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        return this.getUserProfile(userId);
+        const userId = (req as unknown as RequestWithUser).user.id;
+        const user = await this.userRepo.findById(userId);
+        if (!user) {
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+        return this.mapToProfile(user);
     }
 
-    // Retrieves a user's profile by their unique ID
-    @Get('{userId}')
-    @Security('jwt')
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
-    public async getUserProfile(@Path() userId: string): Promise<UserProfile> {
+    @Get(':userId')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Get user profile by ID' })
+    @ApiResponse({ status: 200, type: UserProfile })
+    @ApiResponse({ status: 404, description: 'User not found' })
+    public async getUserProfile(@Param('userId') userId: string): Promise<UserProfile> {
         const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
@@ -208,28 +153,20 @@ export class ProfileController extends Controller {
         return this.mapToProfile(user);
     }
 
-    // Updates a user's badges
-    // Enforces 'MANAGE_USERS' admin permission
-    @Post('{id}/badges')
-    @Security('jwt')
-    @Response<ErrorResponse>('400', 'Bad Request - Invalid badge IDs', {
-        error: ErrorMessages.PROFILE.INVALID_BADGE_IDS,
-    })
-    @Response<ErrorResponse>('401', 'Unauthorized', {
-        error: ErrorMessages.AUTH.UNAUTHORIZED,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden - Insufficient permissions', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @Post(':id/badges')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update user badges' })
+    @ApiResponse({ status: 200, type: BadgeOperationResponse })
+    @ApiResponse({ status: 400, description: 'Invalid badge IDs' })
+    @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async updateUserBadges(
-        @Path() id: string,
+        @Param('id') id: string,
         @Body() request: AssignBadgesRequest,
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
     ): Promise<BadgeOperationResponse> {
-        const adminUser = (req as ExpressRequest & { user: JWTPayload }).user;
+        const adminUser = (req as unknown as RequestWithUser).user;
         try {
             if (!adminUser) {
                 throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
@@ -323,14 +260,32 @@ export class ProfileController extends Controller {
         }
     }
 
-    // Uploads or updates the user's profile picture
-    // Validates compliance with dimensions (max 512x512) and format (WebP).
+    @Post('picture')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(FileInterceptor('profilePicture', { storage }))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                profilePicture: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
+    })
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Upload profile picture' })
+    @ApiResponse({ status: 201, type: UpdateProfilePictureResponse })
+    @ApiResponse({ status: 400, description: 'Invalid file or dimensions' })
     public async uploadProfilePicture(
         @UploadedFile() profilePicture: Express.Multer.File,
-        @Request() req: ExpressRequest,
-    ): Promise<{ message: string; profilePicture: string }> {
+        @Req() req: Request,
+    ): Promise<UpdateProfilePictureResponse> {
         try {
-            const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+            const userPayload = (req as unknown as RequestWithUser).user;
             const userId = userPayload.id;
 
             if (!profilePicture) {
@@ -458,16 +413,32 @@ export class ProfileController extends Controller {
         }
     }
 
-    // Uploads or updates the user's profile banner
-    // Validates compliance with dimensions (max 1136x400) and format (WebP). enforces path sanitization
     @Post('banner')
-    @Security('jwt')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(FileInterceptor('banner', { storage }))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                banner: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
+    })
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Upload profile banner' })
+    @ApiResponse({ status: 201, type: UpdateBannerResponse })
+    @ApiResponse({ status: 400, description: 'Invalid file or dimensions' })
     public async uploadBanner(
         @UploadedFile() banner: Express.Multer.File,
-        @Request() req: ExpressRequest,
-    ): Promise<{ message: string; banner: string }> {
+        @Req() req: Request,
+    ): Promise<UpdateBannerResponse> {
         try {
-            const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+            const userPayload = (req as unknown as RequestWithUser).user;
             const username = userPayload.username;
             const userId = userPayload.id;
 
@@ -593,14 +564,16 @@ export class ProfileController extends Controller {
         }
     }
 
-    // Serves a profile banner file
-    @Get('banner/{filename}')
+    @Get('banner/:filename')
+    @ApiOperation({ summary: 'Get profile banner' })
+    @ApiResponse({ status: 200, description: 'Banner image' })
+    @ApiResponse({ status: 400, description: 'Invalid filename' })
+    @ApiResponse({ status: 404, description: 'Banner not found' })
     public async getBanner(
-        @Path() filename: string,
-        @Request() req: ExpressRequest,
+        @Param('filename') filename: string,
+        @Req() req: Request,
+        @Res() res: Response,
     ): Promise<void> {
-        const res = req.res;
-        if (!res) throw new Error('Response object not found');
 
         if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
             res.status(400).send({ error: 'Invalid filename' });
@@ -633,7 +606,7 @@ export class ProfileController extends Controller {
                     if (!res.headersSent) {
                         res.status(500).send({ error: 'Failed to send banner' });
                     }
-                    reject(err);
+                    resolve();
                 } else {
                     resolve();
                 }
@@ -641,14 +614,16 @@ export class ProfileController extends Controller {
         });
     }
 
-    // Updates the current user's biography
     @Patch('bio')
-    @Security('jwt')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update bio' })
+    @ApiResponse({ status: 200, description: 'Bio updated' })
     public async updateBio(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
         @Body() body: BioUpdate,
     ): Promise<{ message: string; bio: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as unknown as RequestWithUser).user.id;
         const { bio } = body;
 
         await this.userRepo.update(userId, { bio: bio || '' });
@@ -659,14 +634,16 @@ export class ProfileController extends Controller {
         };
     }
 
-    // Updates the current user's pronouns
     @Patch('pronouns')
-    @Security('jwt')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update pronouns' })
+    @ApiResponse({ status: 200, description: 'Pronouns updated' })
     public async updatePronouns(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
         @Body() body: PronounsUpdate,
     ): Promise<{ message: string; pronouns: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as unknown as RequestWithUser).user.id;
         const { pronouns } = body;
 
         await this.userRepo.update(userId, { pronouns: pronouns || '' });
@@ -677,20 +654,17 @@ export class ProfileController extends Controller {
         };
     }
 
-    // Updates the current user's display name
     @Patch('display-name')
-    @Security('jwt')
-    @Response<ErrorResponse>('400', 'Invalid display name', {
-        error: ErrorMessages.PROFILE.DISPLAY_NAME_TOO_LONG,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update display name' })
+    @ApiResponse({ status: 200, description: 'Display name updated' })
+    @ApiResponse({ status: 400, description: 'Invalid display name' })
     public async updateDisplayName(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
         @Body() body: DisplayNameUpdate,
     ): Promise<{ message: string; displayName: string | null }> {
-        const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+        const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
         const username = userPayload.username;
         const { displayName } = body;
@@ -715,20 +689,17 @@ export class ProfileController extends Controller {
         };
     }
 
-    // Updates the current user's custom status
     @Patch('status')
-    @Security('jwt')
-    @Response<ErrorResponse>('400', 'Invalid status', {
-        error: ErrorMessages.PROFILE.STATUS_TOO_LONG,
-    })
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update custom status' })
+    @ApiResponse({ status: 200, description: 'Status updated' })
+    @ApiResponse({ status: 400, description: 'Invalid status' })
     public async updateCustomStatus(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
         @Body() body: UpdateStatusRequest,
     ): Promise<{ customStatus: SerializedCustomStatus | null }> {
-        const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+        const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
         const username = userPayload.username;
         const { text, emoji, expiresAt, expiresInMinutes, clear } = body;
@@ -845,16 +816,15 @@ export class ProfileController extends Controller {
         return { customStatus: serialized };
     }
 
-    // Clears the current user's custom status
     @Delete('status')
-    @Security('jwt')
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Clear custom status' })
+    @ApiResponse({ status: 200, description: 'Status cleared' })
     public async clearCustomStatus(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
     ): Promise<{ customStatus: null }> {
-        const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+        const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
         const username = userPayload.username;
 
@@ -875,8 +845,10 @@ export class ProfileController extends Controller {
         return { customStatus: null };
     }
 
-    // Retrieves custom statuses for multiple users in bulk
     @Post('status/bulk')
+    @ApiOperation({ summary: 'Get bulk custom statuses' })
+    @ApiResponse({ status: 200, description: 'Bulk statuses' })
+    @ApiBody({ type: BulkStatusRequest })
     public async getBulkStatuses(
         @Body() body: BulkStatusRequest,
     ): Promise<{ statuses: Record<string, SerializedCustomStatus | null> }> {
@@ -912,11 +884,13 @@ export class ProfileController extends Controller {
         return { statuses };
     }
 
-    // Updates the current user's username styling (font, gradient, glow)
     @Patch('style')
-    @Security('jwt')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update username style' })
+    @ApiResponse({ status: 200, description: 'Style updated' })
     public async updateUsernameStyle(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
         @Body() body: UpdateStyleRequest,
     ): Promise<{
         message: string;
@@ -932,7 +906,7 @@ export class ProfileController extends Controller {
             intensity: number;
         };
     }> {
-        const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+        const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
         const username = userPayload.username;
 
@@ -966,14 +940,14 @@ export class ProfileController extends Controller {
         };
     }
 
-    // Resolves a username to its corresponding user ID
-    @Get('lookup/{username}')
-    @Security('jwt')
-    @Response<ErrorResponse>('404', 'User not found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @Get('lookup/:username')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Lookup user by username' })
+    @ApiResponse({ status: 200, type: UserLookupResponse })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async lookupUserByUsername(
-        @Path() username: string,
+        @Param('username') username: string,
     ): Promise<UserLookupResponse> {
         const user = await this.userRepo.findByUsername(username);
 
@@ -984,16 +958,18 @@ export class ProfileController extends Controller {
         return { _id: user._id.toString() };
     }
 
-    // Changes the current user's username
-    // Enforces strict format validation and uniqueness
     @Patch('username')
-    @Security('jwt')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Change username' })
+    @ApiResponse({ status: 200, description: 'Username changed' })
+    @ApiResponse({ status: 409, description: 'Username taken' })
     public async changeUsername(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
         @Body() body: ChangeUsernameRequest,
     ): Promise<{ message: string; username: string }> {
-        const currentUsername = (req as ExpressRequest & { user: JWTPayload }).user.username;
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const existingUsername = (req as unknown as RequestWithUser).user.username;
+        const userId = (req as unknown as RequestWithUser).user.id;
         const { newUsername } = body;
 
         if (!newUsername || typeof newUsername !== 'string') {
@@ -1048,14 +1024,16 @@ export class ProfileController extends Controller {
         };
     }
 
-    // Updates the current user's language preference
     @Patch('language')
-    @Security('jwt')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update language' })
+    @ApiResponse({ status: 200, description: 'Language updated' })
     public async updateLanguage(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
         @Body() body: UpdateLanguageRequest,
     ): Promise<{ message: string; language: string }> {
-        const username = (req as ExpressRequest & { user: JWTPayload }).user.username;
+        const username = (req as unknown as RequestWithUser).user.username;
         const { language } = body;
 
         if (!language || typeof language !== 'string') {
@@ -1075,16 +1053,16 @@ export class ProfileController extends Controller {
         };
     }
 
-    // Serves a profile picture file
-    @Get('picture/{filename}')
+    @Get('picture/:filename')
+    @ApiOperation({ summary: 'Get profile picture' })
+    @ApiResponse({ status: 200, description: 'Profile picture' })
+    @ApiResponse({ status: 400, description: 'Invalid filename' })
+    @ApiResponse({ status: 404, description: 'Image not found' })
     public async getProfilePicture(
-        @Path() filename: string,
-        @Request() req: ExpressRequest,
+        @Param('filename') filename: string,
+        @Req() req: Request,
+        @Res() res: Response,
     ): Promise<void> {
-        const res = req.res;
-        if (!res) {
-            throw new Error('Response object not found');
-        }
 
         if (!filename) {
             res.status(400).send({ error: 'Filename required' });
@@ -1101,8 +1079,6 @@ export class ProfileController extends Controller {
             return;
         }
 
-        const path = require('path');
-        const fs = require('fs');
         const filePath = path.join(
             process.cwd(),
             'uploads',
@@ -1141,42 +1117,5 @@ export class ProfileController extends Controller {
                 resolve();
             });
         });
-    }
-
-    // Maps a user document to a public UserProfile payload
-    private async mapToProfile(user: IUser): Promise<UserProfile> {
-        const mapped = mapUser(user);
-        if (!mapped) {
-            throw new Error('User not found');
-        }
-
-        if (
-            user.badges &&
-            Array.isArray(user.badges) &&
-            user.badges.length > 0
-        ) {
-            try {
-                const badgeDocs = await Badge.find({ id: { $in: user.badges } })
-                    .lean()
-                    .exec();
-                mapped.badges = badgeDocs.map((doc) => ({
-                    _id: doc._id,
-                    id: doc.id,
-                    name: doc.name,
-                    description: doc.description,
-                    icon: doc.icon,
-                    color: doc.color,
-                    createdAt: doc.createdAt,
-                }));
-            } catch (error) {
-                this.logger.error('Error fetching user badges:', error);
-            }
-        }
-
-        mapped.banner = user.banner
-            ? `/api/v1/profile/banner/${user.banner}`
-            : null;
-
-        return mapped as unknown as UserProfile;
     }
 }
