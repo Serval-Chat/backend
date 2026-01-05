@@ -1,130 +1,191 @@
-import { z } from 'zod';
+import { applyDecorators } from '@nestjs/common';
+import {
+    IsString,
+    IsMongoId,
+    Matches,
+    MinLength,
+    MaxLength,
+    IsInt,
+    Min,
+    Max,
+    IsOptional,
+    IsUrl,
+    IsBoolean,
+    IsISO8601,
+    ValidationOptions,
+    registerDecorator,
+} from 'class-validator';
+import { Transform } from 'class-transformer';
 
-// MongoDB ObjectId validation
-// Validates that a string is a valid 24-character hex string
-export const objectIdSchema = z
-    .string()
-    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format');
+// --- ID Validations ---
 
-// Username validation
-// Alphanumeric with underscores, hyphens, and dots, 3-20 characters
-// Rules:
-// - Can start with letter, number, or underscore (not dot or hyphen)
-// - Cannot have consecutive dots
-export const usernameSchema = z
-    .string()
-    .min(3, 'Username must be at least 3 characters')
-    .max(20, 'Username must be at most 20 characters')
-    .regex(
-        /^[a-zA-Z0-9_]/,
-        'Username must start with a letter, number, or underscore',
-    )
-    .regex(
-        /^[a-zA-Z0-9_.-]+$/,
-        'Username can only contain letters, numbers, underscores, hyphens, and dots',
-    )
-    .refine(
-        (val) => !val.includes('..'),
-        'Username cannot contain consecutive dots',
+export function IsObjectId(validationOptions?: ValidationOptions) {
+    return applyDecorators(IsMongoId(validationOptions));
+}
+
+// Semantic Aliases
+export const IsUserId = IsObjectId;
+export const IsServerId = IsObjectId;
+export const IsChannelId = IsObjectId;
+export const IsMessageId = IsObjectId;
+export const IsRoleId = IsObjectId;
+export const IsCategoryId = IsObjectId;
+export const IsEmojiId = IsObjectId;
+
+// --- User Validations ---
+
+export function IsUsername(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MinLength(3, { ...validationOptions, message: 'Username must be at least 3 characters' }),
+        MaxLength(20, { ...validationOptions, message: 'Username must be at most 20 characters' }),
+        Matches(/^[a-zA-Z0-9_]/, {
+            ...validationOptions,
+            message: 'Username must start with a letter, number, or underscore',
+        }),
+        Matches(/^[a-zA-Z0-9_.-]+$/, {
+            ...validationOptions,
+            message: 'Username can only contain letters, numbers, underscores, hyphens, and dots',
+        }),
+        // Custom check for consecutive dots
+        (target: Object, propertyKey: string | symbol) => {
+            registerDecorator({
+                name: 'noConsecutiveDots',
+                target: target.constructor,
+                propertyName: propertyKey.toString(),
+                options: { ...validationOptions, message: 'Username cannot contain consecutive dots' },
+                validator: {
+                    validate(value: any) {
+                        return typeof value === 'string' && !value.includes('..');
+                    },
+                },
+            });
+        }
     );
+}
 
-// Login validation (email or username)
-export const loginSchema = z
-    .string()
-    .min(3, 'Login must be at least 3 characters')
-    .max(50, 'Login must be at most 50 characters');
+export function IsLogin(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MinLength(3, { ...validationOptions, message: 'Login must be at least 3 characters' }),
+        MaxLength(50, { ...validationOptions, message: 'Login must be at most 50 characters' })
+    );
+}
 
-// Password validation
-// Minimum 6 characters for security
-export const passwordSchema = z
-    .string()
-    .min(6, 'Password must be at least 6 characters')
-    .max(100, 'Password must be at most 100 characters');
+export function IsPassword(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MinLength(6, { ...validationOptions, message: 'Password must be at least 6 characters' }),
+        MaxLength(100, { ...validationOptions, message: 'Password must be at most 100 characters' })
+    );
+}
 
-// Pagination limit parameter
-export const limitSchema = z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val, 10) : 50))
-    .pipe(z.number().min(1).max(100));
+export function IsBio(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MaxLength(500, { ...validationOptions, message: 'Bio must be at most 500 characters' }),
+        IsOptional(validationOptions)
+    );
+}
 
-// Pagination offset parameter
-export const offsetSchema = z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val, 10) : 0))
-    .pipe(z.number().min(0));
+// --- Style & Appearance ---
 
-// Search query parameter
-export const searchSchema = z.string().optional();
+export function IsColorHex(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        Matches(/^#[0-9A-Fa-f]{6}$/, {
+            ...validationOptions,
+            message: 'Invalid color hex format (must be #RRGGBB)',
+        })
+    );
+}
+// Alias
+export const IsColor = IsColorHex;
 
-// Filter parameter (generic string)
-export const filterSchema = z.string().optional();
+export function IsIntensity(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsInt(validationOptions),
+        Min(0, { ...validationOptions, message: 'Intensity must be at least 0' }),
+        Max(20, { ...validationOptions, message: 'Intensity must be at most 20' })
+    );
+}
 
-// Boolean query parameter
-// Accepts 'true', 'false', '1', '0'
-export const booleanQuerySchema = z
-    .string()
-    .optional()
-    .transform((val) => {
-        if (!val) return undefined;
-        const normalized = val.toLowerCase();
-        return normalized === 'true' || normalized === '1';
-    });
+// --- Common Fields ---
 
-// ISO date string validation
-export const isoDateSchema = z.string().datetime();
+export function IsName(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MinLength(1, { ...validationOptions, message: 'Name is required' }),
+        MaxLength(100, { ...validationOptions, message: 'Name must be at most 100 characters' }),
+        Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+    );
+}
 
-// Optional ISO date string
-export const optionalIsoDateSchema = z.string().datetime().optional();
+export function IsInviteToken(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MinLength(1, { ...validationOptions, message: 'Invite token is required' }),
+        MaxLength(100, { ...validationOptions, message: 'Invite token is too long' })
+    );
+}
 
-// Invite token validation
-export const inviteTokenSchema = z
-    .string()
-    .min(1, 'Invite token is required')
-    .max(100, 'Invite token is too long');
+export function IsReason(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MinLength(1, { ...validationOptions, message: 'Reason is required' }),
+        MaxLength(500, { ...validationOptions, message: 'Reason must be at most 500 characters' })
+    );
+}
 
-// Reason text validation (for bans, warnings, deletions, etc.)
-export const reasonSchema = z
-    .string()
-    .min(1, 'Reason is required')
-    .max(500, 'Reason must be at most 500 characters');
+export function IsMessageContent(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MinLength(1, { ...validationOptions, message: 'Message content cannot be empty' }),
+        MaxLength(2000, { ...validationOptions, message: 'Message content must be at most 2000 characters' })
+    );
+}
 
-// Optional reason text
-export const optionalReasonSchema = z
-    .string()
-    .max(500, 'Reason must be at most 500 characters')
-    .optional();
+export function IsUrlField(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsUrl({}, { ...validationOptions, message: 'Invalid URL format' })
+    );
+}
 
-// Message content validation
-export const messageContentSchema = z
-    .string()
-    .min(1, 'Message content cannot be empty')
-    .max(2000, 'Message content must be at most 2000 characters');
+// --- Pagination & Queries ---
 
-// Bio/description validation
-export const bioSchema = z
-    .string()
-    .max(500, 'Bio must be at most 500 characters')
-    .optional();
+export function IsLimit(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsOptional(validationOptions),
+        Transform(({ value }) => (value ? parseInt(value, 10) : 50)),
+        IsInt(validationOptions),
+        Min(1, validationOptions),
+        Max(100, validationOptions)
+    );
+}
 
-// URL validation
-export const urlSchema = z.string().url('Invalid URL format');
+export function IsOffset(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsOptional(validationOptions),
+        Transform(({ value }) => (value ? parseInt(value, 10) : 0)),
+        IsInt(validationOptions),
+        Min(0, validationOptions)
+    );
+}
 
-// Optional URL validation
-export const optionalUrlSchema = z
-    .string()
-    .url('Invalid URL format')
-    .optional();
+export function IsBooleanQuery(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsOptional(validationOptions),
+        Transform(({ value }) => {
+            if (!value) return undefined;
+            const normalized = String(value).toLowerCase();
+            return normalized === 'true' || normalized === '1';
+        }),
+        IsBoolean(validationOptions)
+    );
+}
 
-// Color hex code validation
-export const colorHexSchema = z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color hex format (must be #RRGGBB)');
-
-// Server/channel name validation
-export const nameSchema = z
-    .string()
-    .min(1, 'Name is required')
-    .max(100, 'Name must be at most 100 characters')
-    .trim();
+export function IsIsoDate(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsISO8601({}, validationOptions)
+    );
+}

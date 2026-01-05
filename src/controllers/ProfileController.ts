@@ -43,7 +43,7 @@ import { JWTPayload, hasPermission } from '@/utils/jwt'; // Ensure hasPermission
 import { getIO } from '@/socket';
 import { mapUser } from '@/utils/user';
 import { resolveSerializedCustomStatus, SerializedCustomStatus } from '@/utils/status';
-import { usernameSchema } from '@/validation/schemas/common';
+
 import { randomBytes } from 'crypto';
 import path from 'path';
 import fs from 'fs';
@@ -978,13 +978,7 @@ export class ProfileController {
             throw new ApiError(400, ErrorMessages.PROFILE.NEW_USERNAME_REQUIRED);
         }
 
-        const validation = usernameSchema.safeParse(newUsername);
-        if (!validation.success) {
-            throw new ApiError(
-                400,
-                validation.error.issues[0]?.message || 'Invalid username',
-            );
-        }
+
 
         const existingUser = await this.userRepo.findByUsername(newUsername);
         if (existingUser) {

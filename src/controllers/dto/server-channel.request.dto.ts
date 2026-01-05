@@ -1,75 +1,128 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+    IsString,
+    IsOptional,
+    IsEnum,
+    IsInt,
+    IsArray,
+    ValidateNested,
+    IsObject,
+    MaxLength,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+    IsName,
+    IsChannelId,
+    IsCategoryId,
+} from '@/validation/schemas/common';
+import { ChannelTypeDTO } from './common.request.dto';
 
 export class CreateChannelRequestDTO {
     @ApiProperty()
+    @IsName()
     name!: string;
 
-    @ApiProperty({ enum: ['text', 'voice'], required: false })
-    type?: 'text' | 'voice';
+    @ApiPropertyOptional({ enum: ChannelTypeDTO })
+    @IsOptional()
+    @IsEnum(ChannelTypeDTO)
+    type?: ChannelTypeDTO;
 
-    @ApiProperty({ required: false })
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsInt()
     position?: number;
 
-    @ApiProperty({ required: false })
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsCategoryId()
     categoryId?: string;
 
-    @ApiProperty({ required: false })
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
     description?: string;
 }
 
 export class UpdateChannelRequestDTO {
-    @ApiProperty({ required: false })
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsName()
     name?: string;
 
-    @ApiProperty({ required: false })
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsInt()
     position?: number;
 
-    @ApiProperty({ required: false, nullable: true, type: String })
+    @ApiPropertyOptional({ nullable: true, type: String })
+    @IsOptional()
+    @IsCategoryId()
     categoryId?: string | null;
 
-    @ApiProperty({ required: false })
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
     description?: string;
 }
 
 export class ChannelPositionDTO {
     @ApiProperty()
+    @IsChannelId()
     channelId!: string;
 
     @ApiProperty()
+    @IsInt()
     position!: number;
 }
 
 export class ReorderChannelsRequestDTO {
     @ApiProperty({ type: [ChannelPositionDTO] })
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => ChannelPositionDTO)
     channelPositions!: ChannelPositionDTO[];
 }
 
 export class CreateCategoryRequestDTO {
     @ApiProperty()
+    @IsName()
     name!: string;
 
-    @ApiProperty({ required: false })
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsInt()
     position?: number;
 }
 
 export class UpdateCategoryRequestDTO {
-    @ApiProperty({ required: false })
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsName()
     name?: string;
 
-    @ApiProperty({ required: false })
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsInt()
     position?: number;
 }
 
 export class CategoryPositionDTO {
     @ApiProperty()
+    @IsCategoryId()
     categoryId!: string;
 
     @ApiProperty()
+    @IsInt()
     position!: number;
 }
 
 export class ReorderCategoriesRequestDTO {
     @ApiProperty({ type: [CategoryPositionDTO] })
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CategoryPositionDTO)
     categoryPositions!: CategoryPositionDTO[];
 }
 
@@ -78,5 +131,6 @@ export class UpdatePermissionsRequestDTO {
         description: 'Map of role/user IDs to permission overrides',
         example: { 'role_id': { 'sendMessages': true } }
     })
+    @IsObject()
     permissions!: Record<string, Record<string, boolean>>;
 }

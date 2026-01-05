@@ -41,7 +41,7 @@ import {
 import type { Request as ExpressRequest } from 'express';
 import { DashBoardStatsDTO } from './dto/admin-dashboard-stats.response.dto';
 import { JWTPayload } from '@/utils/jwt';
-import { AdminPermissions } from './dto/common.request.dto';
+import { AdminPermissions, ProfileFieldDTO } from './dto/common.request.dto';
 import {
     AdminUserListItemDTO,
     AdminUserDetailsDTO,
@@ -299,16 +299,16 @@ export class AdminController {
         const oldUsername = user.username || '';
         let usernameChanged = false;
 
-        if (fields.includes('username')) {
+        if (fields.includes(ProfileFieldDTO.USERNAME)) {
             // Randomize username to avoid collisions and force logout
             const randomHex = crypto.randomBytes(8).toString('hex');
             updateData.username = `user_${randomHex}`;
             usernameChanged = true;
         }
-        if (fields.includes('displayName')) updateData.displayName = '';
-        if (fields.includes('pronouns')) updateData.pronouns = '';
-        if (fields.includes('bio')) updateData.bio = '';
-        if (fields.includes('banner')) updateData.banner = null;
+        if (fields.includes(ProfileFieldDTO.DISPLAY_NAME)) updateData.displayName = '';
+        if (fields.includes(ProfileFieldDTO.PRONOUNS)) updateData.pronouns = '';
+        if (fields.includes(ProfileFieldDTO.BIO)) updateData.bio = '';
+        if (fields.includes(ProfileFieldDTO.BANNER)) updateData.banner = null;
 
         await this.userRepo.update(userId, updateData);
 
