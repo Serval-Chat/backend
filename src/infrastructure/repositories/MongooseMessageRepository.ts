@@ -15,7 +15,7 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseMessageRepository implements IMessageRepository {
     private messageModel = Message;
-    constructor() { }
+    constructor() {}
 
     async findById(id: string): Promise<IMessage | null> {
         return await this.messageModel.findById(id).lean();
@@ -52,7 +52,8 @@ export class MongooseMessageRepository implements IMessageRepository {
                 ...baseQuery,
                 createdAt: { $lt: targetDate },
             };
-            const beforeMessages = await this.messageModel.find(beforeQuery)
+            const beforeMessages = await this.messageModel
+                .find(beforeQuery)
                 .sort({ createdAt: -1 })
                 .limit(Math.floor(limit / 2))
                 .populate('repliedToMessageId')
@@ -63,7 +64,8 @@ export class MongooseMessageRepository implements IMessageRepository {
                 ...baseQuery,
                 createdAt: { $gte: targetDate },
             };
-            const afterMessages = await this.messageModel.find(afterQuery)
+            const afterMessages = await this.messageModel
+                .find(afterQuery)
                 .sort({ createdAt: 1 }) // Ascending to get closest to target
                 .limit(Math.ceil(limit / 2))
                 .populate('repliedToMessageId')
@@ -71,7 +73,9 @@ export class MongooseMessageRepository implements IMessageRepository {
 
             // Combine and sort ascending
             return [...beforeMessages, ...afterMessages].sort(
-                (a, b) => (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0),
+                (a, b) =>
+                    (a.createdAt?.getTime() || 0) -
+                    (b.createdAt?.getTime() || 0),
             );
         }
 
@@ -90,7 +94,8 @@ export class MongooseMessageRepository implements IMessageRepository {
             }
         }
 
-        const messages = await this.messageModel.find(query)
+        const messages = await this.messageModel
+            .find(query)
             .sort({ createdAt: -1 })
             .limit(limit)
             .populate('repliedToMessageId')
@@ -111,15 +116,17 @@ export class MongooseMessageRepository implements IMessageRepository {
     }
 
     async update(id: string, text: string): Promise<IMessage | null> {
-        return await this.messageModel.findByIdAndUpdate(
-            id,
-            {
-                text,
-                editedAt: new Date(),
-                isEdited: true,
-            },
-            { new: true },
-        ).lean();
+        return await this.messageModel
+            .findByIdAndUpdate(
+                id,
+                {
+                    text,
+                    editedAt: new Date(),
+                    isEdited: true,
+                },
+                { new: true },
+            )
+            .lean();
     }
 
     async delete(id: string): Promise<boolean> {
@@ -134,7 +141,10 @@ export class MongooseMessageRepository implements IMessageRepository {
             anonymizedSender?: string;
         },
     ): Promise<{ modifiedCount: number }> {
-        const result = await this.messageModel.updateMany({ senderId }, { $set: update });
+        const result = await this.messageModel.updateMany(
+            { senderId },
+            { $set: update },
+        );
         return { modifiedCount: result.modifiedCount };
     }
 
@@ -142,7 +152,10 @@ export class MongooseMessageRepository implements IMessageRepository {
         receiverId: string,
         update: { receiverDeleted?: boolean; anonymizedReceiver?: string },
     ): Promise<{ modifiedCount: number }> {
-        const result = await this.messageModel.updateMany({ receiverId }, update);
+        const result = await this.messageModel.updateMany(
+            { receiverId },
+            update,
+        );
         return { modifiedCount: result.modifiedCount };
     }
 
@@ -151,7 +164,8 @@ export class MongooseMessageRepository implements IMessageRepository {
     }
 
     async countCreatedAfter(date: Date): Promise<number> {
-        return await this.messageModel.countDocuments({ createdAt: { $gt: date } });
+        return await this.messageModel.countDocuments({
+            createdAt: { $gt: date },
+        });
     }
 }
-

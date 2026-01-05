@@ -36,7 +36,9 @@ export class AddCustomReactionRequestDTO {
     emojiId!: string;
 }
 
-export type AddReactionRequestDTO = AddUnicodeReactionRequestDTO | AddCustomReactionRequestDTO;
+export type AddReactionRequestDTO =
+    | AddUnicodeReactionRequestDTO
+    | AddCustomReactionRequestDTO;
 
 export class RemoveUnicodeReactionRequestDTO {
     @ApiProperty({ example: '👍' })
@@ -65,4 +67,6 @@ export class RemoveCustomReactionRequestDTO {
     scope?: ReactionScopeDTO;
 }
 
-export type RemoveReactionRequestDTO = RemoveUnicodeReactionRequestDTO | RemoveCustomReactionRequestDTO;
+export type RemoveReactionRequestDTO =
+    | RemoveUnicodeReactionRequestDTO
+    | RemoveCustomReactionRequestDTO;

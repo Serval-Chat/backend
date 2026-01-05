@@ -6,7 +6,7 @@ export class RateLimiter {
     constructor(
         private limit: number,
         private windowMs: number,
-    ) { }
+    ) {}
 
     // Check if a request for the given key is within rate limits
     // Automatically creates new windows and resets expired ones

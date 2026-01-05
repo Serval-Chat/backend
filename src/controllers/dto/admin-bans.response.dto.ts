@@ -25,8 +25,8 @@ export class AdminBansDiagnosticResponseDTO {
         type: 'object',
         properties: {
             count: { type: 'number' },
-            sample: { type: 'array', items: { type: 'object' } }
-        }
+            sample: { type: 'array', items: { type: 'object' } },
+        },
     })
     appBans!: {
         count: number;
@@ -37,12 +37,11 @@ export class AdminBansDiagnosticResponseDTO {
         type: 'object',
         properties: {
             count: { type: 'number' },
-            sample: { type: 'array', items: { type: 'object' } }
-        }
+            sample: { type: 'array', items: { type: 'object' } },
+        },
     })
     serverBans!: {
         count: number;
         sample: unknown[];
     };
 }
-

@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsInt, IsPositive, IsString, MaxLength } from 'class-validator';
+import {
+    IsOptional,
+    IsInt,
+    IsPositive,
+    IsString,
+    MaxLength,
+} from 'class-validator';
 
 export class CreateInviteRequestDTO {
     @ApiPropertyOptional()

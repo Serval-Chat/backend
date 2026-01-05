@@ -34,4 +34,3 @@ export class AuthErrorResponseDTO {
     @ApiProperty({ required: false })
     ban?: Record<string, unknown>;
 }
-

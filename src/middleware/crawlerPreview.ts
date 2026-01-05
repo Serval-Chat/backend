@@ -43,7 +43,9 @@ export const discordCrawlerPreview = async (
                 return next();
             }
 
-            const server = await serverRepo.findById(invite.serverId.toString());
+            const server = await serverRepo.findById(
+                invite.serverId.toString(),
+            );
             if (!server) {
                 return next();
             }

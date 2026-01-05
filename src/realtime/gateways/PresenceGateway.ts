@@ -18,7 +18,7 @@ export class PresenceGateway implements OnGatewayConnection {
     constructor(
         @inject(TYPES.PresenceService) private presenceService: PresenceService,
         @inject(TYPES.PingService) private pingService: PingService,
-    ) { }
+    ) {}
 
     /**
      * Handles new socket connection.

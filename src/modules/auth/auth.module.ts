@@ -1,4 +1,12 @@
-import { Module, Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException, Inject } from '@nestjs/common';
+import {
+    Module,
+    Injectable,
+    CanActivate,
+    ExecutionContext,
+    UnauthorizedException,
+    ForbiddenException,
+    Inject,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { TYPES } from '@/di/types';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -15,19 +23,20 @@ export class JwtAuthGuard implements CanActivate {
         @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @Inject(TYPES.BanRepository) private banRepo: IBanRepository,
         private reflector: Reflector,
-    ) { }
+    ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
-            context.getHandler(),
-            context.getClass(),
-        ]);
+        const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
+            PERMISSIONS_KEY,
+            [context.getHandler(), context.getClass()],
+        );
 
         const request = context.switchToHttp().getRequest();
         const authHeader = request.headers['authorization'];
-        const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
-            ? authHeader.slice('Bearer '.length).trim()
-            : undefined;
+        const token =
+            typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+                ? authHeader.slice('Bearer '.length).trim()
+                : undefined;
 
         if (!token) {
             throw new UnauthorizedException('No token provided');
@@ -69,7 +78,10 @@ export class JwtAuthGuard implements CanActivate {
                 }
 
                 const hasAllPermissions = requiredPermissions.every(
-                    (p) => (userPermissions as unknown as Record<string, boolean>)[p] === true,
+                    (p) =>
+                        (userPermissions as unknown as Record<string, boolean>)[
+                            p
+                        ] === true,
                 );
 
                 if (!hasAllPermissions) {
@@ -82,7 +94,10 @@ export class JwtAuthGuard implements CanActivate {
             }
             return true;
         } catch (err: unknown) {
-            if (err instanceof UnauthorizedException || err instanceof ForbiddenException) {
+            if (
+                err instanceof UnauthorizedException ||
+                err instanceof ForbiddenException
+            ) {
                 throw err;
             }
             throw new UnauthorizedException('Invalid token');
@@ -94,5 +109,4 @@ export class JwtAuthGuard implements CanActivate {
     providers: [JwtAuthGuard],
     exports: [JwtAuthGuard],
 })
-export class AuthModule { }
-
+export class AuthModule {}

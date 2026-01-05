@@ -37,7 +37,8 @@ export class ChannelResponseDTO {
 
 export class ChannelWithReadResponseDTO extends ChannelResponseDTO {
     @ApiProperty({ required: false, nullable: true, type: String })
-    declare lastMessageAt?: any; // Override generic type to string | null for JSON response
+    // @ts-ignore - Override generic type to string | null for JSON response
+    declare lastMessageAt?: string | null;
 
     @ApiProperty({ required: false, nullable: true, type: String })
     lastReadAt!: string | null;

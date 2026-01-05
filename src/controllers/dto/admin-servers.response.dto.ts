@@ -50,4 +50,3 @@ export class AdminRestoreServerResponseDTO {
     @ApiProperty()
     message!: string;
 }
-

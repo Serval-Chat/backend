@@ -26,10 +26,9 @@ export const validate = (schemas: ValidationSchemas) => {
             }
 
             if (schemas.query) {
-                req.query = (await schemas.query.parseAsync(req.query)) as Record<
-                    string,
-                    string | string[] | undefined
-                >;
+                req.query = (await schemas.query.parseAsync(
+                    req.query,
+                )) as Record<string, string | string[] | undefined>;
             }
 
             next();

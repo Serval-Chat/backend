@@ -52,7 +52,7 @@ export class ServerGateway {
         private permissionService: PermissionService,
         @inject(TYPES.PresenceService) private presenceService: PresenceService,
         @inject(TYPES.PingService) private pingService: PingService,
-    ) { }
+    ) {}
 
     /**
      * Handles 'join_server' event.

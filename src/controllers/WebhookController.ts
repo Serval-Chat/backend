@@ -15,10 +15,16 @@ import {
     NotFoundException,
     ForbiddenException,
     InternalServerErrorException,
-    UnauthorizedException,
     StreamableFile,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiConsumes,
+    ApiBody,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
@@ -182,12 +188,12 @@ export class WebhookController {
         }
 
         let token: string;
-        let attempts = 0;
         do {
             token = generateWebhookToken();
-            attempts++;
             if (!token) {
-                throw new InternalServerErrorException(ErrorMessages.WEBHOOK.TOKEN_GENERATION_FAILED);
+                throw new InternalServerErrorException(
+                    ErrorMessages.WEBHOOK.TOKEN_GENERATION_FAILED,
+                );
             }
         } while (await this.webhookRepo.findByToken(token));
 
@@ -302,7 +308,9 @@ export class WebhookController {
         }
 
         if (!canManage) {
-            throw new ForbiddenException(ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
+            throw new ForbiddenException(
+                ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+            );
         }
 
         if (!avatar) {
@@ -314,7 +322,9 @@ export class WebhookController {
 
         const input = avatar.path || avatar.buffer;
         if (!input) {
-            throw new InternalServerErrorException(ErrorMessages.FILE.DATA_MISSING);
+            throw new InternalServerErrorException(
+                ErrorMessages.FILE.DATA_MISSING,
+            );
         }
 
         // Process image to ensure consistent size and format to PNG
@@ -338,7 +348,10 @@ export class WebhookController {
     @Get('webhooks/avatar/:filename')
     @ApiOperation({ summary: 'Get webhook avatar' })
     @ApiResponse({ status: 200, description: 'Avatar retrieved' })
-    @ApiResponse({ status: 404, description: ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND })
+    @ApiResponse({
+        status: 404,
+        description: ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND,
+    })
     public async getWebhookAvatar(
         @Param() params: FilenameParamDTO,
         @Res({ passthrough: true }) res: Response,
@@ -371,7 +384,10 @@ export class WebhookController {
     @Post('webhooks/:token')
     @ApiOperation({ summary: 'Execute webhook' })
     @ApiResponse({ status: 201, description: 'Webhook executed' })
-    @ApiResponse({ status: 401, description: ErrorMessages.WEBHOOK.INVALID_TOKEN })
+    @ApiResponse({
+        status: 401,
+        description: ErrorMessages.WEBHOOK.INVALID_TOKEN,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.WEBHOOK.NOT_FOUND })
     public async executeWebhook(
         @Param() params: WebhookTokenParamDTO,

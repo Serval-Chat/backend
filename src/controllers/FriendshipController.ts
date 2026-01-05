@@ -15,7 +15,12 @@ import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { PresenceService } from '@/realtime/services/PresenceService';
 import { ILogger } from '@/di/interfaces/ILogger';
-import { ApiTags, ApiResponse, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiOperation,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { getIO } from '@/socket';
 import { type SerializedCustomStatus } from '@/utils/status';
@@ -61,7 +66,7 @@ export class FriendshipController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Maps a user document to a public friend payload
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
@@ -83,9 +88,7 @@ export class FriendshipController {
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Get friends list' })
     @ApiResponse({ status: 200, type: [FriendResponseDTO] })
-    public async getFriends(
-        @Req() req: Request,
-    ): Promise<FriendResponseDTO[]> {
+    public async getFriends(@Req() req: Request): Promise<FriendResponseDTO[]> {
         const userId = (req as unknown as RequestWithUser).user.id;
 
         const me = await this.userRepo.findById(userId);
@@ -137,12 +140,16 @@ export class FriendshipController {
                 if (!friendId) {
                     return { friend, latestMessageAt: null };
                 }
-                const conversationMessages = await this.messageRepo.findByConversation(
-                    userId,
-                    friendId,
-                    1,
-                );
-                const latestMessage = conversationMessages.length > 0 ? conversationMessages[0] : null;
+                const conversationMessages =
+                    await this.messageRepo.findByConversation(
+                        userId,
+                        friendId,
+                        1,
+                    );
+                const latestMessage =
+                    conversationMessages.length > 0
+                        ? conversationMessages[0]
+                        : null;
 
                 return {
                     friend,
@@ -220,7 +227,10 @@ export class FriendshipController {
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Send a friend request' })
     @ApiResponse({ status: 201, type: SendFriendRequestResponseDTO })
-    @ApiResponse({ status: 400, description: 'User not found or already friends' })
+    @ApiResponse({
+        status: 400,
+        description: 'User not found or already friends',
+    })
     @ApiResponse({ status: 404, description: 'User not found' })
     public async sendFriendRequest(
         @Req() req: Request,
@@ -233,7 +243,6 @@ export class FriendshipController {
         }
 
         const { username: friendUsername } = body;
-
 
         const friendUser = await this.userRepo.findByUsername(friendUsername);
         if (!friendUser) {
@@ -255,7 +264,10 @@ export class FriendshipController {
         );
         if (existingRequest) {
             if (existingRequest.status === 'pending') {
-                throw new ApiError(400, ErrorMessages.FRIENDSHIP.REQUEST_ALREADY_SENT);
+                throw new ApiError(
+                    400,
+                    ErrorMessages.FRIENDSHIP.REQUEST_ALREADY_SENT,
+                );
             }
             await this.friendshipRepo.rejectRequest(
                 existingRequest._id.toString(),
@@ -326,7 +338,10 @@ export class FriendshipController {
         }
 
         if (fr.status !== 'pending') {
-            throw new ApiError(400, ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING);
+            throw new ApiError(
+                400,
+                ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING,
+            );
         }
 
         const fromId = fr.fromId?.toString() || '';
@@ -410,7 +425,10 @@ export class FriendshipController {
         }
 
         if (fr.status !== 'pending') {
-            throw new ApiError(400, ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING);
+            throw new ApiError(
+                400,
+                ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING,
+            );
         }
 
         const success = await this.friendshipRepo.rejectRequest(id);

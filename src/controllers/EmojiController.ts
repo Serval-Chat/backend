@@ -1,16 +1,14 @@
-import {
-    Controller,
-    Get,
-    Param,
-    Req,
-    UseGuards,
-    Inject,
-} from '@nestjs/common';
+import { Controller, Get, Param, Req, UseGuards, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { ILogger } from '@/di/interfaces/ILogger';
-import { ApiTags, ApiResponse, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiOperation,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Request } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -39,7 +37,7 @@ export class EmojiController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     @Get()
     @ApiBearerAuth()

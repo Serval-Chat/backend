@@ -14,7 +14,13 @@ import {
     IWarning,
 } from '@/di/interfaces/IWarningRepository';
 import { ILogger } from '@/di/interfaces/ILogger';
-import { ApiTags, ApiResponse, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiOperation,
+    ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Request } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -41,7 +47,7 @@ export class UserWarningController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Sanitizes warning data for the current user
     // Hides the specific issuer identity for privacy, labeling all warnings as issued by 'System'

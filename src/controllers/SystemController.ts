@@ -15,7 +15,7 @@ interface SystemInfo {
 @Controller('api/v1')
 @ApiTags('System')
 export class SystemController {
-    constructor() { }
+    constructor() {}
 
     // Retrieves commit hash, version and partial commit hash
     @Get('system/info')

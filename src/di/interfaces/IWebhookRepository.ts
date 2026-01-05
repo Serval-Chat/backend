@@ -1,5 +1,3 @@
-
-
 import type { Types } from 'mongoose';
 
 // Webhook interface (domain model)

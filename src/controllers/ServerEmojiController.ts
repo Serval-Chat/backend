@@ -18,7 +18,14 @@ import {
     HttpCode,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiConsumes,
+    ApiBody,
+} from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
@@ -114,8 +121,14 @@ export class ServerEmojiController {
         },
     })
     @ApiResponse({ status: 201, description: 'Emoji uploaded' })
-    @ApiResponse({ status: 400, description: ErrorMessages.EMOJI.FILE_REQUIRED })
-    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS })
+    @ApiResponse({
+        status: 400,
+        description: ErrorMessages.EMOJI.FILE_REQUIRED,
+    })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
     @ApiResponse({ status: 409, description: ErrorMessages.EMOJI.NAME_EXISTS })
     @HttpCode(201)
     public async uploadEmoji(
@@ -148,7 +161,9 @@ export class ServerEmojiController {
                 'manageServer',
             ))
         ) {
-            throw new ForbiddenException(ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
+            throw new ForbiddenException(
+                ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+            );
         }
 
         const existingEmoji = await this.emojiRepo.findByServerAndName(
@@ -162,7 +177,9 @@ export class ServerEmojiController {
         const emojiId = new mongoose.Types.ObjectId();
         const input = emoji.path || emoji.buffer;
         if (!input) {
-            throw new InternalServerErrorException(ErrorMessages.FILE.DATA_MISSING);
+            throw new InternalServerErrorException(
+                ErrorMessages.FILE.DATA_MISSING,
+            );
         }
 
         const metadata = await sharp(input).metadata();
@@ -214,7 +231,9 @@ export class ServerEmojiController {
         );
 
         if (!populatedEmoji) {
-            throw new InternalServerErrorException(ErrorMessages.EMOJI.NOT_FOUND);
+            throw new InternalServerErrorException(
+                ErrorMessages.EMOJI.NOT_FOUND,
+            );
         }
 
         const io = getIO();
@@ -257,7 +276,10 @@ export class ServerEmojiController {
     @Delete(':emojiId')
     @ApiOperation({ summary: 'Delete a server emoji' })
     @ApiResponse({ status: 204, description: 'Emoji deleted' })
-    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.EMOJI.NOT_FOUND })
     @HttpCode(204)
     public async deleteEmoji(

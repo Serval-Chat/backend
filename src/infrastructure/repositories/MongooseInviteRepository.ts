@@ -1,5 +1,9 @@
 import { injectable } from 'inversify';
-import { CreateInviteDTO, IInvite, IInviteRepository } from '@/di/interfaces/IInviteRepository';
+import {
+    CreateInviteDTO,
+    IInvite,
+    IInviteRepository,
+} from '@/di/interfaces/IInviteRepository';
 import { Invite } from '@/models/Server';
 import type { FilterQuery } from 'mongoose';
 
@@ -31,7 +35,9 @@ export class MongooseInviteRepository implements IInviteRepository {
 
         // If it's a valid ObjectId, also check by _id
         if (codeOrPath.match(/^[0-9a-fA-F]{24}$/)) {
-            query.$or!.push({ _id: codeOrPath as unknown as FilterQuery<IInvite> });
+            query.$or!.push({
+                _id: codeOrPath as unknown as FilterQuery<IInvite>,
+            });
         }
 
         return (await Invite.findOne(query).lean()) as IInvite | null;

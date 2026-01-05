@@ -11,10 +11,21 @@ import { connectDB } from '@/config/db';
 import { createSocketServer } from '@/socket/init';
 import { startMetricsUpdater } from '@/utils/metrics-updater';
 import { container } from '@/di/container';
+import * as YAML from 'yaml';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { WsServer } from './ws/server';
+import { WsSender } from './ws/sender';
+import { DebugService } from './ws/services/DebugService';
 
 async function bootstrap() {
     // Ensure necessary directories exist
-    const uploadDirs = ['uploads', 'uploads/uploads', 'uploads/servers', 'uploads/webhooks', 'uploads/emojis'];
+    const uploadDirs = [
+        'uploads',
+        'uploads/uploads',
+        'uploads/servers',
+        'uploads/webhooks',
+        'uploads/emojis',
+    ];
     for (const dir of uploadDirs) {
         const fullPath = path.join(process.cwd(), dir);
         if (!fs.existsSync(fullPath)) {
@@ -42,7 +53,10 @@ async function bootstrap() {
                 cert: fs.readFileSync(certPath),
             };
         } else {
-            Logger.error('SSL certificate files not found in CERTS_PATH.', 'Bootstrap');
+            Logger.error(
+                'SSL certificate files not found in CERTS_PATH.',
+                'Bootstrap',
+            );
         }
     }
 
@@ -68,15 +82,15 @@ async function bootstrap() {
     await createSocketServer(httpServer, container);
 
     // Initialize New WebSocket Scaffolding
-    const { WsServer } = await import('./ws/server');
     const wsServer = new WsServer(httpServer);
 
+    // Initialize WebSocket Sender
+    const wsSender = new WsSender();
+
     // Register Debug Service
-    const { DebugService } = await import('./ws/services/DebugService');
-    wsServer.registerController(new DebugService(wsServer));
+    wsServer.registerController(new DebugService(wsSender));
 
     // Initialize Swagger
-    const { SwaggerModule, DocumentBuilder } = await import('@nestjs/swagger');
     const config = new DocumentBuilder()
         .setTitle('Serchat API')
         .setDescription('The Serchat API description')
@@ -85,6 +99,18 @@ async function bootstrap() {
         .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('docs', app, document);
+
+    // Generate openapi.yaml
+    try {
+        const yamlString = YAML.stringify(document);
+        fs.writeFileSync(path.join(process.cwd(), 'openapi.yaml'), yamlString);
+        Logger.log(
+            'OpenAPI documentation generated to openapi.yaml',
+            'Bootstrap',
+        );
+    } catch (err) {
+        Logger.error('Failed to generate OpenAPI YAML', err, 'Bootstrap');
+    }
 
     startMetricsUpdater(60000);
 

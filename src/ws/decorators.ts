@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import type { EventType } from './types';
 
 export const EVENT_METADATA = 'ws:event';
@@ -13,7 +14,8 @@ export interface EventMetadata {
  */
 export function Event(event: EventType | string): MethodDecorator {
     return (target: object, propertyKey: string | symbol) => {
-        const metadata: EventMetadata[] = Reflect.getMetadata(EVENT_METADATA, target.constructor) || [];
+        const metadata: EventMetadata[] =
+            Reflect.getMetadata(EVENT_METADATA, target.constructor) || [];
         metadata.push({ event, methodName: propertyKey as string });
         Reflect.defineMetadata(EVENT_METADATA, metadata, target.constructor);
     };

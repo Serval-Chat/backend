@@ -14,7 +14,13 @@ import {
     ForbiddenException,
     BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiQuery,
+} from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -33,7 +39,10 @@ import { JWTPayload } from '@/utils/jwt';
 import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { SendMessageRequestDTO, ServerEditMessageRequestDTO } from './dto/server-message.request.dto';
+import {
+    SendMessageRequestDTO,
+    ServerEditMessageRequestDTO,
+} from './dto/server-message.request.dto';
 
 // Controller for managing messages within server channels
 // Enforces server membership and channel-specific permission checks
@@ -62,7 +71,7 @@ export class ServerMessageController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Retrieves messages for a specific channel with pagination
     // Enforces server membership
@@ -107,12 +116,16 @@ export class ServerMessageController {
         );
 
         return msgs.map((msg) => {
-            const msgObj = 'toObject' in msg && typeof msg.toObject === 'function'
-                ? msg.toObject()
-                : msg;
+            const msgObj =
+                'toObject' in msg && typeof msg.toObject === 'function'
+                    ? msg.toObject()
+                    : msg;
             return {
                 ...msgObj,
-                reactions: (reactionsMap as Record<string, unknown[]>)[msg._id.toString()] || [],
+                reactions:
+                    (reactionsMap as Record<string, unknown[]>)[
+                        msg._id.toString()
+                    ] || [],
             };
         });
     }
@@ -122,8 +135,14 @@ export class ServerMessageController {
     @Post()
     @ApiOperation({ summary: 'Send a message' })
     @ApiResponse({ status: 201, description: 'Message sent' })
-    @ApiResponse({ status: 400, description: ErrorMessages.MESSAGE.TEXT_REQUIRED })
-    @ApiResponse({ status: 403, description: ErrorMessages.CHANNEL.NO_PERMISSION_SEND })
+    @ApiResponse({
+        status: 400,
+        description: ErrorMessages.MESSAGE.TEXT_REQUIRED,
+    })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.CHANNEL.NO_PERMISSION_SEND,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.CHANNEL.NOT_FOUND })
     public async sendMessage(
         @Param('serverId') serverId: string,
@@ -147,7 +166,9 @@ export class ServerMessageController {
             'sendMessages',
         );
         if (!canSend) {
-            throw new ForbiddenException(ErrorMessages.CHANNEL.NO_PERMISSION_SEND);
+            throw new ForbiddenException(
+                ErrorMessages.CHANNEL.NO_PERMISSION_SEND,
+            );
         }
 
         const channel = await this.channelRepo.findById(channelId);
@@ -247,7 +268,8 @@ export class ServerMessageController {
 
         return {
             message: {
-                ...('toObject' in message && typeof message.toObject === 'function'
+                ...('toObject' in message &&
+                typeof message.toObject === 'function'
                     ? message.toObject()
                     : message),
                 reactions,
@@ -261,8 +283,14 @@ export class ServerMessageController {
     @Patch(':messageId')
     @ApiOperation({ summary: 'Edit a message' })
     @ApiResponse({ status: 200, description: 'Message updated' })
-    @ApiResponse({ status: 400, description: ErrorMessages.MESSAGE.TEXT_REQUIRED })
-    @ApiResponse({ status: 403, description: ErrorMessages.MESSAGE.ONLY_SENDER_EDIT })
+    @ApiResponse({
+        status: 400,
+        description: ErrorMessages.MESSAGE.TEXT_REQUIRED,
+    })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MESSAGE.ONLY_SENDER_EDIT,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async editMessage(
         @Param('serverId') serverId: string,
@@ -278,7 +306,9 @@ export class ServerMessageController {
         }
 
         if (message.senderId.toString() !== userId) {
-            throw new ForbiddenException(ErrorMessages.MESSAGE.ONLY_SENDER_EDIT);
+            throw new ForbiddenException(
+                ErrorMessages.MESSAGE.ONLY_SENDER_EDIT,
+            );
         }
 
         const messageText = (body.content || body.text || '').trim();
@@ -309,7 +339,10 @@ export class ServerMessageController {
     @Delete(':messageId')
     @ApiOperation({ summary: 'Delete a message' })
     @ApiResponse({ status: 200, description: 'Message deleted' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MESSAGE.NO_PERMISSION_DELETE })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MESSAGE.NO_PERMISSION_DELETE,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async deleteMessage(
         @Param('serverId') serverId: string,
@@ -330,7 +363,9 @@ export class ServerMessageController {
             'manageMessages',
         );
         if (!canManage && message.senderId.toString() !== userId) {
-            throw new ForbiddenException(ErrorMessages.MESSAGE.NO_PERMISSION_DELETE);
+            throw new ForbiddenException(
+                ErrorMessages.MESSAGE.NO_PERMISSION_DELETE,
+            );
         }
 
         await this.serverMessageRepo.delete(messageId);

@@ -14,7 +14,7 @@ const transformChannel = (doc: unknown): IChannel | null => {
     if (!doc) return null;
 
     const d = doc as { _id: unknown; serverId: unknown; categoryId?: unknown };
- 
+
     return {
         ...d,
         _id: String(d._id),

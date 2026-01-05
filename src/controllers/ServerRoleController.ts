@@ -13,7 +13,12 @@ import {
     ForbiddenException,
     BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
@@ -52,7 +57,7 @@ export class ServerRoleController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Retrieves all roles for a specific server
     // Enforces server membership
@@ -81,7 +86,10 @@ export class ServerRoleController {
     @Post()
     @ApiOperation({ summary: 'Create a role' })
     @ApiResponse({ status: 201, description: 'Role created' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+    })
     public async createRole(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -107,8 +115,8 @@ export class ServerRoleController {
 
         const roleColor =
             body.startColor ||
-                body.endColor ||
-                (body.colors && body.colors.length > 0)
+            body.endColor ||
+            (body.colors && body.colors.length > 0)
                 ? null
                 : body.color || '#99aab5';
 
@@ -136,7 +144,10 @@ export class ServerRoleController {
     @Patch('reorder')
     @ApiOperation({ summary: 'Reorder roles' })
     @ApiResponse({ status: 200, description: 'Roles reordered' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+    })
     public async reorderRoles(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -174,7 +185,10 @@ export class ServerRoleController {
     @Patch(':roleId')
     @ApiOperation({ summary: 'Update a role' })
     @ApiResponse({ status: 200, description: 'Role updated' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.ROLE.NOT_FOUND })
     public async updateRole(
         @Param('serverId') serverId: string,
@@ -242,8 +256,14 @@ export class ServerRoleController {
     @Delete(':roleId')
     @ApiOperation({ summary: 'Delete a role' })
     @ApiResponse({ status: 200, description: 'Role deleted' })
-    @ApiResponse({ status: 400, description: ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
+    @ApiResponse({
+        status: 400,
+        description: ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE,
+    })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.ROLE.NOT_FOUND })
     public async deleteRole(
         @Param('serverId') serverId: string,
@@ -268,7 +288,9 @@ export class ServerRoleController {
         }
 
         if (role.name === '@everyone') {
-            throw new BadRequestException(ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE);
+            throw new BadRequestException(
+                ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE,
+            );
         }
 
         await this.roleRepo.delete(roleId);

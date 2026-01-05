@@ -12,7 +12,7 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseAuditLogRepository implements IAuditLogRepository {
     private auditLogModel = AuditLog;
-    constructor() { }
+    constructor() {}
 
     async create(data: {
         adminId: string;
@@ -67,7 +67,8 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             }
         }
 
-        const results = await this.auditLogModel.find(query)
+        const results = await this.auditLogModel
+            .find(query)
             .sort({ timestamp: -1 })
             .limit(options.limit || 100)
             .skip(options.offset || 0)
@@ -81,7 +82,8 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }
 
     async findById(id: string): Promise<IAuditLog | null> {
-        const result = await this.auditLogModel.findById(id)
+        const result = await this.auditLogModel
+            .findById(id)
             .populate('adminId', 'username')
             .populate('targetUserId', 'username')
             .lean()

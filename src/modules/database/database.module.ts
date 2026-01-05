@@ -2,7 +2,16 @@ import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User } from '@/models/User';
 import { Ban } from '@/models/Ban';
-import { Server, Category, Channel, ServerMember, Role, Invite, ServerMessage, ServerBan } from '@/models/Server';
+import {
+    Server,
+    Category,
+    Channel,
+    ServerMember,
+    Role,
+    Invite,
+    ServerMessage,
+    ServerBan,
+} from '@/models/Server';
 import { Message } from '@/models/Message';
 import { Friendship } from '@/models/Friendship';
 import { Emoji } from '@/models/Emoji';
@@ -42,4 +51,4 @@ import { DmUnread } from '@/models/DmUnread';
     ],
     exports: [MongooseModule],
 })
-export class DatabaseModule { }
+export class DatabaseModule {}

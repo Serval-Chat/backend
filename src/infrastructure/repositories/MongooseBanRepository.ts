@@ -14,7 +14,7 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseBanRepository implements IBanRepository {
     private banModel = Ban;
-    constructor() { }
+    constructor() {}
 
     async findActiveByUserId(userId: string): Promise<IBan | null> {
         return await this.banModel.findOne({ userId, active: true }).lean();
@@ -35,7 +35,10 @@ export class MongooseBanRepository implements IBanRepository {
     }
 
     async expire(banId: string): Promise<boolean> {
-        const result = await this.banModel.updateOne({ _id: banId }, { active: false });
+        const result = await this.banModel.updateOne(
+            { _id: banId },
+            { active: false },
+        );
         return result.modifiedCount ? result.modifiedCount > 0 : false;
     }
 
@@ -44,11 +47,15 @@ export class MongooseBanRepository implements IBanRepository {
     }
 
     async findAllActive(): Promise<IBan[]> {
-        return await this.banModel.find({ active: true }).select('userId').lean();
+        return await this.banModel
+            .find({ active: true })
+            .select('userId')
+            .lean();
     }
 
     async findByUserIdWithHistory(userId: string): Promise<IBan | null> {
-        return await this.banModel.findOne({ userId })
+        return await this.banModel
+            .findOne({ userId })
             .populate('history.issuedBy', 'username')
             .lean();
     }
@@ -132,7 +139,8 @@ export class MongooseBanRepository implements IBanRepository {
         offset?: number;
     }): Promise<IBan[]> {
         try {
-            return await this.banModel.find({})
+            return await this.banModel
+                .find({})
                 .sort({ timestamp: -1 })
                 .limit(options.limit || 50)
                 .skip(options.offset || 0)
@@ -158,7 +166,8 @@ export class MongooseBanRepository implements IBanRepository {
                 error,
             );
 
-            return await this.banModel.find({})
+            return await this.banModel
+                .find({})
                 .sort({ timestamp: -1 })
                 .limit(options.limit || 50)
                 .skip(options.offset || 0)

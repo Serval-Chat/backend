@@ -15,7 +15,12 @@ import {
     HttpStatus,
     HttpCode,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -69,7 +74,7 @@ export class ServerInviteController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Retrieves all active invites for a server
     // Enforces 'manageInvites' permission
@@ -78,7 +83,10 @@ export class ServerInviteController {
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get all server invites' })
     @ApiResponse({ status: 200, description: 'Server invites retrieved' })
-    @ApiResponse({ status: 403, description: ErrorMessages.INVITE.NO_PERMISSION_MANAGE })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
+    })
     public async getServerInvites(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -91,7 +99,9 @@ export class ServerInviteController {
                 'manageInvites',
             ))
         ) {
-            throw new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
+            throw new ForbiddenException(
+                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
+            );
         }
 
         return await this.inviteRepo.findByServerId(serverId);
@@ -105,8 +115,14 @@ export class ServerInviteController {
     @HttpCode(200)
     @ApiOperation({ summary: 'Create a server invite' })
     @ApiResponse({ status: 201, description: 'Invite created' })
-    @ApiResponse({ status: 400, description: ErrorMessages.INVITE.ALREADY_EXISTS })
-    @ApiResponse({ status: 403, description: ErrorMessages.INVITE.ONLY_OWNER_CUSTOM })
+    @ApiResponse({
+        status: 400,
+        description: ErrorMessages.INVITE.ALREADY_EXISTS,
+    })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
+    })
     public async createInvite(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -121,7 +137,9 @@ export class ServerInviteController {
                 'manageInvites',
             ))
         ) {
-            throw new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
+            throw new ForbiddenException(
+                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
+            );
         }
 
         const { maxUses, expiresIn, customPath } = body;
@@ -131,12 +149,16 @@ export class ServerInviteController {
             // Restrict custom invite codes to the server owner to prevent squatting/abuse
             const server = await this.serverRepo.findById(serverId);
             if (server?.ownerId.toString() !== userId) {
-                throw new ForbiddenException(ErrorMessages.INVITE.ONLY_OWNER_CUSTOM);
+                throw new ForbiddenException(
+                    ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
+                );
             }
 
             const existing = await this.inviteRepo.findByCode(code);
             if (existing) {
-                throw new BadRequestException(ErrorMessages.INVITE.ALREADY_EXISTS);
+                throw new BadRequestException(
+                    ErrorMessages.INVITE.ALREADY_EXISTS,
+                );
             }
         } else {
             // Generate a random 8-character hex code if no custom code is provided
@@ -163,7 +185,10 @@ export class ServerInviteController {
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Delete a server invite' })
     @ApiResponse({ status: 200, description: 'Invite deleted' })
-    @ApiResponse({ status: 403, description: ErrorMessages.INVITE.NO_PERMISSION_MANAGE })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.INVITE.NOT_FOUND })
     public async deleteInvite(
         @Param('serverId') serverId: string,
@@ -178,7 +203,9 @@ export class ServerInviteController {
                 'manageInvites',
             ))
         ) {
-            throw new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
+            throw new ForbiddenException(
+                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
+            );
         }
 
         const invite = await this.inviteRepo.findById(inviteId);
@@ -194,10 +221,16 @@ export class ServerInviteController {
     // Retrieves public details for an invite code
     @Get('invites/:code')
     @ApiOperation({ summary: 'Get invite details' })
-    @ApiResponse({ status: 200, description: 'Invite details retrieved', type: InviteDetailsResponseDTO })
+    @ApiResponse({
+        status: 200,
+        description: 'Invite details retrieved',
+        type: InviteDetailsResponseDTO,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.INVITE.NOT_FOUND })
     @ApiResponse({ status: 410, description: ErrorMessages.INVITE.EXPIRED })
-    public async getInviteDetails(@Param('code') code: string): Promise<InviteDetailsResponseDTO> {
+    public async getInviteDetails(
+        @Param('code') code: string,
+    ): Promise<InviteDetailsResponseDTO> {
         const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
         if (!invite) {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
@@ -205,7 +238,10 @@ export class ServerInviteController {
 
         // Check if the invite has reached its expiration date
         if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
-            throw new HttpException(ErrorMessages.INVITE.EXPIRED, HttpStatus.GONE);
+            throw new HttpException(
+                ErrorMessages.INVITE.EXPIRED,
+                HttpStatus.GONE,
+            );
         }
 
         // Check if the invite has exceeded its maximum allowed uses
@@ -214,7 +250,10 @@ export class ServerInviteController {
             invite.maxUses > 0 &&
             invite.uses >= invite.maxUses
         ) {
-            throw new HttpException(ErrorMessages.INVITE.MAX_USES_REACHED, HttpStatus.GONE);
+            throw new HttpException(
+                ErrorMessages.INVITE.MAX_USES_REACHED,
+                HttpStatus.GONE,
+            );
         }
 
         const server = await this.serverRepo.findById(
@@ -254,7 +293,10 @@ export class ServerInviteController {
     @HttpCode(200)
     @ApiOperation({ summary: 'Join a server using an invite' })
     @ApiResponse({ status: 200, description: 'Server joined' })
-    @ApiResponse({ status: 400, description: ErrorMessages.SERVER.ALREADY_MEMBER })
+    @ApiResponse({
+        status: 400,
+        description: ErrorMessages.SERVER.ALREADY_MEMBER,
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.BANNED })
     @ApiResponse({ status: 404, description: ErrorMessages.INVITE.NOT_FOUND })
     @ApiResponse({ status: 410, description: ErrorMessages.INVITE.EXPIRED })
@@ -269,7 +311,10 @@ export class ServerInviteController {
         }
 
         if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
-            throw new HttpException(ErrorMessages.INVITE.EXPIRED, HttpStatus.GONE);
+            throw new HttpException(
+                ErrorMessages.INVITE.EXPIRED,
+                HttpStatus.GONE,
+            );
         }
 
         if (
@@ -277,7 +322,10 @@ export class ServerInviteController {
             invite.maxUses > 0 &&
             invite.uses >= invite.maxUses
         ) {
-            throw new HttpException(ErrorMessages.INVITE.MAX_USES_REACHED, HttpStatus.GONE);
+            throw new HttpException(
+                ErrorMessages.INVITE.MAX_USES_REACHED,
+                HttpStatus.GONE,
+            );
         }
 
         const serverId = invite.serverId.toString();

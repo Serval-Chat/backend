@@ -28,10 +28,13 @@ import { injectable, inject } from 'inversify';
 export class AuthService {
     constructor(
         @inject(TYPES.Logger) @Inject(TYPES.Logger) private logger: ILogger,
-        @inject(TYPES.UserRepository) @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
-        @inject(TYPES.BanRepository) @Inject(TYPES.BanRepository) private banRepo: IBanRepository,
-    ) { }
-
+        @inject(TYPES.UserRepository)
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
+        @inject(TYPES.BanRepository)
+        @Inject(TYPES.BanRepository)
+        private banRepo: IBanRepository,
+    ) {}
 
     // Authenticate a user with login credentials.
     //

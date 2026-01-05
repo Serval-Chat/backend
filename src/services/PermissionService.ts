@@ -31,7 +31,7 @@ export class PermissionService {
         @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-    ) { }
+    ) {}
 
     // Get user's highest role position in a server.
     //
@@ -129,7 +129,10 @@ export class PermissionService {
 
             // Check if this role has the specific permission set
             const permValue = (
-                role.permissions as unknown as Record<string, boolean | undefined>
+                role.permissions as unknown as Record<
+                    string,
+                    boolean | undefined
+                >
             )[permission];
             if (permValue === false) return false; // Explicit deny from higher role
             if (permValue === true) return true; // Explicit allow from higher role
@@ -140,7 +143,10 @@ export class PermissionService {
         if (everyoneRole) {
             if (everyoneRole.permissions.administrator === true) return true;
             const permValue = (
-                everyoneRole.permissions as unknown as Record<string, boolean | undefined>
+                everyoneRole.permissions as unknown as Record<
+                    string,
+                    boolean | undefined
+                >
             )[permission];
             if (permValue === true) return true;
         }
@@ -204,7 +210,10 @@ export class PermissionService {
 
             // Check if this role has the specific permission set
             const permValue = (
-                role.permissions as unknown as Record<string, boolean | undefined>
+                role.permissions as unknown as Record<
+                    string,
+                    boolean | undefined
+                >
             )[permission];
             if (permValue === false) {
                 rolePermissionValue = false; // Explicit deny from higher role
@@ -243,7 +252,9 @@ export class PermissionService {
             );
             if (category?.permissions) {
                 // Check category permissions for user's roles
-                const rolesForOverride = everyoneRole ? [...validRoles, everyoneRole] : validRoles;
+                const rolesForOverride = everyoneRole
+                    ? [...validRoles, everyoneRole]
+                    : validRoles;
                 for (const role of rolesForOverride) {
                     const roleId = role._id?.toString();
                     if (roleId && category.permissions[roleId]) {
@@ -270,7 +281,9 @@ export class PermissionService {
         let channelPermissionValue: boolean | undefined;
         if (channel.permissions) {
             // Check channel permissions for user's roles
-            const rolesForOverride = everyoneRole ? [...validRoles, everyoneRole] : validRoles;
+            const rolesForOverride = everyoneRole
+                ? [...validRoles, everyoneRole]
+                : validRoles;
             for (const role of rolesForOverride) {
                 const roleId = role._id?.toString();
                 if (roleId && channel.permissions[roleId]) {

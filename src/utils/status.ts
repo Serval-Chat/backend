@@ -99,13 +99,13 @@ export const resolveSerializedCustomStatus = (
     const hasContent = Boolean(
         (typeof rawStatus.text === 'string' &&
             rawStatus.text.trim().length > 0) ||
-        rawStatus.emoji,
+            rawStatus.emoji,
     );
     if (!hasContent) return null;
 
     const expiresAt =
         typeof rawStatus.expiresAt === 'string' ||
-            rawStatus.expiresAt instanceof Date
+        rawStatus.expiresAt instanceof Date
             ? new Date(rawStatus.expiresAt as string | number | Date)
             : null;
     if (isExpired(expiresAt)) {
@@ -114,7 +114,7 @@ export const resolveSerializedCustomStatus = (
 
     const updatedAt =
         typeof rawStatus.updatedAt === 'string' ||
-            rawStatus.updatedAt instanceof Date
+        rawStatus.updatedAt instanceof Date
             ? new Date(rawStatus.updatedAt as string | number | Date)
             : new Date();
 

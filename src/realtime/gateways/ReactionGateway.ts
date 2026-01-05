@@ -34,7 +34,7 @@ export class ReactionGateway {
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.PresenceService) private presenceService: PresenceService,
-    ) { }
+    ) {}
 
     /**
      * Handles 'add_reaction' event.

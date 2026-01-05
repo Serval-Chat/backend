@@ -29,7 +29,9 @@ export class ExecuteWebhookRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsUsername()
-    @Transform(({ value }) => typeof value === 'string' ? value.substring(0, 100) : value)
+    @Transform(({ value }) =>
+        typeof value === 'string' ? value.substring(0, 100) : value,
+    )
     username?: string;
 
     @ApiPropertyOptional()

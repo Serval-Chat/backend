@@ -1,11 +1,4 @@
-import {
-    Controller,
-    Get,
-    Param,
-    Req,
-    Res,
-    Inject,
-} from '@nestjs/common';
+import { Controller, Get, Param, Req, Res, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
@@ -27,7 +20,7 @@ export class FileCompatibilityController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     @Get('download/:filename')
     @ApiOperation({ summary: 'Download a file (legacy)' })

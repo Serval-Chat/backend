@@ -15,7 +15,7 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseServerRepository implements IServerRepository {
     private serverModel = Server;
-    constructor() { }
+    constructor() {}
 
     async findById(
         id: string,
@@ -29,17 +29,21 @@ export class MongooseServerRepository implements IServerRepository {
     }
 
     async findByIds(ids: string[]): Promise<IServer[]> {
-        return await this.serverModel.find({
-            _id: { $in: ids },
-            deletedAt: { $exists: false },
-        }).lean();
+        return await this.serverModel
+            .find({
+                _id: { $in: ids },
+                deletedAt: { $exists: false },
+            })
+            .lean();
     }
 
     async findByOwnerId(ownerId: string): Promise<IServer[]> {
-        return await this.serverModel.find({
-            ownerId,
-            deletedAt: { $exists: false },
-        }).lean();
+        return await this.serverModel
+            .find({
+                ownerId,
+                deletedAt: { $exists: false },
+            })
+            .lean();
     }
 
     async create(data: CreateServerDTO): Promise<IServer> {
@@ -48,11 +52,13 @@ export class MongooseServerRepository implements IServerRepository {
     }
 
     async update(id: string, data: Partial<IServer>): Promise<IServer | null> {
-        return await this.serverModel.findOneAndUpdate(
-            { _id: id, deletedAt: { $exists: false } },
-            data,
-            { new: true },
-        ).lean();
+        return await this.serverModel
+            .findOneAndUpdate(
+                { _id: id, deletedAt: { $exists: false } },
+                data,
+                { new: true },
+            )
+            .lean();
     }
 
     async delete(id: string): Promise<boolean> {
@@ -106,7 +112,8 @@ export class MongooseServerRepository implements IServerRepository {
                 { _id: options.search }, // Exact match for ID
             ];
         }
-        return await this.serverModel.find(query)
+        return await this.serverModel
+            .find(query)
             .skip(options.offset)
             .limit(options.limit)
             .sort({ createdAt: -1 })
@@ -122,7 +129,8 @@ export class MongooseServerRepository implements IServerRepository {
     }
 
     async countCreatedAfter(date: Date): Promise<number> {
-        return await this.serverModel.countDocuments({ createdAt: { $gt: date } });
+        return await this.serverModel.countDocuments({
+            createdAt: { $gt: date },
+        });
     }
 }
-

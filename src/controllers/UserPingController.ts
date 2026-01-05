@@ -10,7 +10,12 @@ import {
 import { TYPES } from '@/di/types';
 import { PingService } from '@/services/PingService';
 import { ILogger } from '@/di/interfaces/ILogger';
-import { ApiTags, ApiResponse, ApiSecurity, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiOperation,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -40,14 +45,12 @@ export class UserPingController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     @Get()
     @ApiOperation({ summary: 'Get all pings for the current user' })
     @ApiResponse({ status: 200, type: GetPingsResponseDTO })
-    public async getPings(
-        @Req() req: Request,
-    ): Promise<GetPingsResponseDTO> {
+    public async getPings(@Req() req: Request): Promise<GetPingsResponseDTO> {
         const userId = (req as unknown as RequestWithUser).user.id;
         try {
             const pings = await this.pingService.getPingsForUser(userId);

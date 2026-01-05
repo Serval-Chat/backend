@@ -8,7 +8,12 @@ import {
     Inject,
     NotFoundException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -44,14 +49,17 @@ export class SettingsController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Retrieves the current user's settings
     // Returns default values if no custom settings are configured
     @Get()
     @ApiOperation({ summary: 'Get user settings' })
     @ApiResponse({ status: 200, description: 'Settings retrieved' })
-    @ApiResponse({ status: 404, description: ErrorMessages.AUTH.USER_NOT_FOUND })
+    @ApiResponse({
+        status: 404,
+        description: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
     public async getSettings(
         @Req() req: ExpressRequest,
     ): Promise<UserSettings> {
@@ -81,7 +89,10 @@ export class SettingsController {
     @Post()
     @ApiOperation({ summary: 'Update user settings' })
     @ApiResponse({ status: 201, description: 'Settings updated' })
-    @ApiResponse({ status: 404, description: ErrorMessages.AUTH.USER_NOT_FOUND })
+    @ApiResponse({
+        status: 404,
+        description: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
     public async updateSettings(
         @Req() req: ExpressRequest,
         @Body() body: UpdateSettingsRequestDTO,

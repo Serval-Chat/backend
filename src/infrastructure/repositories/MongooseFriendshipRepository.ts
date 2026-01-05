@@ -19,7 +19,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
     private friendshipModel = Friendship;
     private friendRequestModel = FriendRequest;
     private userModel = User;
-    constructor() { }
+    constructor() {}
 
     async areFriends(user1: string, user2: string): Promise<boolean> {
         if (!user1 || !user2) return false;
@@ -46,14 +46,18 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
 
         if (conditions.length === 0) return false;
 
-        const friendship = await this.friendshipModel.findOne({ $or: conditions });
+        const friendship = await this.friendshipModel.findOne({
+            $or: conditions,
+        });
         return !!friendship;
     }
 
     async findByUserId(userId: string): Promise<IFriendship[]> {
-        return await this.friendshipModel.find({
-            $or: [{ userId }, { friendId: userId }],
-        }).lean();
+        return await this.friendshipModel
+            .find({
+                $or: [{ userId }, { friendId: userId }],
+            })
+            .lean();
     }
 
     // Create a new friendship
@@ -88,15 +92,15 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
     }
 
     async acceptRequest(requestId: string): Promise<IFriendRequest | null> {
-        return await this.friendRequestModel.findByIdAndUpdate(
-            requestId,
-            { status: 'accepted' },
-            { new: true },
-        ).lean();
+        return await this.friendRequestModel
+            .findByIdAndUpdate(requestId, { status: 'accepted' }, { new: true })
+            .lean();
     }
 
     async rejectRequest(requestId: string): Promise<boolean> {
-        const result = await this.friendRequestModel.deleteOne({ _id: requestId });
+        const result = await this.friendRequestModel.deleteOne({
+            _id: requestId,
+        });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
@@ -108,31 +112,37 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         fromId: string,
         toId: string,
     ): Promise<IFriendRequest | null> {
-        return await this.friendRequestModel.findOne({
-            $or: [
-                { fromId, toId, status: 'pending' },
-                { fromId: toId, toId: fromId, status: 'pending' },
-            ],
-        }).lean();
+        return await this.friendRequestModel
+            .findOne({
+                $or: [
+                    { fromId, toId, status: 'pending' },
+                    { fromId: toId, toId: fromId, status: 'pending' },
+                ],
+            })
+            .lean();
     }
 
     async findPendingRequestsFor(userId: string): Promise<IFriendRequest[]> {
-        return await this.friendRequestModel.find({
-            toId: userId,
-            status: 'pending',
-        }).lean();
+        return await this.friendRequestModel
+            .find({
+                toId: userId,
+                status: 'pending',
+            })
+            .lean();
     }
 
     async findExistingRequest(
         fromId: string,
         toId: string,
     ): Promise<IFriendRequest | null> {
-        return await this.friendRequestModel.findOne({
-            $or: [
-                { fromId, toId },
-                { fromId: toId, toId: fromId },
-            ],
-        }).lean();
+        return await this.friendRequestModel
+            .findOne({
+                $or: [
+                    { fromId, toId },
+                    { fromId: toId, toId: fromId },
+                ],
+            })
+            .lean();
     }
 
     // Create a new friend request
@@ -157,15 +167,17 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
     }
 
     async findAllByUserId(userId: string): Promise<IFriendship[]> {
-        return await this.friendshipModel.find({
-            $or: [
-                { userId: userId },
-                { friendId: userId },
-                // Legacy support
-                { user: userId },
-                { friend: userId },
-            ],
-        }).lean();
+        return await this.friendshipModel
+            .find({
+                $or: [
+                    { userId: userId },
+                    { friendId: userId },
+                    // Legacy support
+                    { user: userId },
+                    { friend: userId },
+                ],
+            })
+            .lean();
     }
 
     async deleteAllForUser(userId: string): Promise<{ deletedCount: number }> {
@@ -196,4 +208,3 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         return { deletedCount: result.deletedCount };
     }
 }
-

@@ -77,4 +77,4 @@ import { SettingsController } from './controllers/SettingsController';
         },
     ],
 })
-export class AppModule { }
+export class AppModule {}

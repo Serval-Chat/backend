@@ -16,7 +16,7 @@ export class MetricsController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     @Get()
     @ApiOperation({ summary: 'Retrieve Prometheus metrics' })
@@ -31,7 +31,10 @@ export class MetricsController {
         content: { 'text/plain': {} },
     })
     @ApiResponse({ status: 401, description: 'Unauthorized' })
-    @ApiResponse({ status: 500, description: 'Metrics security configuration missing' })
+    @ApiResponse({
+        status: 500,
+        description: 'Metrics security configuration missing',
+    })
     public async getMetrics(
         @Headers('authorization') authorization?: string,
     ): Promise<string> {

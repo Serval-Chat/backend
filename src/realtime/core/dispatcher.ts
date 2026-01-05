@@ -13,7 +13,7 @@ import logger from '@/utils/logger';
 // Handles the registration and dispatching of WebSocket events to gateway handlers
 // Manages dependency injection, validation, and error handling for all events
 export class RealTimeDispatcher {
-    constructor(private container: Container) { }
+    constructor(private container: Container) {}
 
     // Registers all gateway classes with the Socket.IO server
     //
@@ -44,10 +44,9 @@ export class RealTimeDispatcher {
                 let gatewayInstance: Record<string, Function>;
                 try {
                     gatewayInstance = this.container.resolve(
-                        GatewayClass as new (...args: unknown[]) => Record<
-                            string,
-                            Function
-                        >,
+                        GatewayClass as new (
+                            ...args: unknown[]
+                        ) => Record<string, Function>,
                     );
                 } catch (error) {
                     logger.error(
@@ -59,7 +58,9 @@ export class RealTimeDispatcher {
 
                 // Attach user to context if authenticated
                 // This assumes auth middleware has already run and attached user to socket
-                const user = (socket as unknown as { user: SocketContext['user'] }).user;
+                const user = (
+                    socket as unknown as { user: SocketContext['user'] }
+                ).user;
                 const ctx: SocketContext = { socket, user };
 
                 // Handle connection hook
@@ -71,8 +72,7 @@ export class RealTimeDispatcher {
                         logger.error(
                             `[Socket Failure] Connection Hook: ${GatewayClass.name}`,
                             {
-                                reason:
-                                    err.message || 'Connection hook failed',
+                                reason: err.message || 'Connection hook failed',
                                 socketId: ctx.socket.id,
                                 userId: ctx.user?.id,
                                 stack: err.stack,
@@ -82,66 +82,81 @@ export class RealTimeDispatcher {
                 }
 
                 events.forEach(({ event, schema, method }) => {
-                    socket.on(event, async (payload: unknown, ack?: (data: unknown) => void) => {
-                        try {
-                            // 1. Validation
-                            let validatedPayload = payload;
-                            if (schema) {
-                                const result = schema.safeParse(payload);
-                                if (!result.success) {
-                                    logger.warn(
-                                        `[Socket Failure] Event: ${event}`,
-                                        {
-                                            reason: 'Validation failed',
-                                            socketId: ctx.socket.id,
-                                            userId: ctx.user?.id,
-                                            validationErrors:
-                                                result.error.issues,
-                                        },
-                                    );
-                                    if (ack) {
-                                        return ack({
-                                            ok: false,
-                                            error: 'Validation failed',
-                                            details: result.error.issues,
-                                        });
+                    socket.on(
+                        event,
+                        async (
+                            payload: unknown,
+                            ack?: (data: unknown) => void,
+                        ) => {
+                            try {
+                                // 1. Validation
+                                let validatedPayload = payload;
+                                if (schema) {
+                                    const result = schema.safeParse(payload);
+                                    if (!result.success) {
+                                        logger.warn(
+                                            `[Socket Failure] Event: ${event}`,
+                                            {
+                                                reason: 'Validation failed',
+                                                socketId: ctx.socket.id,
+                                                userId: ctx.user?.id,
+                                                validationErrors:
+                                                    result.error.issues,
+                                            },
+                                        );
+                                        if (ack) {
+                                            return ack({
+                                                ok: false,
+                                                error: 'Validation failed',
+                                                details: result.error.issues,
+                                            });
+                                        }
+                                        return;
                                     }
-                                    return;
+                                    validatedPayload = result.data;
                                 }
-                                validatedPayload = result.data;
-                            }
 
-                            // 2. Execution
-                            if (typeof gatewayInstance[method] !== 'function') {
-                                throw new Error(`Method ${method} not found on gateway ${GatewayClass.name}`);
-                            }
+                                // 2. Execution
+                                if (
+                                    typeof gatewayInstance[method] !==
+                                    'function'
+                                ) {
+                                    throw new Error(
+                                        `Method ${method} not found on gateway ${GatewayClass.name}`,
+                                    );
+                                }
 
-                            const result = await gatewayInstance[method](
-                                ctx,
-                                validatedPayload,
-                            );
+                                const result = await gatewayInstance[method](
+                                    ctx,
+                                    validatedPayload,
+                                );
 
-                            // 3. Acknowledgment
-                            if (ack && result !== undefined) {
-                                ack(result);
+                                // 3. Acknowledgment
+                                if (ack && result !== undefined) {
+                                    ack(result);
+                                }
+                            } catch (error: unknown) {
+                                const err = error as Error;
+                                logger.error(
+                                    `[Socket Failure] Event: ${event}`,
+                                    {
+                                        reason:
+                                            err.message ||
+                                            'Internal execution error',
+                                        socketId: ctx.socket.id,
+                                        userId: ctx.user?.id,
+                                        stack: err.stack,
+                                    },
+                                );
+                                if (ack) {
+                                    ack({
+                                        ok: false,
+                                        error: 'Internal server error',
+                                    });
+                                }
                             }
-                        } catch (error: unknown) {
-                            const err = error as Error;
-                            logger.error(`[Socket Failure] Event: ${event}`, {
-                                reason:
-                                    err.message || 'Internal execution error',
-                                socketId: ctx.socket.id,
-                                userId: ctx.user?.id,
-                                stack: err.stack,
-                            });
-                            if (ack) {
-                                ack({
-                                    ok: false,
-                                    error: 'Internal server error',
-                                });
-                            }
-                        }
-                    });
+                        },
+                    );
                 });
             });
         });
