@@ -6,7 +6,9 @@
   "scripts": {
     "test": "node -r tsconfig-paths/register --test tests/**/*.test.cjs",
     "test:integration": "node -r tsconfig-paths/register --test tests/integration/*.test.cjs",
-    "build": "npm run tsoa:gen && npm run tsoa:spec && rm -rf dist && npx tsc && tsc-alias",
+    "build": "npm run tsoa:gen && npm run tsoa:spec && npm run type-check && rm -rf dist && npm run build:only",
+    "build:only": "node esbuild.config.js",
+    "type-check": "npx tsc --noEmit",
     "tsoa:gen": "tsoa routes -c tsoa.config.json",
     "tsoa:spec": "tsoa spec -c tsoa.config.json",
     "start": "node dist/main.js",
@@ -95,6 +97,7 @@
     "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^8.46.3",
     "@typescript-eslint/parser": "^8.46.3",
+    "esbuild-plugin-tsc": "^0.5.0",
     "eslint": "^9.39.1",
     "mongodb-memory-server": "^10.1.4",
     "nodemon": "^3.1.10",
