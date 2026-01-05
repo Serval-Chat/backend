@@ -1,55 +1,55 @@
 import {
     Controller,
     Get,
-    Route,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
-} from 'tsoa';
-import { injectable, inject } from 'inversify';
+    Param,
+    Req,
+    UseGuards,
+    Inject,
+} from '@nestjs/common';
 import { TYPES } from '@/di/types';
-import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import express from 'express';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
+import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import { ILogger } from '@/di/interfaces/ILogger';
+import { ApiTags, ApiResponse, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Request } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JWTPayload } from '@/utils/jwt';
-
 import { EmojiResponseDTO } from './dto/emoji.response.dto';
+import { injectable, inject } from 'inversify';
+
+interface RequestWithUser extends Request {
+    user: JWTPayload;
+}
 
 // Controller for emoji management
 // Provides access to server-specific and global emojis
+@ApiTags('Emojis')
 @injectable()
-@Route('api/v1/emojis')
-@Tags('Emojis')
-export class EmojiController extends Controller {
+@Controller('api/v1/emojis')
+export class EmojiController {
     constructor(
-        @inject(TYPES.EmojiRepository) private emojiRepo: IEmojiRepository,
+        @inject(TYPES.EmojiRepository)
+        @Inject(TYPES.EmojiRepository)
+        private emojiRepo: IEmojiRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
-    // Retrieves all emojis from all servers the user is a member of
     @Get()
-    @Security('jwt')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Get all emojis accessible to the user' })
+    @ApiResponse({ status: 200, type: [EmojiResponseDTO] })
     public async getAllEmojis(
-        @Request() req: express.Request,
+        @Req() req: Request,
     ): Promise<EmojiResponseDTO[]> {
-        if (
-            !(req as express.Request & { user: JWTPayload }).user ||
-            !(req as express.Request & { user: JWTPayload }).user.id
-        ) {
-            throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
-        }
-
-        const userId = (req as express.Request & { user: JWTPayload }).user.id;
+        const userId = (req as unknown as RequestWithUser).user.id;
 
         const memberships = await this.serverMemberRepo.findAllByUserId(userId);
         // Extract server IDs from membership objects
@@ -60,19 +60,18 @@ export class EmojiController extends Controller {
             _id: e._id.toString(),
             name: e.name,
             imageUrl: e.imageUrl,
-            serverId: e.serverId.toString(),
+            serverId: e.serverId?.toString() || '', // Handle global emojis if serverId is optional/missing
             createdBy: e.createdBy.toString(),
             createdAt: e.createdAt,
         }));
     }
 
-    // Retrieves a specific emoji by ID
-    @Get('{emojiId}')
-    @Response<ErrorResponse>('404', 'Emoji Not Found', {
-        error: ErrorMessages.EMOJI.NOT_FOUND,
-    })
+    @Get(':emojiId')
+    @ApiOperation({ summary: 'Get a specific emoji by ID' })
+    @ApiResponse({ status: 200, type: EmojiResponseDTO })
+    @ApiResponse({ status: 404, description: 'Emoji Not Found' })
     public async getEmojiById(
-        @Path() emojiId: string,
+        @Param('emojiId') emojiId: string,
     ): Promise<EmojiResponseDTO> {
         // Fetch emoji by its unique ID
         const emoji = await this.emojiRepo.findById(emojiId);
@@ -84,7 +83,7 @@ export class EmojiController extends Controller {
             _id: emoji._id.toString(),
             name: emoji.name,
             imageUrl: emoji.imageUrl,
-            serverId: emoji.serverId.toString(),
+            serverId: emoji.serverId?.toString() || '',
             createdBy: emoji.createdBy.toString(),
             createdAt: emoji.createdAt,
         };

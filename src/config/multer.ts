@@ -34,7 +34,7 @@ export function extractOriginalFilename(secureFilename: string): string {
 }
 
 // Disk storage for general file uploads
-const storage = multer.diskStorage({
+export const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, path.join(__dirname, '../../uploads/uploads/'));
     },
