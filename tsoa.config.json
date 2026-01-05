@@ -6,8 +6,7 @@
 	],
 	"spec": {
 		"outputDirectory": "public",
-		"specVersion": 3,
-		"yaml": true
+		"specVersion": 3
 	},
 	"routes": {
 		"routesDir": "src/routes/tsoa",
