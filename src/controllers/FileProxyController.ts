@@ -1,8 +1,15 @@
-import { Controller, Get, Route, Query, Response, Tags, Request } from 'tsoa';
-import { injectable, inject } from 'inversify';
+import {
+    Controller,
+    Get,
+    Query,
+    Req,
+    Res,
+    Inject,
+} from '@nestjs/common';
 import { TYPES } from '@/di/types';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import express from 'express';
+import { ILogger } from '@/di/interfaces/ILogger';
+import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import {
     getCacheKey,
@@ -12,7 +19,6 @@ import {
     fetchWithRedirects,
     readBodyWithLimit,
 } from '@/services/FileProxyService';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 
@@ -38,18 +44,21 @@ interface MetaCacheEntry {
 }
 
 import { FileProxyMetaResponseDTO } from './dto/file-proxy.response.dto';
+import { injectable, inject } from 'inversify';
 
 // Controller for proxying remote files to avoid CORS issues and SSRF attacks
+@ApiTags('File Proxy')
 @injectable()
-@Route('api/v1/file-proxy')
-@Tags('File Proxy')
-export class FileProxyController extends Controller {
+@Controller('api/v1/file-proxy')
+export class FileProxyController {
     private static downloadCache = new Map<string, CacheEntry>();
     private static metadataCache = new Map<string, MetaCacheEntry>();
 
-    constructor(@inject(TYPES.Logger) private logger: ILogger) {
-        super();
-    }
+    constructor(
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
     // Rewrite the old URL to new URL so old messages that use the old URL are still valid
     private rewriteKbityUrl(url: URL): URL {
@@ -62,25 +71,17 @@ export class FileProxyController extends Controller {
         return url;
     }
 
-    // Proxies a file from a remote URL
-    // Enforces MAX_FILE_SIZE_BYTES to prevent resource exhaustion
     @Get()
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.FILE.URL_REQUIRED,
-    })
-    @Response<ErrorResponse>('413', 'File size exceeds limit', {
-        error: ErrorMessages.FILE.SIZE_EXCEEDS_LIMIT,
-    })
-    @Response<ErrorResponse>('502', 'Bad Gateway', {
-        error: ErrorMessages.FILE.FAILED_DOWNLOAD_REMOTE,
-    })
+    @ApiOperation({ summary: 'Proxy a remote file' })
+    @ApiResponse({ status: 200, description: 'File content' })
+    @ApiResponse({ status: 400, description: 'Bad Request' })
+    @ApiResponse({ status: 413, description: 'File too large' })
+    @ApiResponse({ status: 502, description: 'Bad Gateway' })
     public async proxyFile(
-        @Query() url: string,
-        @Request() req: express.Request,
+        @Query('url') url: string,
+        @Req() req: Request,
+        @Res() res: Response,
     ): Promise<void> {
-        const res = req.res;
-        if (!res) throw new Error(ErrorMessages.SYSTEM.RESPONSE_NOT_FOUND);
-
         try {
             let targetUrl = validateUrl(url);
             const cacheKey = getCacheKey(targetUrl.toString());
@@ -189,17 +190,27 @@ export class FileProxyController extends Controller {
             }
 
             this.logger.error('Failed to proxy file:', err);
-            throw new ApiError(500, ErrorMessages.FILE.FAILED_PROXY);
+            // Since we're using @Res(), we must manually send the error response if we catch it here.
+            // Throwing ApiError works too IF the exception filter catches it, BUT
+            // typically when @Res() is used, Nest expects you to handle the response completely.
+            // However, filters *can* catch exceptions from handlers using @Res() if passthrough isn't set,
+            // but it's safer to use manual response here to match the success path style.
+            // Actually, for consistency with other controllers, throwing ApiError is better IF we rely on the global filter.
+            // But let's stick to the manual response for now as this controller is weird.
+            // Wait, I just added ApiErrorFilter. It should handle errors.
+            // Let's use ApiError for 500.
+            if (!res.headersSent) {
+                throw new ApiError(500, ErrorMessages.FILE.FAILED_PROXY);
+            }
         }
     }
 
-    // Retrieves metadata for a remote file via HEAD request
     @Get('meta')
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.FILE.URL_REQUIRED,
-    })
+    @ApiOperation({ summary: 'Get remote file metadata' })
+    @ApiResponse({ status: 200, type: FileProxyMetaResponseDTO })
+    @ApiResponse({ status: 400, description: 'Bad Request' })
     public async getFileMeta(
-        @Query() url: string,
+        @Query('url') url: string,
     ): Promise<FileProxyMetaResponseDTO> {
         try {
             const targetUrl = validateUrl(url);
