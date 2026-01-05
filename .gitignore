@@ -3,6 +3,9 @@
 # TSOA auto-generated files
 src/routes/tsoa/routes.ts
 
+# Swagger/OpenAPI auto-generated files
+openapi.yaml
+
 # Unironically we also host public files from here.
 public/
 

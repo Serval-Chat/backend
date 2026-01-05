@@ -30,6 +30,12 @@ import { StatusService } from '@/realtime/services/StatusService';
             useClass: StatusService,
         },
     ],
-    exports: [TYPES.AuthService, TYPES.PermissionService, TYPES.PresenceService, TYPES.PingService, TYPES.StatusService],
+    exports: [
+        TYPES.AuthService,
+        TYPES.PermissionService,
+        TYPES.PresenceService,
+        TYPES.PingService,
+        TYPES.StatusService,
+    ],
 })
-export class ServicesModule { }
+export class ServicesModule {}

@@ -36,7 +36,7 @@ export class ChatGateway {
         private dmUnreadRepo: IDmUnreadRepository,
         @inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-    ) { }
+    ) {}
 
     /**
      * Handles 'message' event.

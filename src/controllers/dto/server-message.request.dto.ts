@@ -1,9 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional } from 'class-validator';
-import {
-    IsMessageContent,
-    IsMessageId,
-} from '@/validation/schemas/common';
+import { IsMessageContent, IsMessageId } from '@/validation/schemas/common';
 
 export class SendMessageRequestDTO {
     @ApiPropertyOptional({ description: 'Message content (preferred)' })

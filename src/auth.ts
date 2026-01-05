@@ -84,7 +84,9 @@ export async function expressAuthentication(
                 }
 
                 const hasAllScopes = scopes.every(
-                    (scope) => (userPermissions as Record<string, boolean>)[scope] === true,
+                    (scope) =>
+                        (userPermissions as Record<string, boolean>)[scope] ===
+                        true,
                 );
                 if (!hasAllScopes) {
                     return Promise.reject({

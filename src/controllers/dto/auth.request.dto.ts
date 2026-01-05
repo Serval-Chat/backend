@@ -1,5 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import {
+    Matches as MatchesValidator,
+    MinLength as MinLengthValidator,
+} from 'class-validator';
 import {
     IsLogin,
     IsPassword,
@@ -7,7 +10,6 @@ import {
     IsInviteToken,
     IsStrongPassword,
 } from '@/validation/schemas/common';
-import { IsEmail as IsEmailValidator, Matches as MatchesValidator, MinLength as MinLengthValidator, MaxLength as MaxLengthValidator } from 'class-validator';
 import { ErrorMessages } from '@/constants/errorMessages';
 
 export class LoginRequestDTO {
@@ -44,7 +46,9 @@ export class RegisterRequestDTO {
 export class ChangeLoginRequestDTO {
     @ApiProperty()
     @IsLogin()
-    @MatchesValidator(/^[a-zA-Z0-9._-]{3,24}$/, { message: ErrorMessages.AUTH.LOGIN_FORMAT })
+    @MatchesValidator(/^[a-zA-Z0-9._-]{3,24}$/, {
+        message: ErrorMessages.AUTH.LOGIN_FORMAT,
+    })
     newLogin!: string;
 
     @ApiProperty()

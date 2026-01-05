@@ -10,12 +10,10 @@ export class ApiErrorFilter implements ExceptionFilter {
         const response = ctx.getResponse<Response>();
         const status = exception.status;
 
-        response
-            .status(status)
-            .json({
-                error: exception.message,
-                details: exception.details,
-                ...(PROJECT_LEVEL !== 'production' && { stack: exception.stack }),
-            });
+        response.status(status).json({
+            error: exception.message,
+            details: exception.details,
+            ...(PROJECT_LEVEL !== 'production' && { stack: exception.stack }),
+        });
     }
 }

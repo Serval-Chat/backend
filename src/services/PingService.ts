@@ -25,7 +25,7 @@ export class PingService {
         @inject(TYPES.PingRepository)
         @Inject(TYPES.PingRepository)
         private pingRepo: IPingRepository,
-    ) { }
+    ) {}
 
     // Store a ping for a user (both online and offline)
     async addPing(

@@ -9,7 +9,10 @@ import {
 import { StatusService } from '@/realtime/services/StatusService';
 import { TYPES } from '@/di/types';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
-import { resolveSerializedCustomStatus, type SerializedCustomStatus } from '@/utils/status';
+import {
+    resolveSerializedCustomStatus,
+    type SerializedCustomStatus,
+} from '@/utils/status';
 import { z } from 'zod';
 import logger from '@/utils/logger';
 
@@ -24,7 +27,7 @@ export class StatusGateway {
     constructor(
         @inject(TYPES.StatusService) private statusService: StatusService,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) { }
+    ) {}
 
     /**
      * Handles 'status_subscribe' event.

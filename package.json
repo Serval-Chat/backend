@@ -13,9 +13,6 @@
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node -r tsconfig-paths/register' src/main.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "frontend:install": "cd frontend/chat-frontend && npm install -f && cd ../../ && cp -r static/* ./public",
-    "frontend:build": "cd frontend/chat-frontend && npm run build && rm -rf ../../public/* && cp -r dist/* ../../public/",
-    "frontend:build:debug": "cd frontend/chat-frontend && npx vite build --mode development --sourcemap && rm -rf ../../public/* && cp -r dist/* ../../public/",
     "format": "npx prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "monitoring:start": "docker-compose -f docker-compose.monitoring.yml up -d",
     "monitoring:stop": "docker-compose -f docker-compose.monitoring.yml down",
@@ -28,8 +25,6 @@
   "author": "Catflare <catty@example.com>",
   "license": "ISC",
   "dependencies": {
-    "@grpc/grpc-js": "^1.14.2",
-    "@grpc/proto-loader": "^0.8.0",
     "@nestjs/common": "^11.1.11",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.11",
@@ -69,7 +64,6 @@
     "multer": "^2.0.2",
     "nest-winston": "^1.10.2",
     "prom-client": "^15.1.3",
-    "protobufjs": "^8.0.0",
     "recharts": "^3.6.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -80,6 +74,8 @@
     "web-push": "^3.6.7",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
+    "ws": "^8.19.0",
+    "yaml": "^2.8.2",
     "zod": "^4.1.12"
   },
   "devDependencies": {

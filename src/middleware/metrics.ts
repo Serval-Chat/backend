@@ -30,7 +30,11 @@ export const createMetricsMiddleware = (logger?: ILogger) => {
         res.end = function (this: Response, ...args: unknown[]): Response {
             try {
                 const duration = (Date.now() - start) / 1000; // Convert to seconds
-                const route = (req as Request & { route?: { path: string } }).route?.path || req.path || 'unknown';
+                const route =
+                    (req as Request & { route?: { path: string } }).route
+                        ?.path ||
+                    req.path ||
+                    'unknown';
                 const method = req.method;
                 const statusCode = res.statusCode.toString();
 
@@ -47,7 +51,10 @@ export const createMetricsMiddleware = (logger?: ILogger) => {
             }
 
             // Call original end function
-            return originalEnd.apply(this, args as Parameters<Response['end']>) as Response;
+            return originalEnd.apply(
+                this,
+                args as Parameters<Response['end']>,
+            ) as Response;
         } as Response['end'];
 
         next();

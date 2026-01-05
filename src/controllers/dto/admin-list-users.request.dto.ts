@@ -1,10 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsEnum } from 'class-validator';
-import {
-    IsLimit,
-    IsOffset,
-    IsBooleanQuery,
-} from '@/validation/schemas/common';
+import { IsLimit, IsOffset, IsBooleanQuery } from '@/validation/schemas/common';
 import { AdminUserFilterDTO } from './common.request.dto';
 
 export class AdminListUsersRequestDTO {

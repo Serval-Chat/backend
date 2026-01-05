@@ -61,5 +61,5 @@ export interface WebSocketFrame {
     type: FrameType;
     id?: string; // Request ID (required for REQUEST/RESPONSE)
     event: EventType; // Enum-based event type
-    payload: Buffer | Uint8Array; // Serialized inner Protobuf message
+    payload: unknown; // Serialized JSON payload
 }

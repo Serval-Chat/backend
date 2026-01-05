@@ -11,39 +11,44 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseWarningRepository implements IWarningRepository {
     private warningModel = Warning;
-    constructor() { }
+    constructor() {}
 
     async findByUserId(
         userId: string,
         acknowledged?: boolean,
     ): Promise<IWarning[]> {
-        const filter: FilterQuery<IWarning> = { userId: new Types.ObjectId(userId) };
+        const filter: FilterQuery<IWarning> = {
+            userId: new Types.ObjectId(userId),
+        };
         if (acknowledged !== undefined) {
             filter.acknowledged = acknowledged;
         }
 
-        return (await this.warningModel.find(filter)
+        return (await this.warningModel
+            .find(filter)
             .sort({ timestamp: -1 })
             .populate('issuedBy', 'username')
             .lean()) as unknown as IWarning[];
     }
 
     async findById(id: string): Promise<IWarning | null> {
-        return (await this.warningModel.findById(
-            id,
-        ).lean()) as unknown as IWarning | null;
+        return (await this.warningModel
+            .findById(id)
+            .lean()) as unknown as IWarning | null;
     }
 
     // Mark a warning as acknowledged by the user */
     async acknowledge(id: string): Promise<IWarning | null> {
-        return (await this.warningModel.findByIdAndUpdate(
-            id,
-            {
-                acknowledged: true,
-                acknowledgedAt: new Date(),
-            },
-            { new: true },
-        ).lean()) as unknown as IWarning | null;
+        return (await this.warningModel
+            .findByIdAndUpdate(
+                id,
+                {
+                    acknowledged: true,
+                    acknowledgedAt: new Date(),
+                },
+                { new: true },
+            )
+            .lean()) as unknown as IWarning | null;
     }
 
     async countByUserId(userId: string): Promise<number> {
@@ -75,7 +80,8 @@ export class MongooseWarningRepository implements IWarningRepository {
         limit?: number;
         offset?: number;
     }): Promise<IWarning[]> {
-        return (await this.warningModel.find({})
+        return (await this.warningModel
+            .find({})
             .sort({ timestamp: -1 })
             .limit(options.limit || 50)
             .skip(options.offset || 0)
@@ -84,4 +90,3 @@ export class MongooseWarningRepository implements IWarningRepository {
             .lean()) as unknown as IWarning[];
     }
 }
-

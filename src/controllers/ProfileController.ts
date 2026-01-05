@@ -15,12 +15,18 @@ import {
     HttpCode,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiConsumes,
+    ApiBody,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Request, Response } from 'express';
 import {
     UserProfileResponseDTO,
-    BadgeResponseDTO,
     UserLookupResponseDTO,
     UpdateProfilePictureResponseDTO,
     UpdateBannerResponseDTO,
@@ -43,7 +49,10 @@ import { ApiError } from '@/utils/ApiError';
 import { JWTPayload, hasPermission } from '@/utils/jwt';
 import { getIO } from '@/socket';
 import { mapUser } from '@/utils/user';
-import { resolveSerializedCustomStatus, SerializedCustomStatus } from '@/utils/status';
+import {
+    resolveSerializedCustomStatus,
+    SerializedCustomStatus,
+} from '@/utils/status';
 
 import { randomBytes } from 'crypto';
 import path from 'path';
@@ -83,7 +92,7 @@ export class ProfileController {
         @inject(TYPES.FriendshipRepository)
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-    ) { }
+    ) {}
 
     // Maps a user document to a public UserProfileResponseDTO payload
     private async mapToProfile(user: IUser): Promise<UserProfileResponseDTO> {
@@ -147,7 +156,9 @@ export class ProfileController {
     @ApiOperation({ summary: 'Get user profile by ID' })
     @ApiResponse({ status: 200, type: UserProfileResponseDTO })
     @ApiResponse({ status: 404, description: 'User not found' })
-    public async getUserProfileResponseDTO(@Param('userId') userId: string): Promise<UserProfileResponseDTO> {
+    public async getUserProfileResponseDTO(
+        @Param('userId') userId: string,
+    ): Promise<UserProfileResponseDTO> {
         const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
@@ -176,7 +187,10 @@ export class ProfileController {
             }
 
             if (!hasPermission(adminUser, 'manageUsers')) {
-                throw new ApiError(403, ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
+                throw new ApiError(
+                    403,
+                    ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+                );
             }
 
             const user = await this.userRepo.findById(id);
@@ -291,7 +305,10 @@ export class ProfileController {
             // Allow profile pictures up to 5MB
             const MAX_SIZE = 5 * 1024 * 1024;
             if (profilePicture.size > MAX_SIZE) {
-                throw new ApiError(400, 'File size too large. Max 5MB allowed.');
+                throw new ApiError(
+                    400,
+                    'File size too large. Max 5MB allowed.',
+                );
             }
 
             const user = await this.userRepo.findById(userId);
@@ -330,13 +347,19 @@ export class ProfileController {
 
                 if (metadata.width > 1024 || metadata.height > 1024) {
                     fs.unlinkSync(uploadedPath);
-                    throw new ApiError(400, `Profile picture dimensions must be at most 1024x1024px. Received: ${metadata.width}x${metadata.height}px`);
+                    throw new ApiError(
+                        400,
+                        `Profile picture dimensions must be at most 1024x1024px. Received: ${metadata.width}x${metadata.height}px`,
+                    );
                 }
 
                 // Check if the profile picture is webp or gif
                 if (metadata.format !== 'webp' && metadata.format !== 'gif') {
                     fs.unlinkSync(uploadedPath);
-                    throw new ApiError(400, 'Invalid file format. Only WebP and GIF are allowed.');
+                    throw new ApiError(
+                        400,
+                        'Invalid file format. Only WebP and GIF are allowed.',
+                    );
                 }
             } catch (validationErr: unknown) {
                 if (fs.existsSync(uploadedPath)) {
@@ -344,7 +367,10 @@ export class ProfileController {
                 }
                 const error = validationErr as Error;
                 this.logger.error('Profile picture validation error:', error);
-                throw new ApiError(400, error.message || 'Failed to validate profile picture image');
+                throw new ApiError(
+                    400,
+                    error.message || 'Failed to validate profile picture image',
+                );
             }
 
             const ext = `.${(await sharp(uploadedPath).metadata()).format}`;
@@ -367,36 +393,41 @@ export class ProfileController {
 
             try {
                 const io = getIO();
-                const serverIds = await this.serverMemberRepo.findServerIdsByUserId(userId);
-                const friendships = await this.friendshipRepo.findAllByUserId(userId);
+                const serverIds =
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                const friendships =
+                    await this.friendshipRepo.findAllByUserId(userId);
 
                 // Emit to all servers the user is in
-                serverIds.forEach(serverId => {
+                serverIds.forEach((serverId) => {
                     io.to(`server:${serverId}`).emit('user_updated', {
                         userId,
-                        profilePicture: profilePictureUrl
+                        profilePicture: profilePictureUrl,
                     });
                 });
 
                 // Emit to all friends
-                friendships.forEach(friendship => {
-                    const friendId = friendship.userId.toString() === userId
-                        ? friendship.friendId.toString()
-                        : friendship.userId.toString();
+                friendships.forEach((friendship) => {
+                    const friendId =
+                        friendship.userId.toString() === userId
+                            ? friendship.friendId.toString()
+                            : friendship.userId.toString();
                     io.to(`user:${friendId}`).emit('user_updated', {
                         userId,
-                        profilePicture: profilePictureUrl
+                        profilePicture: profilePictureUrl,
                     });
                 });
 
                 // Also emit to the user themselves (for other sessions)
                 io.to(`user:${userId}`).emit('user_updated', {
                     userId,
-                    profilePicture: profilePictureUrl
+                    profilePicture: profilePictureUrl,
                 });
-
             } catch (err) {
-                this.logger.error('Failed to emit profile picture update:', err);
+                this.logger.error(
+                    'Failed to emit profile picture update:',
+                    err,
+                );
             }
 
             return {
@@ -445,7 +476,10 @@ export class ProfileController {
             // Allow banners up to 5MB
             const MAX_SIZE = 5 * 1024 * 1024;
             if (banner.size > MAX_SIZE) {
-                throw new ApiError(400, 'File size too large. Max 5MB allowed.');
+                throw new ApiError(
+                    400,
+                    'File size too large. Max 5MB allowed.',
+                );
             }
 
             const user = await this.userRepo.findById(userId);
@@ -484,13 +518,19 @@ export class ProfileController {
 
                 if (metadata.width > 1136 || metadata.height > 400) {
                     fs.unlinkSync(uploadedPath);
-                    throw new ApiError(400, `Banner dimensions must be at most 1136x400px. Received: ${metadata.width}x${metadata.height}px`);
+                    throw new ApiError(
+                        400,
+                        `Banner dimensions must be at most 1136x400px. Received: ${metadata.width}x${metadata.height}px`,
+                    );
                 }
 
                 // Check if the banner is webp
                 if (metadata.format !== 'webp') {
                     fs.unlinkSync(uploadedPath);
-                    throw new ApiError(400, 'Invalid file format. Only WebP is allowed.');
+                    throw new ApiError(
+                        400,
+                        'Invalid file format. Only WebP is allowed.',
+                    );
                 }
             } catch (validationErr: unknown) {
                 if (fs.existsSync(uploadedPath)) {
@@ -498,7 +538,10 @@ export class ProfileController {
                 }
                 const error = validationErr as Error;
                 this.logger.error('Banner validation error:', error);
-                throw new ApiError(400, error.message || 'Failed to validate banner image');
+                throw new ApiError(
+                    400,
+                    error.message || 'Failed to validate banner image',
+                );
             }
 
             const ext = '.webp';
@@ -515,15 +558,16 @@ export class ProfileController {
                 throw new ApiError(500, 'Failed to save banner image');
             }
 
-
             await this.userRepo.updateBanner(userId, filename);
 
             const bannerUrl = `/api/v1/profile/banner/${filename}`;
 
             try {
                 const io = getIO();
-                const serverIds = await this.serverMemberRepo.findServerIdsByUserId(userId);
-                const friendships = await this.friendshipRepo.findAllByUserId(userId);
+                const serverIds =
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                const friendships =
+                    await this.friendshipRepo.findAllByUserId(userId);
 
                 const updatePayload = {
                     username,
@@ -531,21 +575,30 @@ export class ProfileController {
                 };
 
                 // Emit to all servers the user is in
-                serverIds.forEach(serverId => {
-                    io.to(`server:${serverId}`).emit('user_banner_updated', updatePayload);
+                serverIds.forEach((serverId) => {
+                    io.to(`server:${serverId}`).emit(
+                        'user_banner_updated',
+                        updatePayload,
+                    );
                 });
 
                 // Emit to all friends
-                friendships.forEach(friendship => {
-                    const friendId = friendship.userId.toString() === userId
-                        ? friendship.friendId.toString()
-                        : friendship.userId.toString();
-                    io.to(`user:${friendId}`).emit('user_banner_updated', updatePayload);
+                friendships.forEach((friendship) => {
+                    const friendId =
+                        friendship.userId.toString() === userId
+                            ? friendship.friendId.toString()
+                            : friendship.userId.toString();
+                    io.to(`user:${friendId}`).emit(
+                        'user_banner_updated',
+                        updatePayload,
+                    );
                 });
 
                 // Also emit to the user themselves (for other sessions)
-                io.to(`user:${userId}`).emit('user_banner_updated', updatePayload);
-
+                io.to(`user:${userId}`).emit(
+                    'user_banner_updated',
+                    updatePayload,
+                );
             } catch (err) {
                 this.logger.error('Failed to emit banner update:', err);
             }
@@ -572,7 +625,12 @@ export class ProfileController {
     ): Promise<void> {
         const { filename } = params;
 
-        const filePath = path.join(process.cwd(), 'uploads', 'banners', filename);
+        const filePath = path.join(
+            process.cwd(),
+            'uploads',
+            'banners',
+            filename,
+        );
 
         if (!fs.existsSync(filePath)) {
             res.status(404).send({ error: 'Banner not found' });
@@ -588,15 +646,20 @@ export class ProfileController {
             '.webp': 'image/webp',
         };
 
-        res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+        res.setHeader(
+            'Content-Type',
+            contentTypes[ext] || 'application/octet-stream',
+        );
         res.setHeader('Cache-Control', 'public, max-age=86400');
 
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve, _reject) => {
             res.sendFile(filePath, (err) => {
                 if (err) {
                     this.logger.error('Error sending banner file:', err);
                     if (!res.headersSent) {
-                        res.status(500).send({ error: 'Failed to send banner' });
+                        res.status(500).send({
+                            error: 'Failed to send banner',
+                        });
                     }
                     resolve();
                 } else {
@@ -729,7 +792,10 @@ export class ProfileController {
         ) {
             const parsed = new Date(expiresAt);
             if (Number.isNaN(parsed.getTime())) {
-                throw new ApiError(400, ErrorMessages.PROFILE.INVALID_EXPIRES_AT);
+                throw new ApiError(
+                    400,
+                    ErrorMessages.PROFILE.INVALID_EXPIRES_AT,
+                );
             }
             expiresAtDate = parsed;
         } else if (
@@ -812,7 +878,10 @@ export class ProfileController {
         const { usernames } = body;
 
         if (!Array.isArray(usernames)) {
-            throw new ApiError(400, ErrorMessages.PROFILE.USERNAMES_ARRAY_REQUIRED);
+            throw new ApiError(
+                400,
+                ErrorMessages.PROFILE.USERNAMES_ARRAY_REQUIRED,
+            );
         }
 
         const sanitized = Array.from(
@@ -925,13 +994,8 @@ export class ProfileController {
         @Req() req: Request,
         @Body() body: ChangeUsernameRequestDTO,
     ): Promise<{ message: string; username: string }> {
-        const existingUsername = (req as unknown as RequestWithUser).user.username;
         const userId = (req as unknown as RequestWithUser).user.id;
         const { newUsername } = body;
-
-
-
-
 
         const existingUser = await this.userRepo.findByUsername(newUsername);
         if (existingUser) {

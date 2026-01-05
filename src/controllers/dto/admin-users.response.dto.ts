@@ -58,4 +58,3 @@ export class AdminExtendedUserDetailsDTO extends AdminUserDetailsDTO {
     @ApiProperty({ type: [AdminUserServerInfoDTO] })
     servers!: AdminUserServerInfoDTO[];
 }
-

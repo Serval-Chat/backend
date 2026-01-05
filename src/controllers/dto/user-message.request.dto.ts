@@ -1,5 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsMessageContent, IsUserId, IsLimit, IsMessageId } from '@/validation/schemas/common';
+import {
+    IsMessageContent,
+    IsUserId,
+    IsLimit,
+    IsMessageId,
+} from '@/validation/schemas/common';
 import { IsOptional } from 'class-validator';
 
 export class UserEditMessageRequestDTO {

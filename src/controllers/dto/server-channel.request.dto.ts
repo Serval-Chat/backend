@@ -10,11 +10,7 @@ import {
     MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import {
-    IsName,
-    IsChannelId,
-    IsCategoryId,
-} from '@/validation/schemas/common';
+import { IsName, IsChannelId, IsCategoryId } from '@/validation/schemas/common';
 import { ChannelTypeDTO } from './common.request.dto';
 
 export class CreateChannelRequestDTO {
@@ -129,7 +125,7 @@ export class ReorderCategoriesRequestDTO {
 export class UpdatePermissionsRequestDTO {
     @ApiProperty({
         description: 'Map of role/user IDs to permission overrides',
-        example: { 'role_id': { 'sendMessages': true } }
+        example: { role_id: { sendMessages: true } },
     })
     @IsObject()
     permissions!: Record<string, Record<string, boolean>>;
