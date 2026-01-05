@@ -16,6 +16,8 @@ import { ApiErrorFilter } from './filters/ApiErrorFilter';
 import { EmojiController } from './controllers/EmojiController';
 import { FileController } from './controllers/FileController';
 import { FileCompatibilityController } from './controllers/FileCompatibilityController';
+import { FileProxyController } from './controllers/FileProxyController';
+import { FriendshipController } from './controllers/FriendshipController';
 
 @Module({
     imports: [
@@ -37,6 +39,8 @@ import { FileCompatibilityController } from './controllers/FileCompatibilityCont
         EmojiController,
         FileController,
         FileCompatibilityController,
+        FileProxyController,
+        FriendshipController,
     ],
     providers: [
         {

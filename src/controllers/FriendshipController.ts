@@ -3,28 +3,26 @@ import {
     Get,
     Post,
     Delete,
-    Route,
     Body,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
-} from 'tsoa';
-import { injectable, inject } from 'inversify';
+    Param,
+    Req,
+    UseGuards,
+    Inject,
+} from '@nestjs/common';
 import { TYPES } from '@/di/types';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
-import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
+import { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
+import { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { PresenceService } from '@/realtime/services/PresenceService';
-import type { ILogger } from '@/di/interfaces/ILogger';
+import { ILogger } from '@/di/interfaces/ILogger';
+import { ApiTags, ApiResponse, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { getIO } from '@/socket';
 import { type SerializedCustomStatus } from '@/utils/status';
 import { mapUser } from '@/utils/user';
-import type { Request as ExpressRequest } from 'express';
+import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
 import { SendFriendRequestDTO } from './dto/friendship.request.dto';
@@ -35,25 +33,35 @@ import {
     AcceptFriendRequestResponseDTO,
     FriendshipMessageResponseDTO,
 } from './dto/friendship.response.dto';
+import { injectable, inject } from 'inversify';
+
+interface RequestWithUser extends Request {
+    user: JWTPayload;
+}
 
 // Controller for managing user friendships and friend requests
 // Enforces boundaries via ownership checks on requests and friendships
+@ApiTags('Friends')
 @injectable()
-@Route('api/v1/friends')
-@Tags('Friends')
-@Security('jwt')
-export class FriendshipController extends Controller {
+@Controller('api/v1/friends')
+export class FriendshipController {
     constructor(
-        @inject(TYPES.UserRepository) private userRepo: IUserRepository,
+        @inject(TYPES.UserRepository)
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
         @inject(TYPES.FriendshipRepository)
+        @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.MessageRepository)
+        @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
-        @inject(TYPES.PresenceService) private presenceService: PresenceService,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.PresenceService)
+        @Inject(TYPES.PresenceService)
+        private presenceService: PresenceService,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
     // Maps a user document to a public friend payload
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
@@ -70,12 +78,15 @@ export class FriendshipController extends Controller {
         };
     }
 
-    // Retrieves the current user's friends list, sorted by latest message activity
     @Get()
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Get friends list' })
+    @ApiResponse({ status: 200, type: [FriendResponseDTO] })
     public async getFriends(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
     ): Promise<FriendResponseDTO[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as unknown as RequestWithUser).user.id;
 
         const me = await this.userRepo.findById(userId);
         if (!me) {
@@ -172,12 +183,15 @@ export class FriendshipController extends Controller {
             .filter((p) => p !== null);
     }
 
-    // Retrieves pending incoming friend requests
     @Get('incoming')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Get incoming friend requests' })
+    @ApiResponse({ status: 200, type: [IncomingFriendRequestResponseDTO] })
     public async getIncomingRequests(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
     ): Promise<IncomingFriendRequestResponseDTO[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as unknown as RequestWithUser).user.id;
         const incoming =
             await this.friendshipRepo.findPendingRequestsFor(userId);
 
@@ -201,19 +215,18 @@ export class FriendshipController extends Controller {
         );
     }
 
-    // Sends a friend request to another user
     @Post()
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.FRIENDSHIP.USERNAME_REQUIRED,
-    })
-    @Response<ErrorResponse>('404', 'User Not Found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Send a friend request' })
+    @ApiResponse({ status: 201, type: SendFriendRequestResponseDTO })
+    @ApiResponse({ status: 400, description: 'User not found or already friends' })
+    @ApiResponse({ status: 404, description: 'User not found' })
     public async sendFriendRequest(
-        @Request() req: ExpressRequest,
+        @Req() req: Request,
         @Body() body: SendFriendRequestDTO,
     ): Promise<SendFriendRequestResponseDTO> {
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const meId = (req as unknown as RequestWithUser).user.id;
         const meUser = await this.userRepo.findById(meId);
         if (!meUser) {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
@@ -281,28 +294,24 @@ export class FriendshipController extends Controller {
             );
         }
 
-        this.setStatus(211); // Note: Original was 201, but the corrupted one had 211? No, 201.
-        // Wait, I see 211 in my thought but the code had 201. Let's use 201.
-        this.setStatus(201);
         return {
             message: 'friend request sent',
             request: reqDoc,
         };
     }
 
-    // Accepts a friend request and establishes a mutual friendship
-    @Post('{id}/accept')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.FRIENDSHIP.NOT_ALLOWED,
-    })
-    @Response<ErrorResponse>('404', 'Not Found', {
-        error: ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND,
-    })
+    @Post(':id/accept')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Accept a friend request' })
+    @ApiResponse({ status: 201, type: AcceptFriendRequestResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Request not found' })
     public async acceptFriendRequest(
-        @Path() id: string,
-        @Request() req: ExpressRequest,
+        @Param('id') id: string,
+        @Req() req: Request,
     ): Promise<AcceptFriendRequestResponseDTO> {
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const meId = (req as unknown as RequestWithUser).user.id;
         const meUser = await this.userRepo.findById(meId);
         if (!meUser) {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
@@ -379,22 +388,18 @@ export class FriendshipController extends Controller {
         };
     }
 
-    // Rejects a pending friend request
-    @Post('{id}/reject')
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.FRIENDSHIP.NOT_ALLOWED,
-    })
-    @Response<ErrorResponse>('404', 'Not Found', {
-        error: ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND,
-    })
+    @Post(':id/reject')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Reject a friend request' })
+    @ApiResponse({ status: 201, type: FriendshipMessageResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Request not found' })
     public async rejectFriendRequest(
-        @Path() id: string,
-        @Request() req: ExpressRequest,
+        @Param('id') id: string,
+        @Req() req: Request,
     ): Promise<FriendshipMessageResponseDTO> {
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const meId = (req as unknown as RequestWithUser).user.id;
         const fr = await this.friendshipRepo.findRequestById(id);
 
         if (!fr) {
@@ -418,16 +423,17 @@ export class FriendshipController extends Controller {
         return { message: 'friend request rejected' };
     }
 
-    // Removes a user from the current user's friends list
-    @Delete('{friendId}')
-    @Response<ErrorResponse>('404', 'User Not Found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @Delete(':friendId')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Remove a friend' })
+    @ApiResponse({ status: 200, type: FriendshipMessageResponseDTO })
+    @ApiResponse({ status: 404, description: 'User Not Found' })
     public async removeFriend(
-        @Path() friendId: string,
-        @Request() req: ExpressRequest,
+        @Param('friendId') friendId: string,
+        @Req() req: Request,
     ): Promise<FriendshipMessageResponseDTO> {
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const meId = (req as unknown as RequestWithUser).user.id;
 
         const [friend, meUser] = await Promise.all([
             this.userRepo.findById(friendId),

@@ -1,32 +1,60 @@
-import type { SerializedCustomStatus } from '@/utils/status';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { type SerializedCustomStatus } from '@/utils/status';
 
-export interface FriendResponseDTO {
-    _id: string;
-    username: string;
+export class FriendResponseDTO {
+    @ApiProperty()
+    _id!: string;
+
+    @ApiProperty()
+    username!: string;
+
+    @ApiPropertyOptional()
     displayName?: string;
-    createdAt: string | Date;
-    profilePicture: string | null;
-    customStatus: SerializedCustomStatus | null;
+
+    @ApiProperty()
+    createdAt!: string | Date;
+
+    @ApiProperty({ nullable: true, type: String })
+    profilePicture!: string | null;
+
+    @ApiProperty({ nullable: true })
+    customStatus!: SerializedCustomStatus | null;
+
+    @ApiPropertyOptional({ nullable: true })
     latestMessageAt?: string | null;
 }
 
-export interface IncomingFriendRequestResponseDTO {
-    _id: string;
+export class IncomingFriendRequestResponseDTO {
+    @ApiProperty()
+    _id!: string;
+
+    @ApiPropertyOptional()
     from?: string;
+
+    @ApiPropertyOptional()
     fromId?: string;
-    createdAt: Date;
+
+    @ApiProperty()
+    createdAt!: Date;
 }
 
-export interface SendFriendRequestResponseDTO {
-    message: string;
-    request: unknown;
+export class SendFriendRequestResponseDTO {
+    @ApiProperty()
+    message!: string;
+
+    @ApiProperty()
+    request!: unknown;
 }
 
-export interface AcceptFriendRequestResponseDTO {
-    message: string;
-    friend: FriendResponseDTO | null;
+export class AcceptFriendRequestResponseDTO {
+    @ApiProperty()
+    message!: string;
+
+    @ApiProperty({ nullable: true, type: FriendResponseDTO })
+    friend!: FriendResponseDTO | null;
 }
 
-export interface FriendshipMessageResponseDTO {
-    message: string;
+export class FriendshipMessageResponseDTO {
+    @ApiProperty()
+    message!: string;
 }

@@ -1,5 +1,12 @@
-export interface FileProxyMetaResponseDTO {
-    status: number;
-    headers: Record<string, string>;
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class FileProxyMetaResponseDTO {
+    @ApiProperty()
+    status!: number;
+
+    @ApiProperty()
+    headers!: Record<string, string>;
+
+    @ApiPropertyOptional()
     size?: number;
 }
