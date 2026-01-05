@@ -1,36 +1,39 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsBoolean, IsNumber, IsArray, IsObject, ValidateNested } from 'class-validator';
+import { IsOptional, IsString, IsBoolean, IsNumber, IsArray, IsObject, ValidateNested, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsName, IsColor, IsRoleId } from '@/validation/schemas/common';
 
 export class CreateRoleRequestDTO {
     @ApiProperty()
-    @IsString()
+    @IsName()
     name!: string;
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
+    @IsColor()
     color?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
+    @IsColor()
     startColor?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
+    @IsColor()
     endColor?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsArray()
-    @IsString({ each: true })
+    @IsColor({ each: true })
     colors?: string[];
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsNumber()
+    @IsInt()
+    @Min(1)
+    @Max(10)
     gradientRepeat?: number;
 
     @ApiPropertyOptional()
@@ -46,11 +49,11 @@ export class CreateRoleRequestDTO {
 
 export class RolePositionDTO {
     @ApiProperty()
-    @IsString()
+    @IsRoleId()
     roleId!: string;
 
     @ApiProperty()
-    @IsNumber()
+    @IsInt()
     position!: number;
 }
 
@@ -65,33 +68,35 @@ export class ReorderRolesRequestDTO {
 export class UpdateRoleRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
+    @IsName()
     name?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
+    @IsColor()
     color?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
+    @IsColor()
     startColor?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
+    @IsColor()
     endColor?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsArray()
-    @IsString({ each: true })
+    @IsColor({ each: true })
     colors?: string[];
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsNumber()
+    @IsInt()
+    @Min(1)
+    @Max(10)
     gradientRepeat?: number;
 
     @ApiPropertyOptional()
@@ -106,6 +111,6 @@ export class UpdateRoleRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsNumber()
+    @IsInt()
     position?: number;
 }

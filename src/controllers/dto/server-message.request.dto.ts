@@ -1,31 +1,35 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsArray } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional } from 'class-validator';
+import {
+    IsMessageContent,
+    IsMessageId,
+} from '@/validation/schemas/common';
 
 export class SendMessageRequestDTO {
     @ApiPropertyOptional({ description: 'Message content (preferred)' })
     @IsOptional()
-    @IsString()
+    @IsMessageContent()
     content?: string;
 
     @ApiPropertyOptional({ description: 'Message text (legacy support)' })
     @IsOptional()
-    @IsString()
+    @IsMessageContent()
     text?: string;
 
     @ApiPropertyOptional({ description: 'ID of the message being replied to' })
     @IsOptional()
-    @IsString()
+    @IsMessageId()
     replyToId?: string;
 }
 
 export class ServerEditMessageRequestDTO {
     @ApiPropertyOptional({ description: 'New message content' })
     @IsOptional()
-    @IsString()
+    @IsMessageContent()
     content?: string;
 
     @ApiPropertyOptional({ description: 'New message text (legacy)' })
     @IsOptional()
-    @IsString()
+    @IsMessageContent()
     text?: string;
 }

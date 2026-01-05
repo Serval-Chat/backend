@@ -1,5 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsBoolean, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsBoolean, IsEnum } from 'class-validator';
+import { IsColor } from '@/validation/schemas/common';
+import { MessageAlignmentDTO } from './common.request.dto';
 
 export class UpdateSettingsRequestDTO {
     @ApiPropertyOptional()
@@ -12,15 +14,15 @@ export class UpdateSettingsRequestDTO {
     @IsBoolean()
     useDiscordStyleMessages?: boolean;
 
-    @ApiPropertyOptional({ enum: ['left', 'right'] })
+    @ApiPropertyOptional({ enum: MessageAlignmentDTO })
     @IsOptional()
-    @IsIn(['left', 'right'])
-    ownMessagesAlign?: 'left' | 'right';
+    @IsEnum(MessageAlignmentDTO)
+    ownMessagesAlign?: MessageAlignmentDTO;
 
-    @ApiPropertyOptional({ enum: ['left', 'right'] })
+    @ApiPropertyOptional({ enum: MessageAlignmentDTO })
     @IsOptional()
-    @IsIn(['left', 'right'])
-    otherMessagesAlign?: 'left' | 'right';
+    @IsEnum(MessageAlignmentDTO)
+    otherMessagesAlign?: MessageAlignmentDTO;
 
     @ApiPropertyOptional()
     @IsOptional()
@@ -29,11 +31,11 @@ export class UpdateSettingsRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
+    @IsColor()
     ownMessageColor?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
+    @IsColor()
     otherMessageColor?: string;
 }

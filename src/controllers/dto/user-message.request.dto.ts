@@ -1,9 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsMessageContent } from '@/validation/schemas/common';
 
 export class UserEditMessageRequestDTO {
     @ApiProperty()
-    @IsString()
-    @IsNotEmpty()
+    @IsMessageContent()
     content!: string;
 }
