@@ -29,6 +29,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 
 interface UnreadCountsResponse {
     counts: Record<string, number>;
@@ -111,15 +112,13 @@ export class UserMessageController extends Controller {
 
         const userDoc = await this.userRepo.findById(userId);
         if (!userDoc) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         const otherUserId = userDoc._id.toString();
 
         // Only allow message retrieval if a friendship exists
         if (!(await this.friendshipRepo.areFriends(meId, otherUserId))) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
+            throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
         // Enforce an upper limit to prevent excessive data retrieval
@@ -177,20 +176,17 @@ export class UserMessageController extends Controller {
 
         const userDoc = await this.userRepo.findById(userId);
         if (!userDoc) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         const otherUserId = userDoc._id.toString();
 
         if (!(await this.friendshipRepo.areFriends(meId, otherUserId))) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
+            throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
         const targetMessage = await this.messageRepo.findById(id);
         if (!targetMessage) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         // Ensure the message actually belongs to the conversation between these two users
@@ -201,27 +197,14 @@ export class UserMessageController extends Controller {
                 targetMessage.receiverId.toString() === meId);
 
         if (!isPartOfConversation) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ApiError(403, ErrorMessages.MESSAGE.NOT_IN_CONVERSATION);
         }
 
         let repliedMessage = null;
-        // Resolve the replied-to message if it exists and belongs to the same conversation
         if (targetMessage.replyToId) {
-            const repliedMsg = await this.messageRepo.findById(
-                targetMessage.replyToId,
+            repliedMessage = await this.messageRepo.findById(
+                targetMessage.replyToId.toString(),
             );
-            if (repliedMsg) {
-                const isRepliedPartOfConversation =
-                    (repliedMsg.senderId.toString() === meId &&
-                        repliedMsg.receiverId.toString() === otherUserId) ||
-                    (repliedMsg.senderId.toString() === otherUserId &&
-                        repliedMsg.receiverId.toString() === meId);
-
-                if (isRepliedPartOfConversation) {
-                    repliedMessage = repliedMsg;
-                }
-            }
         }
 
         return { message: targetMessage, repliedMessage };
@@ -247,15 +230,13 @@ export class UserMessageController extends Controller {
         // Ensure users are friends before allowing message access
         if (!(await this.friendshipRepo.areFriends(meId, userId))) {
             if (meId !== userId) {
-                this.setStatus(403);
-                throw new Error(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
+                throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
             }
         }
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         // Ensure the message actually belongs to the conversation between these two users
@@ -266,8 +247,7 @@ export class UserMessageController extends Controller {
                 message.receiverId.toString() === meId);
 
         if (!isPartOfConversation) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.MESSAGE.NOT_IN_CONVERSATION);
+            throw new ApiError(403, ErrorMessages.MESSAGE.NOT_IN_CONVERSATION);
         }
 
         let repliedMessage = null;
@@ -302,27 +282,23 @@ export class UserMessageController extends Controller {
         const { content } = body;
 
         if (!content || !content.trim()) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.MESSAGE.CONTENT_REQUIRED);
+            throw new ApiError(400, ErrorMessages.MESSAGE.CONTENT_REQUIRED);
         }
 
         const message = await this.messageRepo.findById(id);
         if (!message) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         // Only the sender is authorized to modify the message content
         if (message.senderId.toString() !== meId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ApiError(403, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         const updated = await this.messageRepo.update(id, content);
         // Mark message as edited for client-side rendering
         if (!updated) {
-            this.setStatus(500);
-            throw new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR);
+            throw new ApiError(500, ErrorMessages.SYSTEM.INTERNAL_ERROR);
         }
 
         return updated;
@@ -346,14 +322,12 @@ export class UserMessageController extends Controller {
 
         const message = await this.messageRepo.findById(id);
         if (!message) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         // Only the sender is authorized to delete the message
         if (message.senderId.toString() !== meId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ApiError(403, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         const deleted = await this.messageRepo.delete(id);

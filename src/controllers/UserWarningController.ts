@@ -20,6 +20,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 
 // Controller for managing user warnings
 @injectable()
@@ -60,9 +61,8 @@ export class UserWarningController extends Controller {
             );
             return warnings.map((w) => this.sanitizeWarning(w));
         } catch (error) {
-            this.logger.error('[WARNINGS] Failed to load warnings:', error);
-            this.setStatus(500);
-            throw new Error(ErrorMessages.SYSTEM.FAILED_LOAD_WARNINGS);
+            this.logger.error('Failed to get warnings:', error);
+            throw new ApiError(500, 'Internal server error');
         }
     }
 
@@ -85,19 +85,16 @@ export class UserWarningController extends Controller {
         const userId = req.user.id;
 
         if (!id) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.SYSTEM.WARNING_ID_REQUIRED);
+            throw new ApiError(400, 'Warning ID is required');
         }
 
         const warning = await this.warningRepo.findById(id);
         if (!warning) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
         }
 
         if (warning.userId.toString() !== userId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.AUTH.FORBIDDEN);
+            throw new ApiError(403, ErrorMessages.AUTH.FORBIDDEN);
         }
 
         if (warning.acknowledged) {
@@ -106,8 +103,7 @@ export class UserWarningController extends Controller {
 
         const updatedWarning = await this.warningRepo.acknowledge(id);
         if (!updatedWarning) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
         }
 
         return this.sanitizeWarning(updatedWarning);

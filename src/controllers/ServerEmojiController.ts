@@ -29,6 +29,7 @@ import sharp from 'sharp';
 import mongoose from 'mongoose';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 
 // Controller for managing server-specific emojis
 // Enforces server membership and 'manageServer' permission checks
@@ -78,8 +79,7 @@ export class ServerEmojiController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         return await this.emojiRepo.findByServerIdWithCreator(serverId);
@@ -106,19 +106,16 @@ export class ServerEmojiController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         if (!emoji) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.EMOJI.FILE_REQUIRED);
+            throw new ApiError(400, ErrorMessages.EMOJI.FILE_REQUIRED);
         }
 
         if (!name || name.length > 32 || !/^[a-zA-Z0-9_-]+$/.test(name)) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.EMOJI.INVALID_NAME);
+            throw new ApiError(400, ErrorMessages.EMOJI.INVALID_NAME);
         }
 
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
         const isOwner = server.ownerId.toString() === userId;
@@ -130,8 +127,7 @@ export class ServerEmojiController extends Controller {
                 'manageServer',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
+            throw new ApiError(403, ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
         }
 
         const existingEmoji = await this.emojiRepo.findByServerAndName(
@@ -139,15 +135,13 @@ export class ServerEmojiController extends Controller {
             name,
         );
         if (existingEmoji) {
-            this.setStatus(409);
-            throw new Error(ErrorMessages.EMOJI.NAME_EXISTS);
+            throw new ApiError(409, ErrorMessages.EMOJI.NAME_EXISTS);
         }
 
         const emojiId = new mongoose.Types.ObjectId();
         const input = emoji.path || emoji.buffer;
         if (!input) {
-            this.setStatus(500);
-            throw new Error(ErrorMessages.FILE.DATA_MISSING);
+            throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
         }
 
         const metadata = await sharp(input).metadata();
@@ -199,8 +193,7 @@ export class ServerEmojiController extends Controller {
         );
 
         if (!populatedEmoji) {
-            this.setStatus(500);
-            throw new Error(ErrorMessages.EMOJI.NOT_FOUND);
+            throw new ApiError(500, ErrorMessages.EMOJI.NOT_FOUND);
         }
 
         const io = getIO();
@@ -230,14 +223,12 @@ export class ServerEmojiController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const emoji = await this.emojiRepo.findById(emojiId);
         if (!emoji || emoji.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.EMOJI.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.EMOJI.NOT_FOUND);
         }
 
         return emoji;
@@ -260,27 +251,16 @@ export class ServerEmojiController extends Controller {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const isOwner = server.ownerId.toString() === userId;
-        if (
-            !isOwner &&
-            !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
-                'manageServer',
-            ))
-        ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
+        if (server.ownerId.toString() !== userId) {
+            throw new ApiError(403, ErrorMessages.SERVER.ONLY_OWNER);
         }
 
         const emoji = await this.emojiRepo.findById(emojiId);
         if (!emoji || emoji.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.EMOJI.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.EMOJI.NOT_FOUND);
         }
 
         // Remove the physical file from disk before deleting the database record

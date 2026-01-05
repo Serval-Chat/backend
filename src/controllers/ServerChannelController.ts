@@ -30,6 +30,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { ApiError } from '@/utils/ApiError';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
@@ -122,8 +123,7 @@ export class ServerChannelController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const channels = await this.channelRepo.findByServerId(serverId);
@@ -170,8 +170,7 @@ export class ServerChannelController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         return await this.categoryRepo.findByServerId(serverId);
@@ -196,8 +195,7 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         // Default to the end of the list if no position is specified
@@ -250,8 +248,7 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         for (const { channelId, position } of body.channelPositions) {
@@ -289,19 +286,16 @@ export class ServerChannelController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         if (channel.serverId.toString() !== serverId) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.CHANNEL.NOT_IN_SERVER);
+            throw new ApiError(400, ErrorMessages.CHANNEL.NOT_IN_SERVER);
         }
 
         const messageCount =
@@ -339,8 +333,7 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         const updates: Partial<IChannel> = {};
@@ -352,8 +345,7 @@ export class ServerChannelController extends Controller {
 
         const channel = await this.channelRepo.update(channelId, updates);
         if (!channel) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const io = getIO();
@@ -387,8 +379,7 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         await this.channelRepo.delete(channelId);
@@ -421,8 +412,7 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         const maxPositionCategory =
@@ -472,8 +462,7 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         const updates: Partial<ICategory> = {};
@@ -482,8 +471,7 @@ export class ServerChannelController extends Controller {
 
         const category = await this.categoryRepo.update(categoryId, updates);
         if (!category) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
         const io = getIO();
@@ -517,8 +505,7 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         await this.categoryRepo.delete(categoryId);
@@ -561,8 +548,7 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         for (const { categoryId, position } of body.categoryPositions) {
@@ -598,8 +584,7 @@ export class ServerChannelController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         if (
@@ -609,14 +594,12 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         return { permissions: channel.permissions || {} };
@@ -645,14 +628,12 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         await this.channelRepo.update(channelId, {
@@ -689,8 +670,7 @@ export class ServerChannelController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         if (
@@ -700,14 +680,12 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         const category = await this.categoryRepo.findById(categoryId);
         if (!category) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
         return { permissions: category.permissions || {} };
@@ -736,14 +714,12 @@ export class ServerChannelController extends Controller {
                 'manageChannels',
             ))
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
         const category = await this.categoryRepo.findById(categoryId);
         if (!category) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
         await this.categoryRepo.update(categoryId, {

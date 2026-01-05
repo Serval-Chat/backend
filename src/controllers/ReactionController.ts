@@ -30,6 +30,7 @@ import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { ApiError } from '@/utils/ApiError';
 
 // @example {
 //   "emoji": "👍",
@@ -140,16 +141,14 @@ export class ReactionController extends Controller {
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         if (
             message.senderId.toString() !== userId &&
             message.receiverId.toString() !== userId
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.REACTION.ACCESS_DENIED);
+            throw new ApiError(403, ErrorMessages.REACTION.ACCESS_DENIED);
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
@@ -184,16 +183,14 @@ export class ReactionController extends Controller {
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         if (
             message.senderId.toString() !== userId &&
             message.receiverId.toString() !== userId
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.REACTION.ACCESS_DENIED);
+            throw new ApiError(403, ErrorMessages.REACTION.ACCESS_DENIED);
         }
 
         try {
@@ -212,8 +209,7 @@ export class ReactionController extends Controller {
                 error.message?.includes('already reacted') ||
                 error.message?.includes('Maximum')
             ) {
-                this.setStatus(400);
-                throw new Error(error.message);
+                throw new ApiError(400, error.message);
             }
             throw err;
         }
@@ -270,16 +266,14 @@ export class ReactionController extends Controller {
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         if (
             message.senderId.toString() !== userId &&
             message.receiverId.toString() !== userId
         ) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.REACTION.ACCESS_DENIED);
+            throw new ApiError(403, ErrorMessages.REACTION.ACCESS_DENIED);
         }
 
         const removed = await this.reactionRepo.removeReaction(
@@ -290,79 +284,76 @@ export class ReactionController extends Controller {
             emojiId,
         );
         if (!removed) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.REACTION.REACTION_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.REACTION.REACTION_NOT_FOUND);
         }
 
-        const reactions = await this.reactionRepo.getReactionsByMessage(
-            messageId,
-            'dm',
-            userId,
-        );
+            const reactions = await this.reactionRepo.getReactionsByMessage(
+                messageId,
+                'dm',
+                userId,
+            );
 
-        const io = getIO();
-        const receiverId =
-            message.senderId.toString() === userId
-                ? message.receiverId.toString()
-                : message.senderId.toString();
+            const io = getIO();
+            const receiverId =
+                message.senderId.toString() === userId
+                    ? message.receiverId.toString()
+                    : message.senderId.toString();
 
-        // Notify both participants
-        for (const uid of [userId, receiverId]) {
-            const user = await this.userRepo.findById(uid);
-            if (user?.username) {
-                const sockets = this.presenceService.getSockets(user.username);
-                sockets.forEach((sid: string) => {
-                    io.to(sid).emit('reaction_removed', {
-                        messageId,
-                        messageType: 'dm',
-                        reactions,
+            // Notify both participants
+            for (const uid of [userId, receiverId]) {
+                const user = await this.userRepo.findById(uid);
+                if (user?.username) {
+                    const sockets = this.presenceService.getSockets(user.username);
+                    sockets.forEach((sid: string) => {
+                        io.to(sid).emit('reaction_removed', {
+                            messageId,
+                            messageType: 'dm',
+                            reactions,
+                        });
                     });
-                });
+                }
             }
+
+            return { reactions };
         }
 
-        return { reactions };
-    }
+        // Adds a reaction to a server message
+        // Enforces server membership and 'addReactions' channel permission
+        @Post(
+            'servers/{serverId}/channels/{channelId}/messages/{messageId}/reactions',
+        )
+        @Security('jwt')
+        @Response<ErrorResponse>('400', 'Invalid emoji or limit reached', {
+            error: ErrorMessages.REACTION.MAX_REACTIONS,
+        })
+        @Response<ErrorResponse>('403', 'Forbidden', {
+            error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+        })
+        @Response<ErrorResponse>('404', 'Message or channel not found', {
+            error: ErrorMessages.MESSAGE.NOT_FOUND,
+        })
+        public async addServerReaction(
+            @Path() serverId: string,
+            @Path() channelId: string,
+            @Path() messageId: string,
+            @Request() req: ExpressRequest,
+            @Body() body: AddReactionRequest,
+        ): Promise < { reactions: ReactionData[] } > {
+            const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+            const { emoji, emojiType } = body;
+            const emojiId = emojiType === 'custom' ? body.emojiId : undefined;
 
-    // Adds a reaction to a server message
-    // Enforces server membership and 'addReactions' channel permission
-    @Post(
-        'servers/{serverId}/channels/{channelId}/messages/{messageId}/reactions',
-    )
-    @Security('jwt')
-    @Response<ErrorResponse>('400', 'Invalid emoji or limit reached', {
-        error: ErrorMessages.REACTION.MAX_REACTIONS,
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-    })
-    @Response<ErrorResponse>('404', 'Message or channel not found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
-    public async addServerReaction(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Path() messageId: string,
-        @Request() req: ExpressRequest,
-        @Body() body: AddReactionRequest,
-    ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const { emoji, emojiType } = body;
-        const emojiId = emojiType === 'custom' ? body.emojiId : undefined;
-
-        const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
-        );
-        if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_SERVER_MEMBER);
-        }
+            const member = await this.serverMemberRepo.findByServerAndUser(
+                serverId,
+                userId,
+            );
+            if(!member) {
+                throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
+            }
 
         const channel = await this.channelRepo.findById(channelId);
-        if (!channel || channel.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            if(!channel || channel.serverId.toString() !== serverId) {
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const canAddReactions =
@@ -373,14 +364,12 @@ export class ReactionController extends Controller {
                 'addReactions',
             );
         if (!canAddReactions) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.REACTION.MISSING_PERMISSION_ADD);
+            throw new ApiError(403, ErrorMessages.REACTION.MISSING_PERMISSION_ADD);
         }
 
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         try {
@@ -398,8 +387,7 @@ export class ReactionController extends Controller {
                 error.message?.includes('already reacted') ||
                 error.message?.includes('Maximum')
             ) {
-                this.setStatus(400);
-                throw new Error(error.message);
+                throw new ApiError(400, error.message);
             }
             throw err;
         }
@@ -452,20 +440,17 @@ export class ReactionController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_SERVER_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel || channel.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const canManageReactions =
@@ -506,8 +491,7 @@ export class ReactionController extends Controller {
         }
 
         if (!removed) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.REACTION.REACTION_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.REACTION.REACTION_NOT_FOUND);
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
@@ -552,20 +536,17 @@ export class ReactionController extends Controller {
             userId,
         );
         if (!member) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.SERVER.NOT_SERVER_MEMBER);
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel || channel.serverId.toString() !== serverId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(

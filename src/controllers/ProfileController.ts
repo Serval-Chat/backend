@@ -43,6 +43,7 @@ import { hasPermission } from '@/utils/jwt';
 import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 import { usernameSchema } from '@/validation/schemas/common';
 import type { SerializedCustomStatus } from '@/utils/status';
+import { ApiError } from '@/utils/ApiError';
 import type { Types } from 'mongoose';
 
 interface UpdateStatusRequest {
@@ -201,8 +202,7 @@ export class ProfileController extends Controller {
     public async getUserProfile(@Path() userId: string): Promise<UserProfile> {
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         return this.mapToProfile(user);
@@ -232,26 +232,23 @@ export class ProfileController extends Controller {
         const adminUser = (req as ExpressRequest & { user: JWTPayload }).user;
         try {
             if (!adminUser) {
-                this.setStatus(401);
-                throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+                throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
             }
 
             if (!hasPermission(adminUser, 'manageUsers')) {
-                this.setStatus(403);
-                throw new Error(ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
+                throw new ApiError(403, ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
             }
 
             if (!request.badgeIds || !Array.isArray(request.badgeIds)) {
-                this.setStatus(400);
-                throw new Error(
+                throw new ApiError(
+                    400,
                     ErrorMessages.PROFILE.INVALID_REQUEST_BADGE_ARRAY,
                 );
             }
 
             const user = await this.userRepo.findById(id);
             if (!user) {
-                this.setStatus(404);
-                throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+                throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
             if (request.badgeIds.length === 0) {
@@ -281,8 +278,8 @@ export class ProfileController extends Controller {
             );
 
             if (invalidBadgeIds.length > 0) {
-                this.setStatus(400);
-                throw new Error(
+                throw new ApiError(
+                    400,
                     `Invalid badge IDs: ${invalidBadgeIds.join(', ')}`,
                 );
             }
@@ -337,21 +334,18 @@ export class ProfileController extends Controller {
             const userId = userPayload.id;
 
             if (!profilePicture) {
-                this.setStatus(400);
-                throw new Error(ErrorMessages.FILE.NO_FILE_UPLOADED);
+                throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
             }
 
             // Allow profile pictures up to 5MB
             const MAX_SIZE = 5 * 1024 * 1024;
             if (profilePicture.size > MAX_SIZE) {
-                this.setStatus(400);
-                throw new Error('File size too large. Max 5MB allowed.');
+                throw new ApiError(400, 'File size too large. Max 5MB allowed.');
             }
 
             const user = await this.userRepo.findById(userId);
             if (!user) {
-                this.setStatus(404);
-                throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+                throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
             // Remove old profile picture
@@ -380,21 +374,18 @@ export class ProfileController extends Controller {
 
                 if (!metadata.width || !metadata.height) {
                     fs.unlinkSync(uploadedPath);
-                    this.setStatus(400);
-                    throw new Error('Could not read image dimensions');
+                    throw new ApiError(400, 'Could not read image dimensions');
                 }
 
                 if (metadata.width > 1024 || metadata.height > 1024) {
                     fs.unlinkSync(uploadedPath);
-                    this.setStatus(400);
-                    throw new Error(`Profile picture dimensions must be at most 1024x1024px. Received: ${metadata.width}x${metadata.height}px`);
+                    throw new ApiError(400, `Profile picture dimensions must be at most 1024x1024px. Received: ${metadata.width}x${metadata.height}px`);
                 }
 
                 // Check if the profile picture is webp or gif
                 if (metadata.format !== 'webp' && metadata.format !== 'gif') {
                     fs.unlinkSync(uploadedPath);
-                    this.setStatus(400);
-                    throw new Error('Invalid file format. Only WebP and GIF are allowed.');
+                    throw new ApiError(400, 'Invalid file format. Only WebP and GIF are allowed.');
                 }
             } catch (validationErr: unknown) {
                 if (fs.existsSync(uploadedPath)) {
@@ -402,8 +393,7 @@ export class ProfileController extends Controller {
                 }
                 const error = validationErr as Error;
                 this.logger.error('Profile picture validation error:', error);
-                this.setStatus(400);
-                throw new Error(error.message || 'Failed to validate profile picture image');
+                throw new ApiError(400, error.message || 'Failed to validate profile picture image');
             }
 
             const ext = `.${(await sharp(uploadedPath).metadata()).format}`;
@@ -417,8 +407,7 @@ export class ProfileController extends Controller {
                 if (fs.existsSync(uploadedPath)) {
                     fs.unlinkSync(uploadedPath);
                 }
-                this.setStatus(500);
-                throw new Error('Failed to save profile picture image');
+                throw new ApiError(500, 'Failed to save profile picture image');
             }
 
             await this.userRepo.updateProfilePicture(userId, filename);
@@ -483,21 +472,18 @@ export class ProfileController extends Controller {
             const userId = userPayload.id;
 
             if (!banner) {
-                this.setStatus(400);
-                throw new Error(ErrorMessages.FILE.NO_FILE_UPLOADED);
+                throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
             }
 
             // Allow banners up to 5MB
             const MAX_SIZE = 5 * 1024 * 1024;
             if (banner.size > MAX_SIZE) {
-                this.setStatus(400);
-                throw new Error('File size too large. Max 5MB allowed.');
+                throw new ApiError(400, 'File size too large. Max 5MB allowed.');
             }
 
             const user = await this.userRepo.findById(userId);
             if (!user) {
-                this.setStatus(404);
-                throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+                throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
             // Remove old banner to save storage
@@ -526,21 +512,18 @@ export class ProfileController extends Controller {
 
                 if (!metadata.width || !metadata.height) {
                     fs.unlinkSync(uploadedPath);
-                    this.setStatus(400);
-                    throw new Error('Could not read image dimensions');
+                    throw new ApiError(400, 'Could not read image dimensions');
                 }
 
                 if (metadata.width > 1136 || metadata.height > 400) {
                     fs.unlinkSync(uploadedPath);
-                    this.setStatus(400);
-                    throw new Error(`Banner dimensions must be at most 1136x400px. Received: ${metadata.width}x${metadata.height}px`);
+                    throw new ApiError(400, `Banner dimensions must be at most 1136x400px. Received: ${metadata.width}x${metadata.height}px`);
                 }
 
                 // Check if the banner is webp
                 if (metadata.format !== 'webp') {
                     fs.unlinkSync(uploadedPath);
-                    this.setStatus(400);
-                    throw new Error('Invalid file format. Only WebP is allowed.');
+                    throw new ApiError(400, 'Invalid file format. Only WebP is allowed.');
                 }
             } catch (validationErr: unknown) {
                 if (fs.existsSync(uploadedPath)) {
@@ -548,8 +531,7 @@ export class ProfileController extends Controller {
                 }
                 const error = validationErr as Error;
                 this.logger.error('Banner validation error:', error);
-                this.setStatus(400);
-                throw new Error(error.message || 'Failed to validate banner image');
+                throw new ApiError(400, error.message || 'Failed to validate banner image');
             }
 
             const ext = '.webp';
@@ -563,8 +545,7 @@ export class ProfileController extends Controller {
                 if (fs.existsSync(uploadedPath)) {
                     fs.unlinkSync(uploadedPath);
                 }
-                this.setStatus(500);
-                throw new Error('Failed to save banner image');
+                throw new ApiError(500, 'Failed to save banner image');
             }
 
 
@@ -754,8 +735,7 @@ export class ProfileController extends Controller {
 
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         if (
@@ -779,8 +759,7 @@ export class ProfileController extends Controller {
 
         const trimmedText = typeof text === 'string' ? text.trim() : '';
         if (trimmedText.length > 120) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.PROFILE.STATUS_TOO_LONG);
+            throw new ApiError(400, ErrorMessages.PROFILE.STATUS_TOO_LONG);
         }
 
         const normalizedEmoji = typeof emoji === 'string' ? emoji.trim() : '';
@@ -798,19 +777,17 @@ export class ProfileController extends Controller {
                 );
 
                 if (graphemes.length > 1) {
-                    this.setStatus(400);
-                    throw new Error(ErrorMessages.PROFILE.ONLY_ONE_EMOJI);
+                    throw new ApiError(400, ErrorMessages.PROFILE.ONLY_ONE_EMOJI);
                 }
                 if (!/\p{Emoji}/u.test(normalizedEmoji)) {
-                    this.setStatus(400);
-                    throw new Error(ErrorMessages.PROFILE.INVALID_EMOJI);
+                    throw new ApiError(400, ErrorMessages.PROFILE.INVALID_EMOJI);
                 }
             }
         }
 
         if (!trimmedText && !normalizedEmoji) {
-            this.setStatus(400);
-            throw new Error(
+            throw new ApiError(
+                400,
                 ErrorMessages.PROFILE.STATUS_TEXT_OR_EMOJI_REQUIRED,
             );
         }
@@ -824,8 +801,7 @@ export class ProfileController extends Controller {
         ) {
             const parsed = new Date(expiresAt);
             if (Number.isNaN(parsed.getTime())) {
-                this.setStatus(400);
-                throw new Error(ErrorMessages.PROFILE.INVALID_EXPIRES_AT);
+                throw new ApiError(400, ErrorMessages.PROFILE.INVALID_EXPIRES_AT);
             }
             expiresAtDate = parsed;
         } else if (
@@ -884,8 +860,7 @@ export class ProfileController extends Controller {
 
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         await this.userRepo.updateCustomStatus(userId, null);
@@ -908,8 +883,7 @@ export class ProfileController extends Controller {
         const { usernames } = body;
 
         if (!Array.isArray(usernames)) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.PROFILE.USERNAMES_ARRAY_REQUIRED);
+            throw new ApiError(400, ErrorMessages.PROFILE.USERNAMES_ARRAY_REQUIRED);
         }
 
         const sanitized = Array.from(
@@ -1004,8 +978,7 @@ export class ProfileController extends Controller {
         const user = await this.userRepo.findByUsername(username);
 
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         return { _id: user._id.toString() };
@@ -1020,31 +993,29 @@ export class ProfileController extends Controller {
         @Body() body: ChangeUsernameRequest,
     ): Promise<{ message: string; username: string }> {
         const currentUsername = (req as ExpressRequest & { user: JWTPayload }).user.username;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { newUsername } = body;
 
         if (!newUsername || typeof newUsername !== 'string') {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.PROFILE.NEW_USERNAME_REQUIRED);
+            throw new ApiError(400, ErrorMessages.PROFILE.NEW_USERNAME_REQUIRED);
         }
 
         const validation = usernameSchema.safeParse(newUsername);
         if (!validation.success) {
-            this.setStatus(400);
-            throw new Error(
+            throw new ApiError(
+                400,
                 validation.error.issues[0]?.message || 'Invalid username',
             );
         }
 
         const existingUser = await this.userRepo.findByUsername(newUsername);
         if (existingUser) {
-            this.setStatus(409);
-            throw new Error(ErrorMessages.PROFILE.USERNAME_TAKEN);
+            throw new ApiError(409, ErrorMessages.PROFILE.USERNAME_TAKEN);
         }
 
-        const user = await this.userRepo.findByUsername(currentUsername);
+        const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const oldUsername = user.username || '';
@@ -1088,14 +1059,12 @@ export class ProfileController extends Controller {
         const { language } = body;
 
         if (!language || typeof language !== 'string') {
-            this.setStatus(400);
-            throw new Error('Language is required');
+            throw new ApiError(400, 'Language is required');
         }
 
         const user = await this.userRepo.findByUsername(username);
         if (!user) {
-            this.setStatus(404);
-            throw new Error('User not found');
+            throw new ApiError(404, 'User not found');
         }
 
         await this.userRepo.updateLanguage(user._id.toString(), language);

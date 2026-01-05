@@ -16,6 +16,8 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
+import { JWTPayload } from '@/utils/jwt';
 
 interface UserSettings {
     muteNotifications?: boolean;
@@ -57,8 +59,7 @@ export class SettingsController extends Controller {
         const user = await this.userRepo.findById(userId);
 
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         // Fallback to system default UI preferences if the user has not customized settings
@@ -90,8 +91,7 @@ export class SettingsController extends Controller {
 
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         // Perform a partial settings update

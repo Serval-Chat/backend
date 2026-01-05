@@ -23,6 +23,7 @@ import { type SerializedCustomStatus } from '@/utils/status';
 import { mapUser } from '@/utils/user';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { ApiError } from '@/utils/ApiError';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
@@ -78,8 +79,7 @@ export class FriendshipController extends Controller {
 
         const me = await this.userRepo.findById(userId);
         if (!me) {
-            this.setStatus(401);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         const friendships = await this.friendshipRepo.findByUserId(userId);
@@ -216,31 +216,26 @@ export class FriendshipController extends Controller {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const meUser = await this.userRepo.findById(meId);
         if (!meUser) {
-            this.setStatus(401);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         const { username: friendUsername } = body;
         if (!friendUsername) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FRIENDSHIP.USERNAME_REQUIRED);
+            throw new ApiError(400, ErrorMessages.FRIENDSHIP.USERNAME_REQUIRED);
         }
 
         const friendUser = await this.userRepo.findByUsername(friendUsername);
         if (!friendUser) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const friendId = friendUser._id.toString();
         if (friendId === meId) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FRIENDSHIP.CANNOT_ADD_SELF);
+            throw new ApiError(400, ErrorMessages.FRIENDSHIP.CANNOT_ADD_SELF);
         }
 
         if (await this.friendshipRepo.areFriends(meId, friendId)) {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FRIENDSHIP.ALREADY_FRIENDS);
+            throw new ApiError(400, ErrorMessages.FRIENDSHIP.ALREADY_FRIENDS);
         }
 
         const existingRequest = await this.friendshipRepo.findExistingRequest(
@@ -249,8 +244,7 @@ export class FriendshipController extends Controller {
         );
         if (existingRequest) {
             if (existingRequest.status === 'pending') {
-                this.setStatus(400);
-                throw new Error(ErrorMessages.FRIENDSHIP.REQUEST_ALREADY_SENT);
+                throw new ApiError(400, ErrorMessages.FRIENDSHIP.REQUEST_ALREADY_SENT);
             }
             await this.friendshipRepo.rejectRequest(
                 existingRequest._id.toString(),
@@ -311,25 +305,21 @@ export class FriendshipController extends Controller {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const meUser = await this.userRepo.findById(meId);
         if (!meUser) {
-            this.setStatus(401);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         const fr = await this.friendshipRepo.findRequestById(id);
         if (!fr) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
         }
 
         // Verification of the recipient
         if (fr.toId?.toString() !== meId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.FRIENDSHIP.NOT_ALLOWED);
+            throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_ALLOWED);
         }
 
         if (fr.status !== 'pending') {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING);
+            throw new ApiError(400, ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING);
         }
 
         const fromId = fr.fromId?.toString() || '';
@@ -341,8 +331,7 @@ export class FriendshipController extends Controller {
         ]);
 
         if (!fromUser || !toUser) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         await this.friendshipRepo.create(fromId, toId);
@@ -409,25 +398,21 @@ export class FriendshipController extends Controller {
         const fr = await this.friendshipRepo.findRequestById(id);
 
         if (!fr) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
         }
 
         // Verification of the recipient
         if (fr.toId?.toString() !== meId) {
-            this.setStatus(403);
-            throw new Error(ErrorMessages.FRIENDSHIP.NOT_ALLOWED);
+            throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_ALLOWED);
         }
 
         if (fr.status !== 'pending') {
-            this.setStatus(400);
-            throw new Error(ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING);
+            throw new ApiError(400, ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING);
         }
 
         const success = await this.friendshipRepo.rejectRequest(id);
         if (!success) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
         }
 
         return { message: 'friend request rejected' };
@@ -450,12 +435,10 @@ export class FriendshipController extends Controller {
         ]);
 
         if (!friend) {
-            this.setStatus(404);
-            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         if (!meUser) {
-            this.setStatus(401);
-            throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         await this.friendshipRepo.remove(meId, friendId);
