@@ -6,6 +6,7 @@ import {
     ValidateNested,
     IsEnum,
     ValidateIf,
+    MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsName, IsRoleId, IsColor } from '@/validation/schemas/common';
@@ -26,6 +27,7 @@ export class ServerBannerDTO {
 export class CreateServerRequestDTO {
     @ApiProperty()
     @IsName()
+    @MinLength(2, { message: 'Name must be at least 2 characters' })
     name!: string;
 }
 

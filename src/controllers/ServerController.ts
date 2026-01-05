@@ -147,9 +147,7 @@ export class ServerController {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const { name } = body;
 
-        if (!name || name.trim().length < 2) {
-            throw new ApiError(400, ErrorMessages.SERVER.NAME_REQUIRED);
-        }
+
 
         const server = await this.serverRepo.create({
             name: name.trim(),

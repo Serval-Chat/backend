@@ -654,9 +654,7 @@ export class AdminController {
     ): Promise<AdminUpdateUserPermissionsResponseDTO> {
         const { permissions } = body;
 
-        if (!permissions || typeof permissions !== 'object') {
-            throw new BadRequestException(ErrorMessages.ADMIN.INVALID_PERMISSIONS);
-        }
+
 
         const user = await this.userRepo.findById(userId);
         if (!user) {

@@ -131,20 +131,7 @@ export class AuthController {
     ): Promise<void> {
         const { login, username, password, invite } = body;
 
-        if (!login || !login.includes('@')) {
-            res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.AUTH.INVALID_EMAIL });
-            return;
-        }
 
-        if (!username || username.length < 3) {
-            res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.AUTH.USERNAME_TOO_SHORT });
-            return;
-        }
-
-        if (!password || password.length < 6) {
-            res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.AUTH.PASSWORD_TOO_SHORT });
-            return;
-        }
 
         let tokens: string[];
         try {
@@ -217,35 +204,12 @@ export class AuthController {
         const userId = (req as unknown as RequestWithUser).user.id;
         const { newLogin, password } = body;
 
-        if (!newLogin || typeof newLogin !== 'string') {
-            throw new ApiError(400, ErrorMessages.AUTH.NEW_LOGIN_REQUIRED);
-        }
-
-        if (
-            !password ||
-            typeof password !== 'string' ||
-            password.length === 0
-        ) {
-            throw new ApiError(400, ErrorMessages.AUTH.PASSWORD_CONFIRM_REQUIRED);
-        }
-
-        const trimmedLogin = newLogin.trim();
-        if (trimmedLogin.length === 0) {
-            throw new ApiError(400, ErrorMessages.AUTH.NEW_LOGIN_EMPTY);
-        }
-
-        // Allow 3–24 chars: letters, numbers, dot, underscore, dash
-        const loginRegex = /^[a-zA-Z0-9._-]{3,24}$/;
-        if (!loginRegex.test(trimmedLogin)) {
-            throw new ApiError(400, ErrorMessages.AUTH.LOGIN_FORMAT);
-        }
-
         const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        if (trimmedLogin === user.login) {
+        if (newLogin === user.login) {
             throw new ApiError(400, ErrorMessages.AUTH.NEW_LOGIN_SAME);
         }
 
@@ -257,12 +221,12 @@ export class AuthController {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_PASSWORD);
         }
 
-        const existingLogin = await this.userRepo.findByUsername(trimmedLogin);
+        const existingLogin = await this.userRepo.findByUsername(newLogin);
         if (existingLogin) {
             throw new ApiError(409, ErrorMessages.AUTH.LOGIN_TAKEN);
         }
 
-        await this.userRepo.updateLogin(userId, trimmedLogin);
+        await this.userRepo.updateLogin(userId, newLogin);
 
         const updatedUser = await this.userRepo.findById(userId);
         if (!updatedUser) {
@@ -298,21 +262,7 @@ export class AuthController {
         const userId = (req as unknown as RequestWithUser).user.id;
         const { currentPassword, newPassword } = body;
 
-        if (!currentPassword || typeof currentPassword !== 'string') {
-            throw new ApiError(400, ErrorMessages.AUTH.CURRENT_PASSWORD_REQUIRED);
-        }
 
-        if (!newPassword || typeof newPassword !== 'string') {
-            throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_REQUIRED);
-        }
-
-        if (newPassword.length < 8) {
-            throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_TOO_SHORT);
-        }
-
-        if (newPassword.length > 128) {
-            throw new ApiError(400, ErrorMessages.AUTH.PASSWORD_TOO_LONG);
-        }
 
         if (newPassword === currentPassword) {
             throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_SAME);
@@ -329,15 +279,6 @@ export class AuthController {
         );
         if (!passwordValid) {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_CURRENT_PASSWORD);
-        }
-
-        // Require letters, numbers, and symbols for password strength
-        const hasLetter = /[a-zA-Z]/.test(newPassword);
-        const hasNumber = /[0-9]/.test(newPassword);
-        const hasSymbol = /[^a-zA-Z0-9]/.test(newPassword);
-
-        if (!(hasLetter && hasNumber && hasSymbol)) {
-            throw new ApiError(400, ErrorMessages.AUTH.PASSWORD_STRENGTH);
         }
 
         await this.userRepo.updatePassword(userId, newPassword);
