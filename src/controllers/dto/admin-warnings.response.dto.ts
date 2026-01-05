@@ -1,3 +1,5 @@
-export type AdminUserWarningsResponseDTO = any[];
+import type { AdminWarnUserResponseDTO } from './admin-user-actions.response.dto';
 
-export type AdminWarningListResponseDTO = any[];
+export type AdminUserWarningsResponseDTO = AdminWarnUserResponseDTO[];
+
+export type AdminWarningListResponseDTO = AdminWarnUserResponseDTO[];

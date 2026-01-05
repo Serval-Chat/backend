@@ -4,7 +4,7 @@ import type { Types } from 'mongoose';
 //
 // Represents a user who has been banned from a specific server
 export interface IServerBan {
-    _id: any;
+    _id: Types.ObjectId | string;
     serverId: Types.ObjectId | string;
     userId: Types.ObjectId | string;
     // The administrator who issued the ban

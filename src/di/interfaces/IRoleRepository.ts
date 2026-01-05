@@ -22,7 +22,7 @@ export interface IRolePermissions {
 //
 // Defines a set of permissions and visual styles (color/gradient) for a group of users
 export interface IRole {
-    _id: any;
+    _id: Types.ObjectId | string;
     serverId: Types.ObjectId | string;
     name: string;
     // Solid color for the role (hex string)

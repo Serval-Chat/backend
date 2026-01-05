@@ -4,7 +4,7 @@ import type { Types } from 'mongoose';
 //
 // Represents a custom emoji uploaded to a server
 export interface IEmoji {
-    _id: any;
+    _id: Types.ObjectId | string;
     name: string;
     imageUrl: string;
     serverId: Types.ObjectId | string;

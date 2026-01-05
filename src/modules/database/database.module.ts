@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { User, IUser } from '@/models/User';
+import { User } from '@/models/User';
 import { Ban } from '@/models/Ban';
 import { Server, Category, Channel, ServerMember, Role, Invite, ServerMessage, ServerBan } from '@/models/Server';
 import { Message } from '@/models/Message';
@@ -18,26 +18,26 @@ import { DmUnread } from '@/models/DmUnread';
 @Module({
     imports: [
         MongooseModule.forFeature([
-            { name: 'User', schema: (User as any).schema },
-            { name: 'Ban', schema: (Ban as any).schema },
-            { name: 'Server', schema: (Server as any).schema },
-            { name: 'Message', schema: (Message as any).schema },
-            { name: 'Friendship', schema: (Friendship as any).schema },
-            { name: 'Emoji', schema: (Emoji as any).schema },
-            { name: 'Webhook', schema: (Webhook as any).schema },
-            { name: 'ServerMember', schema: (ServerMember as any).schema },
-            { name: 'Role', schema: (Role as any).schema },
-            { name: 'Category', schema: (Category as any).schema },
-            { name: 'Channel', schema: (Channel as any).schema },
-            { name: 'ServerMessage', schema: (ServerMessage as any).schema },
-            { name: 'Invite', schema: (Invite as any).schema },
-            { name: 'ServerBan', schema: (ServerBan as any).schema },
-            { name: 'ServerChannelRead', schema: (ServerChannelRead as any).schema },
-            { name: 'Ping', schema: (Ping as any).schema },
-            { name: 'Reaction', schema: (Reaction as any).schema },
-            { name: 'Warning', schema: (Warning as any).schema },
-            { name: 'AuditLog', schema: (AuditLog as any).schema },
-            { name: 'DmUnread', schema: (DmUnread as any).schema },
+            { name: 'User', schema: User.schema },
+            { name: 'Ban', schema: Ban.schema },
+            { name: 'Server', schema: Server.schema },
+            { name: 'Message', schema: Message.schema },
+            { name: 'Friendship', schema: Friendship.schema },
+            { name: 'Emoji', schema: Emoji.schema },
+            { name: 'Webhook', schema: Webhook.schema },
+            { name: 'ServerMember', schema: ServerMember.schema },
+            { name: 'Role', schema: Role.schema },
+            { name: 'Category', schema: Category.schema },
+            { name: 'Channel', schema: Channel.schema },
+            { name: 'ServerMessage', schema: ServerMessage.schema },
+            { name: 'Invite', schema: Invite.schema },
+            { name: 'ServerBan', schema: ServerBan.schema },
+            { name: 'ServerChannelRead', schema: ServerChannelRead.schema },
+            { name: 'Ping', schema: Ping.schema },
+            { name: 'Reaction', schema: Reaction.schema },
+            { name: 'Warning', schema: Warning.schema },
+            { name: 'AuditLog', schema: AuditLog.schema },
+            { name: 'DmUnread', schema: DmUnread.schema },
         ]),
     ],
     exports: [MongooseModule],

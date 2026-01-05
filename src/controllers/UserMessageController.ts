@@ -142,13 +142,14 @@ export class UserMessageController extends Controller {
         );
 
         const messagesWithReactions = msgs.map((msg) => {
-            const msgObj = (msg as any).toObject
-                ? (msg as any).toObject()
-                : msg;
+            const m = msg as unknown as Record<string, unknown>;
+            const msgObj = m.toObject
+                ? (m.toObject as () => Record<string, unknown>)()
+                : m;
             return {
                 ...msgObj,
                 reactions: reactionsMap[msg._id.toString()] || [],
-            };
+            } as MessageWithReactions;
         });
 
         return messagesWithReactions;

@@ -10,15 +10,17 @@ import { Channel } from '@/models/Server';
 // Transform MongoDB document to match IChannel interface
 //
 // Ensures that ObjectIds are converted to strings and categoryId is handled
-const transformChannel = (doc: any): IChannel | null => {
+const transformChannel = (doc: unknown): IChannel | null => {
     if (!doc) return null;
 
+    const d = doc as { _id: unknown; serverId: unknown; categoryId?: unknown };
+ 
     return {
-        ...doc,
-        _id: doc._id.toString(),
-        serverId: doc.serverId.toString(),
-        categoryId: doc.categoryId ? doc.categoryId.toString() : null,
-    };
+        ...d,
+        _id: String(d._id),
+        serverId: String(d.serverId),
+        categoryId: d.categoryId ? String(d.categoryId) : null,
+    } as unknown as IChannel;
 };
 
 // Mongoose Channel repository

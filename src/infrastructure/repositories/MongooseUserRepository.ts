@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Model, Types } from 'mongoose';
+import type { Types, FilterQuery } from 'mongoose';
 import {
     IUserRepository,
     IUser,
     CreateUserDTO,
 } from '@/di/interfaces/IUserRepository';
 import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
-import { User } from '@/models/User';
+import { User, IUser as IUserModel } from '@/models/User';
 import { Friendship, FriendRequest } from '@/models/Friendship';
 import { Ban } from '@/models/Ban';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -101,7 +101,7 @@ export class MongooseUserRepository implements IUserRepository {
     async comparePassword(id: string, candidate: string): Promise<boolean> {
         const user = await this.userModel.findById(id).select('password');
         if (!user) return false;
-        return (user as any).comparePassword(candidate);
+        return (user as unknown as IUserModel).comparePassword(candidate);
     }
 
     async updateCustomStatus(
@@ -127,7 +127,7 @@ export class MongooseUserRepository implements IUserRepository {
     async updatePassword(id: string, newPassword: string): Promise<void> {
         const user = await this.userModel.findById(id);
         if (!user) throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
-        (user as any).password = newPassword;
+        (user as unknown as IUserModel).password = newPassword;
         await user.save();
     }
 
@@ -214,7 +214,7 @@ export class MongooseUserRepository implements IUserRepository {
             filter,
             includeDeleted,
         } = options;
-        const query: any = {};
+        const query: FilterQuery<IUserModel> = {};
 
         if (!includeDeleted) {
             query.deleted = { $ne: true };

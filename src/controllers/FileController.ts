@@ -126,11 +126,12 @@ export class FileController extends Controller {
                 createdAt: stats.birthtime,
                 modifiedAt: stats.mtime,
             };
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             if (
-                err.message === ErrorMessages.FILE.NOT_FOUND ||
-                err.message === ErrorMessages.FILE.INVALID_FILENAME ||
-                err.message === ErrorMessages.FILE.INVALID_PATH
+                error.message === ErrorMessages.FILE.NOT_FOUND ||
+                error.message === ErrorMessages.FILE.INVALID_FILENAME ||
+                error.message === ErrorMessages.FILE.INVALID_PATH
             ) {
                 throw err;
             }

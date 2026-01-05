@@ -4,7 +4,7 @@ import type { Types } from 'mongoose';
 //
 // Represents a direct message between two users
 export interface IMessage {
-    _id: any;
+    _id: Types.ObjectId | string;
     senderId: Types.ObjectId | string;
     receiverId: Types.ObjectId | string;
     text: string;

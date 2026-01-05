@@ -1,10 +1,10 @@
 import { injectable } from 'inversify';
-import { Types } from 'mongoose';
+import { type FilterQuery, type PipelineStage, Types } from 'mongoose';
 import type {
     IReactionRepository,
     ReactionData,
 } from '@/di/interfaces/IReactionRepository';
-import { Reaction } from '@/models/Reaction';
+import { Reaction, IReaction } from '@/models/Reaction';
 import { Emoji } from '@/models/Emoji';
 import { ErrorMessages } from '@/constants/errorMessages';
 
@@ -26,7 +26,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         emoji: string,
         emojiType: 'unicode' | 'custom',
         emojiId?: string,
-    ): Promise<any> {
+    ): Promise<IReaction> {
         // Validate custom emoji exists
         if (emojiType === 'custom') {
             if (!emojiId) {
@@ -53,7 +53,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         }
 
         // Check if this emoji type already exists on the message
-        const emojiExistsQuery: any = {
+        const emojiExistsQuery: FilterQuery<IReaction> = {
             messageId: new Types.ObjectId(messageId),
             messageType,
         };
@@ -99,7 +99,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         emojiId?: string,
     ): Promise<boolean> {
         // Build query
-        const query: any = {
+        const query: FilterQuery<IReaction> = {
             messageId: new Types.ObjectId(messageId),
             messageType,
             userId: new Types.ObjectId(userId),
@@ -127,7 +127,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         // Groups reactions by emoji
         // For each emoji (unicode or custom emojiId), counts how many times
         // It appears and collects the users who reacted with it
-        const pipeline: any[] = [
+        const pipeline: PipelineStage[] = [
             {
                 $match: {
                     messageId: new Types.ObjectId(messageId),
@@ -209,7 +209,7 @@ export class MongooseReactionRepository implements IReactionRepository {
 
         const objectIds = messageIds.map((id) => new Types.ObjectId(id));
 
-        const pipeline: any[] = [
+        const pipeline: PipelineStage[] = [
             {
                 $match: {
                     messageId: { $in: objectIds },
@@ -329,7 +329,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         emoji?: string,
         emojiId?: string,
     ): Promise<boolean> {
-        const query: any = {
+        const query: FilterQuery<IReaction> = {
             messageId: new Types.ObjectId(messageId),
             messageType,
             userId: new Types.ObjectId(userId),
@@ -375,7 +375,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         emojiId?: string,
     ): Promise<number> {
         // Build query
-        const query: any = {
+        const query: FilterQuery<IReaction> = {
             messageId: new Types.ObjectId(messageId),
             messageType,
         };

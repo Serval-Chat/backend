@@ -10,19 +10,19 @@ import { injectable } from 'inversify';
 @injectable()
 @Injectable()
 export class WinstonLogger implements ILogger {
-    info(message: string, meta?: any): void {
+    info(message: string, meta?: Record<string, unknown>): void {
         logger.info(message, meta);
     }
 
-    error(message: string, error?: Error | any): void {
+    error(message: string, error?: Error | unknown): void {
         logger.error(message, error);
     }
 
-    warn(message: string, meta?: any): void {
+    warn(message: string, meta?: Record<string, unknown>): void {
         logger.warn(message, meta);
     }
 
-    debug(message: string, meta?: any): void {
+    debug(message: string, meta?: Record<string, unknown>): void {
         logger.debug(message, meta);
     }
 }

@@ -9,7 +9,7 @@ import {
 import { StatusService } from '@/realtime/services/StatusService';
 import { TYPES } from '@/di/types';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
-import { resolveSerializedCustomStatus } from '@/utils/status';
+import { resolveSerializedCustomStatus, type SerializedCustomStatus } from '@/utils/status';
 import { z } from 'zod';
 import logger from '@/utils/logger';
 
@@ -100,7 +100,7 @@ export class StatusGateway {
 
         try {
             const users = await this.userRepo.findByUsernames(sanitized);
-            const result: Record<string, any> = {};
+            const result: Record<string, SerializedCustomStatus | null> = {};
 
             sanitized.forEach((name) => {
                 result[name] = null;

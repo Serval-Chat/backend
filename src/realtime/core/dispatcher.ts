@@ -41,10 +41,13 @@ export class RealTimeDispatcher {
                 // Resolve the gateway instance for this connection (or singleton depending on DI config)
                 // Ideally, gateways should be singletons or transient. If they are stateful per socket, we need a factory.
                 // For now, assuming singletons or stateless handlers.
-                let gatewayInstance: any;
+                let gatewayInstance: Record<string, Function>;
                 try {
                     gatewayInstance = this.container.resolve(
-                        GatewayClass as any,
+                        GatewayClass as new (...args: unknown[]) => Record<
+                            string,
+                            Function
+                        >,
                     );
                 } catch (error) {
                     logger.error(
@@ -56,29 +59,30 @@ export class RealTimeDispatcher {
 
                 // Attach user to context if authenticated
                 // This assumes auth middleware has already run and attached user to socket
-                const user = (socket as any).user;
+                const user = (socket as unknown as { user: SocketContext['user'] }).user;
                 const ctx: SocketContext = { socket, user };
 
                 // Handle connection hook
                 if (typeof gatewayInstance.handleConnection === 'function') {
                     try {
                         await gatewayInstance.handleConnection(ctx);
-                    } catch (error: any) {
+                    } catch (error: unknown) {
+                        const err = error as Error;
                         logger.error(
                             `[Socket Failure] Connection Hook: ${GatewayClass.name}`,
                             {
                                 reason:
-                                    error.message || 'Connection hook failed',
+                                    err.message || 'Connection hook failed',
                                 socketId: ctx.socket.id,
-                                userId: ctx.user.id,
-                                stack: error.stack,
+                                userId: ctx.user?.id,
+                                stack: err.stack,
                             },
                         );
                     }
                 }
 
                 events.forEach(({ event, schema, method }) => {
-                    socket.on(event, async (payload: any, ack?: Function) => {
+                    socket.on(event, async (payload: unknown, ack?: (data: unknown) => void) => {
                         try {
                             // 1. Validation
                             let validatedPayload = payload;
@@ -90,7 +94,7 @@ export class RealTimeDispatcher {
                                         {
                                             reason: 'Validation failed',
                                             socketId: ctx.socket.id,
-                                            userId: ctx.user.id,
+                                            userId: ctx.user?.id,
                                             validationErrors:
                                                 result.error.issues,
                                         },
@@ -108,6 +112,10 @@ export class RealTimeDispatcher {
                             }
 
                             // 2. Execution
+                            if (typeof gatewayInstance[method] !== 'function') {
+                                throw new Error(`Method ${method} not found on gateway ${GatewayClass.name}`);
+                            }
+
                             const result = await gatewayInstance[method](
                                 ctx,
                                 validatedPayload,
@@ -117,13 +125,14 @@ export class RealTimeDispatcher {
                             if (ack && result !== undefined) {
                                 ack(result);
                             }
-                        } catch (error: any) {
+                        } catch (error: unknown) {
+                            const err = error as Error;
                             logger.error(`[Socket Failure] Event: ${event}`, {
                                 reason:
-                                    error.message || 'Internal execution error',
+                                    err.message || 'Internal execution error',
                                 socketId: ctx.socket.id,
-                                userId: ctx.user.id,
-                                stack: error.stack,
+                                userId: ctx.user?.id,
+                                stack: err.stack,
                             });
                             if (ack) {
                                 ack({

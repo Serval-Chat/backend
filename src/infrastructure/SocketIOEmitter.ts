@@ -7,17 +7,17 @@ import { getIO } from '@/socket';
 // Implements IEventEmitter interface using Socket.IO
 @Injectable()
 export class SocketIOEmitter implements IEventEmitter {
-    emitToUser(userId: string, event: string, data: any): void {
+    emitToUser(userId: string, event: string, data: unknown): void {
         const io = getIO();
         io.to(userId).emit(event, data);
     }
 
-    emitToServer(serverId: string, event: string, data: any): void {
+    emitToServer(serverId: string, event: string, data: unknown): void {
         const io = getIO();
         io.to(serverId).emit(event, data);
     }
 
-    emitToRoom(room: string, event: string, data: any): void {
+    emitToRoom(room: string, event: string, data: unknown): void {
         const io = getIO();
         io.to(room).emit(event, data);
     }

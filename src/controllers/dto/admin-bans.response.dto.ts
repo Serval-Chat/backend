@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { IBan } from '@/di/interfaces/IBanRepository';
 
 export class AdminBanHistoryItemDTO {
     @ApiProperty()
@@ -17,7 +18,7 @@ export class AdminBanHistoryItemDTO {
 
 export type AdminUserBanHistoryResponseDTO = AdminBanHistoryItemDTO[];
 
-export type AdminBanListResponseDTO = any[]; // Using any[] for now as the internal Ban model is complex
+export type AdminBanListResponseDTO = IBan[];
 
 export class AdminBansDiagnosticResponseDTO {
     @ApiProperty({
@@ -29,7 +30,7 @@ export class AdminBansDiagnosticResponseDTO {
     })
     appBans!: {
         count: number;
-        sample: any[];
+        sample: unknown[];
     };
 
     @ApiProperty({
@@ -41,7 +42,7 @@ export class AdminBansDiagnosticResponseDTO {
     })
     serverBans!: {
         count: number;
-        sample: any[];
+        sample: unknown[];
     };
 }
 

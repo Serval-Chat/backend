@@ -53,6 +53,7 @@ export class ReactionGateway {
             serverId,
             channelId,
         } = data;
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const userId = ctx.user.id;
 
         try {
@@ -146,11 +147,12 @@ export class ReactionGateway {
                 });
             }
             return { ok: true };
-        } catch (err: any) {
-            logger.error('[ReactionGateway] Error adding reaction:', err);
+        } catch (err: unknown) {
+            const error = err as Error;
+            logger.error('[ReactionGateway] Error adding reaction:', error);
             return {
                 ok: false,
-                error: err.message || 'Failed to add reaction',
+                error: error.message || 'Failed to add reaction',
             };
         }
     }
@@ -165,6 +167,7 @@ export class ReactionGateway {
     async onRemoveReaction(ctx: SocketContext, data: ReactionEventData) {
         const { messageId, messageType, emoji, emojiId, serverId, channelId } =
             data;
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const userId = ctx.user.id;
 
         try {
@@ -260,11 +263,12 @@ export class ReactionGateway {
                 });
             }
             return { ok: true };
-        } catch (err: any) {
-            logger.error('[ReactionGateway] Error removing reaction:', err);
+        } catch (err: unknown) {
+            const error = err as Error;
+            logger.error('[ReactionGateway] Error removing reaction:', error);
             return {
                 ok: false,
-                error: err.message || 'Failed to remove reaction',
+                error: error.message || 'Failed to remove reaction',
             };
         }
     }

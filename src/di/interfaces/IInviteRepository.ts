@@ -4,7 +4,7 @@ import type { Types } from 'mongoose';
 //
 // Represents a server invitation that can be used by new members to join
 export interface IInvite {
-    _id: any;
+    _id: Types.ObjectId | string;
     serverId: Types.ObjectId | string;
     // Unique random code for the invite
     code: string;

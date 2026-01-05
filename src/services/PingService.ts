@@ -10,7 +10,7 @@ export interface PingNotification {
     senderId: string;
     serverId?: string;
     channelId?: string;
-    message: any;
+    message: Record<string, unknown>;
     timestamp: number;
 }
 
@@ -32,11 +32,11 @@ export class PingService {
         const messageId =
             typeof pingData.message._id === 'string'
                 ? pingData.message._id
-                : (pingData.message._id as any).toString();
+                : String(pingData.message._id);
         const senderId =
             typeof pingData.senderId === 'string'
                 ? pingData.senderId
-                : (pingData.senderId as any).toString();
+                : String(pingData.senderId);
 
         const exists = await this.pingRepo.exists(userId, senderId, messageId);
         if (exists) {
@@ -61,7 +61,7 @@ export class PingService {
             serverId?: string;
             channelId?: string;
             messageId: string;
-            message: any;
+            message: Record<string, unknown>;
             timestamp?: Date;
         } = {
             userId,

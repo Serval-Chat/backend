@@ -4,17 +4,17 @@ export interface ILogger {
     //
     // @param message - The message to log
     // @param meta - Optional structured context (e.g., { userId: '...' })
-    info(message: string, meta?: any): void;
+    info(message: string, meta?: Record<string, unknown>): void;
 
     // Log an error message
     //
     // @param message - The error description
     // @param error - The error object or additional context
-    error(message: string, error?: Error | any): void;
+    error(message: string, error?: Error | unknown): void;
 
     // Log a warning message
-    warn(message: string, meta?: any): void;
+    warn(message: string, meta?: Record<string, unknown>): void;
 
     // Log a debug message
-    debug(message: string, meta?: any): void;
+    debug(message: string, meta?: Record<string, unknown>): void;
 }

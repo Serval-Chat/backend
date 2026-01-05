@@ -1,4 +1,4 @@
-import { SerializedCustomStatus } from '@/utils/status';
+import type { SerializedCustomStatus } from '@/utils/status';
 
 export interface FriendResponseDTO {
     _id: string;
@@ -19,7 +19,7 @@ export interface IncomingFriendRequestResponseDTO {
 
 export interface SendFriendRequestResponseDTO {
     message: string;
-    request: any;
+    request: unknown;
 }
 
 export interface AcceptFriendRequestResponseDTO {

@@ -10,14 +10,16 @@ import { Category } from '@/models/Server';
 // Transform MongoDB document to match ICategory interface
 //
 // Ensures that ObjectIds are converted to strings for the domain model
-const transformCategory = (doc: any): ICategory | null => {
+const transformCategory = (doc: unknown): ICategory | null => {
     if (!doc) return null;
 
+    const d = doc as { _id: unknown; serverId: unknown };
+
     return {
-        ...doc,
-        _id: doc._id.toString(),
-        serverId: doc.serverId.toString(),
-    };
+        ...d,
+        _id: String(d._id),
+        serverId: String(d.serverId),
+    } as unknown as ICategory;
 };
 
 // Mongoose Category repository

@@ -8,7 +8,7 @@ export interface IAuditLog extends Document {
     adminId: Types.ObjectId;
     actionType: string;
     targetUserId?: Types.ObjectId;
-    additionalData?: any;
+    additionalData?: Record<string, unknown>;
     timestamp: Date;
 }
 

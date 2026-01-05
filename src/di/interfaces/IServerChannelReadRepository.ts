@@ -5,7 +5,7 @@ import type { Types } from 'mongoose';
 // Tracks when a user last read a specific channel in a server
 // Used to calculate unread message indicators
 export interface IServerChannelRead {
-    _id: any;
+    _id: Types.ObjectId | string;
     serverId: string;
     channelId: string;
     userId: Types.ObjectId | string;

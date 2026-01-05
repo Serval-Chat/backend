@@ -6,7 +6,7 @@ import type { Types } from 'mongoose';
 //
 // Represents an automated message sender for a specific channel
 export interface IWebhook {
-    _id: any;
+    _id: Types.ObjectId | string;
     serverId: Types.ObjectId | string;
     channelId: Types.ObjectId | string;
     name: string;

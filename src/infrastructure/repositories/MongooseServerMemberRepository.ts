@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
 import {
     IServerMemberRepository,
     IServerMember,
 } from '@/di/interfaces/IServerMemberRepository';
-import { IUser } from '@/di/interfaces/IUserRepository';
-import { mapUser } from '@/utils/user';
+import { mapUser, type MappedUser } from '@/utils/user';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ServerMember } from '@/models/Server';
 import { User } from '@/models/User';
@@ -126,7 +124,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     // Find all members of a server with user info populated
     //
     // Performs manual population by fetching users in a separate query
-    async findByServerIdWithUserInfo(serverId: string): Promise<any[]> {
+    async findByServerIdWithUserInfo(serverId: string): Promise<(IServerMember & { user: MappedUser | null })[]> {
         const members = await this.serverMemberModel.find({ serverId }).lean();
         const userIds = members.map((m) => m.userId.toString());
         const users = await this.userModel.find({ _id: { $in: userIds } }).lean();
@@ -142,7 +140,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         });
     }
 
-    async searchMembers(serverId: string, query: string): Promise<any[]> {
+    async searchMembers(serverId: string, query: string): Promise<(IServerMember & { user: MappedUser | null })[]> {
         const users = await this.userModel.find({
             $or: [
                 { username: { $regex: query, $options: 'i' } },

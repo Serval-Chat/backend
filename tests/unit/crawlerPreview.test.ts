@@ -3,10 +3,25 @@ import assert from 'node:assert/strict';
 import { discordCrawlerPreview } from '../../src/middleware/crawlerPreview';
 import { container } from '../../src/di/container';
 import { TYPES } from '../../src/di/types';
+import type { Request, Response } from 'express';
+
+interface MockRequest {
+    headers: Record<string, string | undefined>;
+    path: string;
+    query: Record<string, string | undefined>;
+}
+
+interface MockResponse {
+    status: (code: number) => MockResponse;
+    send: (content: string) => MockResponse;
+    statusCode: number;
+    sentContent: string;
+    setHeader: (name: string, value: string) => void;
+}
 
 describe('discordCrawlerPreview Middleware', () => {
-    let mockReq: any;
-    let mockRes: any;
+    let mockReq: MockRequest;
+    let mockRes: MockResponse;
     let nextCalled: boolean;
 
     beforeEach(() => {
@@ -28,6 +43,9 @@ describe('discordCrawlerPreview Middleware', () => {
             },
             statusCode: 0,
             sentContent: '',
+            setHeader: function (_name: string, _value: string) {
+                // Not needed for current tests but typed in MockResponse
+            },
         };
     });
 
@@ -43,7 +61,11 @@ describe('discordCrawlerPreview Middleware', () => {
         mockReq.headers['user-agent'] = 'Mozilla/5.0';
         mockReq.path = '/invite/testcode';
 
-        await discordCrawlerPreview(mockReq, mockRes, next);
+        await discordCrawlerPreview(
+            mockReq as unknown as Request,
+            mockRes as unknown as Response,
+            next,
+        );
 
         assert.strictEqual(nextCalled, true);
         assert.strictEqual(mockRes.statusCode, 0);
@@ -53,7 +75,11 @@ describe('discordCrawlerPreview Middleware', () => {
         mockReq.headers['user-agent'] = 'Discordbot/2.0';
         mockReq.path = '/login';
 
-        await discordCrawlerPreview(mockReq, mockRes, next);
+        await discordCrawlerPreview(
+            mockReq as unknown as Request,
+            mockRes as unknown as Response,
+            next,
+        );
 
         assert.strictEqual(nextCalled, true);
         assert.strictEqual(mockRes.statusCode, 0);
@@ -83,17 +109,39 @@ describe('discordCrawlerPreview Middleware', () => {
         };
 
         // Snapshot original container state or just rebind
-        container.rebind(TYPES.InviteRepository).toConstantValue(mockInviteRepo as any);
-        container.rebind(TYPES.ServerRepository).toConstantValue(mockServerRepo as any);
-        container.rebind(TYPES.ServerMemberRepository).toConstantValue(mockMemberRepo as any);
+        container
+            .rebind(TYPES.InviteRepository)
+            .toConstantValue(mockInviteRepo as unknown);
+        container
+            .rebind(TYPES.ServerRepository)
+            .toConstantValue(mockServerRepo as unknown);
+        container
+            .rebind(TYPES.ServerMemberRepository)
+            .toConstantValue(mockMemberRepo as unknown);
 
-        await discordCrawlerPreview(mockReq, mockRes, next);
+        await discordCrawlerPreview(
+            mockReq as unknown as Request,
+            mockRes as unknown as Response,
+            next,
+        );
 
         assert.strictEqual(nextCalled, false);
         assert.strictEqual(mockRes.statusCode, 200);
-        assert.ok(mockRes.sentContent.includes('<meta property="og:title" content="Join Test Server">'));
-        assert.ok(mockRes.sentContent.includes('<meta property="og:description" content="You\'ve been invited to join Test Server on Serchat. Current members: 42.">'));
-        assert.ok(mockRes.sentContent.includes('<meta name="theme-color" content="#5865F2">'));
+        assert.ok(
+            mockRes.sentContent.includes(
+                '<meta property="og:title" content="Join Test Server">',
+            ),
+        );
+        assert.ok(
+            mockRes.sentContent.includes(
+                '<meta property="og:description" content="You\'ve been invited to join Test Server on Serchat. Current members: 42.">',
+            ),
+        );
+        assert.ok(
+            mockRes.sentContent.includes(
+                '<meta name="theme-color" content="#5865F2">',
+            ),
+        );
     });
 
     test('should serve minimal HTML if testPreview=1 is present in query', async () => {
@@ -120,14 +168,29 @@ describe('discordCrawlerPreview Middleware', () => {
             countByServerId: async () => 42,
         };
 
-        container.rebind(TYPES.InviteRepository).toConstantValue(mockInviteRepo as any);
-        container.rebind(TYPES.ServerRepository).toConstantValue(mockServerRepo as any);
-        container.rebind(TYPES.ServerMemberRepository).toConstantValue(mockMemberRepo as any);
+        container
+            .rebind(TYPES.InviteRepository)
+            .toConstantValue(mockInviteRepo as unknown);
+        container
+            .rebind(TYPES.ServerRepository)
+            .toConstantValue(mockServerRepo as unknown);
+        container
+            .rebind(TYPES.ServerMemberRepository)
+            .toConstantValue(mockMemberRepo as unknown);
 
-        await discordCrawlerPreview(mockReq, mockRes, next);
+        await discordCrawlerPreview(
+            mockReq as unknown as Request,
+            mockRes as unknown as Response,
+            next,
+        );
 
         assert.strictEqual(nextCalled, false);
         assert.strictEqual(mockRes.statusCode, 200);
-        assert.ok(mockRes.sentContent.includes('<meta property="og:title" content="Join Test Server">'));
+        assert.ok(
+            mockRes.sentContent.includes(
+                '<meta property="og:title" content="Join Test Server">',
+            ),
+        );
     });
 });
+

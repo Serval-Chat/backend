@@ -6,6 +6,7 @@ import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository
 import { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
 import { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { IRole } from '@/di/interfaces/IRoleRepository';
 
 // Permission Service
 //
@@ -62,11 +63,11 @@ export class PermissionService {
         if (!member) return -1;
 
         const roles = await Promise.all(
-            (member.roles || []).map((roleId: any) =>
+            (member.roles || []).map((roleId) =>
                 this.roleRepo.findById(roleId.toString()),
             ),
         );
-        const validRoles = roles.filter((r): r is any => r !== null);
+        const validRoles = roles.filter((r): r is IRole => r !== null);
 
         let highestPosition = -1;
         for (const role of validRoles) {
@@ -110,11 +111,11 @@ export class PermissionService {
 
         // Get all roles with their details
         const roles = await Promise.all(
-            (member.roles || []).map((roleId: any) =>
+            (member.roles || []).map((roleId) =>
                 this.roleRepo.findById(roleId.toString()),
             ),
         );
-        const validRoles = roles.filter((r): r is any => r !== null);
+        const validRoles = roles.filter((r): r is IRole => r !== null);
 
         // Sort by position (highest first) - higher position = higher priority
         validRoles.sort((a, b) => b.position - a.position);
@@ -127,7 +128,9 @@ export class PermissionService {
             }
 
             // Check if this role has the specific permission set
-            const permValue = (role.permissions as any)[permission];
+            const permValue = (
+                role.permissions as unknown as Record<string, boolean | undefined>
+            )[permission];
             if (permValue === false) return false; // Explicit deny from higher role
             if (permValue === true) return true; // Explicit allow from higher role
         }
@@ -136,7 +139,9 @@ export class PermissionService {
         const everyoneRole = await this.roleRepo.findEveryoneRole(serverId);
         if (everyoneRole) {
             if (everyoneRole.permissions.administrator === true) return true;
-            const permValue = (everyoneRole.permissions as any)[permission];
+            const permValue = (
+                everyoneRole.permissions as unknown as Record<string, boolean | undefined>
+            )[permission];
             if (permValue === true) return true;
         }
 
@@ -180,11 +185,11 @@ export class PermissionService {
 
         // Get all roles with their details
         const roles = await Promise.all(
-            (member.roles || []).map((roleId: any) =>
+            (member.roles || []).map((roleId) =>
                 this.roleRepo.findById(roleId.toString()),
             ),
         );
-        const validRoles = roles.filter((r): r is any => r !== null);
+        const validRoles = roles.filter((r): r is IRole => r !== null);
 
         // Sort by position (highest first) - higher position = higher priority
         validRoles.sort((a, b) => b.position - a.position);
@@ -198,7 +203,9 @@ export class PermissionService {
             }
 
             // Check if this role has the specific permission set
-            const permValue = (role.permissions as any)[permission];
+            const permValue = (
+                role.permissions as unknown as Record<string, boolean | undefined>
+            )[permission];
             if (permValue === false) {
                 rolePermissionValue = false; // Explicit deny from higher role
                 break;
@@ -215,7 +222,12 @@ export class PermissionService {
             if (everyoneRole) {
                 if (everyoneRole.permissions.administrator === true)
                     return true;
-                const permValue = (everyoneRole.permissions as any)[permission];
+                const permValue = (
+                    everyoneRole.permissions as unknown as Record<
+                        string,
+                        boolean | undefined
+                    >
+                )[permission];
                 if (permValue === true) rolePermissionValue = true;
                 else if (permValue === false) rolePermissionValue = false;
             }
@@ -225,9 +237,9 @@ export class PermissionService {
         if (!channel) return rolePermissionValue || false;
 
         let categoryPermissionValue: boolean | undefined;
-        if ((channel as any).categoryId) {
+        if (channel.categoryId) {
             const category = await this.categoryRepo.findById(
-                (channel as any).categoryId.toString(),
+                channel.categoryId.toString(),
             );
             if (category?.permissions) {
                 // Check category permissions for user's roles
@@ -235,9 +247,12 @@ export class PermissionService {
                 for (const role of rolesForOverride) {
                     const roleId = role._id?.toString();
                     if (roleId && category.permissions[roleId]) {
-                        const permValue = (category.permissions[roleId] as any)[
-                            permission
-                        ];
+                        const permValue = (
+                            category.permissions[roleId] as unknown as Record<
+                                string,
+                                boolean | undefined
+                            >
+                        )[permission];
                         if (permValue === false) {
                             categoryPermissionValue = false;
                             break;
@@ -259,9 +274,12 @@ export class PermissionService {
             for (const role of rolesForOverride) {
                 const roleId = role._id?.toString();
                 if (roleId && channel.permissions[roleId]) {
-                    const permValue = (channel.permissions[roleId] as any)[
-                        permission
-                    ];
+                    const permValue = (
+                        channel.permissions[roleId] as unknown as Record<
+                            string,
+                            boolean | undefined
+                        >
+                    )[permission];
                     if (permValue === false) {
                         channelPermissionValue = false;
                         break;

@@ -55,8 +55,9 @@ try {
             process.exit(1);
         }
     }
-} catch (err: any) {
-    throw new Error('Failed to create logs folder: ' + err.message);
+} catch (err: unknown) {
+    const error = err as Error;
+    throw new Error('Failed to create logs folder: ' + error.message);
 }
 
 if (!fs.existsSync(PUBLIC_FOLDER_PATH)) {

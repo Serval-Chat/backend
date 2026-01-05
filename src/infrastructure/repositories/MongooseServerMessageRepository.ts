@@ -5,7 +5,7 @@ import {
 } from '@/di/interfaces/IServerMessageRepository';
 import { ServerMessage } from '@/models/Server';
 import { Reaction } from '@/models/Reaction';
-import type { Types } from 'mongoose';
+import type { Types, FilterQuery } from 'mongoose';
 
 // Mongoose Server Message repository
 //
@@ -69,7 +69,7 @@ export class MongooseServerMessageRepository
         before?: string,
         around?: string,
     ): Promise<IServerMessage[]> {
-        let messages: any[] = [];
+        let messages: IServerMessage[] = [];
 
         if (around) {
             const targetMessage = await ServerMessage.findById(around);
@@ -101,7 +101,7 @@ export class MongooseServerMessageRepository
                 (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
             );
         } else {
-            const query: any = { channelId };
+            const query: FilterQuery<IServerMessage> = { channelId };
 
             if (before) {
                 const isValidObjectId = /^[a-f\d]{24}$/i.test(before);
@@ -154,8 +154,8 @@ export class MongooseServerMessageRepository
     //
     // Groups reactions by emoji type and collects user IDs */
     private async getReactionsForMessages(
-        messageIds: any[],
-    ): Promise<Record<string, any[]>> {
+        messageIds: (string | Types.ObjectId)[],
+    ): Promise<Record<string, unknown[]>> {
         const reactions = await Reaction.aggregate([
             {
                 $match: {
@@ -198,7 +198,7 @@ export class MongooseServerMessageRepository
             },
         ]);
 
-        const map: Record<string, any[]> = {};
+        const map: Record<string, unknown[]> = {};
         reactions.forEach((r) => {
             map[r._id.toString()] = r.reactions;
         });

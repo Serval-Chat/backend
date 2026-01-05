@@ -19,7 +19,10 @@ import fs from 'fs';
 import sharp from 'sharp';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type {
+    IUserRepository,
+    IUser,
+} from '@/di/interfaces/IUserRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { resolveSerializedCustomStatus } from '@/utils/status';
@@ -28,7 +31,8 @@ import { getIO } from '@/socket';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { mapUser } from '@/utils/user';
 import { ErrorMessages } from '@/constants/errorMessages';
-import express from 'express';
+import type { Request as ExpressRequest } from 'express';
+import type { JWTPayload } from '@/utils/jwt';
 import { Badge } from '@/models/Badge';
 import {
     AssignBadgesRequest,
@@ -38,6 +42,8 @@ import { StatusService } from '@/realtime/services/StatusService';
 import { hasPermission } from '@/utils/jwt';
 import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 import { usernameSchema } from '@/validation/schemas/common';
+import type { SerializedCustomStatus } from '@/utils/status';
+import type { Types } from 'mongoose';
 
 interface UpdateStatusRequest {
     text?: string;
@@ -79,7 +85,7 @@ interface UpdateLanguageRequest {
 
 // User profile information including badges and customization
 interface BadgeResponse {
-    _id: any;
+    _id: Types.ObjectId | string;
     id: string;
     name: string;
     description: string;
@@ -122,7 +128,7 @@ interface UserProfile {
     };
 
     // User's current custom status
-    customStatus: any;
+    customStatus: SerializedCustomStatus | null;
 
     // User's permission level
     permissions: string | AdminPermissions;
@@ -180,10 +186,9 @@ export class ProfileController extends Controller {
         error: ErrorMessages.AUTH.USER_NOT_FOUND,
     })
     public async getMyProfile(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<UserProfile> {
-        // @ts-ignore: JWT middleware attaches user object, not typed in Express.Request
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         return this.getUserProfile(userId);
     }
 
@@ -197,9 +202,7 @@ export class ProfileController extends Controller {
         const user = await this.userRepo.findById(userId);
         if (!user) {
             this.setStatus(404);
-            const error = new Error(ErrorMessages.AUTH.USER_NOT_FOUND) as any;
-            error.status = 404;
-            throw error;
+            throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         return this.mapToProfile(user);
@@ -224,15 +227,16 @@ export class ProfileController extends Controller {
     public async updateUserBadges(
         @Path() id: string,
         @Body() request: AssignBadgesRequest,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<BadgeOperationResponse> {
+        const adminUser = (req as ExpressRequest & { user: JWTPayload }).user;
         try {
-            if (!(req as any).user) {
+            if (!adminUser) {
                 this.setStatus(401);
                 throw new Error(ErrorMessages.AUTH.UNAUTHORIZED);
             }
 
-            if (!hasPermission((req as any).user, 'manageUsers')) {
+            if (!hasPermission(adminUser, 'manageUsers')) {
                 this.setStatus(403);
                 throw new Error(ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
             }
@@ -294,11 +298,11 @@ export class ProfileController extends Controller {
             });
 
             this.logger.info(
-                `User ${(req as any).user.id} updated badges for user ${user._id}`,
+                `User ${adminUser.id} updated badges for user ${user._id}`,
                 {
                     targetUserId: user._id,
                     badgeCount: validBadgeIds.length,
-                    adminUserId: (req as any).user.id,
+                    adminUserId: adminUser.id,
                 },
             );
 
@@ -324,17 +328,13 @@ export class ProfileController extends Controller {
 
     // Uploads or updates the user's profile picture
     // Validates compliance with dimensions (max 512x512) and format (WebP).
-    @Post('picture')
-    @Security('jwt')
     public async uploadProfilePicture(
         @UploadedFile() profilePicture: Express.Multer.File,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string; profilePicture: string }> {
         try {
-            // @ts-ignore: JWT middleware attaches user object
-            const username = req.user.username;
-            // @ts-ignore: JWT middleware attaches user object
-            const userId = req.user.id;
+            const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+            const userId = userPayload.id;
 
             if (!profilePicture) {
                 this.setStatus(400);
@@ -396,13 +396,14 @@ export class ProfileController extends Controller {
                     this.setStatus(400);
                     throw new Error('Invalid file format. Only WebP and GIF are allowed.');
                 }
-            } catch (validationErr: any) {
+            } catch (validationErr: unknown) {
                 if (fs.existsSync(uploadedPath)) {
                     fs.unlinkSync(uploadedPath);
                 }
-                this.logger.error('Profile picture validation error:', validationErr);
+                const error = validationErr as Error;
+                this.logger.error('Profile picture validation error:', error);
                 this.setStatus(400);
-                throw new Error(validationErr.message || 'Failed to validate profile picture image');
+                throw new Error(error.message || 'Failed to validate profile picture image');
             }
 
             const ext = `.${(await sharp(uploadedPath).metadata()).format}`;
@@ -428,11 +429,6 @@ export class ProfileController extends Controller {
                 const io = getIO();
                 const serverIds = await this.serverMemberRepo.findServerIdsByUserId(userId);
                 const friendships = await this.friendshipRepo.findAllByUserId(userId);
-
-                const updatePayload = {
-                    username,
-                    profilePicture: profilePictureUrl,
-                };
 
                 // Emit to all servers the user is in
                 serverIds.forEach(serverId => {
@@ -467,7 +463,7 @@ export class ProfileController extends Controller {
                 message: 'Profile picture updated successfully',
                 profilePicture: profilePictureUrl,
             };
-        } catch (err: any) {
+        } catch (err: unknown) {
             this.logger.error('Profile picture upload error:', err);
             throw err;
         }
@@ -479,13 +475,12 @@ export class ProfileController extends Controller {
     @Security('jwt')
     public async uploadBanner(
         @UploadedFile() banner: Express.Multer.File,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string; banner: string }> {
         try {
-            // @ts-ignore: JWT middleware attaches user object
-            const username = req.user.username;
-            // @ts-ignore: JWT middleware attaches user object
-            const userId = req.user.id;
+            const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+            const username = userPayload.username;
+            const userId = userPayload.id;
 
             if (!banner) {
                 this.setStatus(400);
@@ -547,13 +542,14 @@ export class ProfileController extends Controller {
                     this.setStatus(400);
                     throw new Error('Invalid file format. Only WebP is allowed.');
                 }
-            } catch (validationErr: any) {
+            } catch (validationErr: unknown) {
                 if (fs.existsSync(uploadedPath)) {
                     fs.unlinkSync(uploadedPath);
                 }
-                this.logger.error('Banner validation error:', validationErr);
+                const error = validationErr as Error;
+                this.logger.error('Banner validation error:', error);
                 this.setStatus(400);
-                throw new Error(validationErr.message || 'Failed to validate banner image');
+                throw new Error(error.message || 'Failed to validate banner image');
             }
 
             const ext = '.webp';
@@ -610,7 +606,7 @@ export class ProfileController extends Controller {
                 message: 'Profile banner updated successfully',
                 banner: bannerUrl,
             };
-        } catch (err: any) {
+        } catch (err: unknown) {
             this.logger.error('Banner upload error:', err);
             throw err;
         }
@@ -620,7 +616,7 @@ export class ProfileController extends Controller {
     @Get('banner/{filename}')
     public async getBanner(
         @Path() filename: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<void> {
         const res = req.res;
         if (!res) throw new Error('Response object not found');
@@ -668,11 +664,10 @@ export class ProfileController extends Controller {
     @Patch('bio')
     @Security('jwt')
     public async updateBio(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: BioUpdate,
     ): Promise<{ message: string; bio: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { bio } = body;
 
         await this.userRepo.update(userId, { bio: bio || '' });
@@ -687,11 +682,10 @@ export class ProfileController extends Controller {
     @Patch('pronouns')
     @Security('jwt')
     public async updatePronouns(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: PronounsUpdate,
     ): Promise<{ message: string; pronouns: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { pronouns } = body;
 
         await this.userRepo.update(userId, { pronouns: pronouns || '' });
@@ -712,13 +706,12 @@ export class ProfileController extends Controller {
         error: ErrorMessages.AUTH.USER_NOT_FOUND,
     })
     public async updateDisplayName(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: DisplayNameUpdate,
     ): Promise<{ message: string; displayName: string | null }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
-        // @ts-ignore: JWT middleware attaches user object
-        const username = req.user.username;
+        const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+        const userId = userPayload.id;
+        const username = userPayload.username;
         const { displayName } = body;
 
         await this.userRepo.updateDisplayName(userId, displayName || null);
@@ -751,13 +744,12 @@ export class ProfileController extends Controller {
         error: ErrorMessages.AUTH.USER_NOT_FOUND,
     })
     public async updateCustomStatus(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: UpdateStatusRequest,
-    ): Promise<{ customStatus: any }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
-        // @ts-ignore: JWT middleware attaches user object
-        const username = req.user.username;
+    ): Promise<{ customStatus: SerializedCustomStatus | null }> {
+        const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+        const userId = userPayload.id;
+        const username = userPayload.username;
         const { text, emoji, expiresAt, expiresInMinutes, clear } = body;
 
         const user = await this.userRepo.findById(userId);
@@ -884,12 +876,11 @@ export class ProfileController extends Controller {
         error: ErrorMessages.AUTH.USER_NOT_FOUND,
     })
     public async clearCustomStatus(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ customStatus: null }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
-        // @ts-ignore: JWT middleware attaches user object
-        const username = req.user.username;
+        const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+        const userId = userPayload.id;
+        const username = userPayload.username;
 
         const user = await this.userRepo.findById(userId);
         if (!user) {
@@ -913,7 +904,7 @@ export class ProfileController extends Controller {
     @Post('status/bulk')
     public async getBulkStatuses(
         @Body() body: BulkStatusRequest,
-    ): Promise<{ statuses: Record<string, any> }> {
+    ): Promise<{ statuses: Record<string, SerializedCustomStatus | null> }> {
         const { usernames } = body;
 
         if (!Array.isArray(usernames)) {
@@ -935,7 +926,7 @@ export class ProfileController extends Controller {
             return { statuses: {} };
         }
 
-        const statuses: Record<string, any> = {};
+        const statuses: Record<string, SerializedCustomStatus | null> = {};
 
         for (const name of sanitized) {
             const user = await this.userRepo.findByUsername(name);
@@ -951,18 +942,25 @@ export class ProfileController extends Controller {
     @Patch('style')
     @Security('jwt')
     public async updateUsernameStyle(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: UpdateStyleRequest,
     ): Promise<{
         message: string;
         usernameFont?: string;
-        usernameGradient?: any;
-        usernameGlow?: any;
+        usernameGradient?: {
+            enabled: boolean;
+            colors: string[];
+            angle: number;
+        };
+        usernameGlow?: {
+            enabled: boolean;
+            color: string;
+            intensity: number;
+        };
     }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
-        // @ts-ignore: JWT middleware attaches user object
-        const username = req.user.username;
+        const userPayload = (req as ExpressRequest & { user: JWTPayload }).user;
+        const userId = userPayload.id;
+        const username = userPayload.username;
 
         const { usernameFont, usernameGradient, usernameGlow } = body;
 
@@ -1018,11 +1016,10 @@ export class ProfileController extends Controller {
     @Patch('username')
     @Security('jwt')
     public async changeUsername(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: ChangeUsernameRequest,
     ): Promise<{ message: string; username: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const currentUsername = req.user.username;
+        const currentUsername = (req as ExpressRequest & { user: JWTPayload }).user.username;
         const { newUsername } = body;
 
         if (!newUsername || typeof newUsername !== 'string') {
@@ -1084,11 +1081,10 @@ export class ProfileController extends Controller {
     @Patch('language')
     @Security('jwt')
     public async updateLanguage(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: UpdateLanguageRequest,
     ): Promise<{ message: string; language: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const username = req.user.username;
+        const username = (req as ExpressRequest & { user: JWTPayload }).user.username;
         const { language } = body;
 
         if (!language || typeof language !== 'string') {
@@ -1114,7 +1110,7 @@ export class ProfileController extends Controller {
     @Get('picture/{filename}')
     public async getProfilePicture(
         @Path() filename: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<void> {
         const res = req.res;
         if (!res) {
@@ -1179,7 +1175,7 @@ export class ProfileController extends Controller {
     }
 
     // Maps a user document to a public UserProfile payload
-    private async mapToProfile(user: any): Promise<UserProfile> {
+    private async mapToProfile(user: IUser): Promise<UserProfile> {
         const mapped = mapUser(user);
         if (!mapped) {
             throw new Error('User not found');

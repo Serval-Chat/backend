@@ -20,7 +20,9 @@ import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepos
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
-import express from 'express';
+import type { Request as ExpressRequest } from 'express';
+import { JWTPayload } from '@/utils/jwt';
+import { IEmoji } from '@/di/interfaces/IEmojiRepository';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
@@ -68,10 +70,9 @@ export class ServerEmojiController extends Controller {
     })
     public async getServerEmojis(
         @Path() serverId: string,
-        @Request() req: express.Request,
-    ): Promise<any[]> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<IEmoji[]> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -98,12 +99,11 @@ export class ServerEmojiController extends Controller {
     })
     public async uploadEmoji(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @UploadedFile() emoji: Express.Multer.File,
         @FormField() name: string,
-    ): Promise<any> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+    ): Promise<IEmoji> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         if (!emoji) {
             this.setStatus(400);
@@ -198,6 +198,11 @@ export class ServerEmojiController extends Controller {
             newEmoji._id.toString(),
         );
 
+        if (!populatedEmoji) {
+            this.setStatus(500);
+            throw new Error(ErrorMessages.EMOJI.NOT_FOUND);
+        }
+
         const io = getIO();
         io.to(`server:${serverId}`).emit('emoji_updated', { serverId });
 
@@ -217,10 +222,9 @@ export class ServerEmojiController extends Controller {
     public async getEmoji(
         @Path() serverId: string,
         @Path() emojiId: string,
-        @Request() req: express.Request,
-    ): Promise<any> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<IEmoji> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -251,10 +255,9 @@ export class ServerEmojiController extends Controller {
     public async deleteEmoji(
         @Path() serverId: string,
         @Path() emojiId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<void> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
             this.setStatus(404);

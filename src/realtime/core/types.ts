@@ -1,4 +1,4 @@
-import type { Socket } from 'socket.io';
+import type { Server, Socket } from 'socket.io';
 import type { ZodSchema } from 'zod';
 
 // User Payload interface
@@ -15,7 +15,7 @@ export interface UserPayload {
 // Passed to every event handler, containing the socket and user info
 export interface SocketContext {
     socket: Socket;
-    user: UserPayload;
+    user?: UserPayload;
 }
 
 // Gateway Metadata interface
@@ -38,7 +38,7 @@ export interface MiddlewareMetadata {
 
 export interface RealTimeModule {
     gateways: Function[];
-    onInit?: (io: any) => void;
+    onInit?: (io: Server) => void;
 }
 
 // Gateway Connection Hook interface

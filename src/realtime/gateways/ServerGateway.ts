@@ -66,6 +66,7 @@ export class ServerGateway {
         payload: z.infer<typeof JoinServerSchema>,
     ) {
         const { serverId } = payload;
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const userId = ctx.user.id;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -85,6 +86,7 @@ export class ServerGateway {
         ctx: SocketContext,
         payload: z.infer<typeof LeaveServerSchema>,
     ) {
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const { serverId } = payload;
         ctx.socket.leave(`server:${serverId}`);
     }
@@ -100,6 +102,7 @@ export class ServerGateway {
         ctx: SocketContext,
         payload: z.infer<typeof JoinChannelSchema>,
     ) {
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const { serverId, channelId } = payload;
         const userId = ctx.user.id;
 
@@ -120,6 +123,7 @@ export class ServerGateway {
         ctx: SocketContext,
         payload: z.infer<typeof LeaveChannelSchema>,
     ) {
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const { channelId } = payload;
         ctx.socket.leave(`channel:${channelId}`);
     }
@@ -143,6 +147,7 @@ export class ServerGateway {
     ) {
         websocketMessagesCounter.labels('server_message', 'inbound').inc();
         const { serverId, channelId, text, replyToId } = payload;
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const userId = ctx.user.id;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -359,11 +364,11 @@ export class ServerGateway {
                     // Store ping for ALL users (online and offline)
                     const pingData = {
                         type: 'mention' as const,
-                        sender: ctx.user.username,
+                        sender: ctx.user?.username || '',
                         senderId: userId,
                         serverId,
                         channelId,
-                        message: created,
+                        message: created as unknown as Record<string, unknown>,
                     };
 
                     const storedPing = await this.pingService.addPing(
@@ -410,6 +415,7 @@ export class ServerGateway {
         ctx: SocketContext,
         payload: z.infer<typeof MarkChannelReadSchema>,
     ) {
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const { serverId, channelId } = payload;
         const userId = ctx.user.id;
 
@@ -451,6 +457,7 @@ export class ServerGateway {
         ctx: SocketContext,
         payload: z.infer<typeof ServerTypingSchema>,
     ) {
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const { serverId, channelId } = payload;
         const userId = ctx.user.id;
 
@@ -480,6 +487,7 @@ export class ServerGateway {
         payload: z.infer<typeof EditServerMessageSchema>,
     ) {
         const { messageId, text } = payload;
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const userId = ctx.user.id;
 
         const message = await this.serverMessageRepo.findById(messageId);
@@ -516,6 +524,7 @@ export class ServerGateway {
         payload: z.infer<typeof DeleteServerMessageSchema>,
     ) {
         const { serverId, messageId } = payload;
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const userId = ctx.user.id;
 
         const message = await this.serverMessageRepo.findById(messageId);

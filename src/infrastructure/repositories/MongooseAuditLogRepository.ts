@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Model, Types } from 'mongoose';
+import { type FilterQuery, Types } from 'mongoose';
 import type {
     IAuditLog,
     IAuditLogRepository,
@@ -18,7 +18,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         adminId: string;
         actionType: string;
         targetUserId?: string;
-        additionalData?: any;
+        additionalData?: Record<string, unknown>;
     }): Promise<IAuditLog> {
         const auditLog = new this.auditLogModel({
             adminId: new Types.ObjectId(data.adminId),
@@ -43,7 +43,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         startDate?: Date;
         endDate?: Date;
     }): Promise<IAuditLog[]> {
-        const query: any = {};
+        const query: FilterQuery<IAuditLog> = {};
 
         if (options.adminId) {
             query.adminId = new Types.ObjectId(options.adminId);
@@ -97,7 +97,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         startDate?: Date;
         endDate?: Date;
     }): Promise<number> {
-        const query: any = {};
+        const query: FilterQuery<IAuditLog> = {};
 
         if (options.adminId) {
             query.adminId = new Types.ObjectId(options.adminId);

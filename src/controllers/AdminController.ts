@@ -13,7 +13,6 @@ import {
     HttpCode,
     NotFoundException,
     BadRequestException,
-    ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
@@ -41,6 +40,8 @@ import {
 } from '@/utils/deletion';
 import type { Request as ExpressRequest } from 'express';
 import { DashBoardStatsDTO } from './dto/admin-dashboard-stats.response.dto';
+import { JWTPayload } from '@/utils/jwt';
+import { AdminPermissions } from './dto/common';
 import {
     AdminUserListItemDTO,
     AdminUserDetailsDTO,
@@ -184,7 +185,7 @@ export class AdminController {
         @Query() query: AdminListUsersRequestDTO,
     ): Promise<AdminUserListItemDTO[]> {
         // Build query options based on query parameters
-        const options: any = {
+        const options: Record<string, unknown> = {
             limit: Number(query.limit ?? 50),
             offset: Number(query.offset ?? 0),
             includeDeleted: query.includeDeleted === true,
@@ -209,7 +210,7 @@ export class AdminController {
                 item.login = user.login || '';
                 item.displayName = user.displayName || null;
                 item.profilePicture = user.profilePicture || null;
-                item.permissions = (user.permissions as any) || '0';
+                item.permissions = (user.permissions as unknown as AdminPermissions) || '0';
                 item.createdAt = user.createdAt || new Date();
                 item.banExpiry = activeBan?.expirationTimestamp;
                 item.warningCount = warningCount;
@@ -235,20 +236,20 @@ export class AdminController {
         const user = await this.userRepo.findById(userId);
         if (!user) {
             this.logger.warn(
-                `Admin ${(req as any).user?.login} tried to view non-existent user ${userId}`,
+                `Admin ${(req as ExpressRequest & { user?: JWTPayload }).user?.login} tried to view non-existent user ${userId}`,
             );
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         this.logger.info(
-            `Admin ${(req as any).user?.login} viewed user details for ${userId}`,
+            `Admin ${(req as ExpressRequest & { user?: JWTPayload }).user?.login} viewed user details for ${userId}`,
         );
         const activeBan = await this.banRepo.findActiveByUserId(userId);
         const warningCount = await this.warningRepo.countByUserId(userId);
 
-        let badges: any[] = [];
+        let badges: unknown[] = [];
         if (user.badges && user.badges.length > 0) {
-            badges = await Badge.find({ id: { $in: user.badges } });
+            badges = await Badge.find({ id: { $in: user.badges } }).lean();
         }
 
         const details = new AdminUserDetailsDTO();
@@ -257,13 +258,13 @@ export class AdminController {
         details.login = user.login || '';
         details.displayName = user.displayName || null;
         details.profilePicture = user.profilePicture || null;
-        details.permissions = (user.permissions as any) || '0';
+        details.permissions = (user.permissions as unknown as AdminPermissions) || '0';
         details.createdAt = user.createdAt || new Date();
         details.banExpiry = activeBan?.expirationTimestamp;
         details.warningCount = warningCount;
         details.bio = user.bio || '';
         details.pronouns = user.pronouns || '';
-        details.badges = badges;
+        details.badges = badges as string[];
         details.banner = user.banner
             ? `/api/v1/profile/banner/${user.banner}`
             : null;
@@ -294,7 +295,7 @@ export class AdminController {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        const updateData: any = {};
+        const updateData: Record<string, unknown> = {};
         const oldUsername = user.username || '';
         let usernameChanged = false;
 
@@ -361,10 +362,10 @@ export class AdminController {
         req: ExpressRequest,
         actionType: string,
         targetUserId?: string,
-        additionalData?: any,
+        additionalData?: Record<string, unknown>,
     ): Promise<void> {
         try {
-            const safeData: any = {};
+            const safeData: Record<string, unknown> = {};
             if (additionalData) {
                 if (additionalData.reason)
                     safeData.reason = additionalData.reason;
@@ -379,9 +380,13 @@ export class AdminController {
                     safeData.fields = additionalData.fields;
             }
 
-            const auditData: any = {
-                // @ts-ignore
-                adminId: req.user?.id || 'unknown',
+            const auditData: {
+                adminId: string;
+                actionType: string;
+                additionalData: Record<string, unknown>;
+                targetUserId?: string;
+            } = {
+                adminId: (req as ExpressRequest & { user?: JWTPayload }).user?.id || 'unknown',
                 actionType,
                 additionalData: safeData,
             };
@@ -658,7 +663,7 @@ export class AdminController {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        if (userId === (req as any).user?.id) {
+        if (userId === (req as ExpressRequest & { user?: JWTPayload }).user?.id) {
             throw new BadRequestException('Cannot modify your own permissions');
         }
 
@@ -693,7 +698,7 @@ export class AdminController {
         }
 
         const expirationTimestamp = new Date(Date.now() + duration * 60 * 1000);
-        const issuedById = (req as any).user?.id || 'unknown';
+        const issuedById = (req as ExpressRequest & { user?: JWTPayload }).user?.id || 'unknown';
 
         const ban = await this.banRepo.createOrUpdateWithHistory({
             userId,
@@ -726,7 +731,7 @@ export class AdminController {
             sockets.forEach((sid) => {
                 io.to(sid).emit('ban', {
                     reason: reason.trim(),
-                    issuedBy: (req as any).user?.username,
+                    issuedBy: (req as ExpressRequest & { user?: JWTPayload }).user?.username,
                     expirationTimestamp,
                 });
                 io.sockets.sockets.get(sid)?.disconnect(true);
@@ -777,13 +782,14 @@ export class AdminController {
         }
 
         const historyWithStatus: AdminUserBanHistoryResponseDTO = ban.history!.map(
-            (entry: any, index: number) => {
+            (entry, index: number) => {
                 const item = new AdminBanHistoryItemDTO();
-                item._id = entry._id.toString();
-                item.reason = entry.reason || '';
-                item.timestamp = entry.timestamp || new Date();
-                item.expirationTimestamp = entry.expirationTimestamp || new Date();
-                item.issuedBy = entry.issuedBy?.toString() || 'unknown';
+                const e = entry as Record<string, unknown>;
+                item._id = String(e._id || '');
+                item.reason = String(e.reason || '');
+                item.timestamp = (e.timestamp as Date) || new Date();
+                item.expirationTimestamp = (e.expirationTimestamp as Date) || new Date();
+                item.issuedBy = String(e.issuedBy || 'unknown');
                 item.active = index === ban.history!.length - 1 && (ban.active || false);
                 return item;
             },
@@ -822,11 +828,11 @@ export class AdminController {
         const response = new AdminBansDiagnosticResponseDTO();
         response.appBans = {
             count: appBansCount,
-            sample: appBansSample as any[],
+            sample: appBansSample as unknown[],
         };
         response.serverBans = {
             count: serverBansCount,
-            sample: serverBansSample as any[],
+            sample: serverBansSample as unknown[],
         };
         return response;
     }
@@ -847,7 +853,7 @@ export class AdminController {
 
         const warning = await this.warningRepo.create({
             userId,
-            issuedBy: (req as any).user?.id,
+            issuedBy: (req as ExpressRequest & { user?: JWTPayload }).user?.id || 'unknown',
             message,
         });
 
@@ -891,6 +897,8 @@ export class AdminController {
             dto.issuedBy = w.issuedBy.toString();
             dto.message = w.message;
             dto.timestamp = w.timestamp;
+            dto.acknowledged = w.acknowledged;
+            dto.acknowledgedAt = w.acknowledgedAt;
             return dto;
         });
     }
@@ -908,7 +916,17 @@ export class AdminController {
             limit: Number(limit),
             offset: Number(offset),
         });
-        return warnings;
+        return warnings.map(w => {
+            const dto = new AdminWarnUserResponseDTO();
+            dto._id = w._id.toString();
+            dto.userId = w.userId.toString();
+            dto.issuedBy = w.issuedBy.toString();
+            dto.message = w.message;
+            dto.timestamp = w.timestamp;
+            dto.acknowledged = w.acknowledged;
+            dto.acknowledgedAt = w.acknowledgedAt;
+            return dto;
+        });
     }
 
     @Get('logs')
@@ -1104,9 +1122,9 @@ export class AdminController {
         const activeBan = await this.banRepo.findActiveByUserId(userId);
         const warningCount = await this.warningRepo.countByUserId(userId);
 
-        let badges: any[] = [];
+        let badges: unknown[] = [];
         if (user.badges && user.badges.length > 0) {
-            badges = await Badge.find({ id: { $in: user.badges } });
+            badges = await Badge.find({ id: { $in: user.badges } }).lean();
         }
 
         const response = new AdminExtendedUserDetailsDTO();
@@ -1121,7 +1139,7 @@ export class AdminController {
         response.warningCount = warningCount;
         response.bio = user.bio || '';
         response.pronouns = user.pronouns || '';
-        response.badges = badges;
+        response.badges = badges as string[];
         response.banner = user.banner ? `/api/v1/profile/banner/${user.banner}` : null;
         response.deletedAt = user.deletedAt;
         response.deletedReason = user.deletedReason;

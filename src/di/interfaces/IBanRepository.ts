@@ -2,7 +2,7 @@ import type { Types } from 'mongoose';
 
 // Ban interface
 export interface IBan {
-    _id: any; // Mongoose ObjectId type
+    _id: Types.ObjectId | string; // Mongoose ObjectId type
     userId: Types.ObjectId | string;
     reason: string;
     active: boolean;

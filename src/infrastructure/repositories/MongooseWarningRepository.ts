@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Model, Types } from 'mongoose';
+import { Types, type FilterQuery } from 'mongoose';
 import {
     IWarningRepository,
     IWarning,
@@ -17,7 +17,7 @@ export class MongooseWarningRepository implements IWarningRepository {
         userId: string,
         acknowledged?: boolean,
     ): Promise<IWarning[]> {
-        const filter: any = { userId: new Types.ObjectId(userId) };
+        const filter: FilterQuery<IWarning> = { userId: new Types.ObjectId(userId) };
         if (acknowledged !== undefined) {
             filter.acknowledged = acknowledged;
         }
