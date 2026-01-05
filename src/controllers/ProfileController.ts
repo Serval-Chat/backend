@@ -36,10 +36,11 @@ import {
     ChangeUsernameRequestDTO,
     UpdateLanguageRequestDTO,
     AssignBadgesRequestDTO,
+    FilenameParamDTO,
 } from './dto/profile.request.dto';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
-import { JWTPayload, hasPermission } from '@/utils/jwt'; // Ensure hasPermission is imported
+import { JWTPayload, hasPermission } from '@/utils/jwt';
 import { getIO } from '@/socket';
 import { mapUser } from '@/utils/user';
 import { resolveSerializedCustomStatus, SerializedCustomStatus } from '@/utils/status';
@@ -56,7 +57,7 @@ import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { StatusService } from '@/realtime/services/StatusService';
 import { Badge } from '@/models/Badge';
-import { storage } from '@/config/multer'; // Import existing storage config
+import { storage } from '@/config/multer';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -176,13 +177,6 @@ export class ProfileController {
 
             if (!hasPermission(adminUser, 'manageUsers')) {
                 throw new ApiError(403, ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS);
-            }
-
-            if (!request.badgeIds || !Array.isArray(request.badgeIds)) {
-                throw new ApiError(
-                    400,
-                    ErrorMessages.PROFILE.INVALID_REQUEST_BADGE_ARRAY,
-                );
             }
 
             const user = await this.userRepo.findById(id);
@@ -572,15 +566,11 @@ export class ProfileController {
     @ApiResponse({ status: 400, description: 'Invalid filename' })
     @ApiResponse({ status: 404, description: 'Banner not found' })
     public async getBanner(
-        @Param('filename') filename: string,
+        @Param() params: FilenameParamDTO,
         @Req() req: Request,
         @Res() res: Response,
     ): Promise<void> {
-
-        if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-            res.status(400).send({ error: 'Invalid filename' });
-            return;
-        }
+        const { filename } = params;
 
         const filePath = path.join(process.cwd(), 'uploads', 'banners', filename);
 
@@ -730,41 +720,6 @@ export class ProfileController {
             return { customStatus: null };
         }
 
-        const trimmedText = typeof text === 'string' ? text.trim() : '';
-        if (trimmedText.length > 120) {
-            throw new ApiError(400, ErrorMessages.PROFILE.STATUS_TOO_LONG);
-        }
-
-        const normalizedEmoji = typeof emoji === 'string' ? emoji.trim() : '';
-        if (normalizedEmoji.length > 0) {
-            const customEmojiMatch = normalizedEmoji.match(
-                /^<emoji:([a-fA-F0-9]{24})>$/,
-            );
-
-            if (!customEmojiMatch) {
-                const segmenter = new Intl.Segmenter('en', {
-                    granularity: 'grapheme',
-                });
-                const graphemes = Array.from(
-                    segmenter.segment(normalizedEmoji),
-                );
-
-                if (graphemes.length > 1) {
-                    throw new ApiError(400, ErrorMessages.PROFILE.ONLY_ONE_EMOJI);
-                }
-                if (!/\p{Emoji}/u.test(normalizedEmoji)) {
-                    throw new ApiError(400, ErrorMessages.PROFILE.INVALID_EMOJI);
-                }
-            }
-        }
-
-        if (!trimmedText && !normalizedEmoji) {
-            throw new ApiError(
-                400,
-                ErrorMessages.PROFILE.STATUS_TEXT_OR_EMOJI_REQUIRED,
-            );
-        }
-
         let expiresAtDate: Date | null = null;
         if (expiresAt === null) {
             expiresAtDate = null;
@@ -792,13 +747,13 @@ export class ProfileController {
             updatedAt: Date;
             emoji?: string;
         } = {
-            text: trimmedText,
+            text: text || '',
             expiresAt: expiresAtDate,
             updatedAt: new Date(),
         };
 
-        if (normalizedEmoji) {
-            newStatus.emoji = normalizedEmoji;
+        if (emoji) {
+            newStatus.emoji = emoji;
         }
 
         await this.userRepo.updateCustomStatus(userId, newStatus);
@@ -974,9 +929,7 @@ export class ProfileController {
         const userId = (req as unknown as RequestWithUser).user.id;
         const { newUsername } = body;
 
-        if (!newUsername || typeof newUsername !== 'string') {
-            throw new ApiError(400, ErrorMessages.PROFILE.NEW_USERNAME_REQUIRED);
-        }
+
 
 
 
@@ -1055,23 +1008,14 @@ export class ProfileController {
     @ApiResponse({ status: 400, description: 'Invalid filename' })
     @ApiResponse({ status: 404, description: 'Image not found' })
     public async getProfilePicture(
-        @Param('filename') filename: string,
+        @Param() params: FilenameParamDTO,
         @Req() req: Request,
         @Res() res: Response,
     ): Promise<void> {
+        const { filename } = params;
 
         if (!filename) {
             res.status(400).send({ error: 'Filename required' });
-            return;
-        }
-
-        // No more path traversal attacks :3
-        if (
-            filename.includes('..') ||
-            filename.includes('/') ||
-            filename.includes('\\')
-        ) {
-            res.status(400).send({ error: 'Invalid filename' });
             return;
         }
 

@@ -42,7 +42,12 @@ import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { JWTPayload } from '@/utils/jwt';
-import { CreateWebhookRequestDTO, ExecuteWebhookRequestDTO } from './dto/webhook.request.dto';
+import {
+    CreateWebhookRequestDTO,
+    ExecuteWebhookRequestDTO,
+    WebhookTokenParamDTO,
+    FilenameParamDTO,
+} from './dto/webhook.request.dto';
 import { storage } from '@/config/multer';
 
 // Controller for managing and executing webhooks
@@ -335,17 +340,10 @@ export class WebhookController {
     @ApiResponse({ status: 200, description: 'Avatar retrieved' })
     @ApiResponse({ status: 404, description: ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND })
     public async getWebhookAvatar(
-        @Param('filename') filename: string,
+        @Param() params: FilenameParamDTO,
         @Res({ passthrough: true }) res: Response,
     ): Promise<StreamableFile> {
-        // Validate filename to prevent directory traversal attacks
-        if (
-            filename.includes('..') ||
-            filename.includes('/') ||
-            filename.includes('\\')
-        ) {
-            throw new BadRequestException(ErrorMessages.FILE.INVALID_FILENAME);
-        }
+        const { filename } = params;
 
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
@@ -376,12 +374,10 @@ export class WebhookController {
     @ApiResponse({ status: 401, description: ErrorMessages.WEBHOOK.INVALID_TOKEN })
     @ApiResponse({ status: 404, description: ErrorMessages.WEBHOOK.NOT_FOUND })
     public async executeWebhook(
-        @Param('token') token: string,
+        @Param() params: WebhookTokenParamDTO,
         @Body() body: ExecuteWebhookRequestDTO,
     ): Promise<{ id: string; timestamp: Date }> {
-        if (!token || token.length !== 128 || !/^[a-f0-9]{128}$/i.test(token)) {
-            throw new UnauthorizedException(ErrorMessages.WEBHOOK.INVALID_TOKEN);
-        }
+        const { token } = params;
 
         const webhook = await this.webhookRepo.findByToken(token);
         if (!webhook) {
@@ -389,16 +385,9 @@ export class WebhookController {
         }
 
         const { content, username, avatarUrl } = body;
-        if (!content || content.trim().length === 0) {
-            throw new BadRequestException(ErrorMessages.MESSAGE.CONTENT_REQUIRED);
-        }
 
-        const webhookUsername = username
-            ? username.trim().substring(0, 100)
-            : webhook.name;
-        const webhookAvatarUrl = avatarUrl
-            ? avatarUrl.trim()
-            : webhook.avatarUrl;
+        const webhookUsername = username || webhook.name;
+        const webhookAvatarUrl = avatarUrl || webhook.avatarUrl;
 
         // Use a dedicated system user ID for all webhook messages
         const webhookSystemUserId = new mongoose.Types.ObjectId(
@@ -411,7 +400,7 @@ export class WebhookController {
                 webhook.channelId.toString(),
             ),
             senderId: webhookSystemUserId,
-            text: content.trim(),
+            text: content,
             isWebhook: true,
             webhookUsername,
             webhookAvatarUrl: webhookAvatarUrl || undefined,

@@ -5,7 +5,7 @@ import { PORT, USE_HTTPS, CERTS_PATH } from '@/config/env';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { HttpsOptions } from '@nestjs/common/interfaces/external/https-options.interface';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { setupExpressApp } from './server';
 import { connectDB } from '@/config/db';
 import { createSocketServer } from '@/socket/init';
@@ -50,6 +50,14 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
         httpsOptions,
     });
+
+    app.useGlobalPipes(
+        new ValidationPipe({
+            transform: true,
+            whitelist: true,
+            forbidNonWhitelisted: true,
+        }),
+    );
 
     // Integrate legacy Express configuration
     const expressApp = app.getHttpAdapter().getInstance();

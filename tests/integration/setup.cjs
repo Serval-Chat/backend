@@ -48,6 +48,14 @@ async function setup() {
 
     // Initialize Nest app
     const nextApp = await NestFactory.create(AppModule);
+    const { ValidationPipe } = require('@nestjs/common');
+    nextApp.useGlobalPipes(
+        new ValidationPipe({
+            transform: true,
+            whitelist: true,
+            forbidNonWhitelisted: true,
+        }),
+    );
     const expressApp = nextApp.getHttpAdapter().getInstance();
 
     // Apply Express setup (middleware, TSOA routes, manual routes)

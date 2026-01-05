@@ -1,4 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
+import { z } from 'zod';
 import {
     IsString,
     IsMongoId,
@@ -60,13 +61,15 @@ export function IsUsername(validationOptions?: ValidationOptions) {
                     },
                 },
             });
-        }
+        },
+        Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
     );
 }
 
 export function IsLogin(validationOptions?: ValidationOptions) {
     return applyDecorators(
         IsString(validationOptions),
+        Transform(({ value }) => typeof value === 'string' ? value.trim() : value),
         MinLength(3, { ...validationOptions, message: 'Login must be at least 3 characters' }),
         MaxLength(50, { ...validationOptions, message: 'Login must be at most 50 characters' })
     );
@@ -77,6 +80,17 @@ export function IsPassword(validationOptions?: ValidationOptions) {
         IsString(validationOptions),
         MinLength(6, { ...validationOptions, message: 'Password must be at least 6 characters' }),
         MaxLength(100, { ...validationOptions, message: 'Password must be at most 100 characters' })
+    );
+}
+
+export function IsStrongPassword(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MinLength(8, { ...validationOptions, message: 'Password must be at least 8 characters' }),
+        MaxLength(128, { ...validationOptions, message: 'Password must be at most 128 characters' }),
+        Matches(/[a-zA-Z]/, { ...validationOptions, message: 'Password must contain at least one letter' }),
+        Matches(/[0-9]/, { ...validationOptions, message: 'Password must contain at least one number' }),
+        Matches(/[^a-zA-Z0-9]/, { ...validationOptions, message: 'Password must contain at least one symbol' })
     );
 }
 
@@ -129,6 +143,16 @@ export function IsInviteToken(validationOptions?: ValidationOptions) {
     );
 }
 
+export function IsWebhookToken(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        Matches(/^[a-fA-F0-9]{128}$/, {
+            ...validationOptions,
+            message: 'Invalid webhook token format'
+        })
+    );
+}
+
 export function IsReason(validationOptions?: ValidationOptions) {
     return applyDecorators(
         IsString(validationOptions),
@@ -140,6 +164,7 @@ export function IsReason(validationOptions?: ValidationOptions) {
 export function IsMessageContent(validationOptions?: ValidationOptions) {
     return applyDecorators(
         IsString(validationOptions),
+        Transform(({ value }) => typeof value === 'string' ? value.trim() : value),
         MinLength(1, { ...validationOptions, message: 'Message content cannot be empty' }),
         MaxLength(2000, { ...validationOptions, message: 'Message content must be at most 2000 characters' })
     );
@@ -189,3 +214,123 @@ export function IsIsoDate(validationOptions?: ValidationOptions) {
         IsISO8601({}, validationOptions)
     );
 }
+
+export function IsEmoji(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        Transform(({ value }) => typeof value === 'string' ? value.trim() : value),
+        (target: Object, propertyKey: string | symbol) => {
+            registerDecorator({
+                name: 'isEmoji',
+                target: target.constructor,
+                propertyName: propertyKey.toString(),
+                options: { ...validationOptions, message: 'Invalid emoji format' },
+                validator: {
+                    validate(value: any) {
+                        if (typeof value !== 'string' || value.length === 0) return true;
+
+                        // Custom emoji format: <emoji:id>
+                        const customEmojiMatch = value.match(/^<emoji:([a-fA-F0-9]{24})>$/);
+                        if (customEmojiMatch) return true;
+
+                        // Standard emoji grapheme check
+                        const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+                        const graphemes = Array.from(segmenter.segment(value));
+
+                        return graphemes.length === 1 && /\p{Emoji}/u.test(value);
+                    },
+                },
+            });
+        }
+    );
+}
+
+export function IsFilename(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        (target: Object, propertyKey: string | symbol) => {
+            registerDecorator({
+                name: 'isFilename',
+                target: target.constructor,
+                propertyName: propertyKey.toString(),
+                options: { ...validationOptions, message: 'Invalid filename' },
+                validator: {
+                    validate(value: any) {
+                        if (typeof value !== 'string' || value.length === 0) return true;
+                        return !value.includes('..') && !value.includes('/') && !value.includes('\\');
+                    },
+                },
+            });
+        }
+    );
+}
+
+// --- Legacy Zod Schemas (Required by regional validation files) ---
+
+export const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid ObjectId format');
+
+export const usernameSchema = z
+    .string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(20, 'Username must be at most 20 characters')
+    .regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/, 'Username can only contain letters, numbers, underscores, hyphens, and dots')
+    .refine((s) => !s.includes('..'), 'Username cannot contain consecutive dots');
+
+export const loginSchema = z
+    .string()
+    .min(3, 'Login must be at least 3 characters')
+    .max(50, 'Login must be at most 50 characters');
+
+export const passwordSchema = z
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .max(100, 'Password must be at most 100 characters');
+
+export const bioSchema = z.string().max(500, 'Bio must be at most 500 characters');
+
+export const nameSchema = z
+    .string()
+    .min(1, 'Name is required')
+    .max(100, 'Name must be at most 100 characters')
+    .trim();
+
+export const messageContentSchema = z
+    .string()
+    .min(1, 'Message content cannot be empty')
+    .max(2000, 'Message content must be at most 2000 characters')
+    .trim();
+
+export const reasonSchema = z
+    .string()
+    .min(1, 'Reason is required')
+    .max(500, 'Reason must be at most 500 characters');
+
+export const optionalReasonSchema = reasonSchema.optional();
+
+export const colorHexSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Invalid color hex format');
+
+export const inviteTokenSchema = z
+    .string()
+    .min(1, 'Invite token is required')
+    .max(100, 'Invite token is too long');
+
+export const optionalUrlSchema = z.string().url('Invalid URL format').optional().or(z.literal(''));
+
+export const limitSchema = z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 50));
+
+export const offsetSchema = z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 0));
+
+export const searchSchema = z.string().optional();
+
+export const filterSchema = z.string().optional();
+
+export const booleanQuerySchema = z
+    .string()
+    .optional()
+    .transform((val) => val === 'true' || val === '1');

@@ -21,6 +21,8 @@ import {
     IsUsername,
     IsBio,
     IsIsoDate,
+    IsEmoji,
+    IsFilename,
 } from '@/validation/schemas/common';
 
 export class UsernameGradientDTO {
@@ -63,8 +65,7 @@ export class UpdateStatusRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsString()
-    @MaxLength(64)
+    @IsEmoji()
     emoji?: string;
 
     @ApiPropertyOptional()
@@ -154,4 +155,10 @@ export class AssignBadgesRequestDTO {
     @IsArray()
     @IsString({ each: true })
     badgeIds!: string[];
+}
+
+export class FilenameParamDTO {
+    @ApiProperty()
+    @IsFilename()
+    filename!: string;
 }

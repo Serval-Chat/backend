@@ -233,9 +233,7 @@ export class FriendshipController {
         }
 
         const { username: friendUsername } = body;
-        if (!friendUsername) {
-            throw new ApiError(400, ErrorMessages.FRIENDSHIP.USERNAME_REQUIRED);
-        }
+
 
         const friendUser = await this.userRepo.findByUsername(friendUsername);
         if (!friendUser) {

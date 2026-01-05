@@ -33,7 +33,12 @@ import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JWTPayload } from '@/utils/jwt';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { UserEditMessageRequestDTO } from './dto/user-message.request.dto';
+import {
+    UserEditMessageRequestDTO,
+    GetMessagesQueryDTO,
+    MessageIdParamDTO,
+    UserMessageParamsDTO,
+} from './dto/user-message.request.dto';
 
 interface UnreadCountsResponse {
     counts: Record<string, number>;
@@ -110,16 +115,10 @@ export class UserMessageController {
     @ApiResponse({ status: 404, description: ErrorMessages.AUTH.USER_NOT_FOUND })
     public async getMessages(
         @Req() req: ExpressRequest,
-        @Query('userId') userId: string,
-        @Query('limit') limit: number = 100,
-        @Query('before') before?: string,
-        @Query('around') around?: string,
+        @Query() query: GetMessagesQueryDTO,
     ): Promise<MessageWithReactions[]> {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-
-        if (!userId) {
-            throw new BadRequestException('User ID is required');
-        }
+        const { userId, limit, before, around } = query;
 
         const userDoc = await this.userRepo.findById(userId);
         if (!userDoc) {
@@ -174,15 +173,12 @@ export class UserMessageController {
     @ApiResponse({ status: 403, description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getMessage(
-        @Param('id') id: string,
+        @Param() params: MessageIdParamDTO,
         @Req() req: ExpressRequest,
         @Query('userId') userId: string,
     ): Promise<MessageResponse> {
+        const { id } = params;
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-
-        if (!id) {
-            throw new BadRequestException('Invalid message ID');
-        }
 
         const userDoc = await this.userRepo.findById(userId);
         if (!userDoc) {
@@ -228,10 +224,10 @@ export class UserMessageController {
     @ApiResponse({ status: 403, description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getUserMessage(
-        @Param('userId') userId: string,
-        @Param('messageId') messageId: string,
+        @Param() params: UserMessageParamsDTO,
         @Req() req: ExpressRequest,
     ): Promise<MessageResponse> {
+        const { userId, messageId } = params;
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         // Ensure users are friends before allowing message access
@@ -278,16 +274,15 @@ export class UserMessageController {
     @ApiResponse({ status: 403, description: ErrorMessages.AUTH.UNAUTHORIZED })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async editMessage(
-        @Param('id') id: string,
+        @Param() params: MessageIdParamDTO,
         @Req() req: ExpressRequest,
         @Body() body: UserEditMessageRequestDTO,
     ): Promise<IMessage> {
+        const { id } = params;
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { content } = body;
 
-        if (!content || !content.trim()) {
-            throw new BadRequestException(ErrorMessages.MESSAGE.CONTENT_REQUIRED);
-        }
+
 
         const message = await this.messageRepo.findById(id);
         if (!message) {
@@ -316,9 +311,10 @@ export class UserMessageController {
     @ApiResponse({ status: 403, description: ErrorMessages.AUTH.UNAUTHORIZED })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async deleteMessage(
-        @Param('id') id: string,
+        @Param() params: MessageIdParamDTO,
         @Req() req: ExpressRequest,
     ): Promise<{ success: boolean }> {
+        const { id } = params;
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const message = await this.messageRepo.findById(id);

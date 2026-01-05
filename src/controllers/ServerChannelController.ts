@@ -175,7 +175,7 @@ export class ServerChannelController {
 
         const channel = await this.channelRepo.create({
             serverId,
-            name: body.name.trim(),
+            name: body.name,
             type: body.type || 'text',
             position: finalPosition,
             categoryId: body.categoryId || null,
@@ -291,7 +291,7 @@ export class ServerChannelController {
         }
 
         const updates: Partial<IChannel> = {};
-        if (body.name) updates.name = body.name.trim();
+        if (body.name) updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
         if (body.categoryId !== undefined) updates.categoryId = body.categoryId;
         if (body.description !== undefined)
@@ -374,7 +374,7 @@ export class ServerChannelController {
 
         const category = await this.categoryRepo.create({
             serverId,
-            name: body.name.trim(),
+            name: body.name,
             position: finalPosition,
         });
 
@@ -410,7 +410,7 @@ export class ServerChannelController {
         }
 
         const updates: Partial<ICategory> = {};
-        if (body.name) updates.name = body.name.trim();
+        if (body.name) updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
 
         const category = await this.categoryRepo.update(categoryId, updates);
