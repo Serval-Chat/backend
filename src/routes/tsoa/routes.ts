@@ -61,6 +61,11 @@ const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "Record_string.unknown_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"any"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ErrorResponse": {
         "dataType": "refObject",
         "properties": {
@@ -78,7 +83,7 @@ const models: TsoaRoute.Models = {
     "IWebhook": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "channelId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "name": {"dataType":"string","required":true},
@@ -118,7 +123,7 @@ const models: TsoaRoute.Models = {
             "senderId": {"dataType":"string","required":true},
             "serverId": {"dataType":"string"},
             "channelId": {"dataType":"string"},
-            "message": {"dataType":"any","required":true},
+            "message": {"ref":"Record_string.unknown_","required":true},
             "timestamp": {"dataType":"double","required":true},
         },
         "additionalProperties": false,
@@ -170,7 +175,7 @@ const models: TsoaRoute.Models = {
     "MessageWithReactions": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "senderId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "receiverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "text": {"dataType":"string","required":true},
@@ -191,7 +196,7 @@ const models: TsoaRoute.Models = {
     "IMessage": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "senderId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "receiverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "text": {"dataType":"string","required":true},
@@ -287,7 +292,7 @@ const models: TsoaRoute.Models = {
     "IRole": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "name": {"dataType":"string","required":true},
             "color": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
@@ -303,6 +308,11 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Record_string.boolean_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"boolean"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "CreateRoleRequest": {
         "dataType": "refObject",
         "properties": {
@@ -313,7 +323,7 @@ const models: TsoaRoute.Models = {
             "colors": {"dataType":"array","array":{"dataType":"string"}},
             "gradientRepeat": {"dataType":"double"},
             "separateFromOtherRoles": {"dataType":"boolean"},
-            "permissions": {"dataType":"any"},
+            "permissions": {"ref":"Record_string.boolean_"},
         },
         "additionalProperties": false,
     },
@@ -336,7 +346,7 @@ const models: TsoaRoute.Models = {
             "colors": {"dataType":"array","array":{"dataType":"string"}},
             "gradientRepeat": {"dataType":"double"},
             "separateFromOtherRoles": {"dataType":"boolean"},
-            "permissions": {"dataType":"any"},
+            "permissions": {"ref":"Record_string.boolean_"},
             "position": {"dataType":"double"},
         },
         "additionalProperties": false,
@@ -345,7 +355,7 @@ const models: TsoaRoute.Models = {
     "IServerMessage": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "channelId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "senderId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
@@ -382,6 +392,72 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IServerMember": {
+        "dataType": "refObject",
+        "properties": {
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
+            "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
+            "userId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
+            "roles": {"dataType":"array","array":{"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}]},"required":true},
+            "joinedAt": {"dataType":"datetime"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "SerializedCustomStatus": {
+        "dataType": "refObject",
+        "properties": {
+            "text": {"dataType":"string","required":true},
+            "emoji": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "expiresAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "updatedAt": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AdminPermissions": {
+        "dataType": "refObject",
+        "properties": {
+            "adminAccess": {"dataType":"boolean","required":true},
+            "viewUsers": {"dataType":"boolean","required":true},
+            "manageUsers": {"dataType":"boolean","required":true},
+            "manageBadges": {"dataType":"boolean","required":true},
+            "banUsers": {"dataType":"boolean","required":true},
+            "viewBans": {"dataType":"boolean","required":true},
+            "warnUsers": {"dataType":"boolean","required":true},
+            "viewLogs": {"dataType":"boolean","required":true},
+            "manageServer": {"dataType":"boolean","required":true},
+            "manageInvites": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "MappedUser": {
+        "dataType": "refObject",
+        "properties": {
+            "_id": {"dataType":"string","required":true},
+            "id": {"dataType":"string","required":true},
+            "login": {"dataType":"string","required":true},
+            "username": {"dataType":"string","required":true},
+            "displayName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "profilePicture": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "usernameFont": {"dataType":"string","required":true},
+            "usernameGradient": {"dataType":"nestedObjectLiteral","nestedProperties":{"angle":{"dataType":"double","required":true},"colors":{"dataType":"array","array":{"dataType":"string"},"required":true},"enabled":{"dataType":"boolean","required":true}},"required":true},
+            "usernameGlow": {"dataType":"nestedObjectLiteral","nestedProperties":{"intensity":{"dataType":"double","required":true},"color":{"dataType":"string","required":true},"enabled":{"dataType":"boolean","required":true}},"required":true},
+            "customStatus": {"dataType":"union","subSchemas":[{"ref":"SerializedCustomStatus"},{"dataType":"enum","enums":[null]}],"required":true},
+            "permissions": {"ref":"AdminPermissions","required":true},
+            "tokenVersion": {"dataType":"double","required":true},
+            "createdAt": {"dataType":"datetime","required":true},
+            "bio": {"dataType":"string","required":true},
+            "pronouns": {"dataType":"string","required":true},
+            "badges": {"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"any"}]},"required":true},
+            "deletedAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
+            "anonymizedUsername": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "banner": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "KickMemberRequest": {
         "dataType": "refObject",
         "properties": {
@@ -399,14 +475,15 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IServerMember": {
+    "IServerBan": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "userId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
-            "roles": {"dataType":"array","array":{"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}]},"required":true},
-            "joinedAt": {"dataType":"datetime"},
+            "bannedBy": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
+            "reason": {"dataType":"string"},
+            "createdAt": {"dataType":"datetime","required":true},
         },
         "additionalProperties": false,
     },
@@ -422,7 +499,7 @@ const models: TsoaRoute.Models = {
     "IInvite": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "code": {"dataType":"string","required":true},
             "customPath": {"dataType":"string"},
@@ -441,6 +518,32 @@ const models: TsoaRoute.Models = {
             "maxUses": {"dataType":"double"},
             "expiresIn": {"dataType":"double"},
             "customPath": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "InviteDetailsResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "code": {"dataType":"string","required":true},
+            "expiresAt": {"dataType":"datetime"},
+            "maxUses": {"dataType":"double"},
+            "uses": {"dataType":"double","required":true},
+            "server": {"dataType":"nestedObjectLiteral","nestedProperties":{"banner":{"dataType":"nestedObjectLiteral","nestedProperties":{"value":{"dataType":"string","required":true},"type":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["image"]},{"dataType":"enum","enums":["gradient"]},{"dataType":"enum","enums":["color"]},{"dataType":"enum","enums":["gif"]}],"required":true}}},"icon":{"dataType":"string"},"name":{"dataType":"string","required":true},"id":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"mongoose.Types.ObjectId"}],"required":true}},"required":true},
+            "memberCount": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IEmoji": {
+        "dataType": "refObject",
+        "properties": {
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
+            "name": {"dataType":"string","required":true},
+            "imageUrl": {"dataType":"string","required":true},
+            "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
+            "createdBy": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
+            "createdAt": {"dataType":"datetime"},
         },
         "additionalProperties": false,
     },
@@ -466,27 +569,10 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "AdminPermissions": {
-        "dataType": "refObject",
-        "properties": {
-            "adminAccess": {"dataType":"boolean","required":true},
-            "viewUsers": {"dataType":"boolean","required":true},
-            "manageUsers": {"dataType":"boolean","required":true},
-            "manageBadges": {"dataType":"boolean","required":true},
-            "banUsers": {"dataType":"boolean","required":true},
-            "viewBans": {"dataType":"boolean","required":true},
-            "warnUsers": {"dataType":"boolean","required":true},
-            "viewLogs": {"dataType":"boolean","required":true},
-            "manageServer": {"dataType":"boolean","required":true},
-            "manageInvites": {"dataType":"boolean","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "BadgeResponse": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "id": {"dataType":"string","required":true},
             "name": {"dataType":"string","required":true},
             "description": {"dataType":"string","required":true},
@@ -508,7 +594,7 @@ const models: TsoaRoute.Models = {
             "usernameFont": {"dataType":"string","required":true},
             "usernameGradient": {"dataType":"nestedObjectLiteral","nestedProperties":{"angle":{"dataType":"double","required":true},"colors":{"dataType":"array","array":{"dataType":"string"},"required":true},"enabled":{"dataType":"boolean","required":true}},"required":true},
             "usernameGlow": {"dataType":"nestedObjectLiteral","nestedProperties":{"intensity":{"dataType":"double","required":true},"color":{"dataType":"string","required":true},"enabled":{"dataType":"boolean","required":true}},"required":true},
-            "customStatus": {"dataType":"any","required":true},
+            "customStatus": {"dataType":"union","subSchemas":[{"ref":"SerializedCustomStatus"},{"dataType":"enum","enums":[null]}],"required":true},
             "permissions": {"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"AdminPermissions"}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "bio": {"dataType":"string","required":true},
@@ -585,9 +671,9 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Record_string.any_": {
+    "Record_string.SerializedCustomStatus-or-null_": {
         "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"any"},"validators":{}},
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"ref":"SerializedCustomStatus"},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "BulkStatusRequest": {
@@ -628,17 +714,6 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "language": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "SerializedCustomStatus": {
-        "dataType": "refObject",
-        "properties": {
-            "text": {"dataType":"string","required":true},
-            "emoji": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "expiresAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "updatedAt": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
     },
@@ -763,10 +838,34 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"union","subSchemas":[{"ref":"RemoveUnicodeReactionRequest"},{"ref":"RemoveCustomReactionRequest"}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Pick_IChannel.Exclude_keyofIChannel.lastMessageAt__": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"_id":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"mongoose.Types.ObjectId"}],"required":true},"serverId":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"mongoose.Types.ObjectId"}],"required":true},"name":{"dataType":"string","required":true},"type":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["text"]},{"dataType":"enum","enums":["voice"]}],"required":true},"position":{"dataType":"double","required":true},"categoryId":{"dataType":"string"},"permissions":{"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"nestedObjectLiteral","nestedProperties":{"deleteMessagesOfOthers":{"dataType":"boolean"},"manageMessages":{"dataType":"boolean"},"sendMessages":{"dataType":"boolean"}}}},"createdAt":{"dataType":"datetime","required":true},"icon":{"dataType":"string"},"description":{"dataType":"string"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ChannelWithReadResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "_id": {"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"mongoose.Types.ObjectId"}],"required":true},
+            "serverId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"mongoose.Types.ObjectId"}],"required":true},
+            "name": {"dataType":"string","required":true},
+            "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["text"]},{"dataType":"enum","enums":["voice"]}],"required":true},
+            "position": {"dataType":"double","required":true},
+            "categoryId": {"dataType":"string"},
+            "permissions": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"nestedObjectLiteral","nestedProperties":{"deleteMessagesOfOthers":{"dataType":"boolean"},"manageMessages":{"dataType":"boolean"},"sendMessages":{"dataType":"boolean"}}}},
+            "createdAt": {"dataType":"datetime","required":true},
+            "icon": {"dataType":"string"},
+            "description": {"dataType":"string"},
+            "lastMessageAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastReadAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ICategory": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "name": {"dataType":"string","required":true},
             "position": {"dataType":"double","required":true},
@@ -779,7 +878,7 @@ const models: TsoaRoute.Models = {
     "IChannel": {
         "dataType": "refObject",
         "properties": {
-            "_id": {"dataType":"any","required":true},
+            "_id": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "serverId": {"dataType":"union","subSchemas":[{"ref":"mongoose.Types.ObjectId"},{"dataType":"string"}],"required":true},
             "name": {"dataType":"string","required":true},
             "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["text"]},{"dataType":"enum","enums":["voice"]}],"required":true},
@@ -810,6 +909,17 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "channelPositions": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"position":{"dataType":"double","required":true},"channelId":{"dataType":"string","required":true}}},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ChannelStatsResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "channelId": {"dataType":"string","required":true},
+            "channelName": {"dataType":"string","required":true},
+            "createdAt": {"dataType":"string","required":true},
+            "messageCount": {"dataType":"double","required":true},
         },
         "additionalProperties": false,
     },
@@ -851,10 +961,15 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Record_string.Record_string.boolean__": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"ref":"Record_string.boolean_"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "UpdatePermissionsRequest": {
         "dataType": "refObject",
         "properties": {
-            "permissions": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"any"},"required":true},
+            "permissions": {"ref":"Record_string.Record_string.boolean__","required":true},
         },
         "additionalProperties": false,
     },
@@ -900,9 +1015,22 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Record_string.boolean_": {
-        "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"boolean"},"validators":{}},
+    "ServerStatsResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "onlineCount": {"dataType":"double","required":true},
+            "totalCount": {"dataType":"double","required":true},
+            "bannedUserCount": {"dataType":"double","required":true},
+            "serverId": {"dataType":"string","required":true},
+            "serverName": {"dataType":"string","required":true},
+            "ownerName": {"dataType":"string","required":true},
+            "createdAt": {"dataType":"string","required":true},
+            "allTimeHigh": {"dataType":"double","required":true},
+            "newestMember": {"dataType":"string","required":true},
+            "channelCount": {"dataType":"double","required":true},
+            "emojiCount": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "UpdateServerRequest": {
@@ -3171,49 +3299,6 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsProfileController_uploadProfilePicture: Record<string, TsoaRoute.ParameterSchema> = {
-                profilePicture: {"in":"formData","name":"profilePicture","required":true,"dataType":"file"},
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
-        };
-        app.post('/api/v1/profile/picture',
-            authenticateMiddleware([{"jwt":[]}]),
-            upload.fields([
-                {
-                    name: "profilePicture",
-                    maxCount: 1
-                }
-            ]),
-            ...(fetchMiddlewares<RequestHandler>(ProfileController)),
-            ...(fetchMiddlewares<RequestHandler>(ProfileController.prototype.uploadProfilePicture)),
-
-            async function ProfileController_uploadProfilePicture(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsProfileController_uploadProfilePicture, request, response });
-
-                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
-
-                const controller: any = await container.get<ProfileController>(ProfileController);
-                if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-                }
-
-              await templateService.apiHandler({
-                methodName: 'uploadProfilePicture',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsProfileController_uploadBanner: Record<string, TsoaRoute.ParameterSchema> = {
                 banner: {"in":"formData","name":"banner","required":true,"dataType":"file"},
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
@@ -3953,10 +4038,8 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsEmojiController_getEmojiById: Record<string, TsoaRoute.ParameterSchema> = {
                 emojiId: {"in":"path","name":"emojiId","required":true,"dataType":"string"},
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.get('/api/v1/emojis/:emojiId',
-            authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<RequestHandler>(EmojiController)),
             ...(fetchMiddlewares<RequestHandler>(EmojiController.prototype.getEmojiById)),
 

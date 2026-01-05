@@ -1,4 +1,4 @@
-import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 
 export type { AdminPermissions };
 

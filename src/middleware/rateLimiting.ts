@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import rateLimit from 'express-rate-limit';
+import type { JWTPayload } from '@/utils/jwt';
 
 // Rate limiter for login attempts.
 //
@@ -49,7 +50,7 @@ export const sensitiveOperationLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3,
     keyGenerator: (req: Request) => {
-        const userId = (req as any).user?.id;
+        const userId = (req as Request & { user?: JWTPayload }).user?.id;
         return userId || req.ip || 'unknown';
     },
     standardHeaders: 'draft-7',

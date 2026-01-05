@@ -1,6 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
+import type { Request as ExpressRequest } from 'express';
 
 // Sanitizes filenames by removing path separators, null bytes, and dots. Limits to 200 chars
 function sanitizeFilename(filename: string): string {
@@ -45,7 +46,7 @@ const storage = multer.diskStorage({
 
 // Accepts all file types. Type validation occurs downstream
 function fileFilter(
-    req: any,
+    req: ExpressRequest,
     file: Express.Multer.File,
     cb: multer.FileFilterCallback,
 ) {
@@ -81,7 +82,7 @@ const profileStorage = multer.diskStorage({
 
 // Restricts to JPEG, PNG, and GIF formats
 const profileFileFilter = (
-    req: any,
+    req: ExpressRequest,
     file: Express.Multer.File,
     cb: multer.FileFilterCallback,
 ) => {

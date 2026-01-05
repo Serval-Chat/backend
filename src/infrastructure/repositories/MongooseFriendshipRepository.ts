@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Model, Types } from 'mongoose';
+import { Types } from 'mongoose';
 import {
     IFriendshipRepository,
     IFriendship,
     IFriendRequest,
 } from '@/di/interfaces/IFriendshipRepository';
-import { IUser } from '@/di/interfaces/IUserRepository';
+
 import { Friendship, FriendRequest } from '@/models/Friendship';
 import { User } from '@/models/User';
 import { injectable } from 'inversify';

@@ -86,6 +86,10 @@ enum EventType {
   // System & Security
   PING_NOTIFICATION = 60; // Mention/Notification (different from WS heartbeat)
   SECURITY_BAN = 61;      // User was banned, connection will close
+
+  // Debug & Heartbeat
+  DEBUG_PING = 70;
+  DEBUG_PONG = 71;
 }
 
 message WebSocketFrame {
@@ -98,7 +102,7 @@ message WebSocketFrame {
   }
 
   Type type = 1;
-  string id = 2;           // Request ID (required for REQUEST/RESPONSE)
+  int64 id = 2;           // Request ID (required for REQUEST/RESPONSE)
   EventType event = 3;     // Enum-based event type
   bytes payload = 4;       // Serialized inner Protobuf message
 }
@@ -253,8 +257,15 @@ message Ping {
 | `PRESENCE_SYNC` | N/A | `PresenceSync` | Initial list of online users. |
 | `PRESENCE_UPDATE` | N/A | `PresenceUpdate` | User came online/offline. |
 | `SECURITY_BAN` | N/A | `BanInfo` | User banned, disconnected. |
-
----
+ 
+ ### 4.4 Debug & Heartbeat
+ 
+ | Event Enum | Request Proto | Response Proto | Description |
+ | :--- | :--- | :--- | :--- |
+ | `DEBUG_PING` | N/A | `DEBUG_PONG` | Echo test event. Respond with PONG. |
+ | `DEBUG_PONG` | N/A | N/A | Response to DEBUG_PING. |
+ 
+ ---
 
 ## 5. Error Handling
 

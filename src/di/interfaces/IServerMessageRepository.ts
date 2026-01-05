@@ -4,7 +4,7 @@ import type { Types } from 'mongoose';
 //
 // Represents a message sent within a server channel
 export interface IServerMessage {
-    _id: any;
+    _id: Types.ObjectId | string;
     serverId: Types.ObjectId | string;
     channelId: Types.ObjectId | string;
     senderId: Types.ObjectId | string;
@@ -21,7 +21,7 @@ export interface IServerMessage {
     // Overridden avatar URL for webhook messages
     webhookAvatarUrl?: string;
     // List of emoji reactions on the message
-    reactions?: any[];
+    reactions?: unknown[];
 }
 
 // Server Message Repository Interface

@@ -41,14 +41,14 @@ export const requireAdmin = (requiredPermission: keyof AdminPermissions) => {
             }
 
             // Check for adminAccess (super admin)
-            if (!(user.permissions as any).adminAccess) {
+            if (!(user.permissions as AdminPermissions).adminAccess) {
                 return res
                     .status(403)
                     .json({ error: 'Access denied - admin access required' });
             }
 
             // Check specific permission
-            if (!(user.permissions as any)[requiredPermission]) {
+            if (!(user.permissions as AdminPermissions)[requiredPermission]) {
                 return res
                     .status(403)
                     .json({ error: 'Insufficient permissions' });

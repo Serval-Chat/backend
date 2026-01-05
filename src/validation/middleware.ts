@@ -23,14 +23,16 @@ export const validate = (schemas: ValidationSchemas) => {
 
             // Validate query parameters
             if (schemas.query) {
-                req.query = (await schemas.query.parseAsync(req.query)) as any;
+                req.query = (await schemas.query.parseAsync(
+                    req.query,
+                )) as Record<string, string | string[] | undefined>;
             }
 
             // Validate URL parameters
             if (schemas.params) {
                 req.params = (await schemas.params.parseAsync(
                     req.params,
-                )) as any;
+                )) as Record<string, string>;
             }
 
             next();
@@ -58,6 +60,6 @@ export const validate = (schemas: ValidationSchemas) => {
 //
 // Requires a Zod schema to make partial.
 // Returns express middleware function.
-export const validatePartial = (schema: z.ZodObject<any>) => {
+export const validatePartial = (schema: z.ZodObject<z.ZodRawShape>) => {
     return validate({ body: schema.partial() });
 };

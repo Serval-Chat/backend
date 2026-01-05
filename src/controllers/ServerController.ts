@@ -33,7 +33,10 @@ import { container } from '@/di/container';
 import { getIO } from '@/socket';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
-import express from 'express';
+import type { Request as ExpressRequest } from 'express';
+import { JWTPayload } from '@/utils/jwt';
+import { IChannel } from '@/di/interfaces/IChannelRepository';
+import { PresenceService } from '@/realtime/services/PresenceService';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
@@ -61,6 +64,20 @@ interface UpdateServerRequest {
 interface SetDefaultRoleRequest {
     // ID of the role to set as default, or null to remove default role
     roleId: string | null;
+}
+
+interface ServerStatsResponse {
+    onlineCount: number;
+    totalCount: number;
+    bannedUserCount: number;
+    serverId: string;
+    serverName: string;
+    ownerName: string;
+    createdAt: string;
+    allTimeHigh: number;
+    newestMember: string;
+    channelCount: number;
+    emojiCount: number;
 }
 
 // Controller for server management, membership, and statistics
@@ -104,10 +121,9 @@ export class ServerController extends Controller {
     // Retrieves all servers where the current user is a member
     @Get()
     public async getServers(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<IServer[]> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
         const servers = await this.serverRepo.findByIds(serverIds);
@@ -128,11 +144,10 @@ export class ServerController extends Controller {
     // Creates a new server and initializes default roles and channels
     @Post()
     public async createServer(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: CreateServerRequest,
-    ): Promise<{ server: IServer; channel: any }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+    ): Promise<{ server: IServer; channel: IChannel }> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { name } = body;
 
         if (!name || name.trim().length === 0) {
@@ -186,10 +201,9 @@ export class ServerController extends Controller {
     // Retrieves unread status for all servers the user is a member of
     @Get('unread')
     public async getUnreadStatus(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<Record<string, boolean>> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
 
@@ -232,10 +246,9 @@ export class ServerController extends Controller {
     })
     public async markServerAsRead(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -273,10 +286,9 @@ export class ServerController extends Controller {
     })
     public async getServerDetails(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<IServer> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -312,10 +324,9 @@ export class ServerController extends Controller {
     })
     public async getServerStats(
         @Path() serverId: string,
-        @Request() req: express.Request,
-    ): Promise<any> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<ServerStatsResponse> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -338,7 +349,7 @@ export class ServerController extends Controller {
         const users = await this.userRepo.findByIds(userIds);
         const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
-        const presenceService = container.get<any>(TYPES.PresenceService);
+        const presenceService = container.get<PresenceService>(TYPES.PresenceService);
         const onlineUsernames = new Set(presenceService.getAllOnlineUsers());
 
         // Calculate online count by checking presence for each member
@@ -391,8 +402,8 @@ export class ServerController extends Controller {
             serverId: server._id.toString(),
             serverName: server.name,
             ownerName,
-            createdAt: (server as any).createdAt
-                ? (server as any).createdAt.toISOString()
+            createdAt: server.createdAt
+                ? server.createdAt.toISOString()
                 : new Date().toISOString(),
             allTimeHigh,
             newestMember,
@@ -413,11 +424,10 @@ export class ServerController extends Controller {
     })
     public async updateServer(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: UpdateServerRequest,
     ): Promise<IServer> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -429,7 +439,7 @@ export class ServerController extends Controller {
             throw new Error(ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
-        const updates: any = {};
+        const updates: Record<string, unknown> = {};
         if (body.name) updates.name = body.name;
         if (body.banner) updates.banner = body.banner;
         if (body.disableCustomFonts !== undefined)
@@ -465,11 +475,10 @@ export class ServerController extends Controller {
     })
     public async setDefaultRole(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: SetDefaultRoleRequest,
     ): Promise<{ defaultRoleId: string | null }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { roleId } = body;
 
         if (
@@ -524,10 +533,9 @@ export class ServerController extends Controller {
     })
     public async deleteServer(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
             this.setStatus(404);
@@ -563,11 +571,10 @@ export class ServerController extends Controller {
     })
     public async uploadServerIcon(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @UploadedFile() icon: Express.Multer.File,
     ): Promise<{ icon: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -628,11 +635,10 @@ export class ServerController extends Controller {
     })
     public async uploadServerBanner(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @UploadedFile() banner: Express.Multer.File,
     ): Promise<{ banner: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,

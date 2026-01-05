@@ -28,7 +28,8 @@ import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRep
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
-import express from 'express';
+import type { Request as ExpressRequest } from 'express';
+import { JWTPayload } from '@/utils/jwt';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
@@ -66,7 +67,19 @@ interface ReorderCategoriesRequest {
 }
 
 interface UpdatePermissionsRequest {
-    permissions: { [roleId: string]: any };
+    permissions: Record<string, Record<string, boolean>>;
+}
+
+interface ChannelWithReadResponse extends Omit<IChannel, 'lastMessageAt'> {
+    lastMessageAt: string | null;
+    lastReadAt: string | null;
+}
+
+interface ChannelStatsResponse {
+    channelId: string;
+    channelName: string;
+    createdAt: string;
+    messageCount: number;
 }
 
 // Controller for managing server channels and categories
@@ -101,10 +114,9 @@ export class ServerChannelController extends Controller {
     })
     public async getChannels(
         @Path() serverId: string,
-        @Request() req: express.Request,
-    ): Promise<any[]> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<ChannelWithReadResponse[]> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -126,7 +138,7 @@ export class ServerChannelController extends Controller {
             }
         });
 
-        return channels.map((channel: any) => {
+        return channels.map((channel: IChannel) => {
             const channelId = channel._id?.toString();
             const lastMessageAt: Date | null = channel.lastMessageAt ?? null;
             const lastReadAt: Date | undefined = channelId
@@ -139,7 +151,7 @@ export class ServerChannelController extends Controller {
                     ? lastMessageAt.toISOString()
                     : null,
                 lastReadAt: lastReadAt ? lastReadAt.toISOString() : null,
-            };
+            } as ChannelWithReadResponse;
         });
     }
 
@@ -150,10 +162,9 @@ export class ServerChannelController extends Controller {
     })
     public async getCategories(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<ICategory[]> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -174,11 +185,10 @@ export class ServerChannelController extends Controller {
     })
     public async createChannel(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: CreateChannelRequest,
     ): Promise<IChannel> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -229,11 +239,10 @@ export class ServerChannelController extends Controller {
     })
     public async reorderChannels(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: ReorderChannelsRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -272,10 +281,9 @@ export class ServerChannelController extends Controller {
     public async getChannelStats(
         @Path() serverId: string,
         @Path() channelId: string,
-        @Request() req: express.Request,
-    ): Promise<any> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<ChannelStatsResponse> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -320,11 +328,10 @@ export class ServerChannelController extends Controller {
     public async updateChannel(
         @Path() serverId: string,
         @Path() channelId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: UpdateChannelRequest,
     ): Promise<IChannel> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -336,7 +343,7 @@ export class ServerChannelController extends Controller {
             throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        const updates: any = {};
+        const updates: Partial<IChannel> = {};
         if (body.name) updates.name = body.name.trim();
         if (body.position !== undefined) updates.position = body.position;
         if (body.categoryId !== undefined) updates.categoryId = body.categoryId;
@@ -370,10 +377,9 @@ export class ServerChannelController extends Controller {
     public async deleteChannel(
         @Path() serverId: string,
         @Path() channelId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -404,11 +410,10 @@ export class ServerChannelController extends Controller {
     })
     public async createCategory(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: CreateCategoryRequest,
     ): Promise<ICategory> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -456,11 +461,10 @@ export class ServerChannelController extends Controller {
     public async updateCategory(
         @Path() serverId: string,
         @Path() categoryId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: UpdateCategoryRequest,
     ): Promise<ICategory> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -472,7 +476,7 @@ export class ServerChannelController extends Controller {
             throw new Error(ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        const updates: any = {};
+        const updates: Partial<ICategory> = {};
         if (body.name) updates.name = body.name.trim();
         if (body.position !== undefined) updates.position = body.position;
 
@@ -503,10 +507,9 @@ export class ServerChannelController extends Controller {
     public async deleteCategory(
         @Path() serverId: string,
         @Path() categoryId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -547,11 +550,10 @@ export class ServerChannelController extends Controller {
     })
     public async reorderCategories(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: ReorderCategoriesRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -588,10 +590,9 @@ export class ServerChannelController extends Controller {
     public async getChannelPermissions(
         @Path() serverId: string,
         @Path() channelId: string,
-        @Request() req: express.Request,
-    ): Promise<{ permissions: { [roleId: string]: any } }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -633,11 +634,10 @@ export class ServerChannelController extends Controller {
     public async updateChannelPermissions(
         @Path() serverId: string,
         @Path() channelId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: UpdatePermissionsRequest,
-    ): Promise<{ permissions: { [roleId: string]: any } }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+    ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -681,10 +681,9 @@ export class ServerChannelController extends Controller {
     public async getCategoryPermissions(
         @Path() serverId: string,
         @Path() categoryId: string,
-        @Request() req: express.Request,
-    ): Promise<{ permissions: { [roleId: string]: any } }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -726,11 +725,10 @@ export class ServerChannelController extends Controller {
     public async updateCategoryPermissions(
         @Path() serverId: string,
         @Path() categoryId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: UpdatePermissionsRequest,
-    ): Promise<{ permissions: { [roleId: string]: any } }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+    ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,

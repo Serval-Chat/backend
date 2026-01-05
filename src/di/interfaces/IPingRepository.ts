@@ -4,7 +4,7 @@ import type { Types } from 'mongoose';
 //
 // Represents a notification (mention) for a user
 export interface IPing {
-    _id: any;
+    _id: Types.ObjectId | string;
     userId: Types.ObjectId | string;
     type: 'mention';
     sender: string;
@@ -12,7 +12,7 @@ export interface IPing {
     serverId?: Types.ObjectId | string;
     channelId?: Types.ObjectId | string;
     messageId: Types.ObjectId | string;
-    message: any;
+    message: Record<string, unknown>;
     timestamp: Date;
     createdAt?: Date;
 }
@@ -36,7 +36,7 @@ export interface IPingRepository {
         serverId?: string;
         channelId?: string;
         messageId: string;
-        message: any;
+        message: Record<string, unknown>;
         timestamp?: Date;
     }): Promise<IPing>;
 

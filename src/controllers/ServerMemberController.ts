@@ -26,7 +26,11 @@ import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
 import { mapUser } from '@/utils/user';
-import express from 'express';
+import type { Request as ExpressRequest } from 'express';
+import { JWTPayload } from '@/utils/jwt';
+import { MappedUser } from '@/utils/user';
+import { IServerBan } from '@/di/interfaces/IServerBanRepository';
+import { IUser } from '@/models/User';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
@@ -73,10 +77,9 @@ export class ServerMemberController extends Controller {
     })
     public async getServerMembers(
         @Path() serverId: string,
-        @Request() req: express.Request,
-    ): Promise<any[]> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<(IServerMember & { user: MappedUser | null })[]> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -98,10 +101,9 @@ export class ServerMemberController extends Controller {
     public async searchMembers(
         @Path() serverId: string,
         @Query() q: string,
-        @Request() req: express.Request,
-    ): Promise<any[]> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<(IServerMember & { user: MappedUser | null })[]> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -126,10 +128,9 @@ export class ServerMemberController extends Controller {
     public async getMember(
         @Path() serverId: string,
         @Path() userId: string,
-        @Request() req: express.Request,
-    ): Promise<any> {
-        // @ts-ignore: JWT middleware attaches user object
-        const currentUserId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<IServerMember & { user: MappedUser | null }> {
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const currentMember = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             currentUserId,
@@ -149,7 +150,7 @@ export class ServerMemberController extends Controller {
         }
 
         const user = await this.userRepo.findById(userId);
-        return { ...member, user: user ? mapUser(user) : null };
+        return { ...member, user: user ? mapUser(user as IUser) : null };
     }
 
     // Kicks a member from the server
@@ -164,11 +165,10 @@ export class ServerMemberController extends Controller {
     public async kickMember(
         @Path() serverId: string,
         @Path() userId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() _body: KickMemberRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const currentUserId = req.user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -215,11 +215,10 @@ export class ServerMemberController extends Controller {
     })
     public async banMember(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: BanMemberRequest & { userId: string },
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const currentUserId = req.user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -270,10 +269,9 @@ export class ServerMemberController extends Controller {
     public async unbanMember(
         @Path() serverId: string,
         @Path() userId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const currentUserId = req.user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -304,10 +302,9 @@ export class ServerMemberController extends Controller {
     })
     public async getBans(
         @Path() serverId: string,
-        @Request() req: express.Request,
-    ): Promise<any[]> {
-        // @ts-ignore: JWT middleware attaches user object
-        const currentUserId = req.user.id;
+        @Request() req: ExpressRequest,
+    ): Promise<IServerBan[]> {
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -334,10 +331,9 @@ export class ServerMemberController extends Controller {
         @Path() serverId: string,
         @Path() userId: string,
         @Path() roleId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<IServerMember> {
-        // @ts-ignore
-        const currentUserId = req.user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -396,10 +392,9 @@ export class ServerMemberController extends Controller {
         @Path() serverId: string,
         @Path() userId: string,
         @Path() roleId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<IServerMember> {
-        // @ts-ignore
-        const currentUserId = req.user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -444,10 +439,9 @@ export class ServerMemberController extends Controller {
     })
     public async leaveServer(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (server?.ownerId.toString() === userId) {
             this.setStatus(403);
@@ -476,11 +470,10 @@ export class ServerMemberController extends Controller {
     })
     public async transferOwnership(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: TransferOwnershipRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (!server) {
             this.setStatus(404);

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Model, Types } from 'mongoose';
+import { type FilterQuery, Types } from 'mongoose';
 import {
     IMessageRepository,
     IMessage,
@@ -33,7 +33,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         before?: string,
         around?: string,
     ): Promise<IMessage[]> {
-        const baseQuery: any = {
+        const baseQuery: FilterQuery<IMessage> = {
             $or: [
                 { senderId: user1Id, receiverId: user2Id },
                 { senderId: user2Id, receiverId: user1Id },

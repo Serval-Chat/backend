@@ -4,7 +4,7 @@ import type { Types } from 'mongoose';
 //
 // Represents a friendship between two users
 export interface IFriendship {
-    _id: any;
+    _id: Types.ObjectId | string;
     /** @deprecated Use userId instead */
     user?: string;
     /** @deprecated Use friendId instead */
@@ -18,7 +18,7 @@ export interface IFriendship {
 //
 // Represents a friend request between two users
 export interface IFriendRequest {
-    _id: any;
+    _id: Types.ObjectId | string;
     /** @deprecated Use fromId instead */
     from?: string;
     /** @deprecated Use toId instead */

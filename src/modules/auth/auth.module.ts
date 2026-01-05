@@ -7,6 +7,7 @@ import { JWT_SECRET } from '@/config/env';
 import * as jwt from 'jsonwebtoken';
 import { JWTPayload } from '@/utils/jwt';
 import { PERMISSIONS_KEY } from './permissions.decorator';
+import { IUser } from '@/models/User';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -62,13 +63,13 @@ export class JwtAuthGuard implements CanActivate {
 
             // Check permissions if required
             if (requiredPermissions && requiredPermissions.length > 0) {
-                const userPermissions = (user as any).permissions;
+                const userPermissions = (user as IUser).permissions;
                 if (!userPermissions) {
                     throw new ForbiddenException('Insufficient permissions');
                 }
 
                 const hasAllPermissions = requiredPermissions.every(
-                    (p) => userPermissions[p] === true,
+                    (p) => (userPermissions as unknown as Record<string, boolean>)[p] === true,
                 );
 
                 if (!hasAllPermissions) {
@@ -80,7 +81,7 @@ export class JwtAuthGuard implements CanActivate {
                 request.user = decoded;
             }
             return true;
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (err instanceof UnauthorizedException || err instanceof ForbiddenException) {
                 throw err;
             }

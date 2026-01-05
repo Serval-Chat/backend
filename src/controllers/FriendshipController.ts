@@ -21,7 +21,8 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
 import { type SerializedCustomStatus } from '@/utils/status';
 import { mapUser } from '@/utils/user';
-import express from 'express';
+import type { Request as ExpressRequest } from 'express';
+import { JWTPayload } from '@/utils/jwt';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 
@@ -54,7 +55,7 @@ export class FriendshipController extends Controller {
     }
 
     // Maps a user document to a public friend payload
-    private mapUserToFriendPayload(user: any): FriendResponseDTO | null {
+    private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
         const mapped = mapUser(user);
         if (!mapped) return null;
 
@@ -71,10 +72,9 @@ export class FriendshipController extends Controller {
     // Retrieves the current user's friends list, sorted by latest message activity
     @Get()
     public async getFriends(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<FriendResponseDTO[]> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const me = await this.userRepo.findById(userId);
         if (!me) {
@@ -87,9 +87,9 @@ export class FriendshipController extends Controller {
         const legacyUsernames = new Set<string>();
 
         // Extract friend identifiers from both modern (ID-based) and legacy (username-based) friendships
-        friendships.forEach((rel: any) => {
-            const userIdStr = rel.userId?.toString() || rel.userId;
-            const friendIdStr = rel.friendId?.toString() || rel.friendId;
+        friendships.forEach((rel) => {
+            const userIdStr = rel.userId?.toString();
+            const friendIdStr = rel.friendId?.toString();
             const otherId = userIdStr === userId ? friendIdStr : userIdStr;
 
             if (otherId && otherId !== userId) {
@@ -105,8 +105,10 @@ export class FriendshipController extends Controller {
             if (friend) friendsById.push(friend);
         }
 
-        friendsById.forEach((doc: any) => {
-            legacyUsernames.delete(doc.username);
+        friendsById.forEach((doc) => {
+            if (doc.username) {
+                legacyUsernames.delete(doc.username);
+            }
         });
 
         const friendsByUsername = [];
@@ -119,13 +121,17 @@ export class FriendshipController extends Controller {
 
         // Enrichment with latest message timestamp for sorting
         const friendsWithLatestMessage = await Promise.all(
-            combinedFriends.map(async (friend: any) => {
-                const messages = await this.messageRepo.findByConversation(
+            combinedFriends.map(async (friend) => {
+                const friendId = friend._id?.toString();
+                if (!friendId) {
+                    return { friend, latestMessageAt: null };
+                }
+                const conversationMessages = await this.messageRepo.findByConversation(
                     userId,
-                    friend._id?.toString() || friend._id,
+                    friendId,
                     1,
                 );
-                const latestMessage = messages.length > 0 ? messages[0] : null;
+                const latestMessage = conversationMessages.length > 0 ? conversationMessages[0] : null;
 
                 return {
                     friend,
@@ -169,10 +175,9 @@ export class FriendshipController extends Controller {
     // Retrieves pending incoming friend requests
     @Get('incoming')
     public async getIncomingRequests(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<IncomingFriendRequestResponseDTO[]> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const incoming =
             await this.friendshipRepo.findPendingRequestsFor(userId);
 
@@ -205,11 +210,10 @@ export class FriendshipController extends Controller {
         error: ErrorMessages.AUTH.USER_NOT_FOUND,
     })
     public async sendFriendRequest(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: SendFriendRequestDTO,
     ): Promise<SendFriendRequestResponseDTO> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const meUser = await this.userRepo.findById(meId);
         if (!meUser) {
             this.setStatus(401);
@@ -302,10 +306,9 @@ export class FriendshipController extends Controller {
     })
     public async acceptFriendRequest(
         @Path() id: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<AcceptFriendRequestResponseDTO> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const meUser = await this.userRepo.findById(meId);
         if (!meUser) {
             this.setStatus(401);
@@ -400,10 +403,9 @@ export class FriendshipController extends Controller {
     })
     public async rejectFriendRequest(
         @Path() id: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<FriendshipMessageResponseDTO> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const fr = await this.friendshipRepo.findRequestById(id);
 
         if (!fr) {
@@ -438,10 +440,9 @@ export class FriendshipController extends Controller {
     })
     public async removeFriend(
         @Path() friendId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<FriendshipMessageResponseDTO> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const [friend, meUser] = await Promise.all([
             this.userRepo.findById(friendId),

@@ -89,7 +89,7 @@ export class WebhookController extends Controller {
         @Path() serverId: string,
         @Path() channelId: string,
         @Request() req: express.Request,
-    ): Promise<any[]> {
+    ): Promise<Record<string, unknown>[]> {
         // @ts-ignore
         const userId = req.user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -343,7 +343,7 @@ export class WebhookController extends Controller {
     @Response<ErrorResponse>('404', 'Avatar Not Found', {
         error: ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND,
     })
-    public async getWebhookAvatar(@Path() filename: string): Promise<any> {
+    public async getWebhookAvatar(@Path() filename: string): Promise<unknown> {
         // Validate filename to prevent directory traversal attacks
         if (
             filename.includes('..') ||
@@ -433,10 +433,12 @@ export class WebhookController extends Controller {
         websocketMessagesCounter.labels('server_message', 'outbound').inc();
 
         const io = getIO();
-        const msg = (message as any).toObject
-            ? (message as any).toObject()
-            : message;
-        msg._id = msg._id.toString();
+        const m = message as unknown as Record<string, unknown>;
+        const msg = m.toObject
+            ? (m.toObject as () => Record<string, unknown>)()
+            : m;
+
+        msg._id = String(msg._id);
         msg.serverId = webhook.serverId.toString();
         msg.channelId = webhook.channelId.toString();
 

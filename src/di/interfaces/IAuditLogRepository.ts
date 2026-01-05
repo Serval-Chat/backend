@@ -8,7 +8,7 @@ export interface IAuditLog {
     adminId: Types.ObjectId | string;
     actionType: string;
     targetUserId?: Types.ObjectId | string;
-    additionalData?: any;
+    additionalData?: Record<string, unknown>;
     timestamp: Date;
 }
 
@@ -21,7 +21,7 @@ export interface IAuditLogRepository {
         adminId: string;
         actionType: string;
         targetUserId?: string;
-        additionalData?: any;
+        additionalData?: Record<string, unknown>;
     }): Promise<IAuditLog>;
 
     // Find audit logs with pagination and filtering

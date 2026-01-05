@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
+import type { FilterQuery } from 'mongoose';
 import {
     IServerRepository,
     IServer,
@@ -21,7 +21,7 @@ export class MongooseServerRepository implements IServerRepository {
         id: string,
         includeDeleted: boolean = false,
     ): Promise<IServer | null> {
-        const query: any = { _id: id };
+        const query: FilterQuery<IServer> = { _id: id };
         if (!includeDeleted) {
             query.deletedAt = { $exists: false };
         }
@@ -94,7 +94,7 @@ export class MongooseServerRepository implements IServerRepository {
         search?: string;
         includeDeleted?: boolean;
     }): Promise<IServer[]> {
-        const query: any = {};
+        const query: FilterQuery<IServer> = {};
 
         if (!options.includeDeleted) {
             query.deletedAt = { $exists: false };
@@ -114,7 +114,7 @@ export class MongooseServerRepository implements IServerRepository {
     }
 
     async count(includeDeleted: boolean = false): Promise<number> {
-        const query: any = {};
+        const query: FilterQuery<IServer> = {};
         if (!includeDeleted) {
             query.deletedAt = { $exists: false };
         }

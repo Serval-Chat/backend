@@ -1,4 +1,6 @@
 import { injectable } from 'inversify';
+import type { Server } from 'socket.io';
+import type { SerializedCustomStatus } from '@/utils/status';
 
 // Status service
 //
@@ -68,7 +70,11 @@ export class StatusService {
     // @param io - The Socket.IO server instance
     // @param username - The username whose status changed
     // @param status - The new status object
-    publishStatusUpdate(io: any, username: string, status: any) {
+    publishStatusUpdate(
+        io: Server,
+        username: string,
+        status: SerializedCustomStatus | null,
+    ) {
         const sockets = this.userSubscribers.get(username);
         if (!sockets || sockets.size === 0) return;
 

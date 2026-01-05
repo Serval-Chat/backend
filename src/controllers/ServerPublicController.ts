@@ -27,7 +27,7 @@ export class ServerPublicController extends Controller {
     @Response<ErrorResponse>('404', 'Icon Not Found', {
         error: ErrorMessages.FILE.NOT_FOUND,
     })
-    public async getServerIcon(@Path() filename: string): Promise<any> {
+    public async getServerIcon(@Path() filename: string): Promise<unknown> {
         // Strict filename validation to prevent directory traversal attacks
         if (
             filename.includes('..') ||
@@ -35,18 +35,14 @@ export class ServerPublicController extends Controller {
             filename.includes('\\')
         ) {
             this.setStatus(400);
-            const error = new Error(ErrorMessages.FILE.INVALID_FILENAME) as any;
-            error.status = 400;
-            throw error;
+            throw new Error(ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
         if (!fs.existsSync(filepath)) {
             this.setStatus(404);
-            const error = new Error(ErrorMessages.FILE.NOT_FOUND) as any;
-            error.status = 404;
-            throw error;
+            throw new Error(ErrorMessages.FILE.NOT_FOUND);
         }
 
         // TSOA doesn't have a built-in 'file' return type; we set headers manually and return a ReadStream
@@ -65,7 +61,7 @@ export class ServerPublicController extends Controller {
     @Response<ErrorResponse>('404', 'Banner Not Found', {
         error: ErrorMessages.FILE.NOT_FOUND,
     })
-    public async getServerBanner(@Path() filename: string): Promise<any> {
+    public async getServerBanner(@Path() filename: string): Promise<unknown> {
         // Strict filename validation to prevent directory traversal attacks
         if (
             !filename ||
@@ -75,9 +71,7 @@ export class ServerPublicController extends Controller {
             filename.includes('\\')
         ) {
             this.setStatus(400);
-            const error = new Error(ErrorMessages.FILE.INVALID_FILENAME) as any;
-            error.status = 400;
-            throw error;
+            throw new Error(ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         const filepath = path.resolve(this.UPLOADS_DIR, filename);
@@ -85,16 +79,12 @@ export class ServerPublicController extends Controller {
         // Ensure the resolved path is within the intended uploads directory
         if (!filepath.startsWith(this.UPLOADS_DIR + path.sep)) {
             this.setStatus(400);
-            const error = new Error(ErrorMessages.FILE.INVALID_FILENAME) as any;
-            error.status = 400;
-            throw error;
+            throw new Error(ErrorMessages.FILE.INVALID_FILENAME);
         }
 
         if (!fs.existsSync(filepath)) {
             this.setStatus(404);
-            const error = new Error(ErrorMessages.FILE.NOT_FOUND) as any;
-            error.status = 404;
-            throw error;
+            throw new Error(ErrorMessages.FILE.NOT_FOUND);
         }
 
         const ext = path.extname(filename).toLowerCase();

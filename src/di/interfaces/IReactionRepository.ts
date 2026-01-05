@@ -3,6 +3,8 @@
 // Provides methods for managing emoji reactions on messages
 // Supports both DM and server messages with Unicode and custom emojis
 
+import type { IReaction } from '@/models/Reaction';
+
 interface BaseReactionData {
     // The number of reactions
     count: number;
@@ -49,7 +51,7 @@ export interface IReactionRepository {
         emoji: string,
         emojiType: 'unicode' | 'custom',
         emojiId?: string,
-    ): Promise<any>;
+    ): Promise<IReaction>;
 
     // Remove a reaction from a message
     // @param messageId - ID of the message

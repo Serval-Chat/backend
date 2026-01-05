@@ -38,9 +38,9 @@ export class UserWarningController extends Controller {
     // Sanitizes warning data for the current user
     //
     // Hides the specific issuer identity for privacy, labeling all warnings as issued by 'System'
-    private sanitizeWarning(warning: IWarning): any {
-        if (!warning) return warning;
-        const sanitized = { ...warning };
+    private sanitizeWarning(warning: IWarning): Record<string, unknown> {
+        if (!warning) return warning as unknown as Record<string, unknown>;
+        const sanitized = { ...warning } as Record<string, unknown>;
         sanitized.issuedBy = { username: 'System' };
         return sanitized;
     }
@@ -50,7 +50,7 @@ export class UserWarningController extends Controller {
     public async getMyWarnings(
         @Request() req: express.Request,
         @Query() acknowledged?: boolean,
-    ): Promise<any[]> {
+    ): Promise<Record<string, unknown>[]> {
         // @ts-ignore
         const userId = req.user.id;
         try {
@@ -62,11 +62,7 @@ export class UserWarningController extends Controller {
         } catch (error) {
             this.logger.error('[WARNINGS] Failed to load warnings:', error);
             this.setStatus(500);
-            const err = new Error(
-                ErrorMessages.SYSTEM.FAILED_LOAD_WARNINGS,
-            ) as any;
-            err.status = 500;
-            throw err;
+            throw new Error(ErrorMessages.SYSTEM.FAILED_LOAD_WARNINGS);
         }
     }
 
@@ -84,34 +80,24 @@ export class UserWarningController extends Controller {
     public async acknowledgeWarning(
         @Path() id: string,
         @Request() req: express.Request,
-    ): Promise<any> {
+    ): Promise<Record<string, unknown>> {
         // @ts-ignore
         const userId = req.user.id;
 
         if (!id) {
             this.setStatus(400);
-            const error = new Error(
-                ErrorMessages.SYSTEM.WARNING_ID_REQUIRED,
-            ) as any;
-            error.status = 400;
-            throw error;
+            throw new Error(ErrorMessages.SYSTEM.WARNING_ID_REQUIRED);
         }
 
         const warning = await this.warningRepo.findById(id);
         if (!warning) {
             this.setStatus(404);
-            const error = new Error(
-                ErrorMessages.SYSTEM.WARNING_NOT_FOUND,
-            ) as any;
-            error.status = 404;
-            throw error;
+            throw new Error(ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
         }
 
         if (warning.userId.toString() !== userId) {
             this.setStatus(403);
-            const error = new Error(ErrorMessages.AUTH.FORBIDDEN) as any;
-            error.status = 403;
-            throw error;
+            throw new Error(ErrorMessages.AUTH.FORBIDDEN);
         }
 
         if (warning.acknowledged) {
@@ -121,11 +107,7 @@ export class UserWarningController extends Controller {
         const updatedWarning = await this.warningRepo.acknowledge(id);
         if (!updatedWarning) {
             this.setStatus(404);
-            const error = new Error(
-                ErrorMessages.SYSTEM.WARNING_NOT_FOUND,
-            ) as any;
-            error.status = 404;
-            throw error;
+            throw new Error(ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
         }
 
         return this.sanitizeWarning(updatedWarning);

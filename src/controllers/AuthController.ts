@@ -25,6 +25,12 @@ import path from 'path';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiTags, ApiResponse, ApiSecurity } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { ILogger } from '@/di/interfaces/ILogger';
+import type { JWTPayload } from '@/utils/jwt';
+
+interface RequestWithUser extends Request {
+    user: JWTPayload;
+}
 
 import {
     LoginRequestDTO,
@@ -48,6 +54,7 @@ import { injectable, inject } from 'inversify';
 @Controller('api/v1/auth')
 export class AuthController {
     constructor(
+        @inject(TYPES.Logger) @Inject(TYPES.Logger) private logger: ILogger,
         @inject(TYPES.AuthService) @Inject(TYPES.AuthService) private authService: AuthService,
         @inject(TYPES.UserRepository) @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
     ) { }
@@ -84,6 +91,15 @@ export class AuthController {
         }
 
         const user = authResult.user;
+        if (!user) {
+            this.logger.error(
+                'Auth success but user missing in result',
+            );
+            res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                error: ErrorMessages.AUTH.INVALID_CREDENTIALS,
+            });
+            return;
+        }
 
         loginAttemptsCounter.labels('success').inc();
 
@@ -197,7 +213,7 @@ export class AuthController {
         @Req() req: Request,
         @Body() body: ChangeLoginRequestDTO,
     ): Promise<ChangeLoginResponseDTO> {
-        const userId = (req as any).user.id;
+        const userId = (req as unknown as RequestWithUser).user.id;
         const { newLogin, password } = body;
 
         if (!newLogin || typeof newLogin !== 'string') {
@@ -278,7 +294,7 @@ export class AuthController {
         @Req() req: Request,
         @Body() body: ChangePasswordRequestDTO,
     ): Promise<ChangePasswordResponseDTO> {
-        const userId = (req as any).user.id;
+        const userId = (req as unknown as RequestWithUser).user.id;
         const { currentPassword, newPassword } = body;
 
         if (!currentPassword || typeof currentPassword !== 'string') {

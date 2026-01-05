@@ -16,7 +16,7 @@ export async function expressAuthentication(
     request: express.Request,
     securityName: string,
     scopes?: string[],
-): Promise<any> {
+): Promise<JWTPayload> {
     if (securityName === 'jwt') {
         const authHeader = request.headers['authorization'];
         const token =
@@ -84,7 +84,7 @@ export async function expressAuthentication(
                 }
 
                 const hasAllScopes = scopes.every(
-                    (scope) => (userPermissions as any)[scope] === true,
+                    (scope) => (userPermissions as Record<string, boolean>)[scope] === true,
                 );
                 if (!hasAllScopes) {
                     return Promise.reject({
@@ -96,7 +96,7 @@ export async function expressAuthentication(
 
             return Promise.resolve(decoded);
         } catch (err) {
-            if (err && (err as any).status) {
+            if (err && typeof err === 'object' && 'status' in err) {
                 return Promise.reject(err);
             }
             return Promise.reject(new Error('Invalid token'));

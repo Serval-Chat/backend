@@ -7,6 +7,11 @@ import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import logger from '@/utils/logger';
 import { Ban } from '@/models/Ban';
 import { Types } from 'mongoose';
+import type { JWTPayload } from '@/utils/jwt';
+
+interface SocketWithUser extends Socket {
+    user: JWTPayload;
+}
 
 // Creates the Socket.IO authentication middleware
 //
@@ -29,7 +34,7 @@ export const createAuthMiddleware = (container: Container) => {
                 return next(new Error('Authentication error'));
             }
 
-            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
             // Validate user exists and is not deleted using repository
             const user = await userRepo.findById(decoded.id);
@@ -62,13 +67,14 @@ export const createAuthMiddleware = (container: Container) => {
                 return next(new Error('Account banned'));
             }
 
-            (socket as any).user = decoded;
+            (socket as unknown as SocketWithUser).user = decoded;
             next();
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             logger.error('[Socket Failure] Authentication', {
-                reason: err.message || 'Authentication failed',
+                reason: error.message || 'Authentication failed',
                 socketId: socket.id,
-                stack: err.stack,
+                stack: error.stack,
             });
             next(new Error('Authentication error'));
         }

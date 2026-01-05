@@ -25,15 +25,34 @@ import { PermissionService } from '@/services/PermissionService';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
-import express from 'express';
-import crypto from 'crypto';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import type { Request as ExpressRequest } from 'express';
+import { JWTPayload } from '@/utils/jwt';
+import crypto from 'crypto';
+import mongoose from 'mongoose';
 
 interface CreateInviteRequest {
     maxUses?: number;
     expiresIn?: number; // In seconds
     customPath?: string;
+}
+
+interface InviteDetailsResponse {
+    code: string;
+    expiresAt?: Date;
+    maxUses?: number;
+    uses: number;
+    server: {
+        id: string | mongoose.Types.ObjectId;
+        name: string;
+        icon?: string;
+        banner?: {
+            type: 'image' | 'gradient' | 'color' | 'gif';
+            value: string;
+        };
+    };
+    memberCount: number;
 }
 
 // Controller for managing server invites
@@ -68,10 +87,9 @@ export class ServerInviteController extends Controller {
     })
     public async getServerInvites(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<IInvite[]> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -80,11 +98,7 @@ export class ServerInviteController extends Controller {
             ))
         ) {
             this.setStatus(403);
-            const error = new Error(
-                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
-            ) as any;
-            error.status = 403;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
         }
 
         return await this.inviteRepo.findByServerId(serverId);
@@ -102,11 +116,10 @@ export class ServerInviteController extends Controller {
     })
     public async createInvite(
         @Path() serverId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: CreateInviteRequest,
     ): Promise<IInvite> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         if (
             !(await this.permissionService.hasPermission(
@@ -116,11 +129,7 @@ export class ServerInviteController extends Controller {
             ))
         ) {
             this.setStatus(403);
-            const error = new Error(
-                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
-            ) as any;
-            error.status = 403;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
         }
 
         const { maxUses, expiresIn, customPath } = body;
@@ -131,21 +140,13 @@ export class ServerInviteController extends Controller {
             const server = await this.serverRepo.findById(serverId);
             if (server?.ownerId.toString() !== userId) {
                 this.setStatus(403);
-                const error = new Error(
-                    ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
-                ) as any;
-                error.status = 403;
-                throw error;
+                throw new Error(ErrorMessages.INVITE.ONLY_OWNER_CUSTOM);
             }
 
             const existing = await this.inviteRepo.findByCode(code);
             if (existing) {
                 this.setStatus(400);
-                const error = new Error(
-                    ErrorMessages.INVITE.ALREADY_EXISTS,
-                ) as any;
-                error.status = 400;
-                throw error;
+                throw new Error(ErrorMessages.INVITE.ALREADY_EXISTS);
             }
         } else {
             // Generate a random 8-character hex code if no custom code is provided
@@ -178,10 +179,9 @@ export class ServerInviteController extends Controller {
     public async deleteInvite(
         @Path() serverId: string,
         @Path() inviteId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -190,19 +190,13 @@ export class ServerInviteController extends Controller {
             ))
         ) {
             this.setStatus(403);
-            const error = new Error(
-                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
-            ) as any;
-            error.status = 403;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.NO_PERMISSION_MANAGE);
         }
 
         const invite = await this.inviteRepo.findById(inviteId);
         if (!invite || invite.serverId.toString() !== serverId) {
             this.setStatus(404);
-            const error = new Error(ErrorMessages.INVITE.NOT_FOUND) as any;
-            error.status = 404;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.NOT_FOUND);
         }
 
         await this.inviteRepo.delete(inviteId);
@@ -218,21 +212,17 @@ export class ServerInviteController extends Controller {
     @Response<ErrorResponse>('410', 'Invite Expired or Max Uses Reached', {
         error: ErrorMessages.INVITE.EXPIRED,
     })
-    public async getInviteDetails(@Path() code: string): Promise<any> {
+    public async getInviteDetails(@Path() code: string): Promise<InviteDetailsResponse> {
         const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
         if (!invite) {
             this.setStatus(404);
-            const error = new Error(ErrorMessages.INVITE.NOT_FOUND) as any;
-            error.status = 404;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.NOT_FOUND);
         }
 
         // Check if the invite has reached its expiration date
         if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
             this.setStatus(410);
-            const error = new Error(ErrorMessages.INVITE.EXPIRED) as any;
-            error.status = 410;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.EXPIRED);
         }
 
         // Check if the invite has exceeded its maximum allowed uses
@@ -242,11 +232,7 @@ export class ServerInviteController extends Controller {
             invite.uses >= invite.maxUses
         ) {
             this.setStatus(410);
-            const error = new Error(
-                ErrorMessages.INVITE.MAX_USES_REACHED,
-            ) as any;
-            error.status = 410;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.MAX_USES_REACHED);
         }
 
         const server = await this.serverRepo.findById(
@@ -257,9 +243,7 @@ export class ServerInviteController extends Controller {
                 serverId: invite.serverId.toString(),
             });
             this.setStatus(404);
-            const error = new Error(ErrorMessages.SERVER.NOT_FOUND) as any;
-            error.status = 404;
-            throw error;
+            throw new Error(ErrorMessages.SERVER.NOT_FOUND);
         }
 
         const memberCount = await this.serverMemberRepo.countByServerId(
@@ -299,23 +283,18 @@ export class ServerInviteController extends Controller {
     })
     public async joinServer(
         @Path() code: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ serverId: string }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
         if (!invite) {
             this.setStatus(404);
-            const error = new Error(ErrorMessages.INVITE.NOT_FOUND) as any;
-            error.status = 404;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.NOT_FOUND);
         }
 
         if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
             this.setStatus(410);
-            const error = new Error(ErrorMessages.INVITE.EXPIRED) as any;
-            error.status = 410;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.EXPIRED);
         }
 
         if (
@@ -324,11 +303,7 @@ export class ServerInviteController extends Controller {
             invite.uses >= invite.maxUses
         ) {
             this.setStatus(410);
-            const error = new Error(
-                ErrorMessages.INVITE.MAX_USES_REACHED,
-            ) as any;
-            error.status = 410;
-            throw error;
+            throw new Error(ErrorMessages.INVITE.MAX_USES_REACHED);
         }
 
         const serverId = invite.serverId.toString();
@@ -338,9 +313,7 @@ export class ServerInviteController extends Controller {
         );
         if (existingMember) {
             this.setStatus(400);
-            const error = new Error(ErrorMessages.SERVER.ALREADY_MEMBER) as any;
-            error.status = 400;
-            throw error;
+            throw new Error(ErrorMessages.SERVER.ALREADY_MEMBER);
         }
 
         // Prevent banned users from re-joining via invite
@@ -350,9 +323,7 @@ export class ServerInviteController extends Controller {
         );
         if (existingBan) {
             this.setStatus(403);
-            const error = new Error(ErrorMessages.SERVER.BANNED) as any;
-            error.status = 403;
-            throw error;
+            throw new Error(ErrorMessages.SERVER.BANNED);
         }
 
         const server = await this.serverRepo.findById(serverId);

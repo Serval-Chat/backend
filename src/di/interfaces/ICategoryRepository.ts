@@ -5,7 +5,7 @@ import type { Types } from 'mongoose';
 // Categories group channels together and can provide default permission
 // Overrides for all channels within them
 export interface ICategory {
-    _id: any;
+    _id: Types.ObjectId | string;
     serverId: Types.ObjectId | string;
     name: string;
     position: number;

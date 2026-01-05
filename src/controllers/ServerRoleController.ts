@@ -31,7 +31,7 @@ export interface CreateRoleRequest {
     colors?: string[];
     gradientRepeat?: number;
     separateFromOtherRoles?: boolean;
-    permissions?: any;
+    permissions?: Record<string, boolean>;
 }
 
 export interface UpdateRoleRequest {
@@ -42,7 +42,7 @@ export interface UpdateRoleRequest {
     colors?: string[];
     gradientRepeat?: number;
     separateFromOtherRoles?: boolean;
-    permissions?: any;
+    permissions?: Record<string, boolean>;
     position?: number;
 }
 
@@ -219,7 +219,7 @@ export class ServerRoleController extends Controller {
             throw new Error(ErrorMessages.ROLE.NOT_FOUND);
         }
 
-        const updates: any = {};
+        const updates: Record<string, unknown> = {};
         if (body.name) updates.name = body.name.trim();
 
         // If gradient colors are provided, clear the solid color to indicate gradient mode

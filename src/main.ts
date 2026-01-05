@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 import { PORT, USE_HTTPS, CERTS_PATH } from '@/config/env';
 import * as fs from 'fs';
 import * as path from 'path';
-import { HttpsOptions } from '@nestjs/common/interfaces/external/https-options.interface';
+import type { HttpsOptions } from '@nestjs/common/interfaces/external/https-options.interface';
 import { Logger } from '@nestjs/common';
 import { setupExpressApp } from './server';
 import { connectDB } from '@/config/db';
@@ -58,6 +58,15 @@ async function bootstrap() {
     // Initialize Real-time and Metrics
     const httpServer = app.getHttpServer();
     await createSocketServer(httpServer, container);
+
+    // Initialize New WebSocket Scaffolding
+    const { WsServer } = await import('./ws/server');
+    const wsServer = new WsServer(httpServer);
+
+    // Register Debug Service
+    const { DebugService } = await import('./ws/services/DebugService');
+    wsServer.registerController(new DebugService(wsServer));
+
     startMetricsUpdater(60000);
 
     // Start the application

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Model, Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { IBanRepository, IBan } from '@/di/interfaces/IBanRepository';
+import { IBanHistoryEntry } from '@/models/Ban';
 import logger from '@/utils/logger';
 import { Ban } from '@/models/Ban';
 import { injectable } from 'inversify';
@@ -39,7 +40,7 @@ export class MongooseBanRepository implements IBanRepository {
     }
 
     async checkExpired(userId: string): Promise<void> {
-        await (this.banModel as any).checkExpired(userId);
+        await this.banModel.checkExpired(userId);
     }
 
     async findAllActive(): Promise<IBan[]> {
@@ -87,7 +88,7 @@ export class MongooseBanRepository implements IBanRepository {
                 }
             }
 
-            ban.history.push(historyEntry as any);
+            ban.history.push(historyEntry as unknown as IBanHistoryEntry); // historyEntry doesn't have endedAt yet, which is optional in IBanHistoryEntry but Mongoose might be strict
             ban.reason = historyEntry.reason;
             if (historyEntry.expirationTimestamp) {
                 ban.expirationTimestamp = historyEntry.expirationTimestamp;
@@ -107,7 +108,7 @@ export class MongooseBanRepository implements IBanRepository {
                 active: true,
                 history: [historyEntry],
             });
-            return (newBan as any).toObject();
+            return newBan.toObject();
         }
     }
 

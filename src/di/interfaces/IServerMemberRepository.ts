@@ -1,10 +1,11 @@
 import type { Types } from 'mongoose';
+import { type MappedUser } from '@/utils/user';
 
 // Server Member interface
 //
 // Represents a user's membership in a server, including their roles
 export interface IServerMember {
-    _id: any;
+    _id: Types.ObjectId | string;
     serverId: Types.ObjectId | string;
     userId: Types.ObjectId | string;
     // List of role IDs assigned to the member
@@ -77,10 +78,15 @@ export interface IServerMemberRepository {
     deleteAllForUser(userId: string): Promise<{ deletedCount: number }>;
 
     // Find all members of a server with user info populated
-    findByServerIdWithUserInfo(serverId: string): Promise<any[]>;
+    findByServerIdWithUserInfo(
+        serverId: string,
+    ): Promise<(IServerMember & { user: MappedUser | null })[]>;
 
     // Search for members in a server
-    searchMembers(serverId: string, query: string): Promise<any[]>;
+    searchMembers(
+        serverId: string,
+        query: string,
+    ): Promise<(IServerMember & { user: MappedUser | null })[]>;
 
     // Add a role to a member
     addRole(

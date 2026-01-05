@@ -27,6 +27,7 @@ export class PresenceGateway implements OnGatewayConnection {
      * Sends current presence state and any stored pings to the user.
      */
     async handleConnection(ctx: SocketContext) {
+        if (!ctx.user) return;
         const { username, id: userId } = ctx.user;
         const socketId = ctx.socket.id;
 
@@ -62,6 +63,7 @@ export class PresenceGateway implements OnGatewayConnection {
      */
     @On('disconnect')
     async onDisconnect(ctx: SocketContext) {
+        if (!ctx.user) return;
         const { username } = ctx.user;
         const socketId = ctx.socket.id;
 

@@ -12,7 +12,7 @@ interface IPing extends Document {
     serverId?: Types.ObjectId; // Server ID if ping is from a server message
     channelId?: Types.ObjectId; // Channel ID if ping is from a server message
     messageId: Types.ObjectId; // Reference to the message that triggered the ping
-    message: any; // Full message object (stored for quick access)
+    message: Record<string, unknown>; // Full message object (stored for quick access)
     timestamp: Date;
     createdAt: Date;
 }

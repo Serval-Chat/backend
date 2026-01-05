@@ -26,7 +26,8 @@ import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
-import express from 'express';
+import type { Request as ExpressRequest } from 'express';
+import { JWTPayload } from '@/utils/jwt';
 import mongoose from 'mongoose';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -74,13 +75,12 @@ export class ServerMessageController extends Controller {
     public async getMessages(
         @Path() serverId: string,
         @Path() channelId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Query() limit: number = 50,
         @Query() before?: string,
         @Query() around?: string,
     ): Promise<IServerMessage[]> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -107,12 +107,12 @@ export class ServerMessageController extends Controller {
         );
 
         return msgs.map((msg) => {
-            const msgObj = (msg as any).toObject
-                ? (msg as any).toObject()
+            const msgObj = 'toObject' in msg && typeof msg.toObject === 'function'
+                ? msg.toObject()
                 : msg;
             return {
                 ...msgObj,
-                reactions: reactionsMap[msg._id.toString()] || [],
+                reactions: (reactionsMap as Record<string, unknown[]>)[msg._id.toString()] || [],
             };
         });
     }
@@ -129,11 +129,10 @@ export class ServerMessageController extends Controller {
     public async sendMessage(
         @Path() serverId: string,
         @Path() channelId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: SendMessageRequest,
     ): Promise<IServerMessage> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -210,13 +209,12 @@ export class ServerMessageController extends Controller {
         @Path() serverId: string,
         @Path() channelId: string,
         @Path() messageId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{
         message: IServerMessage;
         repliedMessage: IServerMessage | null;
     }> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -258,8 +256,8 @@ export class ServerMessageController extends Controller {
 
         return {
             message: {
-                ...((message as any).toObject
-                    ? (message as any).toObject()
+                ...('toObject' in message && typeof message.toObject === 'function'
+                    ? message.toObject()
                     : message),
                 reactions,
             },
@@ -280,11 +278,10 @@ export class ServerMessageController extends Controller {
         @Path() serverId: string,
         @Path() channelId: string,
         @Path() messageId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: ServerEditMessageRequest,
     ): Promise<IServerMessage> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
             this.setStatus(404);
@@ -334,10 +331,9 @@ export class ServerMessageController extends Controller {
         @Path() serverId: string,
         @Path() channelId: string,
         @Path() messageId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ message: string }> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
             this.setStatus(404);

@@ -26,9 +26,10 @@ import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
 import { PresenceService } from '@/realtime/services/PresenceService';
-import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import type { Request as ExpressRequest } from 'express';
+import { JWTPayload } from '@/utils/jwt';
 
 // @example {
 //   "emoji": "👍",
@@ -133,15 +134,14 @@ export class ReactionController extends Controller {
     })
     public async getDmReactions(
         @Path() messageId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ reactions: ReactionData[] }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
             this.setStatus(404);
-            return { error: ErrorMessages.MESSAGE.NOT_FOUND } as any;
+            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         if (
@@ -149,7 +149,7 @@ export class ReactionController extends Controller {
             message.receiverId.toString() !== userId
         ) {
             this.setStatus(403);
-            return { error: ErrorMessages.REACTION.ACCESS_DENIED } as any;
+            throw new Error(ErrorMessages.REACTION.ACCESS_DENIED);
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
@@ -175,18 +175,17 @@ export class ReactionController extends Controller {
     })
     public async addDmReaction(
         @Path() messageId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: AddReactionRequest,
     ): Promise<{ reactions: ReactionData[] }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { emoji, emojiType } = body;
         const emojiId = emojiType === 'custom' ? body.emojiId : undefined;
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
             this.setStatus(404);
-            return { error: ErrorMessages.MESSAGE.NOT_FOUND } as any;
+            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         if (
@@ -194,7 +193,7 @@ export class ReactionController extends Controller {
             message.receiverId.toString() !== userId
         ) {
             this.setStatus(403);
-            return { error: ErrorMessages.REACTION.ACCESS_DENIED } as any;
+            throw new Error(ErrorMessages.REACTION.ACCESS_DENIED);
         }
 
         try {
@@ -206,14 +205,15 @@ export class ReactionController extends Controller {
                 emojiType,
                 emojiId,
             );
-        } catch (err: any) {
+        } catch (err: unknown) {
             // Handle repository-level validation errors (e.g., duplicate reaction, max limit)
+            const error = err as Error;
             if (
-                err.message?.includes('already reacted') ||
-                err.message?.includes('Maximum')
+                error.message?.includes('already reacted') ||
+                error.message?.includes('Maximum')
             ) {
                 this.setStatus(400);
-                return { error: err.message } as any;
+                throw new Error(error.message);
             }
             throw err;
         }
@@ -261,18 +261,17 @@ export class ReactionController extends Controller {
     })
     public async removeDmReaction(
         @Path() messageId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: RemoveReactionRequest,
     ): Promise<{ reactions: ReactionData[] }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
             this.setStatus(404);
-            return { error: ErrorMessages.MESSAGE.NOT_FOUND } as any;
+            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         if (
@@ -280,7 +279,7 @@ export class ReactionController extends Controller {
             message.receiverId.toString() !== userId
         ) {
             this.setStatus(403);
-            return { error: ErrorMessages.REACTION.ACCESS_DENIED } as any;
+            throw new Error(ErrorMessages.REACTION.ACCESS_DENIED);
         }
 
         const removed = await this.reactionRepo.removeReaction(
@@ -292,7 +291,7 @@ export class ReactionController extends Controller {
         );
         if (!removed) {
             this.setStatus(404);
-            return { error: ErrorMessages.REACTION.REACTION_NOT_FOUND } as any;
+            throw new Error(ErrorMessages.REACTION.REACTION_NOT_FOUND);
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
@@ -344,11 +343,10 @@ export class ReactionController extends Controller {
         @Path() serverId: string,
         @Path() channelId: string,
         @Path() messageId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: AddReactionRequest,
     ): Promise<{ reactions: ReactionData[] }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { emoji, emojiType } = body;
         const emojiId = emojiType === 'custom' ? body.emojiId : undefined;
 
@@ -358,13 +356,13 @@ export class ReactionController extends Controller {
         );
         if (!member) {
             this.setStatus(403);
-            return { error: ErrorMessages.SERVER.NOT_SERVER_MEMBER } as any;
+            throw new Error(ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel || channel.serverId.toString() !== serverId) {
             this.setStatus(404);
-            return { error: ErrorMessages.CHANNEL.NOT_FOUND } as any;
+            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const canAddReactions =
@@ -376,15 +374,13 @@ export class ReactionController extends Controller {
             );
         if (!canAddReactions) {
             this.setStatus(403);
-            return {
-                error: ErrorMessages.REACTION.MISSING_PERMISSION_ADD,
-            } as any;
+            throw new Error(ErrorMessages.REACTION.MISSING_PERMISSION_ADD);
         }
 
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
             this.setStatus(404);
-            return { error: ErrorMessages.MESSAGE.NOT_FOUND } as any;
+            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         try {
@@ -396,13 +392,14 @@ export class ReactionController extends Controller {
                 emojiType,
                 emojiId,
             );
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             if (
-                err.message?.includes('already reacted') ||
-                err.message?.includes('Maximum')
+                error.message?.includes('already reacted') ||
+                error.message?.includes('Maximum')
             ) {
                 this.setStatus(400);
-                return { error: err.message } as any;
+                throw new Error(error.message);
             }
             throw err;
         }
@@ -442,11 +439,10 @@ export class ReactionController extends Controller {
         @Path() serverId: string,
         @Path() channelId: string,
         @Path() messageId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
         @Body() body: RemoveReactionRequest,
     ): Promise<{ reactions: ReactionData[] }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
         const scope = body.scope;
@@ -457,19 +453,19 @@ export class ReactionController extends Controller {
         );
         if (!member) {
             this.setStatus(403);
-            return { error: ErrorMessages.SERVER.NOT_SERVER_MEMBER } as any;
+            throw new Error(ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel || channel.serverId.toString() !== serverId) {
             this.setStatus(404);
-            return { error: ErrorMessages.CHANNEL.NOT_FOUND } as any;
+            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
             this.setStatus(404);
-            return { error: ErrorMessages.MESSAGE.NOT_FOUND } as any;
+            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const canManageReactions =
@@ -511,7 +507,7 @@ export class ReactionController extends Controller {
 
         if (!removed) {
             this.setStatus(404);
-            return { error: ErrorMessages.REACTION.REACTION_NOT_FOUND } as any;
+            throw new Error(ErrorMessages.REACTION.REACTION_NOT_FOUND);
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
@@ -547,10 +543,9 @@ export class ReactionController extends Controller {
         @Path() serverId: string,
         @Path() channelId: string,
         @Path() messageId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ reactions: ReactionData[] }> {
-        // @ts-ignore: JWT middleware attaches user object
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -558,19 +553,19 @@ export class ReactionController extends Controller {
         );
         if (!member) {
             this.setStatus(403);
-            return { error: ErrorMessages.SERVER.NOT_SERVER_MEMBER } as any;
+            throw new Error(ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (!channel || channel.serverId.toString() !== serverId) {
             this.setStatus(404);
-            return { error: ErrorMessages.CHANNEL.NOT_FOUND } as any;
+            throw new Error(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const message = await this.serverMessageRepo.findById(messageId);
         if (!message || message.channelId.toString() !== channelId) {
             this.setStatus(404);
-            return { error: ErrorMessages.MESSAGE.NOT_FOUND } as any;
+            throw new Error(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(

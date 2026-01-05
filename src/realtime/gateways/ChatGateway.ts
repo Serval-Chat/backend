@@ -52,6 +52,7 @@ export class ChatGateway {
     ) {
         websocketMessagesCounter.labels('message', 'inbound').inc();
         const { receiver, text, replyToId } = payload;
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const senderId = ctx.user.id;
 
         const receiverIsObjectId = Types.ObjectId.isValid(receiver);
@@ -111,7 +112,7 @@ export class ChatGateway {
                     this.presenceService.getSockets(receiverUsername);
                 receiverSockets.forEach((sid) => {
                     ctx.socket.to(sid).emit('dm_unread', {
-                        peer: ctx.user.username,
+                        peer: ctx.user?.username,
                         count: updatedUnread.count,
                     });
                     websocketMessagesCounter
@@ -137,6 +138,7 @@ export class ChatGateway {
         payload: z.infer<typeof MarkReadSchema>,
     ) {
         const { peerId } = payload;
+        if (!ctx.user) return;
         const userId = ctx.user.id;
 
         await this.dmUnreadRepo.reset(userId, peerId);
@@ -168,9 +170,10 @@ export class ChatGateway {
      */
     @On('typing', TypingSchema)
     async onTyping(ctx: SocketContext, payload: z.infer<typeof TypingSchema>) {
+        if (!ctx.user) return;
         const toSockets = this.presenceService.getSockets(payload.to);
         toSockets.forEach((sid) => {
-            ctx.socket.to(sid).emit('typing', { from: ctx.user.username });
+            ctx.socket.to(sid).emit('typing', { from: ctx.user?.username });
         });
     }
 
@@ -186,6 +189,7 @@ export class ChatGateway {
         payload: z.infer<typeof EditMessageSchema>,
     ) {
         const { messageId, text } = payload;
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const userId = ctx.user.id;
 
         const message = await this.messageRepo.findById(messageId);
@@ -235,6 +239,7 @@ export class ChatGateway {
         payload: z.infer<typeof DeleteMessageSchema>,
     ) {
         const { messageId } = payload;
+        if (!ctx.user) return { ok: false, error: 'Unauthorized' };
         const userId = ctx.user.id;
 
         const message = await this.messageRepo.findById(messageId);

@@ -14,9 +14,9 @@ import { TYPES } from '@/di/types';
 export const createMetricsMiddleware = (logger?: ILogger) => {
     // Use injected logger or fallback to console
     const metricsLogger = logger || {
-        error: (message: string, ...args: any[]) =>
+        error: (message: string, ...args: unknown[]) =>
             console.error(`[METRICS] ${message}`, ...args),
-        warn: (message: string, ...args: any[]) =>
+        warn: (message: string, ...args: unknown[]) =>
             console.warn(`[METRICS] ${message}`, ...args),
     };
 
@@ -27,10 +27,10 @@ export const createMetricsMiddleware = (logger?: ILogger) => {
         const originalEnd = res.end;
 
         // Override end function to capture metrics
-        res.end = function (this: Response, ...args: any[]): Response {
+        res.end = function (this: Response, ...args: unknown[]): Response {
             try {
                 const duration = (Date.now() - start) / 1000; // Convert to seconds
-                const route = (req as any).route?.path || req.path || 'unknown';
+                const route = (req as Request & { route?: { path: string } }).route?.path || req.path || 'unknown';
                 const method = req.method;
                 const statusCode = res.statusCode.toString();
 
@@ -47,8 +47,8 @@ export const createMetricsMiddleware = (logger?: ILogger) => {
             }
 
             // Call original end function
-            return originalEnd.apply(this, args as any) as Response;
-        } as any;
+            return originalEnd.apply(this, args as Parameters<Response['end']>) as Response;
+        } as Response['end'];
 
         next();
     };

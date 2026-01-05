@@ -13,9 +13,10 @@ import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import { PingService, type PingNotification } from '@/services/PingService';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import express from 'express';
 import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
+import type { Request as ExpressRequest } from 'express';
+import { JWTPayload } from '@/utils/jwt';
 
 // Controller for managing user pings (mentions and notifications)
 @injectable()
@@ -33,19 +34,16 @@ export class UserPingController extends Controller {
     // Get all pings for the current user
     @Get()
     public async getPings(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ pings: PingNotification[] }> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         try {
             const pings = await this.pingService.getPingsForUser(userId);
             return { pings };
         } catch (err) {
             this.logger.error('Error fetching pings:', err);
             this.setStatus(500);
-            const error = new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR) as any;
-            error.status = 500;
-            throw error;
+            throw new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR);
         }
     }
 
@@ -56,16 +54,13 @@ export class UserPingController extends Controller {
     })
     public async deletePing(
         @Path() id: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ success: boolean }> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         if (!id) {
             this.setStatus(400);
-            const error = new Error(ErrorMessages.PING.ID_REQUIRED) as any;
-            error.status = 400;
-            throw error;
+            throw new Error(ErrorMessages.PING.ID_REQUIRED);
         }
 
         try {
@@ -74,9 +69,7 @@ export class UserPingController extends Controller {
         } catch (err) {
             this.logger.error('Error deleting ping:', err);
             this.setStatus(500);
-            const error = new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR) as any;
-            error.status = 500;
-            throw error;
+            throw new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR);
         }
     }
 
@@ -87,18 +80,13 @@ export class UserPingController extends Controller {
     })
     public async clearChannelPings(
         @Path() channelId: string,
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ success: boolean; clearedCount: number }> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         if (!channelId) {
             this.setStatus(400);
-            const error = new Error(
-                ErrorMessages.PING.CHANNEL_ID_REQUIRED,
-            ) as any;
-            error.status = 400;
-            throw error;
+            throw new Error(ErrorMessages.PING.CHANNEL_ID_REQUIRED);
         }
 
         try {
@@ -110,19 +98,16 @@ export class UserPingController extends Controller {
         } catch (err) {
             this.logger.error('Error clearing channel pings:', err);
             this.setStatus(500);
-            const error = new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR) as any;
-            error.status = 500;
-            throw error;
+            throw new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR);
         }
     }
 
     // Clear all pings for the current user
     @Delete()
     public async clearAllPings(
-        @Request() req: express.Request,
+        @Request() req: ExpressRequest,
     ): Promise<{ success: boolean }> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         try {
             await this.pingService.clearAllPings(userId);
@@ -130,9 +115,7 @@ export class UserPingController extends Controller {
         } catch (err) {
             this.logger.error('Error clearing pings:', err);
             this.setStatus(500);
-            const error = new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR) as any;
-            error.status = 500;
-            throw error;
+            throw new Error(ErrorMessages.SYSTEM.INTERNAL_ERROR);
         }
     }
 }

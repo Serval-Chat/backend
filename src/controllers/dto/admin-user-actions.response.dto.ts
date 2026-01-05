@@ -53,7 +53,7 @@ export class AdminBanUserResponseDTO {
     @ApiProperty()
     active!: boolean;
     @ApiPropertyOptional({ type: [Object] })
-    history?: any[];
+    history?: unknown[];
 }
 
 export class AdminUnbanUserResponseDTO {
@@ -72,5 +72,9 @@ export class AdminWarnUserResponseDTO {
     message!: string;
     @ApiProperty()
     timestamp!: Date;
+    @ApiProperty()
+    acknowledged!: boolean;
+    @ApiPropertyOptional()
+    acknowledgedAt?: Date;
 }
 

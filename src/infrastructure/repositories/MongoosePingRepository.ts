@@ -1,7 +1,7 @@
 import { injectable } from 'inversify';
 import { IPingRepository, IPing } from '@/di/interfaces/IPingRepository';
 import { Ping } from '@/models/Ping';
-import { Types } from 'mongoose';
+import { type FilterQuery, Types } from 'mongoose';
 
 // Mongoose Ping repository
 //
@@ -14,7 +14,7 @@ export class MongoosePingRepository implements IPingRepository {
     }
 
     async findByUserId(userId: string, maxAge?: number): Promise<IPing[]> {
-        const query: any = { userId: new Types.ObjectId(userId) };
+        const query: FilterQuery<IPing> = { userId: new Types.ObjectId(userId) };
 
         // Filter out old pings if maxAge is specified (in milliseconds)
         if (maxAge) {
@@ -33,7 +33,7 @@ export class MongoosePingRepository implements IPingRepository {
         serverId?: string;
         channelId?: string;
         messageId: string;
-        message: any;
+        message: Record<string, unknown>;
         timestamp?: Date;
     }): Promise<IPing> {
         const pingData = {

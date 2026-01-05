@@ -144,7 +144,7 @@ export function isBlockedHostname(hostname: string): boolean {
 export function isDisallowedAddress(address: string): boolean {
     try {
         const parsed = ipaddr.parse(address);
-        let normalized: ipaddr.IPv4 | ipaddr.IPv6 = parsed as any;
+        let normalized: ipaddr.IPv4 | ipaddr.IPv6 = parsed;
 
         if (parsed.kind() === 'ipv6') {
             const ipv6 = parsed as ipaddr.IPv6;

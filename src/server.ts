@@ -1,4 +1,4 @@
-import type { Application, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction, Application } from 'express';
 import express from 'express';
 import { randomBytes } from 'crypto';
 import { container } from '@/di/container';
@@ -15,6 +15,18 @@ import swaggerUi from 'swagger-ui-express';
 import { upload } from '@/config/multer';
 import fs from 'fs';
 import routes from '@/routes/index';
+
+interface ValidateError {
+    name: 'ValidateError';
+    fields: Record<string, unknown>;
+}
+
+interface ResponseWithLocals extends Response {
+    locals: {
+        cspNonce?: string;
+        [key: string]: unknown;
+    };
+}
 
 // Configures an existing Express application with standard middleware and routes
 export function setupExpressApp(app: Application): Application {
@@ -43,7 +55,7 @@ export function setupExpressApp(app: Application): Application {
                         'https://ajax.googleapis.com',
                         'https://static.cloudflareinsights.com',
                         (_req, res) =>
-                            `'nonce-${(res as any).locals.cspNonce}'`,
+                            `'nonce-${(res as ResponseWithLocals).locals.cspNonce}'`,
                         ...(PROJECT_LEVEL === 'development'
                             ? ["'unsafe-inline'"]
                             : []),
@@ -153,35 +165,52 @@ export function setupExpressApp(app: Application): Application {
     }
 
     // Error handler
-    app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-        if (err.name === 'ValidateError') {
-            logger.warn(
-                `Validation error for ${req.method} ${req.url}:`,
-                err.fields,
-            );
-            return res.status(400).json({
-                error: 'Validation Failed',
-                details: err.fields,
+    app.use(
+        (
+            err: unknown,
+            req: Request,
+            res: Response,
+            next: NextFunction,
+        ) => {
+            if (
+                typeof err === 'object' &&
+                err !== null &&
+                'name' in err &&
+                err.name === 'ValidateError'
+            ) {
+                logger.warn(
+                    `Validation error for ${req.method} ${req.url}:`,
+                    (err as ValidateError).fields,
+                );
+                return res.status(400).json({
+                    error: 'Validation Failed',
+                    details: (err as ValidateError).fields,
+                });
+            }
+
+            logger.error('Unhandled error:', err);
+
+            if (res.headersSent) {
+                return next(err);
+            }
+
+            const error = err as {
+                status?: number;
+                message?: string;
+                stack?: string;
+            };
+            const status = error.status || 500;
+            const message =
+                PROJECT_LEVEL === 'production' && status >= 500
+                    ? 'Internal Server Error'
+                    : error.message || 'Internal Server Error';
+
+            res.status(status).json({
+                error: message,
+                ...(PROJECT_LEVEL !== 'production' && { stack: error.stack }),
             });
-        }
-
-        logger.error('Unhandled error:', err);
-
-        if (res.headersSent) {
-            return next(err);
-        }
-
-        const status = err.status || 500;
-        const message =
-            PROJECT_LEVEL === 'production' && status >= 500
-                ? 'Internal Server Error'
-                : err.message || 'Internal Server Error';
-
-        res.status(status).json({
-            error: message,
-            ...(PROJECT_LEVEL !== 'production' && { stack: err.stack }),
-        });
-    });
+        },
+    );
 
     return app;
 }

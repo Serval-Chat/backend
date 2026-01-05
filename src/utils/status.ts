@@ -92,29 +92,35 @@ export const getSerializedCustomStatus = (
 };
 
 export const resolveSerializedCustomStatus = (
-    rawStatus: any,
+    rawStatus: Record<string, unknown> | null | undefined,
 ): SerializedCustomStatus | null => {
     if (!rawStatus) return null;
 
     const hasContent = Boolean(
-        (rawStatus.text && rawStatus.text.trim().length > 0) || rawStatus.emoji,
+        (typeof rawStatus.text === 'string' &&
+            rawStatus.text.trim().length > 0) ||
+        rawStatus.emoji,
     );
     if (!hasContent) return null;
 
-    const expiresAt = rawStatus.expiresAt
-        ? new Date(rawStatus.expiresAt)
-        : null;
+    const expiresAt =
+        typeof rawStatus.expiresAt === 'string' ||
+            rawStatus.expiresAt instanceof Date
+            ? new Date(rawStatus.expiresAt as string | number | Date)
+            : null;
     if (isExpired(expiresAt)) {
         return null;
     }
 
-    const updatedAt = rawStatus.updatedAt
-        ? new Date(rawStatus.updatedAt)
-        : new Date();
+    const updatedAt =
+        typeof rawStatus.updatedAt === 'string' ||
+            rawStatus.updatedAt instanceof Date
+            ? new Date(rawStatus.updatedAt as string | number | Date)
+            : new Date();
 
     return {
-        text: rawStatus.text ?? '',
-        emoji: rawStatus.emoji ?? null,
+        text: (rawStatus.text as string) ?? '',
+        emoji: (rawStatus.emoji as string) ?? null,
         expiresAt: expiresAt ? expiresAt.toISOString() : null,
         updatedAt: updatedAt.toISOString(),
     };

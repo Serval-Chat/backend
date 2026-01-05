@@ -22,15 +22,18 @@ export const validate = (schemas: ValidationSchemas) => {
             if (schemas.params) {
                 req.params = (await schemas.params.parseAsync(
                     req.params,
-                )) as any;
+                )) as Record<string, string>;
             }
 
             if (schemas.query) {
-                req.query = (await schemas.query.parseAsync(req.query)) as any;
+                req.query = (await schemas.query.parseAsync(req.query)) as Record<
+                    string,
+                    string | string[] | undefined
+                >;
             }
 
             next();
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof ZodError) {
                 return res.status(400).json({
                     error: `Validation error: ${error.issues.map((e) => e.message).join(', ')}`,
