@@ -222,6 +222,10 @@ export async function fetchWithRedirects(
 
         const response = await fetch(currentUrl, {
             ...init,
+            headers: {
+                ...init.headers,
+                'User-Agent': 'Serchat/0.7.5',
+            },
             redirect: 'manual',
         });
 

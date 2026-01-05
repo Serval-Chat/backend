@@ -3,14 +3,13 @@ import {
     Get,
     Post,
     Delete,
-    Route,
     Body,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
-} from 'tsoa';
+    Param,
+    Req,
+    UseGuards,
+    Inject,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -26,118 +25,65 @@ import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getIO } from '@/socket';
 import { PresenceService } from '@/realtime/services/PresenceService';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
-import type { Request as ExpressRequest } from 'express';
+import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import {
+    AddUnicodeReactionRequest,
+    AddCustomReactionRequest,
+    RemoveUnicodeReactionRequest,
+    RemoveCustomReactionRequest,
+    ReactionResponse,
+} from './dto/reaction.dto';
 
-// @example {
-//   "emoji": "👍",
-//   "emojiType": "unicode"
-// }
-interface AddUnicodeReactionRequest {
-    // The unicode emoji character
-    // @example "👍"
-    emoji: string;
-    // The type of emoji
-    // @example "unicode"
-    emojiType: 'unicode';
-}
-
-// @example {
-//   "emoji": "party_blob",
-//   "emojiType": "custom",
-//   "emojiId": "60d5ecb8b5c9c62b3c7c4b5e"
-// }
-interface AddCustomReactionRequest {
-    // The name of the custom emoji
-    // @example "party_blob"
-    emoji: string;
-    // The type of emoji
-    // @example "custom"
-    emojiType: 'custom';
-    // The ID of the custom emoji
-    // @example "60d5ecb8b5c9c62b3c7c4b5e"
-    emojiId: string;
-}
-
-type AddReactionRequest = AddUnicodeReactionRequest | AddCustomReactionRequest;
-
-// @example {
-//   "emoji": "👍",
-//   "scope": "me"
-// }
-interface RemoveUnicodeReactionRequest {
-    // The emoji to remove
-    // @example "👍"
-    emoji: string;
-    // Scope of removal
-    // @example "me"
-    scope?: 'me' | 'all';
-}
-
-// @example {
-//   "emojiId": "60d5ecb8b5c9c62b3c7c4b5e",
-//   "scope": "me"
-// }
-interface RemoveCustomReactionRequest {
-    // The ID of the custom emoji to remove
-    // @example "60d5ecb8b5c9c62b3c7c4b5e"
-    emojiId: string;
-    // Optional name of the custom emoji
-    // @example "party_blob"
-    emoji?: string;
-    // Scope of removal
-    // @example "me"
-    scope?: 'me' | 'all';
-}
-
-type RemoveReactionRequest =
-    | RemoveUnicodeReactionRequest
-    | RemoveCustomReactionRequest;
-
-// Controller for managing message reactions in DMs and servers
-// Enforces message ownership and server/channel permission checks
 @injectable()
-@Route('api/v1')
-@Tags('Reactions')
-@Security('jwt')
-export class ReactionController extends Controller {
+@Controller('api/v1')
+@ApiTags('Reactions')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+export class ReactionController {
     constructor(
         @inject(TYPES.ReactionRepository)
+        @Inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
         @inject(TYPES.MessageRepository)
+        @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
         @inject(TYPES.ServerMessageRepository)
+        @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
         @inject(TYPES.ServerMemberRepository)
+        @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.ChannelRepository)
+        @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
         @inject(TYPES.PermissionService)
+        @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.PresenceService) private presenceService: PresenceService,
-        @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.PresenceService)
+        @Inject(TYPES.PresenceService)
+        private presenceService: PresenceService,
+        @inject(TYPES.UserRepository)
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
-    // Retrieves reactions for a specific DM message
-    // Enforces that the requester is either the sender or receiver of the DM
-    @Get('messages/{messageId}/reactions')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.REACTION.ACCESS_DENIED,
-    })
-    @Response<ErrorResponse>('404', 'Message Not Found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @Get('messages/:messageId/reactions')
+    @ApiOperation({ summary: 'Get DM reactions' })
+    @ApiResponse({ status: 200, description: 'Reactions retrieved successfully' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Message not found' })
     public async getDmReactions(
-        @Path() messageId: string,
-        @Request() req: ExpressRequest,
+        @Param('messageId') messageId: string,
+        @Req() req: Request,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
@@ -159,27 +105,28 @@ export class ReactionController extends Controller {
         return { reactions };
     }
 
-    // Adds a reaction to a DM message
-    // Enforces DM participation and maximum reaction limits
-    @Post('messages/{messageId}/reactions')
-    @Security('jwt')
-    @Response<ErrorResponse>('400', 'Invalid emoji or limit reached', {
-        error: ErrorMessages.REACTION.MAX_REACTIONS,
+    @Post('messages/:messageId/reactions')
+    @ApiOperation({ summary: 'Add reaction to DM' })
+    @ApiBody({
+        schema: {
+            oneOf: [
+                { $ref: '#/components/schemas/AddUnicodeReactionRequest' },
+                { $ref: '#/components/schemas/AddCustomReactionRequest' },
+            ],
+        },
     })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.REACTION.ACCESS_DENIED,
-    })
-    @Response<ErrorResponse>('404', 'Message not found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @ApiResponse({ status: 201, description: 'Reaction added' })
+    @ApiResponse({ status: 400, description: 'Invalid emoji or limit reached' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Message not found' })
     public async addDmReaction(
-        @Path() messageId: string,
-        @Request() req: ExpressRequest,
-        @Body() body: AddReactionRequest,
+        @Param('messageId') messageId: string,
+        @Req() req: Request,
+        @Body() body: AddUnicodeReactionRequest | AddCustomReactionRequest,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const { emoji, emojiType } = body;
-        const emojiId = emojiType === 'custom' ? body.emojiId : undefined;
+        const emojiId = emojiType === 'custom' ? (body as AddCustomReactionRequest).emojiId : undefined;
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
@@ -203,7 +150,6 @@ export class ReactionController extends Controller {
                 emojiId,
             );
         } catch (err: unknown) {
-            // Handle repository-level validation errors (e.g., duplicate reaction, max limit)
             const error = err as Error;
             if (
                 error.message?.includes('already reacted') ||
@@ -226,7 +172,6 @@ export class ReactionController extends Controller {
                 ? message.receiverId.toString()
                 : message.senderId.toString();
 
-        // Notify both participants
         for (const uid of [userId, receiverId]) {
             const user = await this.userRepo.findById(uid);
             if (user?.username) {
@@ -241,26 +186,28 @@ export class ReactionController extends Controller {
             }
         }
 
-        this.setStatus(201);
         return { reactions };
     }
 
-    // Removes a reaction from a DM message
-    // Enforces DM participation and reaction existence
-    @Delete('messages/{messageId}/reactions')
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.REACTION.ACCESS_DENIED,
+    @Delete('messages/:messageId/reactions')
+    @ApiOperation({ summary: 'Remove reaction from DM' })
+    @ApiBody({
+        schema: {
+            oneOf: [
+                { $ref: '#/components/schemas/RemoveUnicodeReactionRequest' },
+                { $ref: '#/components/schemas/RemoveCustomReactionRequest' },
+            ],
+        },
     })
-    @Response<ErrorResponse>('404', 'Message not found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @ApiResponse({ status: 200, description: 'Reaction removed' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Message not found' })
     public async removeDmReaction(
-        @Path() messageId: string,
-        @Request() req: ExpressRequest,
-        @Body() body: RemoveReactionRequest,
+        @Param('messageId') messageId: string,
+        @Req() req: Request,
+        @Body() body: RemoveUnicodeReactionRequest | RemoveCustomReactionRequest,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
 
@@ -287,72 +234,70 @@ export class ReactionController extends Controller {
             throw new ApiError(404, ErrorMessages.REACTION.REACTION_NOT_FOUND);
         }
 
-            const reactions = await this.reactionRepo.getReactionsByMessage(
-                messageId,
-                'dm',
-                userId,
-            );
+        const reactions = await this.reactionRepo.getReactionsByMessage(
+            messageId,
+            'dm',
+            userId,
+        );
 
-            const io = getIO();
-            const receiverId =
-                message.senderId.toString() === userId
-                    ? message.receiverId.toString()
-                    : message.senderId.toString();
+        const io = getIO();
+        const receiverId =
+            message.senderId.toString() === userId
+                ? message.receiverId.toString()
+                : message.senderId.toString();
 
-            // Notify both participants
-            for (const uid of [userId, receiverId]) {
-                const user = await this.userRepo.findById(uid);
-                if (user?.username) {
-                    const sockets = this.presenceService.getSockets(user.username);
-                    sockets.forEach((sid: string) => {
-                        io.to(sid).emit('reaction_removed', {
-                            messageId,
-                            messageType: 'dm',
-                            reactions,
-                        });
+        for (const uid of [userId, receiverId]) {
+            const user = await this.userRepo.findById(uid);
+            if (user?.username) {
+                const sockets = this.presenceService.getSockets(user.username);
+                sockets.forEach((sid: string) => {
+                    io.to(sid).emit('reaction_removed', {
+                        messageId,
+                        messageType: 'dm',
+                        reactions,
                     });
-                }
+                });
             }
-
-            return { reactions };
         }
 
-        // Adds a reaction to a server message
-        // Enforces server membership and 'addReactions' channel permission
-        @Post(
-            'servers/{serverId}/channels/{channelId}/messages/{messageId}/reactions',
-        )
-        @Security('jwt')
-        @Response<ErrorResponse>('400', 'Invalid emoji or limit reached', {
-            error: ErrorMessages.REACTION.MAX_REACTIONS,
-        })
-        @Response<ErrorResponse>('403', 'Forbidden', {
-            error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-        })
-        @Response<ErrorResponse>('404', 'Message or channel not found', {
-            error: ErrorMessages.MESSAGE.NOT_FOUND,
-        })
-        public async addServerReaction(
-            @Path() serverId: string,
-            @Path() channelId: string,
-            @Path() messageId: string,
-            @Request() req: ExpressRequest,
-            @Body() body: AddReactionRequest,
-        ): Promise < { reactions: ReactionData[] } > {
-            const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-            const { emoji, emojiType } = body;
-            const emojiId = emojiType === 'custom' ? body.emojiId : undefined;
+        return { reactions };
+    }
 
-            const member = await this.serverMemberRepo.findByServerAndUser(
-                serverId,
-                userId,
-            );
-            if(!member) {
-                throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
-            }
+    @Post('servers/:serverId/channels/:channelId/messages/:messageId/reactions')
+    @ApiOperation({ summary: 'Add reaction to server message' })
+    @ApiBody({
+        schema: {
+            oneOf: [
+                { $ref: '#/components/schemas/AddUnicodeReactionRequest' },
+                { $ref: '#/components/schemas/AddCustomReactionRequest' },
+            ],
+        },
+    })
+    @ApiResponse({ status: 201, description: 'Reaction added' })
+    @ApiResponse({ status: 400, description: 'Invalid emoji or limit reached' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Message or channel not found' })
+    public async addServerReaction(
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @Req() req: Request,
+        @Body() body: AddUnicodeReactionRequest | AddCustomReactionRequest,
+    ): Promise<{ reactions: ReactionData[] }> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        const { emoji, emojiType } = body;
+        const emojiId = emojiType === 'custom' ? (body as AddCustomReactionRequest).emojiId : undefined;
+
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            serverId,
+            userId,
+        );
+        if (!member) {
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
+        }
 
         const channel = await this.channelRepo.findById(channelId);
-            if(!channel || channel.serverId.toString() !== serverId) {
+        if (!channel || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
@@ -407,30 +352,30 @@ export class ReactionController extends Controller {
             reactions,
         });
 
-        this.setStatus(201);
         return { reactions };
     }
 
-    // Removes a reaction from a server message
-    // Enforces server membership and 'manageReactions' permission for bulk removal
-    @Delete(
-        'servers/{serverId}/channels/{channelId}/messages/{messageId}/reactions',
-    )
-    @Security('jwt')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+    @Delete('servers/:serverId/channels/:channelId/messages/:messageId/reactions')
+    @ApiOperation({ summary: 'Remove reaction from server message' })
+    @ApiBody({
+        schema: {
+            oneOf: [
+                { $ref: '#/components/schemas/RemoveUnicodeReactionRequest' },
+                { $ref: '#/components/schemas/RemoveCustomReactionRequest' },
+            ],
+        },
     })
-    @Response<ErrorResponse>('404', 'Message or channel not found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @ApiResponse({ status: 200, description: 'Reaction removed' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Message or channel not found' })
     public async removeServerReaction(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Path() messageId: string,
-        @Request() req: ExpressRequest,
-        @Body() body: RemoveReactionRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @Req() req: Request,
+        @Body() body: RemoveUnicodeReactionRequest | RemoveCustomReactionRequest,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
         const scope = body.scope;
@@ -512,24 +457,18 @@ export class ReactionController extends Controller {
         return { reactions };
     }
 
-    // Retrieves reactions for a specific server message
-    // Enforces server membership and message existence
-    @Get(
-        'servers/{serverId}/channels/{channelId}/messages/{messageId}/reactions',
-    )
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.SERVER.NOT_SERVER_MEMBER,
-    })
-    @Response<ErrorResponse>('404', 'Not Found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @Get('servers/:serverId/channels/:channelId/messages/:messageId/reactions')
+    @ApiOperation({ summary: 'Get server reactions' })
+    @ApiResponse({ status: 200, description: 'Reactions retrieved successfully' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Not found' })
     public async getServerReactions(
-        @Path() serverId: string,
-        @Path() channelId: string,
-        @Path() messageId: string,
-        @Request() req: ExpressRequest,
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @Req() req: Request,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userId = (req as Request & { user: JWTPayload }).user.id;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,

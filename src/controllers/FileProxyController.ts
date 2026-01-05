@@ -107,100 +107,115 @@ export class FileProxyController {
                 FileProxyController.downloadCache.delete(cacheKey);
             }
 
-            const response = await fetchWithRedirects(targetUrl, {
-                method: 'GET',
-            });
-
-            if (!response.ok) {
-                res.status(response.status).json({
-                    error: `${ErrorMessages.FILE.FAILED_FETCH_RESOURCE} (status ${response.status})`,
-                });
-                return;
-            }
-
-            const contentLengthHeader = response.headers.get('content-length');
-            if (contentLengthHeader) {
-                const parsed = Number(contentLengthHeader);
-                if (!Number.isNaN(parsed) && parsed > MAX_FILE_SIZE_BYTES) {
-                    await response.body?.cancel();
-                    res.status(413).json({
-                        error: ErrorMessages.FILE.SIZE_EXCEEDS_LIMIT,
-                    });
-                    return;
-                }
-            }
-
-            let buffer: Buffer;
             try {
-                const bodyStream =
-                    response.body as WebReadableStream<Uint8Array> | null;
-                buffer = await readBodyWithLimit(
-                    bodyStream,
-                    MAX_FILE_SIZE_BYTES,
-                );
-            } catch (err) {
-                if (
-                    err instanceof Error &&
-                    err.message === 'MAX_FILE_SIZE_EXCEEDED'
-                ) {
-                    res.status(413).json({
-                        error: ErrorMessages.FILE.SIZE_EXCEEDS_LIMIT,
+                const response = await fetchWithRedirects(targetUrl, {
+                    method: 'GET',
+                });
+
+                if (!response.ok) {
+                    res.status(response.status).json({
+                        error: `${ErrorMessages.FILE.FAILED_FETCH_RESOURCE} (status ${response.status})`,
                     });
                     return;
                 }
 
-                res.status(502).json({
-                    error: ErrorMessages.FILE.FAILED_DOWNLOAD_REMOTE,
+                const contentLengthHeader = response.headers.get('content-length');
+                // ... rest of logic
+                if (contentLengthHeader) {
+                    const parsed = Number(contentLengthHeader);
+                    if (!Number.isNaN(parsed) && parsed > MAX_FILE_SIZE_BYTES) {
+                        await response.body?.cancel();
+                        res.status(413).json({
+                            error: ErrorMessages.FILE.SIZE_EXCEEDS_LIMIT,
+                        });
+                        return;
+                    }
+                }
+
+                let buffer: Buffer;
+                try {
+                    const bodyStream =
+                        response.body as WebReadableStream<Uint8Array> | null;
+                    buffer = await readBodyWithLimit(
+                        bodyStream,
+                        MAX_FILE_SIZE_BYTES,
+                    );
+                } catch (err) {
+                    if (
+                        err instanceof Error &&
+                        err.message === 'MAX_FILE_SIZE_EXCEEDED'
+                    ) {
+                        res.status(413).json({
+                            error: ErrorMessages.FILE.SIZE_EXCEEDS_LIMIT,
+                        });
+                        return;
+                    }
+
+                    res.status(502).json({
+                        error: ErrorMessages.FILE.FAILED_DOWNLOAD_REMOTE,
+                    });
+                    return;
+                }
+
+                const headerRecord = sanitizeHeaders(response.headers);
+                const size = buffer.length;
+
+                // Maintain cache size limits
+                pruneCache(FileProxyController.downloadCache, MAX_CACHE_ENTRIES);
+                FileProxyController.downloadCache.set(cacheKey, {
+                    buffer,
+                    status: response.status,
+                    headers: headerRecord,
+                    size,
+                    expiresAt: now + CACHE_TTL_MS,
                 });
-                return;
+
+                for (const [header, value] of Object.entries(headerRecord)) {
+                    res.setHeader(header, value);
+                }
+                res.setHeader('Content-Length', size.toString());
+                res.setHeader(
+                    'Cache-Control',
+                    'private, max-age=0, must-revalidate',
+                );
+                res.status(response.status).send(buffer);
+
+            } catch (err) {
+                if (err instanceof Error) {
+                    if (
+                        err.message === ErrorMessages.FILE.URL_REQUIRED ||
+                        err.message === ErrorMessages.FILE.INVALID_URL ||
+                        err.message === ErrorMessages.FILE.ONLY_HTTP_HTTPS ||
+                        err.message === ErrorMessages.FILE.HOST_NOT_ALLOWED ||
+                        err.message === ErrorMessages.FILE.DISALLOWED_ADDRESS ||
+                        err.message === ErrorMessages.FILE.TOO_MANY_REDIRECTS
+                    ) {
+                        res.status(400).json({ error: err.message });
+                        return;
+                    }
+                }
+                this.logger.error('Failed to proxy file:', err);
+                if (!res.headersSent) {
+                    res.status(502).json({ error: ErrorMessages.FILE.FAILED_PROXY });
+                }
             }
-
-            const headerRecord = sanitizeHeaders(response.headers);
-            const size = buffer.length;
-
-            // Maintain cache size limits
-            pruneCache(FileProxyController.downloadCache, MAX_CACHE_ENTRIES);
-            FileProxyController.downloadCache.set(cacheKey, {
-                buffer,
-                status: response.status,
-                headers: headerRecord,
-                size,
-                expiresAt: now + CACHE_TTL_MS,
-            });
-
-            for (const [header, value] of Object.entries(headerRecord)) {
-                res.setHeader(header, value);
-            }
-            res.setHeader('Content-Length', size.toString());
-            res.setHeader(
-                'Cache-Control',
-                'private, max-age=0, must-revalidate',
-            );
-            res.status(response.status).send(buffer);
         } catch (err) {
             if (err instanceof Error) {
                 if (
                     err.message === ErrorMessages.FILE.URL_REQUIRED ||
                     err.message === ErrorMessages.FILE.INVALID_URL ||
-                    err.message === ErrorMessages.FILE.ONLY_HTTP_HTTPS
+                    err.message === ErrorMessages.FILE.ONLY_HTTP_HTTPS ||
+                    err.message === ErrorMessages.FILE.HOST_NOT_ALLOWED ||
+                    err.message === ErrorMessages.FILE.DISALLOWED_ADDRESS ||
+                    err.message === ErrorMessages.FILE.TOO_MANY_REDIRECTS
                 ) {
                     res.status(400).json({ error: err.message });
                     return;
                 }
             }
-
             this.logger.error('Failed to proxy file:', err);
-            // Since we're using @Res(), we must manually send the error response if we catch it here.
-            // Throwing ApiError works too IF the exception filter catches it, BUT
-            // typically when @Res() is used, Nest expects you to handle the response completely.
-            // However, filters *can* catch exceptions from handlers using @Res() if passthrough isn't set,
-            // but it's safer to use manual response here to match the success path style.
-            // Actually, for consistency with other controllers, throwing ApiError is better IF we rely on the global filter.
-            // But let's stick to the manual response for now as this controller is weird.
-            // Wait, I just added ApiErrorFilter. It should handle errors.
-            // Let's use ApiError for 500.
             if (!res.headersSent) {
-                throw new ApiError(500, ErrorMessages.FILE.FAILED_PROXY);
+                res.status(502).json({ error: ErrorMessages.FILE.FAILED_PROXY });
             }
         }
     }
@@ -265,14 +280,18 @@ export class FileProxyController {
                 if (
                     err.message === ErrorMessages.FILE.URL_REQUIRED ||
                     err.message === ErrorMessages.FILE.INVALID_URL ||
-                    err.message === ErrorMessages.FILE.ONLY_HTTP_HTTPS
+                    err.message === ErrorMessages.FILE.ONLY_HTTP_HTTPS ||
+                    err.message === ErrorMessages.FILE.HOST_NOT_ALLOWED ||
+                    err.message === ErrorMessages.FILE.DISALLOWED_ADDRESS ||
+                    err.message === ErrorMessages.FILE.TOO_MANY_REDIRECTS
                 ) {
                     throw new ApiError(400, err.message);
                 }
             }
 
             this.logger.error('Failed to fetch metadata:', err);
-            throw new ApiError(500, ErrorMessages.FILE.FAILED_FETCH_META);
+            // Return 502 for upstream failures instead of 500
+            throw new ApiError(502, ErrorMessages.FILE.FAILED_FETCH_META);
         }
     }
 }
