@@ -2,47 +2,64 @@ import {
     Controller,
     Get,
     Post,
-    Route,
-    Tags,
-    Path,
-    Request,
-    Response,
-    Security,
+    Param,
+    Req,
+    Res,
+    UseGuards,
+    UseInterceptors,
     UploadedFile,
-} from 'tsoa';
-import { injectable, inject } from 'inversify';
+    Inject,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { TYPES } from '@/di/types';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import express from 'express';
+import { ILogger } from '@/di/interfaces/ILogger';
+import { ApiTags, ApiResponse, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { SERVER_URL } from '@/config/env';
-import { extractOriginalFilename } from '@/config/multer';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import { extractOriginalFilename, storage } from '@/config/multer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
-
 import {
     FileUploadResponseDTO,
     FileMetadataResponseDTO,
 } from './dto/file.response.dto';
+import { injectable, inject } from 'inversify';
 
 // Controller for file uploads, metadata retrieval, and downloads
+@ApiTags('Files')
 @injectable()
-@Route('api/v1/files')
-@Tags('Files')
-export class FileController extends Controller {
-    constructor(@inject(TYPES.Logger) private logger: ILogger) {
-        super();
-    }
+@Controller('api/v1/files')
+export class FileController {
+    constructor(
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
-    // Uploads a file and returns a download URL
-    // Expects a multipart/form-data request with a 'file' field
     @Post('upload')
-    @Security('jwt')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @UseInterceptors(FileInterceptor('file', { storage }))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
+    })
+    @ApiOperation({ summary: 'Upload a file' })
+    @ApiResponse({ status: 201, type: FileUploadResponseDTO })
     public async uploadFile(
         @UploadedFile() file: Express.Multer.File,
-        @Request() _req: express.Request,
+        @Req() _req: Request,
     ): Promise<FileUploadResponseDTO> {
         if (!file) {
             throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
@@ -52,16 +69,13 @@ export class FileController extends Controller {
         return { url: fileUrl };
     }
 
-    // Retrieves file metadata without downloading the content
-    @Get('metadata/{filename}')
-    @Response<ErrorResponse>('400', 'Invalid filename', {
-        error: ErrorMessages.FILE.INVALID_FILENAME,
-    })
-    @Response<ErrorResponse>('404', 'File not found', {
-        error: ErrorMessages.FILE.NOT_FOUND,
-    })
+    @Get('metadata/:filename')
+    @ApiOperation({ summary: 'Get file metadata' })
+    @ApiResponse({ status: 200, type: FileMetadataResponseDTO })
+    @ApiResponse({ status: 400, description: 'Invalid filename' })
+    @ApiResponse({ status: 404, description: 'File not found' })
     public async getFileMetadata(
-        @Path() filename: string,
+        @Param('filename') filename: string,
     ): Promise<FileMetadataResponseDTO> {
         const safeFilename = path.basename(filename);
         if (safeFilename !== filename) {
@@ -81,7 +95,6 @@ export class FileController extends Controller {
             ? extractOriginalFilename(safeFilename)
             : safeFilename;
 
-        // Detect binary content by checking for null bytes in the first 8KiB
         let isBinary = false;
         try {
             const buffer = Buffer.alloc(Math.min(8192, stats.size));
@@ -107,21 +120,16 @@ export class FileController extends Controller {
         };
     }
 
-    // Downloads a file with its original filename
-    @Get('download/{filename}')
-    @Response<ErrorResponse>('400', 'Invalid filename', {
-        error: ErrorMessages.FILE.INVALID_FILENAME,
-    })
-    @Response<ErrorResponse>('404', 'File not found', {
-        error: ErrorMessages.FILE.NOT_FOUND,
-    })
+    @Get('download/:filename')
+    @ApiOperation({ summary: 'Download a file' })
+    @ApiResponse({ status: 200, description: 'File stream' })
+    @ApiResponse({ status: 400, description: 'Invalid filename' })
+    @ApiResponse({ status: 404, description: 'File not found' })
     public async downloadFile(
-        @Path() filename: string,
-        @Request() req: express.Request,
+        @Param('filename') filename: string,
+        @Req() req: Request,
+        @Res() res: Response,
     ): Promise<void> {
-        const res = req.res;
-        if (!res) throw new ApiError(500, 'Response object not found');
-
         const safeFilename = path.basename(filename);
         if (safeFilename !== filename) {
             throw new ApiError(400, 'Invalid filename');
@@ -139,7 +147,6 @@ export class FileController extends Controller {
             ? extractOriginalFilename(safeFilename)
             : safeFilename;
 
-        // Escape quotes and backslashes for Content-Disposition header
         const escapedFilename = originalFilename.replace(/["\\]/g, '\\$&');
         const encodedFilename = encodeURIComponent(originalFilename);
 
@@ -154,20 +161,14 @@ export class FileController extends Controller {
 
         const fileStream = fs.createReadStream(filePath);
 
-        return new Promise((resolve, reject) => {
-            fileStream.pipe(res);
-            fileStream.on('end', () => {
-                resolve();
-            });
-            fileStream.on('error', (err) => {
-                this.logger.error('Stream error:', err);
-                if (!res.headersSent) {
-                    res.status(500).json({
-                        error: ErrorMessages.FILE.FAILED_STREAM,
-                    });
-                }
-                reject(err);
-            });
+        fileStream.pipe(res);
+        fileStream.on('error', (err) => {
+            this.logger.error('Stream error:', err);
+            if (!res.headersSent) {
+                res.status(500).json({
+                    error: ErrorMessages.FILE.FAILED_STREAM,
+                });
+            }
         });
     }
 

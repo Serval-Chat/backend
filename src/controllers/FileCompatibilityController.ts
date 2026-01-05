@@ -1,40 +1,44 @@
-import { Controller, Get, Route, Tags, Path, Request, Response } from 'tsoa';
-import { injectable, inject } from 'inversify';
+import {
+    Controller,
+    Get,
+    Param,
+    Req,
+    Res,
+    Inject,
+} from '@nestjs/common';
 import { TYPES } from '@/di/types';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import express from 'express';
+import { ILogger } from '@/di/interfaces/ILogger';
+import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { extractOriginalFilename } from '@/config/multer';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
+import { injectable, inject } from 'inversify';
 
 // Compatibility controller for file downloads
 // Provides the legacy /api/v1/download/:filename endpoint
+@ApiTags('Files')
 @injectable()
-@Route('api/v1')
-@Tags('Files')
-export class FileCompatibilityController extends Controller {
-    constructor(@inject(TYPES.Logger) private logger: ILogger) {
-        super();
-    }
+@Controller('api/v1')
+export class FileCompatibilityController {
+    constructor(
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
-    // Downloads a file with its original filename (legacy endpoint)
-    @Get('download/{filename}')
-    @Response<ErrorResponse>('400', 'Invalid filename', {
-        error: ErrorMessages.FILE.INVALID_FILENAME,
-    })
-    @Response<ErrorResponse>('404', 'File not found', {
-        error: ErrorMessages.FILE.NOT_FOUND,
-    })
+    @Get('download/:filename')
+    @ApiOperation({ summary: 'Download a file (legacy)' })
+    @ApiResponse({ status: 200, description: 'File stream' })
+    @ApiResponse({ status: 400, description: 'Invalid filename' })
+    @ApiResponse({ status: 404, description: 'File not found' })
     public async downloadFile(
-        @Path() filename: string,
-        @Request() req: express.Request,
+        @Param('filename') filename: string,
+        @Req() req: Request,
+        @Res() res: Response,
     ): Promise<void> {
-        const res = req.res;
-        if (!res) throw new ApiError(500, ErrorMessages.SYSTEM.RESPONSE_NOT_FOUND);
-
         const safeFilename = path.basename(filename);
         if (safeFilename !== filename) {
             throw new ApiError(400, ErrorMessages.FILE.INVALID_FILENAME);
@@ -60,7 +64,6 @@ export class FileCompatibilityController extends Controller {
             ? extractOriginalFilename(safeFilename)
             : safeFilename;
 
-        // Escape quotes and backslashes for Content-Disposition header
         const escapedFilename = originalFilename.replace(/["\\]/g, '\\$&');
         const encodedFilename = encodeURIComponent(originalFilename);
 
@@ -75,20 +78,14 @@ export class FileCompatibilityController extends Controller {
 
         const fileStream = fs.createReadStream(filePath);
 
-        return new Promise((resolve, reject) => {
-            fileStream.pipe(res);
-            fileStream.on('end', () => {
-                resolve();
-            });
-            fileStream.on('error', (err) => {
-                this.logger.error('Stream error:', err);
-                if (!res.headersSent) {
-                    res.status(500).json({
-                        error: ErrorMessages.FILE.FAILED_STREAM,
-                    });
-                }
-                reject(err);
-            });
+        fileStream.pipe(res);
+        fileStream.on('error', (err) => {
+            this.logger.error('Stream error:', err);
+            if (!res.headersSent) {
+                res.status(500).json({
+                    error: ErrorMessages.FILE.FAILED_STREAM,
+                });
+            }
         });
     }
 

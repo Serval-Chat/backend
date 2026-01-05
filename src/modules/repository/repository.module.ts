@@ -12,6 +12,7 @@ import { MongooseRoleRepository } from '@/infrastructure/repositories/MongooseRo
 import { MongooseCategoryRepository } from '@/infrastructure/repositories/MongooseCategoryRepository';
 import { MongooseChannelRepository } from '@/infrastructure/repositories/MongooseChannelRepository';
 import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePingRepository';
+import { MongooseEmojiRepository } from '@/infrastructure/repositories/MongooseEmojiRepository';
 
 @Global()
 @Module({
@@ -64,6 +65,10 @@ import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePi
             provide: TYPES.PingRepository,
             useClass: MongoosePingRepository,
         },
+        {
+            provide: TYPES.EmojiRepository,
+            useClass: MongooseEmojiRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -78,6 +83,7 @@ import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePi
         TYPES.CategoryRepository,
         TYPES.ChannelRepository,
         TYPES.PingRepository,
+        TYPES.EmojiRepository,
     ],
 })
 export class RepositoryModule { }
