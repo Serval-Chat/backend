@@ -2,22 +2,22 @@ import {
     Controller,
     Get,
     Post,
-    Route,
     Body,
-    Security,
-    Response,
-    Tags,
-    Request,
-} from 'tsoa';
+    Req,
+    UseGuards,
+    Inject,
+    NotFoundException,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import express from 'express';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { ApiError } from '@/utils/ApiError';
 import { JWTPayload } from '@/utils/jwt';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { UpdateSettingsRequestDTO } from './dto/settings.request.dto';
 
 interface UserSettings {
     muteNotifications?: boolean;
@@ -29,37 +29,37 @@ interface UserSettings {
     otherMessageColor?: string;
 }
 
-interface UpdateSettingsRequest extends UserSettings { }
-
 // Controller for managing user-specific application settings
 // Enforces JWT authentication
 @injectable()
-@Route('api/v1/settings')
-@Tags('Settings')
-@Security('jwt')
-export class SettingsController extends Controller {
+@Controller('api/v1/settings')
+@ApiTags('Settings')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
+export class SettingsController {
     constructor(
-        @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.UserRepository)
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
     // Retrieves the current user's settings
     // Returns default values if no custom settings are configured
     @Get()
-    @Response<ErrorResponse>('404', 'User Not Found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @ApiOperation({ summary: 'Get user settings' })
+    @ApiResponse({ status: 200, description: 'Settings retrieved' })
+    @ApiResponse({ status: 404, description: ErrorMessages.AUTH.USER_NOT_FOUND })
     public async getSettings(
-        @Request() req: express.Request,
+        @Req() req: ExpressRequest,
     ): Promise<UserSettings> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const user = await this.userRepo.findById(userId);
 
         if (!user) {
-            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         // Fallback to system default UI preferences if the user has not customized settings
@@ -79,19 +79,18 @@ export class SettingsController extends Controller {
     // Updates the current user's settings
     // Performs a partial update of the settings object
     @Post()
-    @Response<ErrorResponse>('404', 'User Not Found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @ApiOperation({ summary: 'Update user settings' })
+    @ApiResponse({ status: 201, description: 'Settings updated' })
+    @ApiResponse({ status: 404, description: ErrorMessages.AUTH.USER_NOT_FOUND })
     public async updateSettings(
-        @Request() req: express.Request,
-        @Body() body: UpdateSettingsRequest,
+        @Req() req: ExpressRequest,
+        @Body() body: UpdateSettingsRequestDTO,
     ): Promise<{ message: string; settings: UserSettings }> {
-        // @ts-ignore
-        const userId = req.user.id;
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const user = await this.userRepo.findById(userId);
         if (!user) {
-            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         // Perform a partial settings update

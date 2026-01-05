@@ -67,6 +67,17 @@ async function bootstrap() {
     const { DebugService } = await import('./ws/services/DebugService');
     wsServer.registerController(new DebugService(wsServer));
 
+    // Initialize Swagger
+    const { SwaggerModule, DocumentBuilder } = await import('@nestjs/swagger');
+    const config = new DocumentBuilder()
+        .setTitle('Serchat API')
+        .setDescription('The Serchat API description')
+        .setVersion('1.0')
+        .addBearerAuth()
+        .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+
     startMetricsUpdater(60000);
 
     // Start the application

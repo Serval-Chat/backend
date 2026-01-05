@@ -53,6 +53,7 @@ import {
     UploadIconResponse,
     UploadBannerResponse,
 } from './dto/server.dto';
+import { UpdateDefaultRoleRequestDTO } from './dto/server-default-role.request.dto';
 
 @injectable()
 @Controller('api/v1/servers')
@@ -656,5 +657,54 @@ export class ServerController {
         });
 
         return { banner: bannerUrl };
+    }
+    @Patch(':serverId/default-role')
+    @ApiOperation({ summary: 'Update server default role' })
+    @ApiResponse({ status: 200, type: SetDefaultRoleResponse })
+    @ApiResponse({ status: 400, description: 'Bad Request' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server or role not found' })
+    public async updateDefaultRole(
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
+        @Body() body: UpdateDefaultRoleRequestDTO,
+    ): Promise<{ defaultRoleId: string | null }> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        const { roleId } = body;
+
+        if (
+            !(await this.permissionService.hasPermission(
+                serverId,
+                userId,
+                'manageServer',
+            ))
+        ) {
+            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
+        }
+
+        if (roleId) {
+            const role = await this.roleRepo.findById(roleId);
+            if (!role) {
+                throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
+            }
+            if (role.serverId.toString() !== serverId) {
+                throw new ApiError(400, ErrorMessages.ROLE.NOT_IN_SERVER);
+            }
+            if (role.name && role.name.trim().toLowerCase() === '@everyone') {
+                throw new ApiError(400, ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT);
+            }
+        }
+
+        const server = await this.serverRepo.update(serverId, {
+            defaultRoleId: roleId || undefined,
+        });
+
+        const io = getIO();
+        io.to(`server:${serverId}`).emit('server_updated', {
+            serverId,
+            server,
+        });
+
+        return { defaultRoleId: roleId || null };
     }
 }

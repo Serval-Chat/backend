@@ -25,7 +25,13 @@ import { ServerChannelController } from './controllers/ServerChannelController';
 import { ServerController } from './controllers/ServerController';
 import { ServerMemberController } from './controllers/ServerMemberController';
 import { ServerInviteController } from './controllers/ServerInviteController';
+import { ServerRoleController } from './controllers/ServerRoleController';
 import { ServerEmojiController } from './controllers/ServerEmojiController';
+import { ServerMessageController } from './controllers/ServerMessageController';
+import { ServerPublicController } from './controllers/ServerPublicController';
+import { SystemController } from './controllers/SystemController';
+import { UserMessageController } from './controllers/UserMessageController';
+import { SettingsController } from './controllers/SettingsController';
 
 @Module({
     imports: [
@@ -56,7 +62,13 @@ import { ServerEmojiController } from './controllers/ServerEmojiController';
         ServerController,
         ServerMemberController,
         ServerInviteController,
+        ServerRoleController,
         ServerEmojiController,
+        ServerMessageController,
+        ServerPublicController,
+        SystemController,
+        UserMessageController,
+        SettingsController,
     ],
     providers: [
         {

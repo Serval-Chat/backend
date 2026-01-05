@@ -3,15 +3,18 @@ import {
     Get,
     Patch,
     Delete,
-    Route,
-    Query,
-    Path,
-    Security,
-    Response,
-    Tags,
-    Request,
     Body,
-} from 'tsoa';
+    Query,
+    Param,
+    Req,
+    UseGuards,
+    Inject,
+    NotFoundException,
+    ForbiddenException,
+    BadRequestException,
+    InternalServerErrorException,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -26,10 +29,11 @@ import type {
     ReactionData,
 } from '@/di/interfaces/IReactionRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import express from 'express';
-import { ErrorResponse } from '@/controllers/models/ErrorResponse';
+import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { ApiError } from '@/utils/ApiError';
+import { JWTPayload } from '@/utils/jwt';
+import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { UserEditMessageRequestDTO } from './dto/user-message.request.dto';
 
 interface UnreadCountsResponse {
     counts: Record<string, number>;
@@ -44,39 +48,43 @@ interface MessageResponse {
     repliedMessage: IMessage | null;
 }
 
-interface UserEditMessageRequest {
-    content: string;
-}
-
 // Controller for managing direct messages (DMs) between users
 // Enforces friendship checks and conversation membership validation
 @injectable()
-@Route('api/v1/messages')
-@Tags('User Messages')
-@Security('jwt')
-export class UserMessageController extends Controller {
+@Controller('api/v1/messages')
+@ApiTags('User Messages')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
+export class UserMessageController {
     constructor(
-        @inject(TYPES.UserRepository) private userRepo: IUserRepository,
+        @inject(TYPES.UserRepository)
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
         @inject(TYPES.FriendshipRepository)
+        @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.MessageRepository)
+        @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
         @inject(TYPES.DmUnreadRepository)
+        @Inject(TYPES.DmUnreadRepository)
         private dmUnreadRepo: IDmUnreadRepository,
         @inject(TYPES.ReactionRepository)
+        @Inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
-        @inject(TYPES.Logger) private logger: ILogger,
-    ) {
-        super();
-    }
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
+    ) { }
 
     // Retrieves unread DM counts for the current user, grouped by peer
     @Get('unread')
+    @ApiOperation({ summary: 'Get unread counts' })
+    @ApiResponse({ status: 200, description: 'Unread counts retrieved' })
     public async getUnreadCounts(
-        @Request() req: express.Request,
+        @Req() req: ExpressRequest,
     ): Promise<UnreadCountsResponse> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const docs = await this.dmUnreadRepo.findByUser(meId);
 
         // Map unread count documents to a simple peerId -> count record
@@ -91,34 +99,37 @@ export class UserMessageController extends Controller {
     // Retrieves messages between the current user and a specific peer
     // Enforces that both users are friends
     @Get()
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: 'User ID is required',
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
-    })
-    @Response<ErrorResponse>('404', 'User Not Found', {
-        error: ErrorMessages.AUTH.USER_NOT_FOUND,
-    })
+    @ApiOperation({ summary: 'Get messages' })
+    @ApiQuery({ name: 'userId', required: true })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    @ApiQuery({ name: 'before', required: false, type: String })
+    @ApiQuery({ name: 'around', required: false, type: String })
+    @ApiResponse({ status: 200, description: 'Messages retrieved' })
+    @ApiResponse({ status: 400, description: 'User ID is required' })
+    @ApiResponse({ status: 403, description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS })
+    @ApiResponse({ status: 404, description: ErrorMessages.AUTH.USER_NOT_FOUND })
     public async getMessages(
-        @Request() req: express.Request,
-        @Query() userId: string,
-        @Query() limit: number = 100,
-        @Query() before?: string,
-        @Query() around?: string,
+        @Req() req: ExpressRequest,
+        @Query('userId') userId: string,
+        @Query('limit') limit: number = 100,
+        @Query('before') before?: string,
+        @Query('around') around?: string,
     ): Promise<MessageWithReactions[]> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+
+        if (!userId) {
+            throw new BadRequestException('User ID is required');
+        }
 
         const userDoc = await this.userRepo.findById(userId);
         if (!userDoc) {
-            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         const otherUserId = userDoc._id.toString();
 
         // Only allow message retrieval if a friendship exists
         if (!(await this.friendshipRepo.areFriends(meId, otherUserId))) {
-            throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
+            throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
         // Enforce an upper limit to prevent excessive data retrieval
@@ -147,7 +158,7 @@ export class UserMessageController extends Controller {
                 : m;
             return {
                 ...msgObj,
-                reactions: reactionsMap[msg._id.toString()] || [],
+                reactions: (reactionsMap as Record<string, unknown[]>)[msg._id.toString()] || [],
             } as MessageWithReactions;
         });
 
@@ -156,37 +167,36 @@ export class UserMessageController extends Controller {
 
     // Retrieves a specific message by ID
     // Enforces friendship and conversation membership
-    @Get('{id}')
-    @Response<ErrorResponse>('400', 'Bad Request', {
-        error: 'Invalid message ID',
-    })
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
-    })
-    @Response<ErrorResponse>('404', 'Message Not Found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @Get(':id')
+    @ApiOperation({ summary: 'Get message by ID' })
+    @ApiQuery({ name: 'userId', required: true })
+    @ApiResponse({ status: 200, description: 'Message retrieved' })
+    @ApiResponse({ status: 403, description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getMessage(
-        @Path() id: string,
-        @Request() req: express.Request,
-        @Query() userId: string,
+        @Param('id') id: string,
+        @Req() req: ExpressRequest,
+        @Query('userId') userId: string,
     ): Promise<MessageResponse> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+
+        if (!id) {
+            throw new BadRequestException('Invalid message ID');
+        }
 
         const userDoc = await this.userRepo.findById(userId);
         if (!userDoc) {
-            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         const otherUserId = userDoc._id.toString();
 
         if (!(await this.friendshipRepo.areFriends(meId, otherUserId))) {
-            throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
+            throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
         const targetMessage = await this.messageRepo.findById(id);
         if (!targetMessage) {
-            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         // Ensure the message actually belongs to the conversation between these two users
@@ -197,7 +207,7 @@ export class UserMessageController extends Controller {
                 targetMessage.receiverId.toString() === meId);
 
         if (!isPartOfConversation) {
-            throw new ApiError(403, ErrorMessages.MESSAGE.NOT_IN_CONVERSATION);
+            throw new ForbiddenException(ErrorMessages.MESSAGE.NOT_IN_CONVERSATION);
         }
 
         let repliedMessage = null;
@@ -212,31 +222,28 @@ export class UserMessageController extends Controller {
 
     // Retrieves a single message by ID with friendship check (alternative route)
     // Enforces conversation membership
-    @Get('{userId}/{messageId}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
-    })
-    @Response<ErrorResponse>('404', 'Message Not Found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @Get(':userId/:messageId')
+    @ApiOperation({ summary: 'Get user message' })
+    @ApiResponse({ status: 200, description: 'Message retrieved' })
+    @ApiResponse({ status: 403, description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getUserMessage(
-        @Path() userId: string,
-        @Path() messageId: string,
-        @Request() req: express.Request,
+        @Param('userId') userId: string,
+        @Param('messageId') messageId: string,
+        @Req() req: ExpressRequest,
     ): Promise<MessageResponse> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         // Ensure users are friends before allowing message access
         if (!(await this.friendshipRepo.areFriends(meId, userId))) {
             if (meId !== userId) {
-                throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
+                throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
             }
         }
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
-            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         // Ensure the message actually belongs to the conversation between these two users
@@ -247,7 +254,7 @@ export class UserMessageController extends Controller {
                 message.receiverId.toString() === meId);
 
         if (!isPartOfConversation) {
-            throw new ApiError(403, ErrorMessages.MESSAGE.NOT_IN_CONVERSATION);
+            throw new ForbiddenException(ErrorMessages.MESSAGE.NOT_IN_CONVERSATION);
         }
 
         let repliedMessage = null;
@@ -265,40 +272,37 @@ export class UserMessageController extends Controller {
 
     // Edits an existing direct message
     // Enforces that only the original sender can edit their message
-    @Patch('{id}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.AUTH.UNAUTHORIZED,
-    })
-    @Response<ErrorResponse>('404', 'Message Not Found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @Patch(':id')
+    @ApiOperation({ summary: 'Edit message' })
+    @ApiResponse({ status: 200, description: 'Message updated' })
+    @ApiResponse({ status: 403, description: ErrorMessages.AUTH.UNAUTHORIZED })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async editMessage(
-        @Path() id: string,
-        @Request() req: express.Request,
-        @Body() body: UserEditMessageRequest,
+        @Param('id') id: string,
+        @Req() req: ExpressRequest,
+        @Body() body: UserEditMessageRequestDTO,
     ): Promise<IMessage> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { content } = body;
 
         if (!content || !content.trim()) {
-            throw new ApiError(400, ErrorMessages.MESSAGE.CONTENT_REQUIRED);
+            throw new BadRequestException(ErrorMessages.MESSAGE.CONTENT_REQUIRED);
         }
 
         const message = await this.messageRepo.findById(id);
         if (!message) {
-            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         // Only the sender is authorized to modify the message content
         if (message.senderId.toString() !== meId) {
-            throw new ApiError(403, ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         const updated = await this.messageRepo.update(id, content);
         // Mark message as edited for client-side rendering
         if (!updated) {
-            throw new ApiError(500, ErrorMessages.SYSTEM.INTERNAL_ERROR);
+            throw new InternalServerErrorException(ErrorMessages.SYSTEM.INTERNAL_ERROR);
         }
 
         return updated;
@@ -306,28 +310,25 @@ export class UserMessageController extends Controller {
 
     // Deletes a direct message
     // Enforces that only the original sender can delete their message
-    @Delete('{id}')
-    @Response<ErrorResponse>('403', 'Forbidden', {
-        error: ErrorMessages.AUTH.UNAUTHORIZED,
-    })
-    @Response<ErrorResponse>('404', 'Message Not Found', {
-        error: ErrorMessages.MESSAGE.NOT_FOUND,
-    })
+    @Delete(':id')
+    @ApiOperation({ summary: 'Delete message' })
+    @ApiResponse({ status: 200, description: 'Message deleted' })
+    @ApiResponse({ status: 403, description: ErrorMessages.AUTH.UNAUTHORIZED })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async deleteMessage(
-        @Path() id: string,
-        @Request() req: express.Request,
+        @Param('id') id: string,
+        @Req() req: ExpressRequest,
     ): Promise<{ success: boolean }> {
-        // @ts-ignore
-        const meId = req.user.id;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const message = await this.messageRepo.findById(id);
         if (!message) {
-            throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         // Only the sender is authorized to delete the message
         if (message.senderId.toString() !== meId) {
-            throw new ApiError(403, ErrorMessages.AUTH.UNAUTHORIZED);
+            throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         const deleted = await this.messageRepo.delete(id);
