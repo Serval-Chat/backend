@@ -19,7 +19,6 @@ esbuild.build({
 }).then(() => {
     // Copy static assets
     const assets = [
-        { src: 'src/ws/websocket.proto', dest: 'dist/websocket.proto' }
     ];
 
     assets.forEach(({ src, dest }) => {
