@@ -25,7 +25,6 @@ import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 
 // Infrastructure implementations
 import { WinstonLogger } from '@/infrastructure/WinstonLogger';
-import { SocketIOEmitter } from '@/infrastructure/SocketIOEmitter';
 
 // Repository implementations
 import { MongooseUserRepository } from '@/infrastructure/repositories/MongooseUserRepository';
@@ -98,11 +97,6 @@ const container = new Container();
 // ====================
 
 container.bind<ILogger>(TYPES.Logger).to(WinstonLogger).inSingletonScope();
-
-container
-    .bind<IEventEmitter>(TYPES.EventEmitter)
-    .to(SocketIOEmitter)
-    .inSingletonScope();
 
 // ==================
 // Repository Layer

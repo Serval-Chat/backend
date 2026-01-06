@@ -11,11 +11,11 @@ import { connectDB } from '@/config/db';
 import { createSocketServer } from '@/socket/init';
 import { startMetricsUpdater } from '@/utils/metrics-updater';
 import { container } from '@/di/container';
+import { TYPES } from '@/di/types';
+import { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { IBanRepository } from '@/di/interfaces/IBanRepository';
 import * as YAML from 'yaml';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { WsServer } from './ws/server';
-import { WsSender } from './ws/sender';
-import { DebugService } from './ws/services/DebugService';
 
 async function bootstrap() {
     // Ensure necessary directories exist
@@ -80,15 +80,6 @@ async function bootstrap() {
     // Initialize Real-time and Metrics
     const httpServer = app.getHttpServer();
     await createSocketServer(httpServer, container);
-
-    // Initialize New WebSocket Scaffolding
-    const wsServer = new WsServer(httpServer);
-
-    // Initialize WebSocket Sender
-    const wsSender = new WsSender();
-
-    // Register Debug Service
-    wsServer.registerController(new DebugService(wsSender));
 
     // Initialize Swagger
     const config = new DocumentBuilder()
