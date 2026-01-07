@@ -14,7 +14,13 @@ import { container } from '@/di/container';
 
 async function bootstrap() {
     // Ensure necessary directories exist
-    const uploadDirs = ['uploads', 'uploads/uploads', 'uploads/servers', 'uploads/webhooks', 'uploads/emojis'];
+    const uploadDirs = [
+        'uploads',
+        'uploads/uploads',
+        'uploads/servers',
+        'uploads/webhooks',
+        'uploads/emojis',
+    ];
     for (const dir of uploadDirs) {
         const fullPath = path.join(process.cwd(), dir);
         if (!fs.existsSync(fullPath)) {
@@ -42,7 +48,10 @@ async function bootstrap() {
                 cert: fs.readFileSync(certPath),
             };
         } else {
-            Logger.error('SSL certificate files not found in CERTS_PATH.', 'Bootstrap');
+            Logger.error(
+                'SSL certificate files not found in CERTS_PATH.',
+                'Bootstrap',
+            );
         }
     }
 

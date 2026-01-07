@@ -13,7 +13,14 @@ import {
     Inject,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiConsumes,
+    ApiBody,
+} from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -115,9 +122,7 @@ export class ServerController {
     @Get()
     @ApiOperation({ summary: 'Get user servers' })
     @ApiResponse({ status: 200, type: [ServerResponseDTO] })
-    public async getServers(
-        @Req() req: Request,
-    ): Promise<IServer[]> {
+    public async getServers(@Req() req: Request): Promise<IServer[]> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
@@ -146,8 +151,6 @@ export class ServerController {
     ): Promise<{ server: IServer; channel: IChannel }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const { name } = body;
-
-
 
         const server = await this.serverRepo.create({
             name: name.trim(),
@@ -288,7 +291,8 @@ export class ServerController {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const memberCount = await this.serverMemberRepo.countByServerId(serverId);
+        const memberCount =
+            await this.serverMemberRepo.countByServerId(serverId);
 
         return {
             ...server,
@@ -326,7 +330,9 @@ export class ServerController {
         const users = await this.userRepo.findByIds(userIds);
         const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
-        const onlineUsernames = new Set(this.presenceService.getAllOnlineUsers());
+        const onlineUsernames = new Set(
+            this.presenceService.getAllOnlineUsers(),
+        );
 
         // Calculate online count by checking presence for each member
         let onlineCount = 0;
@@ -462,7 +468,10 @@ export class ServerController {
                 throw new ApiError(400, ErrorMessages.ROLE.NOT_IN_SERVER);
             }
             if (role.name && role.name.trim().toLowerCase() === '@everyone') {
-                throw new ApiError(400, ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT);
+                throw new ApiError(
+                    400,
+                    ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT,
+                );
             }
         }
 
@@ -691,7 +700,10 @@ export class ServerController {
                 throw new ApiError(400, ErrorMessages.ROLE.NOT_IN_SERVER);
             }
             if (role.name && role.name.trim().toLowerCase() === '@everyone') {
-                throw new ApiError(400, ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT);
+                throw new ApiError(
+                    400,
+                    ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT,
+                );
             }
         }
 

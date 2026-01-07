@@ -1,0 +1,4855 @@
+openapi: 3.0.0
+paths:
+  /api/v1/auth/login:
+    post:
+      operationId: AuthController_login
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponseDTO"
+        "401":
+          description: Invalid credentials
+        "403":
+          description: Account banned
+      tags: &a1
+        - Authentication
+    patch:
+      operationId: AuthController_changeLogin
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeLoginRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeLoginResponseDTO"
+        "400":
+          description: Invalid input
+        "401":
+          description: Invalid password
+        "409":
+          description: Login already taken
+      security:
+        - jwt: []
+      tags: *a1
+  /api/v1/auth/register:
+    post:
+      operationId: AuthController_register
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponseDTO"
+        "400":
+          description: Validation Error
+        "403":
+          description: Invalid invite token
+        "500":
+          description: Internal server error
+      tags: *a1
+  /api/v1/auth/password:
+    patch:
+      operationId: AuthController_changePassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangePasswordResponseDTO"
+        "400":
+          description: Invalid input
+        "401":
+          description: Invalid current password
+      security:
+        - jwt: []
+      tags: *a1
+  /api/v1/admin/stats:
+    get:
+      operationId: AdminController_getStats
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashBoardStatsDTO"
+        "403":
+          description: Forbidden
+      security: &a2
+        - bearer: []
+      summary: Retrieve high-level statistics for the admin dashboard
+      tags: &a3
+        - Admin
+  /api/v1/admin/users:
+    get:
+      operationId: AdminController_listUsers
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          schema:
+            type: number
+        - name: offset
+          required: false
+          in: query
+          schema:
+            type: number
+        - name: search
+          required: false
+          in: query
+          schema:
+            type: string
+        - name: filter
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - banned
+              - admin
+              - recent
+        - name: includeDeleted
+          required: false
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUserListItemDTO"
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: List users with optional search and filtering
+      tags: *a3
+  /api/v1/admin/users/{userId}:
+    get:
+      operationId: AdminController_getUserDetails
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserDetailsDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+      security: *a2
+      summary: Retrieve detailed information about a specific user
+      tags: *a3
+    delete:
+      operationId: AdminController_deleteUser
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminSoftDeleteUserRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDeleteUserResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+      security: *a2
+      summary: Legacy delete endpoint that forwards to soft delete
+      tags: *a3
+  /api/v1/admin/users/{userId}/reset:
+    post:
+      operationId: AdminController_resetUserProfile
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminResetProfileRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResetProfileResponseDTO"
+        "400":
+          description: Invalid fields
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+      security: *a2
+      summary: Reset specific profile fields for a user
+      tags: *a3
+  /api/v1/admin/users/{userId}/soft-delete:
+    post:
+      operationId: AdminController_softDeleteUser
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminSoftDeleteUserRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSoftDeleteUserResponseDTO"
+        "400":
+          description: User already deleted
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+      security: *a2
+      summary: Soft deletes a user account
+      tags: *a3
+  /api/v1/admin/users/{userId}/hard-delete:
+    post:
+      operationId: AdminController_hardDeleteUser
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminSoftDeleteUserRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminHardDeleteUserResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+      security: *a2
+      summary: Hard deletes a user account completely
+      tags: *a3
+  /api/v1/admin/users/{userId}/permissions:
+    put:
+      operationId: AdminController_updateUserPermissions
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateUserPermissionsRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUpdateUserPermissionsResponseDTO"
+        "400":
+          description: Invalid permissions
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+      security: *a2
+      summary: Update a user's permissions
+      tags: *a3
+  /api/v1/admin/users/{userId}/ban:
+    post:
+      operationId: AdminController_banUser
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminBanUserRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBanUserResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+      security: *a2
+      summary: Ban a user for a specified duration
+      tags: *a3
+  /api/v1/admin/users/{userId}/unban:
+    post:
+      operationId: AdminController_unbanUser
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUnbanUserResponseDTO"
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: Unban a user
+      tags: *a3
+  /api/v1/admin/users/{userId}/bans:
+    get:
+      operationId: AdminController_getUserBanHistory
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminBanHistoryItemDTO"
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: Retrieve ban history for a user
+      tags: *a3
+  /api/v1/admin/bans:
+    get:
+      operationId: AdminController_listBans
+      parameters:
+        - name: limit
+          required: true
+          in: query
+          schema:
+            type: number
+        - name: offset
+          required: true
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: List all bans with pagination
+      tags: *a3
+  /api/v1/admin/bans/diagnostic:
+    get:
+      operationId: AdminController_getBansDiagnostic
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBansDiagnosticResponseDTO"
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: Diagnostic endpoint for ban collections
+      tags: *a3
+  /api/v1/admin/users/{userId}/warn:
+    post:
+      operationId: AdminController_warnUser
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminWarnUserRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminWarnUserResponseDTO"
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: Warn a user
+      tags: *a3
+  /api/v1/admin/users/{userId}/warnings:
+    get:
+      operationId: AdminController_getUserWarnings
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminWarnUserResponseDTO"
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: Retrieve warnings for a user
+      tags: *a3
+  /api/v1/admin/warnings:
+    get:
+      operationId: AdminController_listWarnings
+      parameters:
+        - name: limit
+          required: true
+          in: query
+          schema:
+            type: number
+        - name: offset
+          required: true
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: List all warnings with pagination
+      tags: *a3
+  /api/v1/admin/logs:
+    get:
+      operationId: AdminController_listAuditLogs
+      parameters:
+        - name: limit
+          required: true
+          in: query
+          schema:
+            type: number
+        - name: offset
+          required: true
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: List audit logs with pagination
+      tags: *a3
+  /api/v1/admin/servers:
+    get:
+      operationId: AdminController_listServers
+      parameters:
+        - name: limit
+          required: true
+          in: query
+          schema:
+            type: number
+        - name: offset
+          required: true
+          in: query
+          schema:
+            type: number
+        - name: search
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminServerListItemDTO"
+        "403":
+          description: Forbidden
+      security: *a2
+      summary: List servers with owner details
+      tags: *a3
+  /api/v1/admin/servers/{serverId}:
+    delete:
+      operationId: AdminController_deleteServer
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDeleteServerResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: Server not found
+      security: *a2
+      summary: Soft deletes a server
+      tags: *a3
+  /api/v1/admin/servers/{serverId}/restore:
+    post:
+      operationId: AdminController_restoreServer
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRestoreServerResponseDTO"
+        "400":
+          description: Server not deleted
+        "403":
+          description: Forbidden
+        "404":
+          description: Server not found
+      security: *a2
+      summary: Restore a deleted server
+      tags: *a3
+  /api/v1/admin/users/{userId}/details:
+    get:
+      operationId: AdminController_getExtendedUserDetails
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminExtendedUserDetailsDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+      security: *a2
+      summary: Retrieve extended user details including servers
+      tags: *a3
+  /api/v1/pings:
+    get:
+      operationId: UserPingController_getPings
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetPingsResponseDTO"
+      security: &a4
+        - bearer: []
+      summary: Get all pings for the current user
+      tags: &a5
+        - Pings
+    delete:
+      operationId: UserPingController_clearAllPings
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletePingResponseDTO"
+      security: *a4
+      summary: Clear all pings for the current user
+      tags: *a5
+  /api/v1/pings/{id}:
+    delete:
+      operationId: UserPingController_deletePing
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletePingResponseDTO"
+        "400":
+          description: Ping ID is required
+      security: *a4
+      summary: Delete a specific ping
+      tags: *a5
+  /api/v1/pings/channel/{channelId}:
+    delete:
+      operationId: UserPingController_clearChannelPings
+      parameters:
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClearChannelPingsResponseDTO"
+        "400":
+          description: Channel ID is required
+      security: *a4
+      summary: Clear all pings for a specific channel
+      tags: *a5
+  /api/v1/warnings/me:
+    get:
+      operationId: UserWarningController_getMyWarnings
+      parameters:
+        - name: acknowledged
+          required: false
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserWarningResponseDTO"
+      security: &a6
+        - bearer: []
+      summary: Get current user's warnings
+      tags: &a7
+        - Warnings
+  /api/v1/warnings/{id}/acknowledge:
+    post:
+      operationId: UserWarningController_acknowledgeWarning
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserWarningResponseDTO"
+        "400":
+          description: Warning ID is required
+        "403":
+          description: Forbidden
+        "404":
+          description: Warning Not Found
+      security: *a6
+      summary: Acknowledge a warning
+      tags: *a7
+  /api/v1/emojis:
+    get:
+      operationId: EmojiController_getAllEmojis
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmojiResponseDTO"
+      security:
+        - bearer: []
+      summary: Get all emojis accessible to the user
+      tags: &a8
+        - Emojis
+  /api/v1/emojis/{emojiId}:
+    get:
+      operationId: EmojiController_getEmojiById
+      parameters:
+        - name: emojiId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmojiResponseDTO"
+        "404":
+          description: Emoji Not Found
+      summary: Get a specific emoji by ID
+      tags: *a8
+  /api/v1/files/upload:
+    post:
+      operationId: FileController_uploadFile
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUploadResponseDTO"
+      security:
+        - bearer: []
+      summary: Upload a file
+      tags: &a9
+        - Files
+  /api/v1/files/metadata/{filename}:
+    get:
+      operationId: FileController_getFileMetadata
+      parameters:
+        - name: filename
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileMetadataResponseDTO"
+        "400":
+          description: Invalid filename
+        "404":
+          description: File not found
+      summary: Get file metadata
+      tags: *a9
+  /api/v1/files/download/{filename}:
+    get:
+      operationId: FileController_downloadFile
+      parameters:
+        - name: filename
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File stream
+        "400":
+          description: Invalid filename
+        "404":
+          description: File not found
+      summary: Download a file
+      tags: *a9
+  /api/v1/download/{filename}:
+    get:
+      operationId: FileCompatibilityController_downloadFile
+      parameters:
+        - name: filename
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File stream
+        "400":
+          description: Invalid filename
+        "404":
+          description: File not found
+      summary: Download a file (legacy)
+      tags:
+        - Files
+  /api/v1/file-proxy:
+    get:
+      operationId: FileProxyController_proxyFile
+      parameters:
+        - name: url
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File content
+        "400":
+          description: Bad Request
+        "413":
+          description: File too large
+        "502":
+          description: Bad Gateway
+      summary: Proxy a remote file
+      tags: &a10
+        - File Proxy
+  /api/v1/file-proxy/meta:
+    get:
+      operationId: FileProxyController_getFileMeta
+      parameters:
+        - name: url
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileProxyMetaResponseDTO"
+        "400":
+          description: Bad Request
+      summary: Get remote file metadata
+      tags: *a10
+  /api/v1/friends:
+    get:
+      operationId: FriendshipController_getFriends
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendResponseDTO"
+      security:
+        - bearer: []
+      summary: Get friends list
+      tags: &a11
+        - Friends
+    post:
+      operationId: FriendshipController_sendFriendRequest
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendFriendRequestDTO"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendFriendRequestResponseDTO"
+        "400":
+          description: User not found or already friends
+        "404":
+          description: User not found
+      security:
+        - bearer: []
+      summary: Send a friend request
+      tags: *a11
+  /api/v1/friends/incoming:
+    get:
+      operationId: FriendshipController_getIncomingRequests
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IncomingFriendRequestResponseDTO"
+      security:
+        - bearer: []
+      summary: Get incoming friend requests
+      tags: *a11
+  /api/v1/friends/{id}/accept:
+    post:
+      operationId: FriendshipController_acceptFriendRequest
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptFriendRequestResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: Request not found
+      security:
+        - bearer: []
+      summary: Accept a friend request
+      tags: *a11
+  /api/v1/friends/{id}/reject:
+    post:
+      operationId: FriendshipController_rejectFriendRequest
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendshipMessageResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: Request not found
+      security:
+        - bearer: []
+      summary: Reject a friend request
+      tags: *a11
+  /api/v1/friends/{friendId}:
+    delete:
+      operationId: FriendshipController_removeFriend
+      parameters:
+        - name: friendId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendshipMessageResponseDTO"
+        "404":
+          description: User Not Found
+      security:
+        - bearer: []
+      summary: Remove a friend
+      tags: *a11
+  /metrics:
+    get:
+      operationId: MetricsController_getMetrics
+      parameters:
+        - name: authorization
+          required: true
+          in: header
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          description: Bearer token for metrics access
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Prometheus metrics
+          content:
+            text/plain: {}
+        "401":
+          description: Unauthorized
+        "500":
+          description: Metrics security configuration missing
+      summary: Retrieve Prometheus metrics
+      tags:
+        - System
+  /api/v1/profile/me:
+    get:
+      operationId: ProfileController_getMyProfile
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponseDTO"
+        "404":
+          description: User not found
+      security:
+        - bearer: []
+      summary: Get current user profile
+      tags: &a12
+        - Profile
+  /api/v1/profile/{userId}:
+    get:
+      operationId: ProfileController_getUserProfileResponseDTO
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponseDTO"
+        "404":
+          description: User not found
+      security:
+        - bearer: []
+      summary: Get user profile by ID
+      tags: *a12
+  /api/v1/profile/{id}/badges:
+    post:
+      operationId: ProfileController_updateUserBadges
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignBadgesRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadgeOperationResponseDTO"
+        "400":
+          description: Invalid badge IDs
+        "403":
+          description: Insufficient permissions
+        "404":
+          description: User not found
+      security:
+        - bearer: []
+      summary: Update user badges
+      tags: *a12
+  /api/v1/profile/picture:
+    post:
+      operationId: ProfileController_uploadProfilePicture
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                profilePicture:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateProfilePictureResponseDTO"
+        "400":
+          description: Invalid file or dimensions
+      security:
+        - bearer: []
+      summary: Upload profile picture
+      tags: *a12
+  /api/v1/profile/banner:
+    post:
+      operationId: ProfileController_uploadBanner
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                banner:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateBannerResponseDTO"
+        "400":
+          description: Invalid file or dimensions
+      security:
+        - bearer: []
+      summary: Upload profile banner
+      tags: *a12
+  /api/v1/profile/banner/{filename}:
+    get:
+      operationId: ProfileController_getBanner
+      parameters:
+        - name: filename
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Banner image
+        "400":
+          description: Invalid filename
+        "404":
+          description: Banner not found
+      summary: Get profile banner
+      tags: *a12
+  /api/v1/profile/bio:
+    patch:
+      operationId: ProfileController_updateBio
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBioRequestDTO"
+      responses:
+        "200":
+          description: Bio updated
+      security:
+        - bearer: []
+      summary: Update bio
+      tags: *a12
+  /api/v1/profile/pronouns:
+    patch:
+      operationId: ProfileController_updatePronouns
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePronounsRequestDTO"
+      responses:
+        "200":
+          description: Pronouns updated
+      security:
+        - bearer: []
+      summary: Update pronouns
+      tags: *a12
+  /api/v1/profile/display-name:
+    patch:
+      operationId: ProfileController_updateDisplayName
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDisplayNameRequestDTO"
+      responses:
+        "200":
+          description: Display name updated
+        "400":
+          description: Invalid display name
+      security:
+        - bearer: []
+      summary: Update display name
+      tags: *a12
+  /api/v1/profile/status:
+    patch:
+      operationId: ProfileController_updateCustomStatus
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusRequestDTO"
+      responses:
+        "200":
+          description: Status updated
+        "400":
+          description: Invalid status
+      security:
+        - bearer: []
+      summary: Update custom status
+      tags: *a12
+    delete:
+      operationId: ProfileController_clearCustomStatus
+      parameters: []
+      responses:
+        "200":
+          description: Status cleared
+      security:
+        - bearer: []
+      summary: Clear custom status
+      tags: *a12
+  /api/v1/profile/status/bulk:
+    post:
+      operationId: ProfileController_getBulkStatuses
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkStatusRequestDTO"
+      responses:
+        "200":
+          description: Bulk statuses
+      summary: Get bulk custom statuses
+      tags: *a12
+  /api/v1/profile/style:
+    patch:
+      operationId: ProfileController_updateUsernameStyle
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStyleRequestDTO"
+      responses:
+        "200":
+          description: Style updated
+      security:
+        - bearer: []
+      summary: Update username style
+      tags: *a12
+  /api/v1/profile/lookup/{username}:
+    get:
+      operationId: ProfileController_lookupUserByUsername
+      parameters:
+        - name: username
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserLookupResponseDTO"
+        "404":
+          description: User not found
+      security:
+        - bearer: []
+      summary: Lookup user by username
+      tags: *a12
+  /api/v1/profile/username:
+    patch:
+      operationId: ProfileController_changeUsername
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeUsernameRequestDTO"
+      responses:
+        "200":
+          description: Username changed
+        "409":
+          description: Username taken
+      security:
+        - bearer: []
+      summary: Change username
+      tags: *a12
+  /api/v1/profile/language:
+    patch:
+      operationId: ProfileController_updateLanguage
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLanguageRequestDTO"
+      responses:
+        "200":
+          description: Language updated
+      security:
+        - bearer: []
+      summary: Update language
+      tags: *a12
+  /api/v1/profile/picture/{filename}:
+    get:
+      operationId: ProfileController_getProfilePicture
+      parameters:
+        - name: filename
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profile picture
+        "400":
+          description: Invalid filename
+        "404":
+          description: Image not found
+      summary: Get profile picture
+      tags: *a12
+  /api/v1/messages/{messageId}/reactions:
+    get:
+      operationId: ReactionController_getDmReactions
+      parameters:
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reactions retrieved successfully
+        "403":
+          description: Forbidden
+        "404":
+          description: Message not found
+      security: &a13
+        - bearer: []
+      summary: Get DM reactions
+      tags: &a14
+        - Reactions
+    post:
+      operationId: ReactionController_addDmReaction
+      parameters:
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/AddUnicodeReactionRequestDTO"
+                - $ref: "#/components/schemas/AddCustomReactionRequestDTO"
+      responses:
+        "201":
+          description: Reaction added
+        "400":
+          description: Invalid emoji or limit reached
+        "403":
+          description: Forbidden
+        "404":
+          description: Message not found
+      security: *a13
+      summary: Add reaction to DM
+      tags: *a14
+    delete:
+      operationId: ReactionController_removeDmReaction
+      parameters:
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/RemoveUnicodeReactionRequestDTO"
+                - $ref: "#/components/schemas/RemoveCustomReactionRequestDTO"
+      responses:
+        "200":
+          description: Reaction removed
+        "403":
+          description: Forbidden
+        "404":
+          description: Message not found
+      security: *a13
+      summary: Remove reaction from DM
+      tags: *a14
+  /api/v1/servers/{serverId}/channels/{channelId}/messages/{messageId}/reactions:
+    post:
+      operationId: ReactionController_addServerReaction
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/AddUnicodeReactionRequestDTO"
+                - $ref: "#/components/schemas/AddCustomReactionRequestDTO"
+      responses:
+        "201":
+          description: Reaction added
+        "400":
+          description: Invalid emoji or limit reached
+        "403":
+          description: Forbidden
+        "404":
+          description: Message or channel not found
+      security: *a13
+      summary: Add reaction to server message
+      tags: *a14
+    delete:
+      operationId: ReactionController_removeServerReaction
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/RemoveUnicodeReactionRequestDTO"
+                - $ref: "#/components/schemas/RemoveCustomReactionRequestDTO"
+      responses:
+        "200":
+          description: Reaction removed
+        "403":
+          description: Forbidden
+        "404":
+          description: Message or channel not found
+      security: *a13
+      summary: Remove reaction from server message
+      tags: *a14
+    get:
+      operationId: ReactionController_getServerReactions
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reactions retrieved successfully
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+      security: *a13
+      summary: Get server reactions
+      tags: *a14
+  /api/v1/servers/{serverId}/channels:
+    get:
+      operationId: ServerChannelController_getChannels
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChannelWithReadResponseDTO"
+        "403":
+          description: Forbidden
+      security: &a15
+        - bearer: []
+      summary: Get server channels
+      tags: &a16
+        - Server Channels
+    post:
+      operationId: ServerChannelController_createChannel
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChannelRequestDTO"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelResponseDTO"
+        "403":
+          description: Forbidden
+      security: *a15
+      summary: Create channel
+      tags: *a16
+  /api/v1/servers/{serverId}/categories:
+    get:
+      operationId: ServerChannelController_getCategories
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryResponseDTO"
+        "403":
+          description: Forbidden
+      security: *a15
+      summary: Get server categories
+      tags: *a16
+    post:
+      operationId: ServerChannelController_createCategory
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryRequestDTO"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponseDTO"
+        "403":
+          description: Forbidden
+      security: *a15
+      summary: Create category
+      tags: *a16
+  /api/v1/servers/{serverId}/channels/reorder:
+    patch:
+      operationId: ServerChannelController_reorderChannels
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderChannelsRequestDTO"
+      responses:
+        "200":
+          description: Channels reordered
+        "403":
+          description: Forbidden
+      security: *a15
+      summary: Reorder channels
+      tags: *a16
+  /api/v1/servers/{serverId}/channels/{channelId}/stats:
+    get:
+      operationId: ServerChannelController_getChannelStats
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelStatsResponseDTO"
+        "400":
+          description: Bad Request
+        "403":
+          description: Forbidden
+        "404":
+          description: Channel Not Found
+      security: *a15
+      summary: Get channel stats
+      tags: *a16
+  /api/v1/servers/{serverId}/channels/{channelId}:
+    patch:
+      operationId: ServerChannelController_updateChannel
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChannelRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: Channel Not Found
+      security: *a15
+      summary: Update channel
+      tags: *a16
+    delete:
+      operationId: ServerChannelController_deleteChannel
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Channel deleted
+        "403":
+          description: Forbidden
+        "404":
+          description: Channel Not Found
+      security: *a15
+      summary: Delete channel
+      tags: *a16
+  /api/v1/servers/{serverId}/categories/{categoryId}:
+    patch:
+      operationId: ServerChannelController_updateCategory
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: categoryId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCategoryRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: Category Not Found
+      security: *a15
+      summary: Update category
+      tags: *a16
+    delete:
+      operationId: ServerChannelController_deleteCategory
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: categoryId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Category deleted
+        "403":
+          description: Forbidden
+        "404":
+          description: Category Not Found
+      security: *a15
+      summary: Delete category
+      tags: *a16
+  /api/v1/servers/{serverId}/categories/reorder:
+    patch:
+      operationId: ServerChannelController_reorderCategories
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderCategoriesRequestDTO"
+      responses:
+        "200":
+          description: Categories reordered
+        "403":
+          description: Forbidden
+      security: *a15
+      summary: Reorder categories
+      tags: *a16
+  /api/v1/servers/{serverId}/channels/{channelId}/permissions:
+    get:
+      operationId: ServerChannelController_getChannelPermissions
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Permissions retrieved
+        "403":
+          description: Forbidden
+        "404":
+          description: Channel Not Found
+      security: *a15
+      summary: Get channel permissions
+      tags: *a16
+    patch:
+      operationId: ServerChannelController_updateChannelPermissions
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePermissionsRequestDTO"
+      responses:
+        "200":
+          description: Permissions updated
+        "403":
+          description: Forbidden
+        "404":
+          description: Channel Not Found
+      security: *a15
+      summary: Update channel permissions
+      tags: *a16
+  /api/v1/servers/{serverId}/categories/{categoryId}/permissions:
+    get:
+      operationId: ServerChannelController_getCategoryPermissions
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: categoryId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Permissions retrieved
+        "403":
+          description: Forbidden
+        "404":
+          description: Category Not Found
+      security: *a15
+      summary: Get category permissions
+      tags: *a16
+    patch:
+      operationId: ServerChannelController_updateCategoryPermissions
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: categoryId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePermissionsRequestDTO"
+      responses:
+        "200":
+          description: Permissions updated
+        "403":
+          description: Forbidden
+        "404":
+          description: Category Not Found
+      security: *a15
+      summary: Update category permissions
+      tags: *a16
+  /api/v1/servers:
+    get:
+      operationId: ServerController_getServers
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServerResponseDTO"
+      security: &a17
+        - bearer: []
+      summary: Get user servers
+      tags: &a18
+        - Servers
+    post:
+      operationId: ServerController_createServer
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServerRequestDTO"
+      responses:
+        "201":
+          description: Server created
+        "400":
+          description: Invalid name
+      security: *a17
+      summary: Create server
+      tags: *a18
+  /api/v1/servers/unread:
+    get:
+      operationId: ServerController_getUnreadStatus
+      parameters: []
+      responses:
+        "200":
+          description: Unread status per server
+      security: *a17
+      summary: Get unread status
+      tags: *a18
+  /api/v1/servers/{serverId}/ack:
+    post:
+      operationId: ServerController_markServerAsRead
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Server marked as read
+        "400":
+          description: Invalid ID
+        "403":
+          description: Forbidden
+      security: *a17
+      summary: Mark server as read
+      tags: *a18
+  /api/v1/servers/{serverId}:
+    get:
+      operationId: ServerController_getServerDetails
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: Server Not Found
+      security: *a17
+      summary: Get server details
+      tags: *a18
+    patch:
+      operationId: ServerController_updateServer
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateServerRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: Server Not Found
+      security: *a17
+      summary: Update server
+      tags: *a18
+    delete:
+      operationId: ServerController_deleteServer
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server deleted
+        "403":
+          description: Forbidden
+        "404":
+          description: Server Not Found
+      security: *a17
+      summary: Delete server
+      tags: *a18
+  /api/v1/servers/{serverId}/stats:
+    get:
+      operationId: ServerController_getServerStats
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerStatsResponseDTO"
+        "403":
+          description: Forbidden
+        "404":
+          description: Server Not Found
+      security: *a17
+      summary: Get server stats
+      tags: *a18
+  /api/v1/servers/{serverId}/roles/default:
+    post:
+      operationId: ServerController_setDefaultRole
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetDefaultRoleRequestDTO"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetDefaultRoleResponseDTO"
+        "400":
+          description: Bad Request
+        "403":
+          description: Forbidden
+        "404":
+          description: Server or role not found
+      security: *a17
+      summary: Set default role
+      tags: *a18
+  /api/v1/servers/{serverId}/icon:
+    post:
+      operationId: ServerController_uploadServerIcon
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                icon:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadIconResponseDTO"
+        "400":
+          description: Bad Request
+        "403":
+          description: Forbidden
+      security: *a17
+      summary: Upload server icon
+      tags: *a18
+  /api/v1/servers/{serverId}/banner:
+    post:
+      operationId: ServerController_uploadServerBanner
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                banner:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadBannerResponseDTO"
+        "400":
+          description: Bad Request
+        "403":
+          description: Forbidden
+      security: *a17
+      summary: Upload server banner
+      tags: *a18
+  /api/v1/servers/{serverId}/default-role:
+    patch:
+      operationId: ServerController_updateDefaultRole
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDefaultRoleRequestDTO"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetDefaultRoleResponseDTO"
+        "400":
+          description: Bad Request
+        "403":
+          description: Forbidden
+        "404":
+          description: Server or role not found
+      security: *a17
+      summary: Update server default role
+      tags: *a18
+  /api/v1/servers/{serverId}/members:
+    get:
+      operationId: ServerMemberController_getServerMembers
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server members retrieved
+        "403":
+          description: Not a member of this server
+      security: &a19
+        - bearer: []
+      summary: Get all server members
+      tags: &a20
+        - Server Members
+  /api/v1/servers/{serverId}/members/search:
+    get:
+      operationId: ServerMemberController_searchMembers
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: q
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+        "403":
+          description: Not a member of this server
+      security: *a19
+      summary: Search server members
+      tags: *a20
+  /api/v1/servers/{serverId}/members/{userId}:
+    get:
+      operationId: ServerMemberController_getMember
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Member details retrieved
+        "403":
+          description: Not a member of this server
+        "404":
+          description: Member not found
+      security: *a19
+      summary: Get server member details
+      tags: *a20
+    delete:
+      operationId: ServerMemberController_kickMember
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KickMemberRequestDTO"
+      responses:
+        "200":
+          description: Member kicked
+        "403":
+          description: No permission to kick members
+        "404":
+          description: Member not found
+      security: *a19
+      summary: Kick a member from the server
+      tags: *a20
+  /api/v1/servers/{serverId}/bans:
+    post:
+      operationId: ServerMemberController_banMember
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BanMemberRequestDTO"
+      responses:
+        "200":
+          description: Member banned
+        "403":
+          description: No permission to ban members
+      security: *a19
+      summary: Ban a member from the server
+      tags: *a20
+    get:
+      operationId: ServerMemberController_getBans
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server bans retrieved
+        "403":
+          description: No permission to view bans
+      security: *a19
+      summary: Get all server bans
+      tags: *a20
+  /api/v1/servers/{serverId}/bans/{userId}:
+    delete:
+      operationId: ServerMemberController_unbanMember
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Member unbanned
+        "403":
+          description: No permission to unban members
+      security: *a19
+      summary: Unban a user from the server
+      tags: *a20
+  /api/v1/servers/{serverId}/members/{userId}/roles/{roleId}:
+    post:
+      operationId: ServerMemberController_addMemberRole
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: roleId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Role added
+        "403":
+          description: No permission to manage roles
+        "404":
+          description: Member not found
+      security: *a19
+      summary: Add a role to a member
+      tags: *a20
+    delete:
+      operationId: ServerMemberController_removeMemberRole
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: roleId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Role removed
+        "403":
+          description: No permission to manage roles
+        "404":
+          description: Member not found
+      security: *a19
+      summary: Remove a role from a member
+      tags: *a20
+  /api/v1/servers/{serverId}/members/me:
+    delete:
+      operationId: ServerMemberController_leaveServer
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Left server
+        "403":
+          description: Owner cannot leave the server
+      security: *a19
+      summary: Leave the server
+      tags: *a20
+  /api/v1/servers/{serverId}/transfer-ownership:
+    post:
+      operationId: ServerMemberController_transferOwnership
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferOwnershipRequestDTO"
+      responses:
+        "200":
+          description: Ownership transferred
+        "403":
+          description: Only owner can transfer ownership
+        "404":
+          description: Member not found
+      security: *a19
+      summary: Transfer server ownership
+      tags: *a20
+  /api/v1/servers/{serverId}/invites:
+    get:
+      operationId: ServerInviteController_getServerInvites
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server invites retrieved
+        "403":
+          description: No permission to manage invites
+      security:
+        - bearer: []
+      summary: Get all server invites
+      tags: &a21
+        - Server Invites
+    post:
+      operationId: ServerInviteController_createInvite
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInviteRequestDTO"
+      responses:
+        "201":
+          description: Invite created
+        "400":
+          description: Invite code already exists
+        "403":
+          description: Only server owner can create custom invites
+      security:
+        - bearer: []
+      summary: Create a server invite
+      tags: *a21
+  /api/v1/servers/{serverId}/invites/{inviteId}:
+    delete:
+      operationId: ServerInviteController_deleteInvite
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: inviteId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invite deleted
+        "403":
+          description: No permission to manage invites
+        "404":
+          description: Invite not found
+      security:
+        - bearer: []
+      summary: Delete a server invite
+      tags: *a21
+  /api/v1/invites/{code}:
+    get:
+      operationId: ServerInviteController_getInviteDetails
+      parameters:
+        - name: code
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invite details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteDetailsResponseDTO"
+        "404":
+          description: Invite not found
+        "410":
+          description: Invite expired
+      summary: Get invite details
+      tags: *a21
+  /api/v1/invites/{code}/join:
+    post:
+      operationId: ServerInviteController_joinServer
+      parameters:
+        - name: code
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server joined
+        "400":
+          description: Already a member of this server
+        "403":
+          description: You are banned from this server
+        "404":
+          description: Invite not found
+        "410":
+          description: Invite expired
+      security:
+        - bearer: []
+      summary: Join a server using an invite
+      tags: *a21
+  /api/v1/servers/{serverId}/roles:
+    get:
+      operationId: ServerRoleController_getServerRoles
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Roles retrieved
+        "403":
+          description: Not a member of this server
+      security: &a22
+        - bearer: []
+      summary: Get server roles
+      tags: &a23
+        - Server Roles
+    post:
+      operationId: ServerRoleController_createRole
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequestDTO"
+      responses:
+        "201":
+          description: Role created
+        "403":
+          description: No permission to manage roles
+      security: *a22
+      summary: Create a role
+      tags: *a23
+  /api/v1/servers/{serverId}/roles/reorder:
+    patch:
+      operationId: ServerRoleController_reorderRoles
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderRolesRequestDTO"
+      responses:
+        "200":
+          description: Roles reordered
+        "403":
+          description: No permission to manage roles
+      security: *a22
+      summary: Reorder roles
+      tags: *a23
+  /api/v1/servers/{serverId}/roles/{roleId}:
+    patch:
+      operationId: ServerRoleController_updateRole
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: roleId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleRequestDTO"
+      responses:
+        "200":
+          description: Role updated
+        "403":
+          description: No permission to manage roles
+        "404":
+          description: Role not found
+      security: *a22
+      summary: Update a role
+      tags: *a23
+    delete:
+      operationId: ServerRoleController_deleteRole
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: roleId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Role deleted
+        "400":
+          description: Cannot delete @everyone role
+        "403":
+          description: No permission to manage roles
+        "404":
+          description: Role not found
+      security: *a22
+      summary: Delete a role
+      tags: *a23
+  /api/v1/servers/{serverId}/emojis:
+    get:
+      operationId: ServerEmojiController_getServerEmojis
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server emojis retrieved
+        "403":
+          description: Not a member of this server
+        "404":
+          description: Server not found
+      security: &a24
+        - bearer: []
+      summary: Get all server emojis
+      tags: &a25
+        - Server Emojis
+    post:
+      operationId: ServerEmojiController_uploadEmoji
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                emoji:
+                  type: string
+                  format: binary
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Emoji uploaded
+        "400":
+          description: Emoji file is required
+        "403":
+          description: Insufficient permissions
+        "409":
+          description: Emoji name already exists
+      security: *a24
+      summary: Upload a server emoji
+      tags: *a25
+  /api/v1/servers/{serverId}/emojis/{emojiId}:
+    get:
+      operationId: ServerEmojiController_getEmoji
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: emojiId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Emoji retrieved
+        "403":
+          description: Not a member of this server
+        "404":
+          description: Emoji not found
+      security: *a24
+      summary: Get a specific emoji
+      tags: *a25
+    delete:
+      operationId: ServerEmojiController_deleteEmoji
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: emojiId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Emoji deleted
+        "403":
+          description: Insufficient permissions
+        "404":
+          description: Emoji not found
+      security: *a24
+      summary: Delete a server emoji
+      tags: *a25
+  /api/v1/servers/{serverId}/channels/{channelId}/messages:
+    get:
+      operationId: ServerMessageController_getMessages
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          schema:
+            type: number
+        - name: before
+          required: false
+          in: query
+          schema:
+            type: string
+        - name: around
+          required: false
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Messages retrieved
+        "403":
+          description: Not a member of this server
+      security: &a26
+        - bearer: []
+      summary: Get channel messages
+      tags: &a27
+        - Server Messages
+    post:
+      operationId: ServerMessageController_sendMessage
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequestDTO"
+      responses:
+        "201":
+          description: Message sent
+        "400":
+          description: Message text is required
+        "403":
+          description: No permission to send messages in this channel
+        "404":
+          description: Channel not found
+      security: *a26
+      summary: Send a message
+      tags: *a27
+  /api/v1/servers/{serverId}/channels/{channelId}/messages/{messageId}:
+    get:
+      operationId: ServerMessageController_getMessage
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message retrieved
+        "403":
+          description: Not a member of this server
+        "404":
+          description: Message not found
+      security: *a26
+      summary: Get a message
+      tags: *a27
+    patch:
+      operationId: ServerMessageController_editMessage
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServerEditMessageRequestDTO"
+      responses:
+        "200":
+          description: Message updated
+        "400":
+          description: Message text is required
+        "403":
+          description: Only sender can edit message
+        "404":
+          description: Message not found
+      security: *a26
+      summary: Edit a message
+      tags: *a27
+    delete:
+      operationId: ServerMessageController_deleteMessage
+      parameters:
+        - name: serverId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: channelId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message deleted
+        "403":
+          description: No permission to delete message
+        "404":
+          description: Message not found
+      security: *a26
+      summary: Delete a message
+      tags: *a27
+  /api/v1/servers/icon/{filename}:
+    get:
+      operationId: ServerPublicController_getServerIcon
+      parameters:
+        - name: filename
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Icon file retrieved
+        "404":
+          description: File not found
+      summary: Get server icon
+      tags: &a28
+        - Servers (Public)
+  /api/v1/servers/banner/{filename}:
+    get:
+      operationId: ServerPublicController_getServerBanner
+      parameters:
+        - name: filename
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Banner file retrieved
+        "404":
+          description: File not found
+      summary: Get server banner
+      tags: *a28
+  /api/v1/system/info:
+    get:
+      operationId: SystemController_getSystemInfo
+      parameters: []
+      responses:
+        "200":
+          description: System info retrieved
+      summary: Get system info
+      tags:
+        - System
+  /api/v1/messages/unread:
+    get:
+      operationId: UserMessageController_getUnreadCounts
+      parameters: []
+      responses:
+        "200":
+          description: Unread counts retrieved
+      security: &a29
+        - bearer: []
+      summary: Get unread counts
+      tags: &a30
+        - User Messages
+  /api/v1/messages:
+    get:
+      operationId: UserMessageController_getMessages
+      parameters:
+        - name: userId
+          required: true
+          in: query
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          schema:
+            type: number
+        - name: before
+          required: false
+          in: query
+          schema:
+            type: string
+        - name: around
+          required: false
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Messages retrieved
+        "400":
+          description: User ID is required
+        "403":
+          description: Users are not friends
+        "404":
+          description: User not found
+      security: *a29
+      summary: Get messages
+      tags: *a30
+  /api/v1/messages/{id}:
+    get:
+      operationId: UserMessageController_getMessage
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: userId
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message retrieved
+        "403":
+          description: Users are not friends
+        "404":
+          description: Message not found
+      security: *a29
+      summary: Get message by ID
+      tags: *a30
+    patch:
+      operationId: UserMessageController_editMessage
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserEditMessageRequestDTO"
+      responses:
+        "200":
+          description: Message updated
+        "403":
+          description: Unauthorized
+        "404":
+          description: Message not found
+      security: *a29
+      summary: Edit message
+      tags: *a30
+    delete:
+      operationId: UserMessageController_deleteMessage
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message deleted
+        "403":
+          description: Unauthorized
+        "404":
+          description: Message not found
+      security: *a29
+      summary: Delete message
+      tags: *a30
+  /api/v1/messages/{userId}/{messageId}:
+    get:
+      operationId: UserMessageController_getUserMessage
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: messageId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message retrieved
+        "403":
+          description: Users are not friends
+        "404":
+          description: Message not found
+      security: *a29
+      summary: Get user message
+      tags: *a30
+  /api/v1/settings:
+    get:
+      operationId: SettingsController_getSettings
+      parameters: []
+      responses:
+        "200":
+          description: Settings retrieved
+        "404":
+          description: User not found
+      security: &a31
+        - bearer: []
+      summary: Get user settings
+      tags: &a32
+        - Settings
+    post:
+      operationId: SettingsController_updateSettings
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsRequestDTO"
+      responses:
+        "201":
+          description: Settings updated
+        "404":
+          description: User not found
+      security: *a31
+      summary: Update user settings
+      tags: *a32
+info:
+  title: Serchat API
+  description: The Serchat API description
+  version: "1.0"
+  contact: {}
+tags: []
+servers: []
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+  schemas:
+    LoginRequestDTO:
+      type: object
+      properties:
+        login:
+          type: string
+        password:
+          type: string
+      required:
+        - login
+        - password
+    LoginResponseDTO:
+      type: object
+      properties:
+        token:
+          type: string
+        username:
+          type: string
+      required:
+        - token
+        - username
+    RegisterRequestDTO:
+      type: object
+      properties:
+        login:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        invite:
+          type: string
+      required:
+        - login
+        - username
+        - password
+        - invite
+    RegisterResponseDTO:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+        - token
+    ChangeLoginRequestDTO:
+      type: object
+      properties:
+        newLogin:
+          type: string
+        password:
+          type: string
+      required:
+        - newLogin
+        - password
+    ChangeLoginResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        login:
+          type: string
+        token:
+          type: string
+      required:
+        - message
+        - login
+        - token
+    ChangePasswordRequestDTO:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+      required:
+        - currentPassword
+        - newPassword
+    ChangePasswordResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        token:
+          type: string
+      required:
+        - message
+        - token
+    DashBoardStatsDTO:
+      type: object
+      properties:
+        users:
+          type: number
+        usersTrend:
+          type: number
+        activeUsers:
+          type: number
+        activeUsersTrend:
+          type: number
+        bans:
+          type: number
+        bansTrend:
+          type: number
+        servers:
+          type: number
+        serversTrend:
+          type: number
+        messages:
+          type: number
+        messagesTrend:
+          type: number
+      required:
+        - users
+        - usersTrend
+        - activeUsers
+        - activeUsersTrend
+        - bans
+        - bansTrend
+        - servers
+        - serversTrend
+        - messages
+        - messagesTrend
+    AdminUserListItemDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        login:
+          type: string
+        displayName:
+          type: object
+          nullable: true
+        profilePicture:
+          type: object
+          nullable: true
+        permissions:
+          type: object
+        createdAt:
+          format: date-time
+          type: string
+        banExpiry:
+          format: date-time
+          type: string
+        warningCount:
+          type: number
+        badges:
+          type: array
+          items:
+            type: string
+      required:
+        - _id
+        - username
+        - login
+        - displayName
+        - profilePicture
+        - permissions
+        - createdAt
+        - warningCount
+        - badges
+    AdminUserDetailsDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        login:
+          type: string
+        displayName:
+          type: object
+          nullable: true
+        profilePicture:
+          type: object
+          nullable: true
+        permissions:
+          type: object
+        createdAt:
+          format: date-time
+          type: string
+        banExpiry:
+          format: date-time
+          type: string
+        warningCount:
+          type: number
+        badges:
+          type: array
+          items:
+            type: string
+        bio:
+          type: string
+        pronouns:
+          type: string
+        banner:
+          type: object
+          nullable: true
+        deletedAt:
+          format: date-time
+          type: string
+        deletedReason:
+          type: string
+      required:
+        - _id
+        - username
+        - login
+        - displayName
+        - profilePicture
+        - permissions
+        - createdAt
+        - warningCount
+        - badges
+        - bio
+        - pronouns
+        - banner
+    AdminResetProfileRequestDTO:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+            enum:
+              - username
+              - displayName
+              - pronouns
+              - bio
+              - banner
+              - profilePicture
+      required:
+        - fields
+    AdminResetProfileResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        fields:
+          type: array
+          items:
+            type: string
+      required:
+        - message
+        - fields
+    AdminSoftDeleteUserRequestDTO:
+      type: object
+      properties:
+        reason:
+          type: string
+    AdminSoftDeleteUserResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        anonymizedUsername:
+          type: string
+        offlineFriends:
+          type: number
+      required:
+        - message
+        - anonymizedUsername
+        - offlineFriends
+    AdminDeleteUserResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        anonymizedUsername:
+          type: string
+      required:
+        - message
+        - anonymizedUsername
+    AdminHardDeleteUserResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        sentMessagesAnonymized:
+          type: number
+        receivedMessagesAnonymized:
+          type: number
+        offlineFriends:
+          type: number
+      required:
+        - message
+        - sentMessagesAnonymized
+        - receivedMessagesAnonymized
+        - offlineFriends
+    AdminUpdateUserPermissionsRequestDTO:
+      type: object
+      properties:
+        permissions:
+          type: object
+      required:
+        - permissions
+    AdminUpdateUserPermissionsResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+    AdminBanUserRequestDTO:
+      type: object
+      properties:
+        reason:
+          type: string
+        duration:
+          type: number
+      required:
+        - reason
+        - duration
+    AdminBanUserResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        reason:
+          type: string
+        issuedBy:
+          type: string
+        expirationTimestamp:
+          format: date-time
+          type: string
+        active:
+          type: boolean
+        history:
+          type: array
+          items:
+            type: object
+      required:
+        - _id
+        - userId
+        - reason
+        - issuedBy
+        - expirationTimestamp
+        - active
+    AdminUnbanUserResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+    AdminBanHistoryItemDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        reason:
+          type: string
+        timestamp:
+          format: date-time
+          type: string
+        expirationTimestamp:
+          format: date-time
+          type: string
+        issuedBy:
+          type: string
+        active:
+          type: boolean
+      required:
+        - _id
+        - reason
+        - timestamp
+        - expirationTimestamp
+        - issuedBy
+        - active
+    AdminBansDiagnosticResponseDTO:
+      type: object
+      properties:
+        appBans:
+          type: object
+          properties:
+            count:
+              type: number
+            sample:
+              type: array
+              items:
+                type: object
+        serverBans:
+          type: object
+          properties:
+            count:
+              type: number
+            sample:
+              type: array
+              items:
+                type: object
+      required:
+        - appBans
+        - serverBans
+    AdminWarnUserRequestDTO:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+    AdminWarnUserResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        issuedBy:
+          type: string
+        message:
+          type: string
+        timestamp:
+          format: date-time
+          type: string
+        acknowledged:
+          type: boolean
+        acknowledgedAt:
+          format: date-time
+          type: string
+      required:
+        - _id
+        - userId
+        - issuedBy
+        - message
+        - timestamp
+        - acknowledged
+    AdminServerBannerDTO:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - color
+            - image
+            - gif
+            - gradient
+        value:
+          type: string
+      required:
+        - type
+        - value
+    AdminServerOwnerDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: object
+          nullable: true
+        profilePicture:
+          type: object
+          nullable: true
+      required:
+        - _id
+        - username
+        - displayName
+        - profilePicture
+    AdminServerListItemDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        icon:
+          type: object
+          nullable: true
+        banner:
+          $ref: "#/components/schemas/AdminServerBannerDTO"
+        ownerId:
+          type: string
+        memberCount:
+          type: number
+        createdAt:
+          format: date-time
+          type: string
+        deletedAt:
+          format: date-time
+          type: string
+        owner:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AdminServerOwnerDTO"
+      required:
+        - _id
+        - name
+        - icon
+        - ownerId
+        - memberCount
+        - createdAt
+        - owner
+    AdminDeleteServerResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+    AdminRestoreServerResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+    AdminUserServerInfoDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        icon:
+          type: object
+          nullable: true
+        ownerId:
+          type: string
+        joinedAt:
+          format: date-time
+          type: string
+        isOwner:
+          type: boolean
+        memberCount:
+          type: number
+      required:
+        - _id
+        - name
+        - icon
+        - ownerId
+        - isOwner
+        - memberCount
+    AdminExtendedUserDetailsDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        login:
+          type: string
+        displayName:
+          type: object
+          nullable: true
+        profilePicture:
+          type: object
+          nullable: true
+        permissions:
+          type: object
+        createdAt:
+          format: date-time
+          type: string
+        banExpiry:
+          format: date-time
+          type: string
+        warningCount:
+          type: number
+        badges:
+          type: array
+          items:
+            type: string
+        bio:
+          type: string
+        pronouns:
+          type: string
+        banner:
+          type: object
+          nullable: true
+        deletedAt:
+          format: date-time
+          type: string
+        deletedReason:
+          type: string
+        servers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUserServerInfoDTO"
+      required:
+        - _id
+        - username
+        - login
+        - displayName
+        - profilePicture
+        - permissions
+        - createdAt
+        - warningCount
+        - badges
+        - bio
+        - pronouns
+        - banner
+        - servers
+    PingNotificationDTO:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - mention
+        sender:
+          type: string
+        senderId:
+          type: string
+        serverId:
+          type: string
+        channelId:
+          type: string
+        message:
+          type: object
+          additionalProperties: true
+        timestamp:
+          type: number
+      required:
+        - id
+        - type
+        - sender
+        - senderId
+        - message
+        - timestamp
+    GetPingsResponseDTO:
+      type: object
+      properties:
+        pings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PingNotificationDTO"
+      required:
+        - pings
+    DeletePingResponseDTO:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+    ClearChannelPingsResponseDTO:
+      type: object
+      properties:
+        success:
+          type: boolean
+        clearedCount:
+          type: number
+      required:
+        - success
+        - clearedCount
+    UserWarningIssuedByDTO:
+      type: object
+      properties:
+        username:
+          type: string
+      required:
+        - username
+    UserWarningResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        message:
+          type: string
+        issuedBy:
+          $ref: "#/components/schemas/UserWarningIssuedByDTO"
+        acknowledged:
+          type: boolean
+        acknowledgedAt:
+          format: date-time
+          type: string
+        timestamp:
+          format: date-time
+          type: string
+      required:
+        - _id
+        - userId
+        - message
+        - issuedBy
+        - acknowledged
+        - timestamp
+    EmojiResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        imageUrl:
+          type: string
+        serverId:
+          type: string
+        createdBy:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+      required:
+        - _id
+        - name
+        - imageUrl
+        - serverId
+        - createdBy
+    FileUploadResponseDTO:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+    FileMetadataResponseDTO:
+      type: object
+      properties:
+        filename:
+          type: string
+        size:
+          type: number
+        isBinary:
+          type: boolean
+        mimeType:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        modifiedAt:
+          format: date-time
+          type: string
+      required:
+        - filename
+        - size
+        - isBinary
+        - mimeType
+        - createdAt
+        - modifiedAt
+    FileProxyMetaResponseDTO:
+      type: object
+      properties:
+        status:
+          type: number
+        headers:
+          type: object
+        size:
+          type: number
+      required:
+        - status
+        - headers
+    FriendResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: string
+        createdAt:
+          type: object
+        profilePicture:
+          type: string
+          nullable: true
+        customStatus:
+          type: object
+          nullable: true
+        latestMessageAt:
+          type: object
+          nullable: true
+      required:
+        - _id
+        - username
+        - createdAt
+        - profilePicture
+        - customStatus
+    IncomingFriendRequestResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        from:
+          type: string
+        fromId:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+      required:
+        - _id
+        - createdAt
+    SendFriendRequestDTO:
+      type: object
+      properties:
+        username:
+          type: string
+      required:
+        - username
+    SendFriendRequestResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        request:
+          type: object
+      required:
+        - message
+        - request
+    AcceptFriendRequestResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        friend:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/FriendResponseDTO"
+      required:
+        - message
+        - friend
+    FriendshipMessageResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+    UsernameGradientDTO:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        colors:
+          type: array
+          items:
+            type: string
+        angle:
+          type: number
+      required:
+        - enabled
+        - colors
+        - angle
+    UsernameGlowDTO:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        color:
+          type: string
+        intensity:
+          type: number
+      required:
+        - enabled
+        - color
+        - intensity
+    BadgeResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        color:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+      required:
+        - _id
+        - id
+        - name
+        - description
+        - icon
+        - color
+        - createdAt
+    UserProfileResponseDTO:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        login:
+          type: string
+        displayName:
+          type: object
+          nullable: true
+        profilePicture:
+          type: object
+          nullable: true
+        usernameFont:
+          type: string
+        usernameGradient:
+          $ref: "#/components/schemas/UsernameGradientDTO"
+        usernameGlow:
+          $ref: "#/components/schemas/UsernameGlowDTO"
+        customStatus:
+          type: object
+          nullable: true
+        permissions:
+          type: object
+        createdAt:
+          format: date-time
+          type: string
+        bio:
+          type: string
+        pronouns:
+          type: string
+        badges:
+          type: array
+          items:
+            $ref: "#/components/schemas/BadgeResponseDTO"
+        banner:
+          type: object
+          nullable: true
+      required:
+        - id
+        - username
+        - login
+        - displayName
+        - profilePicture
+        - customStatus
+        - permissions
+        - createdAt
+        - badges
+        - banner
+    AssignBadgesRequestDTO:
+      type: object
+      properties:
+        badgeIds:
+          type: array
+          items:
+            type: string
+      required:
+        - badgeIds
+    BadgeOperationResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        badges:
+          type: array
+          items:
+            $ref: "#/components/schemas/BadgeResponseDTO"
+      required:
+        - message
+        - badges
+    UpdateProfilePictureResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        profilePicture:
+          type: string
+      required:
+        - message
+        - profilePicture
+    UpdateBannerResponseDTO:
+      type: object
+      properties:
+        message:
+          type: string
+        banner:
+          type: string
+      required:
+        - message
+        - banner
+    UpdateBioRequestDTO:
+      type: object
+      properties:
+        bio:
+          type: string
+      required:
+        - bio
+    UpdatePronounsRequestDTO:
+      type: object
+      properties:
+        pronouns:
+          type: string
+      required:
+        - pronouns
+    UpdateDisplayNameRequestDTO:
+      type: object
+      properties:
+        displayName:
+          type: string
+      required:
+        - displayName
+    UpdateStatusRequestDTO:
+      type: object
+      properties:
+        text:
+          type: string
+        emoji:
+          type: string
+        expiresAt:
+          type: object
+        expiresInMinutes:
+          type: number
+        clear:
+          type: boolean
+    BulkStatusRequestDTO:
+      type: object
+      properties:
+        usernames:
+          type: array
+          items:
+            type: string
+      required:
+        - usernames
+    UpdateStyleRequestDTO:
+      type: object
+      properties:
+        usernameFont:
+          type: string
+        usernameGradient:
+          $ref: "#/components/schemas/UsernameGradientDTO"
+        usernameGlow:
+          $ref: "#/components/schemas/UsernameGlowDTO"
+    UserLookupResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+      required:
+        - _id
+    ChangeUsernameRequestDTO:
+      type: object
+      properties:
+        newUsername:
+          type: string
+      required:
+        - newUsername
+    UpdateLanguageRequestDTO:
+      type: object
+      properties:
+        language:
+          type: string
+      required:
+        - language
+    ChannelWithReadResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        serverId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: &a33
+            - text
+            - voice
+        description:
+          type: string
+        position:
+          type: number
+        categoryId:
+          type: string
+          nullable: true
+        lastMessageAt:
+          type: string
+          nullable: true
+        permissions:
+          type: object
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+        lastReadAt:
+          type: string
+          nullable: true
+      required:
+        - serverId
+        - name
+        - type
+        - position
+    CategoryResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        serverId:
+          type: string
+        name:
+          type: string
+        position:
+          type: number
+        permissions:
+          type: object
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+        - serverId
+        - name
+        - position
+    CreateChannelRequestDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+            - text
+            - voice
+        position:
+          type: number
+        categoryId:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+    ChannelResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        serverId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: *a33
+        description:
+          type: string
+        position:
+          type: number
+        categoryId:
+          type: string
+          nullable: true
+        lastMessageAt:
+          format: date-time
+          type: string
+        permissions:
+          type: object
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+        - serverId
+        - name
+        - type
+        - position
+    ChannelPositionDTO:
+      type: object
+      properties:
+        channelId:
+          type: string
+        position:
+          type: number
+      required:
+        - channelId
+        - position
+    ReorderChannelsRequestDTO:
+      type: object
+      properties:
+        channelPositions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChannelPositionDTO"
+      required:
+        - channelPositions
+    ChannelStatsResponseDTO:
+      type: object
+      properties:
+        channelId:
+          type: string
+        channelName:
+          type: string
+        createdAt:
+          type: string
+        messageCount:
+          type: number
+      required:
+        - channelId
+        - channelName
+        - createdAt
+        - messageCount
+    UpdateChannelRequestDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        position:
+          type: number
+        categoryId:
+          type: string
+          nullable: true
+        description:
+          type: string
+    CreateCategoryRequestDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        position:
+          type: number
+      required:
+        - name
+    UpdateCategoryRequestDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        position:
+          type: number
+    CategoryPositionDTO:
+      type: object
+      properties:
+        categoryId:
+          type: string
+        position:
+          type: number
+      required:
+        - categoryId
+        - position
+    ReorderCategoriesRequestDTO:
+      type: object
+      properties:
+        categoryPositions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryPositionDTO"
+      required:
+        - categoryPositions
+    UpdatePermissionsRequestDTO:
+      type: object
+      properties:
+        permissions:
+          type: object
+          description: Map of role/user IDs to permission overrides
+          example:
+            role_id:
+              sendMessages: true
+      required:
+        - permissions
+    ServerBannerDTO:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - color
+            - image
+            - gif
+        value:
+          type: string
+      required:
+        - type
+        - value
+    ServerResponseDTO:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        ownerId:
+          type: string
+        icon:
+          type: string
+        banner:
+          $ref: "#/components/schemas/ServerBannerDTO"
+        description:
+          type: string
+        defaultRoleId:
+          type: string
+        memberCount:
+          type: number
+        allTimeHigh:
+          type: number
+        disableCustomFonts:
+          type: boolean
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+        - name
+        - ownerId
+    CreateServerRequestDTO:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+    ServerStatsResponseDTO:
+      type: object
+      properties:
+        onlineCount:
+          type: number
+        totalCount:
+          type: number
+        bannedUserCount:
+          type: number
+        serverId:
+          type: string
+        serverName:
+          type: string
+        ownerName:
+          type: string
+        createdAt:
+          type: string
+        allTimeHigh:
+          type: number
+        newestMember:
+          type: string
+        channelCount:
+          type: number
+        emojiCount:
+          type: number
+      required:
+        - onlineCount
+        - totalCount
+        - bannedUserCount
+        - serverId
+        - serverName
+        - ownerName
+        - createdAt
+        - allTimeHigh
+        - newestMember
+        - channelCount
+        - emojiCount
+    UpdateServerRequestDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        banner:
+          $ref: "#/components/schemas/ServerBannerDTO"
+        disableCustomFonts:
+          type: boolean
+    SetDefaultRoleRequestDTO:
+      type: object
+      properties:
+        roleId:
+          type: string
+          nullable: true
+      required:
+        - roleId
+    SetDefaultRoleResponseDTO:
+      type: object
+      properties:
+        defaultRoleId:
+          type: string
+          nullable: true
+      required:
+        - defaultRoleId
+    UploadIconResponseDTO:
+      type: object
+      properties:
+        icon:
+          type: string
+      required:
+        - icon
+    UploadBannerResponseDTO:
+      type: object
+      properties:
+        banner:
+          type: string
+      required:
+        - banner
+    UpdateDefaultRoleRequestDTO:
+      type: object
+      properties:
+        roleId:
+          type: string
+          description: The ID of the role to set as default
+      required:
+        - roleId
+    KickMemberRequestDTO:
+      type: object
+      properties:
+        reason:
+          type: string
+    BanMemberRequestDTO:
+      type: object
+      properties:
+        userId:
+          type: string
+        reason:
+          type: string
+        deleteMessageDays:
+          type: number
+      required:
+        - userId
+    TransferOwnershipRequestDTO:
+      type: object
+      properties:
+        newOwnerId:
+          type: string
+      required:
+        - newOwnerId
+    CreateInviteRequestDTO:
+      type: object
+      properties:
+        maxUses:
+          type: number
+        expiresIn:
+          type: number
+          description: Expiration time in seconds
+        customPath:
+          type: string
+    InviteServerBannerDTO:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - image
+            - gradient
+            - color
+            - gif
+        value:
+          type: string
+      required:
+        - type
+        - value
+    InviteServerDTO:
+      type: object
+      properties:
+        id:
+          type: object
+        name:
+          type: string
+        icon:
+          type: string
+        banner:
+          $ref: "#/components/schemas/InviteServerBannerDTO"
+      required:
+        - id
+        - name
+    InviteDetailsResponseDTO:
+      type: object
+      properties:
+        code:
+          type: string
+        expiresAt:
+          format: date-time
+          type: string
+        maxUses:
+          type: number
+        uses:
+          type: number
+        server:
+          $ref: "#/components/schemas/InviteServerDTO"
+        memberCount:
+          type: number
+      required:
+        - code
+        - uses
+        - server
+        - memberCount
+    CreateRoleRequestDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+        startColor:
+          type: string
+        endColor:
+          type: string
+        colors:
+          type: array
+          items:
+            type: string
+        gradientRepeat:
+          type: number
+        separateFromOtherRoles:
+          type: boolean
+        permissions:
+          type: object
+      required:
+        - name
+    RolePositionDTO:
+      type: object
+      properties:
+        roleId:
+          type: string
+        position:
+          type: number
+      required:
+        - roleId
+        - position
+    ReorderRolesRequestDTO:
+      type: object
+      properties:
+        rolePositions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RolePositionDTO"
+      required:
+        - rolePositions
+    UpdateRoleRequestDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+        startColor:
+          type: string
+        endColor:
+          type: string
+        colors:
+          type: array
+          items:
+            type: string
+        gradientRepeat:
+          type: number
+        separateFromOtherRoles:
+          type: boolean
+        permissions:
+          type: object
+        position:
+          type: number
+    SendMessageRequestDTO:
+      type: object
+      properties:
+        content:
+          type: string
+          description: Message content (preferred)
+        text:
+          type: string
+          description: Message text (legacy support)
+        replyToId:
+          type: string
+          description: ID of the message being replied to
+    ServerEditMessageRequestDTO:
+      type: object
+      properties:
+        content:
+          type: string
+          description: New message content
+        text:
+          type: string
+          description: New message text (legacy)
+    UserEditMessageRequestDTO:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+    UpdateSettingsRequestDTO:
+      type: object
+      properties:
+        muteNotifications:
+          type: boolean
+        useDiscordStyleMessages:
+          type: boolean
+        ownMessagesAlign:
+          type: string
+          enum:
+            - left
+            - right
+        otherMessagesAlign:
+          type: string
+          enum:
+            - left
+            - right
+        showYouLabel:
+          type: boolean
+        ownMessageColor:
+          type: string
+        otherMessageColor:
+          type: string

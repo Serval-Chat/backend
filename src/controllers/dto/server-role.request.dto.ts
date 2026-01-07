@@ -1,5 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsBoolean, IsNumber, IsArray, IsObject, ValidateNested, IsInt, Min, Max } from 'class-validator';
+import {
+    IsOptional,
+    IsString,
+    IsBoolean,
+    IsNumber,
+    IsArray,
+    IsObject,
+    ValidateNested,
+    IsInt,
+    Min,
+    Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsName, IsColor, IsRoleId } from '@/validation/schemas/common';
 

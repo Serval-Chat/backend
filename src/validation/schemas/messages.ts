@@ -38,7 +38,6 @@ export const messagesQuerySchema = z.object({
     before: z.string().optional(), // Can be either ObjectId or ISO 8601 timestamp
     after: z.string().datetime().optional(), // ISO 8601 timestamp
     around: objectIdSchema.optional(), // Message ID to fetch context around
-
 });
 
 // Mark messages as read validation

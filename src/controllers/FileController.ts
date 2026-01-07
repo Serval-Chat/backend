@@ -13,7 +13,14 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
-import { ApiTags, ApiResponse, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiOperation,
+    ApiConsumes,
+    ApiBody,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Request, Response } from 'express';
 import path from 'path';
@@ -37,7 +44,7 @@ export class FileController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     @Post('upload')
     @ApiBearerAuth()

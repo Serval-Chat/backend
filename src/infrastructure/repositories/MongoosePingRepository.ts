@@ -14,7 +14,9 @@ export class MongoosePingRepository implements IPingRepository {
     }
 
     async findByUserId(userId: string, maxAge?: number): Promise<IPing[]> {
-        const query: FilterQuery<IPing> = { userId: new Types.ObjectId(userId) };
+        const query: FilterQuery<IPing> = {
+            userId: new Types.ObjectId(userId),
+        };
 
         // Filter out old pings if maxAge is specified (in milliseconds)
         if (maxAge) {

@@ -10,7 +10,14 @@ import {
     UseGuards,
     Inject,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiParam,
+    ApiBody,
+} from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -76,7 +83,7 @@ export class ServerChannelController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     @Get('channels')
     @ApiOperation({ summary: 'Get server channels' })
@@ -170,8 +177,8 @@ export class ServerChannelController {
             body.position !== undefined
                 ? body.position
                 : maxPositionChannel
-                    ? maxPositionChannel.position + 1
-                    : 0;
+                  ? maxPositionChannel.position + 1
+                  : 0;
 
         const channel = await this.channelRepo.create({
             serverId,
@@ -369,8 +376,8 @@ export class ServerChannelController {
             body.position !== undefined
                 ? body.position
                 : maxPositionCategory
-                    ? maxPositionCategory.position + 1
-                    : 0;
+                  ? maxPositionCategory.position + 1
+                  : 0;
 
         const category = await this.categoryRepo.create({
             serverId,

@@ -17,4 +17,4 @@ import { SocketIOEmitter } from '@/infrastructure/SocketIOEmitter';
     ],
     exports: [TYPES.Logger, TYPES.EventEmitter],
 })
-export class InfrastructureModule { }
+export class InfrastructureModule {}

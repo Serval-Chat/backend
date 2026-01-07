@@ -8,10 +8,7 @@ import {
     IsPositive,
 } from 'class-validator';
 import { AdminPermissions, ProfileFieldDTO } from './common.request.dto';
-import {
-    IsReason,
-    IsMessageContent,
-} from '@/validation/schemas/common';
+import { IsReason, IsMessageContent } from '@/validation/schemas/common';
 
 export class AdminResetProfileRequestDTO {
     @ApiProperty({ enum: ProfileFieldDTO, isArray: true })

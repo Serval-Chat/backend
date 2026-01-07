@@ -42,8 +42,8 @@ export function mapUser(user: any): MappedUser | null {
     const profilePictureUrl = user.deletedAt
         ? '/images/deleted-cat.jpg'
         : user.profilePicture
-            ? `/api/v1/profile/picture/${user.profilePicture}`
-            : null;
+          ? `/api/v1/profile/picture/${user.profilePicture}`
+          : null;
 
     return {
         _id: (user._id?.toString() || user.id) as string,
@@ -53,11 +53,12 @@ export function mapUser(user: any): MappedUser | null {
         displayName: (user.displayName as string) || null,
         profilePicture: profilePictureUrl,
         usernameFont: (user.usernameFont as string) || 'default',
-        usernameGradient: (user.usernameGradient as MappedUser['usernameGradient']) || {
-            enabled: false,
-            colors: ['#ffffff', '#ffffff'],
-            angle: 90,
-        },
+        usernameGradient:
+            (user.usernameGradient as MappedUser['usernameGradient']) || {
+                enabled: false,
+                colors: ['#ffffff', '#ffffff'],
+                angle: 90,
+            },
         usernameGlow: (user.usernameGlow as MappedUser['usernameGlow']) || {
             enabled: false,
             color: '#ffffff',
@@ -85,8 +86,6 @@ export function mapUser(user: any): MappedUser | null {
         badges: (user.badges as string[]) || [],
         deletedAt: (user.deletedAt as Date) || null,
         anonymizedUsername: (user.anonymizedUsername as string) || null,
-        banner: user.banner
-            ? `/api/v1/profile/picture/${user.banner}`
-            : null,
+        banner: user.banner ? `/api/v1/profile/picture/${user.banner}` : null,
     };
 }

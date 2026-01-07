@@ -14,7 +14,13 @@ import {
     BadRequestException,
     InternalServerErrorException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiQuery,
+} from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -80,7 +86,7 @@ export class UserMessageController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Retrieves unread DM counts for the current user, grouped by peer
     @Get('unread')
@@ -111,8 +117,14 @@ export class UserMessageController {
     @ApiQuery({ name: 'around', required: false, type: String })
     @ApiResponse({ status: 200, description: 'Messages retrieved' })
     @ApiResponse({ status: 400, description: 'User ID is required' })
-    @ApiResponse({ status: 403, description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS })
-    @ApiResponse({ status: 404, description: ErrorMessages.AUTH.USER_NOT_FOUND })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
+    })
+    @ApiResponse({
+        status: 404,
+        description: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
     public async getMessages(
         @Req() req: ExpressRequest,
         @Query() query: GetMessagesQueryDTO,
@@ -157,7 +169,10 @@ export class UserMessageController {
                 : m;
             return {
                 ...msgObj,
-                reactions: (reactionsMap as Record<string, unknown[]>)[msg._id.toString()] || [],
+                reactions:
+                    (reactionsMap as Record<string, unknown[]>)[
+                        msg._id.toString()
+                    ] || [],
             } as MessageWithReactions;
         });
 
@@ -170,7 +185,10 @@ export class UserMessageController {
     @ApiOperation({ summary: 'Get message by ID' })
     @ApiQuery({ name: 'userId', required: true })
     @ApiResponse({ status: 200, description: 'Message retrieved' })
-    @ApiResponse({ status: 403, description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getMessage(
         @Param() params: MessageIdParamDTO,
@@ -203,7 +221,9 @@ export class UserMessageController {
                 targetMessage.receiverId.toString() === meId);
 
         if (!isPartOfConversation) {
-            throw new ForbiddenException(ErrorMessages.MESSAGE.NOT_IN_CONVERSATION);
+            throw new ForbiddenException(
+                ErrorMessages.MESSAGE.NOT_IN_CONVERSATION,
+            );
         }
 
         let repliedMessage = null;
@@ -221,7 +241,10 @@ export class UserMessageController {
     @Get(':userId/:messageId')
     @ApiOperation({ summary: 'Get user message' })
     @ApiResponse({ status: 200, description: 'Message retrieved' })
-    @ApiResponse({ status: 403, description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getUserMessage(
         @Param() params: UserMessageParamsDTO,
@@ -233,7 +256,9 @@ export class UserMessageController {
         // Ensure users are friends before allowing message access
         if (!(await this.friendshipRepo.areFriends(meId, userId))) {
             if (meId !== userId) {
-                throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
+                throw new ForbiddenException(
+                    ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
+                );
             }
         }
 
@@ -250,7 +275,9 @@ export class UserMessageController {
                 message.receiverId.toString() === meId);
 
         if (!isPartOfConversation) {
-            throw new ForbiddenException(ErrorMessages.MESSAGE.NOT_IN_CONVERSATION);
+            throw new ForbiddenException(
+                ErrorMessages.MESSAGE.NOT_IN_CONVERSATION,
+            );
         }
 
         let repliedMessage = null;
@@ -282,8 +309,6 @@ export class UserMessageController {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { content } = body;
 
-
-
         const message = await this.messageRepo.findById(id);
         if (!message) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
@@ -297,7 +322,9 @@ export class UserMessageController {
         const updated = await this.messageRepo.update(id, content);
         // Mark message as edited for client-side rendering
         if (!updated) {
-            throw new InternalServerErrorException(ErrorMessages.SYSTEM.INTERNAL_ERROR);
+            throw new InternalServerErrorException(
+                ErrorMessages.SYSTEM.INTERNAL_ERROR,
+            );
         }
 
         return updated;

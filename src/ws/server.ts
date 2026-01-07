@@ -9,7 +9,10 @@ import path from 'path';
 
 export class WsServer {
     private wss: WebSocketServer;
-    private handlers: Map<EventType | string, { target: object; methodName: string }> = new Map();
+    private handlers: Map<
+        EventType | string,
+        { target: object; methodName: string }
+    > = new Map();
     private connections: Set<WebSocket> = new Set();
     private protoRoot: protobuf.Root | null = null;
     private frameType: protobuf.Type | null = null;
@@ -19,7 +22,10 @@ export class WsServer {
         this.loadProto();
 
         server.on('upgrade', (request, socket, head) => {
-            const { pathname } = new URL(request.url || '', `http://${request.headers.host}`);
+            const { pathname } = new URL(
+                request.url || '',
+                `http://${request.headers.host}`,
+            );
 
             if (pathname === '/ws') {
                 this.wss.handleUpgrade(request, socket, head, (ws) => {
@@ -30,7 +36,9 @@ export class WsServer {
 
         this.wss.on('connection', (ws: WebSocket) => {
             this.connections.add(ws);
-            console.log(`New WebSocket connection. Total: ${this.connections.size}`);
+            console.log(
+                `New WebSocket connection. Total: ${this.connections.size}`,
+            );
 
             ws.on('message', (data: Buffer) => {
                 this.handleMessage(ws, data);
@@ -38,14 +46,18 @@ export class WsServer {
 
             ws.on('close', () => {
                 this.connections.delete(ws);
-                console.log(`WebSocket connection closed. Total: ${this.connections.size}`);
+                console.log(
+                    `WebSocket connection closed. Total: ${this.connections.size}`,
+                );
             });
         });
     }
 
     private async loadProto() {
         try {
-            this.protoRoot = await protobuf.load(path.join(__dirname, 'websocket.proto'));
+            this.protoRoot = await protobuf.load(
+                path.join(__dirname, 'websocket.proto'),
+            );
             this.frameType = this.protoRoot.lookupType('WebSocketFrame');
             console.log('Protobuf definitions loaded successfully');
         } catch (err) {
@@ -58,9 +70,13 @@ export class WsServer {
      * @param controller The controller instance to register.
      */
     public registerController(controller: object) {
-        const metadata: EventMetadata[] = Reflect.getMetadata(EVENT_METADATA, controller.constructor) || [];
+        const metadata: EventMetadata[] =
+            Reflect.getMetadata(EVENT_METADATA, controller.constructor) || [];
         for (const meta of metadata) {
-            this.handlers.set(meta.event, { target: controller, methodName: meta.methodName });
+            this.handlers.set(meta.event, {
+                target: controller,
+                methodName: meta.methodName,
+            });
         }
     }
 
@@ -80,7 +96,10 @@ export class WsServer {
             const frameData = {
                 type: 1, // EVENT
                 event: event,
-                payload: payload instanceof Buffer ? payload : Buffer.from(JSON.stringify(payload)),
+                payload:
+                    payload instanceof Buffer
+                        ? payload
+                        : Buffer.from(JSON.stringify(payload)),
             };
 
             const errMsg = this.frameType.verify(frameData);
@@ -112,7 +131,11 @@ export class WsServer {
             // Map the event (which could be a string if 'enums: String' is used, or a number)
             const eventValue = frame.event as string | number;
 
-            const handler = this.handlers.get(eventValue) || this.handlers.get(EventType[eventValue as keyof typeof EventType]);
+            const handler =
+                this.handlers.get(eventValue) ||
+                this.handlers.get(
+                    EventType[eventValue as keyof typeof EventType],
+                );
 
             if (handler) {
                 const target = handler.target as Record<string, Function>;

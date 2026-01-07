@@ -105,14 +105,32 @@ export function setupExpressApp(app: Application): Application {
     );
 
     // CORS
+
+    const ALLOWED_ORIGINS = new Set([
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'https://catfla.re',
+    ]);
+
     app.use(
         cors({
-            origin: '*',
+            origin(origin, cb) {
+                // allow server-to-server
+                if (!origin) return cb(null, true);
+
+                if (ALLOWED_ORIGINS.has(origin)) {
+                    return cb(null, origin);
+                }
+
+                return cb(new Error(`CORS blocked origin: ${origin}`));
+            },
+            credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization'],
-            credentials: true,
         }),
     );
+
+    app.options('*', cors());
 
     // Gzip
     app.use(compression());
@@ -132,52 +150,45 @@ export function setupExpressApp(app: Application): Application {
     }
 
     // Error handler
-    app.use(
-        (
-            err: unknown,
-            req: Request,
-            res: Response,
-            next: NextFunction,
-        ) => {
-            if (
-                typeof err === 'object' &&
-                err !== null &&
-                'name' in err &&
-                err.name === 'ValidateError'
-            ) {
-                logger.warn(
-                    `Validation error for ${req.method} ${req.url}:`,
-                    (err as ValidateError).fields,
-                );
-                return res.status(400).json({
-                    error: 'Validation Failed',
-                    details: (err as ValidateError).fields,
-                });
-            }
-
-            logger.error('Unhandled error:', err);
-
-            if (res.headersSent) {
-                return next(err);
-            }
-
-            const error = err as {
-                status?: number;
-                message?: string;
-                stack?: string;
-            };
-            const status = error.status || 500;
-            const message =
-                PROJECT_LEVEL === 'production' && status >= 500
-                    ? 'Internal Server Error'
-                    : error.message || 'Internal Server Error';
-
-            res.status(status).json({
-                error: message,
-                ...(PROJECT_LEVEL !== 'production' && { stack: error.stack }),
+    app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+        if (
+            typeof err === 'object' &&
+            err !== null &&
+            'name' in err &&
+            err.name === 'ValidateError'
+        ) {
+            logger.warn(
+                `Validation error for ${req.method} ${req.url}:`,
+                (err as ValidateError).fields,
+            );
+            return res.status(400).json({
+                error: 'Validation Failed',
+                details: (err as ValidateError).fields,
             });
-        },
-    );
+        }
+
+        logger.error('Unhandled error:', err);
+
+        if (res.headersSent) {
+            return next(err);
+        }
+
+        const error = err as {
+            status?: number;
+            message?: string;
+            stack?: string;
+        };
+        const status = error.status || 500;
+        const message =
+            PROJECT_LEVEL === 'production' && status >= 500
+                ? 'Internal Server Error'
+                : error.message || 'Internal Server Error';
+
+        res.status(status).json({
+            error: message,
+            ...(PROJECT_LEVEL !== 'production' && { stack: error.stack }),
+        });
+    });
 
     return app;
 }

@@ -12,7 +12,8 @@ import type { Types, FilterQuery } from 'mongoose';
 // Implements IServerMessageRepository using Mongoose ServerMessage model
 @injectable()
 export class MongooseServerMessageRepository
-    implements IServerMessageRepository {
+    implements IServerMessageRepository
+{
     async create(data: {
         serverId: string | Types.ObjectId;
         channelId: string | Types.ObjectId;

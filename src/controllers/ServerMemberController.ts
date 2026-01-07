@@ -14,7 +14,12 @@ import {
     BadRequestException,
     ConflictException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -72,7 +77,7 @@ export class ServerMemberController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Retrieves all members of a server
     // Enforces server membership
@@ -131,7 +136,8 @@ export class ServerMemberController {
         @Param('userId') userId: string,
         @Req() req: ExpressRequest,
     ): Promise<IServerMember & { user: MappedUser | null }> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
+            .user.id;
         const currentMember = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             currentUserId,
@@ -157,7 +163,10 @@ export class ServerMemberController {
     @Delete('members/:userId')
     @ApiOperation({ summary: 'Kick a member from the server' })
     @ApiResponse({ status: 200, description: 'Member kicked' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_KICK })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_KICK,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MEMBER.NOT_FOUND })
     public async kickMember(
         @Param('serverId') serverId: string,
@@ -165,7 +174,8 @@ export class ServerMemberController {
         @Req() req: ExpressRequest,
         @Body() _body: KickMemberRequestDTO,
     ): Promise<{ message: string }> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
+            .user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -173,7 +183,9 @@ export class ServerMemberController {
                 'kickMembers',
             ))
         ) {
-            throw new ForbiddenException(ErrorMessages.MEMBER.NO_PERMISSION_KICK);
+            throw new ForbiddenException(
+                ErrorMessages.MEMBER.NO_PERMISSION_KICK,
+            );
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -187,7 +199,9 @@ export class ServerMemberController {
         // Prevent kicking the server owner, even by users with administrative permissions
         const server = await this.serverRepo.findById(serverId);
         if (server?.ownerId.toString() === userId) {
-            throw new ForbiddenException(ErrorMessages.MEMBER.CANNOT_KICK_OWNER);
+            throw new ForbiddenException(
+                ErrorMessages.MEMBER.CANNOT_KICK_OWNER,
+            );
         }
 
         await this.serverMemberRepo.remove(serverId, userId);
@@ -206,13 +220,17 @@ export class ServerMemberController {
     @Post('bans')
     @ApiOperation({ summary: 'Ban a member from the server' })
     @ApiResponse({ status: 200, description: 'Member banned' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_BAN })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_BAN,
+    })
     public async banMember(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
         @Body() body: BanMemberRequestDTO,
     ): Promise<{ message: string }> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
+            .user.id;
         if (
             !(await this.permissionService.hasPermission(
                 serverId,
@@ -220,7 +238,9 @@ export class ServerMemberController {
                 'banMembers',
             ))
         ) {
-            throw new ForbiddenException(ErrorMessages.MEMBER.NO_PERMISSION_BAN);
+            throw new ForbiddenException(
+                ErrorMessages.MEMBER.NO_PERMISSION_BAN,
+            );
         }
 
         const { userId, reason } = body;
@@ -257,7 +277,10 @@ export class ServerMemberController {
     @Delete('bans/:userId')
     @ApiOperation({ summary: 'Unban a user from the server' })
     @ApiResponse({ status: 200, description: 'Member unbanned' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_UNBAN })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_UNBAN,
+    })
     public async unbanMember(
         @Param('serverId') serverId: string,
         @Param('userId') userId: string,
@@ -272,7 +295,9 @@ export class ServerMemberController {
                 'banMembers',
             ))
         ) {
-            throw new ForbiddenException(ErrorMessages.MEMBER.NO_PERMISSION_UNBAN);
+            throw new ForbiddenException(
+                ErrorMessages.MEMBER.NO_PERMISSION_UNBAN,
+            );
         }
 
         await this.serverBanRepo.unban(serverId, userId);
@@ -291,7 +316,10 @@ export class ServerMemberController {
     @Get('bans')
     @ApiOperation({ summary: 'Get all server bans' })
     @ApiResponse({ status: 200, description: 'Server bans retrieved' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_VIEW_BANS })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_VIEW_BANS,
+    })
     public async getBans(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -317,7 +345,10 @@ export class ServerMemberController {
     @Post('members/:userId/roles/:roleId')
     @ApiOperation({ summary: 'Add a role to a member' })
     @ApiResponse({ status: 200, description: 'Role added' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MEMBER.NOT_FOUND })
     public async addMemberRole(
         @Param('serverId') serverId: string,
@@ -376,7 +407,10 @@ export class ServerMemberController {
     @Delete('members/:userId/roles/:roleId')
     @ApiOperation({ summary: 'Remove a role from a member' })
     @ApiResponse({ status: 200, description: 'Role removed' })
-    @ApiResponse({ status: 403, description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MEMBER.NOT_FOUND })
     public async removeMemberRole(
         @Param('serverId') serverId: string,
@@ -427,7 +461,10 @@ export class ServerMemberController {
     @Delete('members/me')
     @ApiOperation({ summary: 'Leave the server' })
     @ApiResponse({ status: 200, description: 'Left server' })
-    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.OWNER_CANNOT_LEAVE })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
+    })
     public async leaveServer(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -435,7 +472,9 @@ export class ServerMemberController {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const server = await this.serverRepo.findById(serverId);
         if (server?.ownerId.toString() === userId) {
-            throw new ForbiddenException(ErrorMessages.SERVER.OWNER_CANNOT_LEAVE);
+            throw new ForbiddenException(
+                ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
+            );
         }
 
         await this.serverMemberRepo.remove(serverId, userId);
@@ -454,7 +493,10 @@ export class ServerMemberController {
     @Post('transfer-ownership')
     @ApiOperation({ summary: 'Transfer server ownership' })
     @ApiResponse({ status: 200, description: 'Ownership transferred' })
-    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.TRANSFER_OWNERSHIP_ONLY_OWNER })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.SERVER.TRANSFER_OWNERSHIP_ONLY_OWNER,
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MEMBER.NOT_FOUND })
     public async transferOwnership(
         @Param('serverId') serverId: string,

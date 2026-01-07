@@ -56,9 +56,13 @@ import { injectable, inject } from 'inversify';
 export class AuthController {
     constructor(
         @inject(TYPES.Logger) @Inject(TYPES.Logger) private logger: ILogger,
-        @inject(TYPES.AuthService) @Inject(TYPES.AuthService) private authService: AuthService,
-        @inject(TYPES.UserRepository) @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) { }
+        @inject(TYPES.AuthService)
+        @Inject(TYPES.AuthService)
+        private authService: AuthService,
+        @inject(TYPES.UserRepository)
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
+    ) {}
 
     // Authenticates a user and returns a JWT
     @Post('login')
@@ -86,16 +90,15 @@ export class AuthController {
             }
 
             res.status(HttpStatus.UNAUTHORIZED).json({
-                error: authResult.error || ErrorMessages.AUTH.INVALID_CREDENTIALS,
+                error:
+                    authResult.error || ErrorMessages.AUTH.INVALID_CREDENTIALS,
             });
             return;
         }
 
         const user = authResult.user;
         if (!user) {
-            this.logger.error(
-                'Auth success but user missing in result',
-            );
+            this.logger.error('Auth success but user missing in result');
             res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
                 error: ErrorMessages.AUTH.INVALID_CREDENTIALS,
             });
@@ -131,8 +134,6 @@ export class AuthController {
     ): Promise<void> {
         const { login, username, password, invite } = body;
 
-
-
         let tokens: string[];
         try {
             // Read valid invite tokens from tokens.txt; failure blocks registration
@@ -143,27 +144,35 @@ export class AuthController {
                 .filter(Boolean);
         } catch {
             registrationAttemptsCounter.labels('failure').inc();
-            res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: ErrorMessages.SYSTEM.CANNOT_READ_TOKENS });
+            res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                error: ErrorMessages.SYSTEM.CANNOT_READ_TOKENS,
+            });
             return;
         }
 
         if (!tokens.includes(invite)) {
             registrationAttemptsCounter.labels('failure').inc();
-            res.status(HttpStatus.FORBIDDEN).json({ error: ErrorMessages.INVITE.INVALID_TOKEN });
+            res.status(HttpStatus.FORBIDDEN).json({
+                error: ErrorMessages.INVITE.INVALID_TOKEN,
+            });
             return;
         }
 
         const existingLogin = await this.userRepo.findByLogin(login);
         if (existingLogin) {
             registrationAttemptsCounter.labels('failure').inc();
-            res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.AUTH.LOGIN_EXISTS });
+            res.status(HttpStatus.BAD_REQUEST).json({
+                error: ErrorMessages.AUTH.LOGIN_EXISTS,
+            });
             return;
         }
 
         const existingUsername = await this.userRepo.findByUsername(username);
         if (existingUsername) {
             registrationAttemptsCounter.labels('failure').inc();
-            res.status(HttpStatus.BAD_REQUEST).json({ error: ErrorMessages.AUTH.USERNAME_EXISTS });
+            res.status(HttpStatus.BAD_REQUEST).json({
+                error: ErrorMessages.AUTH.USERNAME_EXISTS,
+            });
             return;
         }
 
@@ -176,7 +185,8 @@ export class AuthController {
         fs.writeFileSync('tokens.txt', updatedTokens.join('\n'));
 
         const newUser = await this.userRepo.findByLogin(login);
-        if (!newUser) throw new ApiError(500, 'User just created but not found');
+        if (!newUser)
+            throw new ApiError(500, 'User just created but not found');
 
         const token = generateJWT({
             id: newUser._id.toString(),
@@ -230,7 +240,10 @@ export class AuthController {
 
         const updatedUser = await this.userRepo.findById(userId);
         if (!updatedUser) {
-            throw new ApiError(500, ErrorMessages.AUTH.FAILED_RETRIEVE_UPDATED_USER);
+            throw new ApiError(
+                500,
+                ErrorMessages.AUTH.FAILED_RETRIEVE_UPDATED_USER,
+            );
         }
 
         const token = generateJWT({
@@ -262,8 +275,6 @@ export class AuthController {
         const userId = (req as unknown as RequestWithUser).user.id;
         const { currentPassword, newPassword } = body;
 
-
-
         if (newPassword === currentPassword) {
             throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_SAME);
         }
@@ -278,7 +289,10 @@ export class AuthController {
             currentPassword,
         );
         if (!passwordValid) {
-            throw new ApiError(401, ErrorMessages.AUTH.INVALID_CURRENT_PASSWORD);
+            throw new ApiError(
+                401,
+                ErrorMessages.AUTH.INVALID_CURRENT_PASSWORD,
+            );
         }
 
         await this.userRepo.updatePassword(userId, newPassword);

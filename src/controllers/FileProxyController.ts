@@ -1,11 +1,4 @@
-import {
-    Controller,
-    Get,
-    Query,
-    Req,
-    Res,
-    Inject,
-} from '@nestjs/common';
+import { Controller, Get, Query, Req, Res, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
@@ -58,7 +51,7 @@ export class FileProxyController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Rewrite the old URL to new URL so old messages that use the old URL are still valid
     private rewriteKbityUrl(url: URL): URL {
@@ -119,7 +112,8 @@ export class FileProxyController {
                     return;
                 }
 
-                const contentLengthHeader = response.headers.get('content-length');
+                const contentLengthHeader =
+                    response.headers.get('content-length');
                 // ... rest of logic
                 if (contentLengthHeader) {
                     const parsed = Number(contentLengthHeader);
@@ -161,7 +155,10 @@ export class FileProxyController {
                 const size = buffer.length;
 
                 // Maintain cache size limits
-                pruneCache(FileProxyController.downloadCache, MAX_CACHE_ENTRIES);
+                pruneCache(
+                    FileProxyController.downloadCache,
+                    MAX_CACHE_ENTRIES,
+                );
                 FileProxyController.downloadCache.set(cacheKey, {
                     buffer,
                     status: response.status,
@@ -179,7 +176,6 @@ export class FileProxyController {
                     'private, max-age=0, must-revalidate',
                 );
                 res.status(response.status).send(buffer);
-
             } catch (err) {
                 if (err instanceof Error) {
                     if (
@@ -196,7 +192,9 @@ export class FileProxyController {
                 }
                 this.logger.error('Failed to proxy file:', err);
                 if (!res.headersSent) {
-                    res.status(502).json({ error: ErrorMessages.FILE.FAILED_PROXY });
+                    res.status(502).json({
+                        error: ErrorMessages.FILE.FAILED_PROXY,
+                    });
                 }
             }
         } catch (err) {
@@ -215,7 +213,9 @@ export class FileProxyController {
             }
             this.logger.error('Failed to proxy file:', err);
             if (!res.headersSent) {
-                res.status(502).json({ error: ErrorMessages.FILE.FAILED_PROXY });
+                res.status(502).json({
+                    error: ErrorMessages.FILE.FAILED_PROXY,
+                });
             }
         }
     }

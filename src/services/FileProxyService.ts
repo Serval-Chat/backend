@@ -277,7 +277,7 @@ export async function readBodyWithLimit(
         // Best-effort cancel / release
         try {
             await reader.cancel();
-        } catch { }
+        } catch {}
     }
 
     if (chunks.length === 0) return Buffer.alloc(0);

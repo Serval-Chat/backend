@@ -14,7 +14,12 @@ import {
     NotFoundException,
     BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiResponse,
+    ApiOperation,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
@@ -125,12 +130,13 @@ export class AdminController {
         @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) { }
-
+    ) {}
 
     @Get('stats')
     @Permissions('viewLogs')
-    @ApiOperation({ summary: 'Retrieve high-level statistics for the admin dashboard' })
+    @ApiOperation({
+        summary: 'Retrieve high-level statistics for the admin dashboard',
+    })
     @ApiResponse({ status: 200, type: DashBoardStatsDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getStats(): Promise<DashBoardStatsDTO> {
@@ -175,7 +181,6 @@ export class AdminController {
         return stats;
     }
 
-
     @Get('users')
     @Permissions('viewUsers')
     @ApiOperation({ summary: 'List users with optional search and filtering' })
@@ -210,7 +215,8 @@ export class AdminController {
                 item.login = user.login || '';
                 item.displayName = user.displayName || null;
                 item.profilePicture = user.profilePicture || null;
-                item.permissions = (user.permissions as unknown as AdminPermissions) || '0';
+                item.permissions =
+                    (user.permissions as unknown as AdminPermissions) || '0';
                 item.createdAt = user.createdAt || new Date();
                 item.banExpiry = activeBan?.expirationTimestamp;
                 item.warningCount = warningCount;
@@ -222,10 +228,11 @@ export class AdminController {
         return enrichedUsers;
     }
 
-
     @Get('users/:userId')
     @Permissions('viewUsers')
-    @ApiOperation({ summary: 'Retrieve detailed information about a specific user' })
+    @ApiOperation({
+        summary: 'Retrieve detailed information about a specific user',
+    })
     @ApiResponse({ status: 200, type: AdminUserDetailsDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'User not found' })
@@ -258,7 +265,8 @@ export class AdminController {
         details.login = user.login || '';
         details.displayName = user.displayName || null;
         details.profilePicture = user.profilePicture || null;
-        details.permissions = (user.permissions as unknown as AdminPermissions) || '0';
+        details.permissions =
+            (user.permissions as unknown as AdminPermissions) || '0';
         details.createdAt = user.createdAt || new Date();
         details.banExpiry = activeBan?.expirationTimestamp;
         details.warningCount = warningCount;
@@ -272,7 +280,6 @@ export class AdminController {
         details.deletedReason = user.deletedReason;
         return details;
     }
-
 
     // Resets specific profile fields for a user
     // Resetting the username forces a logout and requires the user to log in again
@@ -305,14 +312,17 @@ export class AdminController {
             updateData.username = `user_${randomHex}`;
             usernameChanged = true;
         }
-        if (fields.includes(ProfileFieldDTO.DISPLAY_NAME)) updateData.displayName = '';
+        if (fields.includes(ProfileFieldDTO.DISPLAY_NAME))
+            updateData.displayName = '';
         if (fields.includes(ProfileFieldDTO.PRONOUNS)) updateData.pronouns = '';
         if (fields.includes(ProfileFieldDTO.BIO)) updateData.bio = '';
         if (fields.includes(ProfileFieldDTO.BANNER)) updateData.banner = null;
 
         await this.userRepo.update(userId, updateData);
 
-        await this.logAdminAction(req, 'reset_user_profile', userId, { fields });
+        await this.logAdminAction(req, 'reset_user_profile', userId, {
+            fields,
+        });
 
         if (usernameChanged) {
             try {
@@ -356,7 +366,6 @@ export class AdminController {
         return response;
     }
 
-
     // Helper method to log admin actions to audit log
     private async logAdminAction(
         req: ExpressRequest,
@@ -386,7 +395,9 @@ export class AdminController {
                 additionalData: Record<string, unknown>;
                 targetUserId?: string;
             } = {
-                adminId: (req as ExpressRequest & { user?: JWTPayload }).user?.id || 'unknown',
+                adminId:
+                    (req as ExpressRequest & { user?: JWTPayload }).user?.id ||
+                    'unknown',
                 actionType,
                 additionalData: safeData,
             };
@@ -422,7 +433,9 @@ export class AdminController {
         }
 
         if (user.deletedAt) {
-            throw new BadRequestException(ErrorMessages.AUTH.USER_ALREADY_DELETED);
+            throw new BadRequestException(
+                ErrorMessages.AUTH.USER_ALREADY_DELETED,
+            );
         }
 
         const oldUsername = user.username || '';
@@ -502,10 +515,11 @@ export class AdminController {
         return response;
     }
 
-
     @Delete('users/:userId')
     @Permissions('manageUsers')
-    @ApiOperation({ summary: 'Legacy delete endpoint that forwards to soft delete' })
+    @ApiOperation({
+        summary: 'Legacy delete endpoint that forwards to soft delete',
+    })
     @ApiResponse({ status: 200, type: AdminDeleteUserResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'User not found' })
@@ -627,7 +641,8 @@ export class AdminController {
             const response = new AdminHardDeleteUserResponseDTO();
             response.message = 'User and associated data hard deleted';
             response.sentMessagesAnonymized = sentMessagesUpdated.modifiedCount;
-            response.receivedMessagesAnonymized = receivedMessagesUpdated.modifiedCount;
+            response.receivedMessagesAnonymized =
+                receivedMessagesUpdated.modifiedCount;
             response.offlineFriends = offlineFriends.length;
             return response;
         } catch (error) {
@@ -637,7 +652,6 @@ export class AdminController {
             session.endSession();
         }
     }
-
 
     // Updates a user's permissions
     @Put('users/:userId/permissions')
@@ -654,14 +668,14 @@ export class AdminController {
     ): Promise<AdminUpdateUserPermissionsResponseDTO> {
         const { permissions } = body;
 
-
-
         const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        if (userId === (req as ExpressRequest & { user?: JWTPayload }).user?.id) {
+        if (
+            userId === (req as ExpressRequest & { user?: JWTPayload }).user?.id
+        ) {
             throw new BadRequestException('Cannot modify your own permissions');
         }
 
@@ -674,7 +688,6 @@ export class AdminController {
         response.message = 'Permissions updated';
         return response;
     }
-
 
     @Post('users/:userId/ban')
     @HttpCode(200)
@@ -696,7 +709,9 @@ export class AdminController {
         }
 
         const expirationTimestamp = new Date(Date.now() + duration * 60 * 1000);
-        const issuedById = (req as ExpressRequest & { user?: JWTPayload }).user?.id || 'unknown';
+        const issuedById =
+            (req as ExpressRequest & { user?: JWTPayload }).user?.id ||
+            'unknown';
 
         const ban = await this.banRepo.createOrUpdateWithHistory({
             userId,
@@ -729,7 +744,8 @@ export class AdminController {
             sockets.forEach((sid) => {
                 io.to(sid).emit('ban', {
                     reason: reason.trim(),
-                    issuedBy: (req as ExpressRequest & { user?: JWTPayload }).user?.username,
+                    issuedBy: (req as ExpressRequest & { user?: JWTPayload })
+                        .user?.username,
                     expirationTimestamp,
                 });
                 io.sockets.sockets.get(sid)?.disconnect(true);
@@ -746,7 +762,6 @@ export class AdminController {
         response.history = ban.history || [];
         return response;
     }
-
 
     @Post('users/:userId/unban')
     @HttpCode(200)
@@ -765,7 +780,6 @@ export class AdminController {
         return response;
     }
 
-
     @Get('users/:userId/bans')
     @Permissions('viewBans')
     @ApiOperation({ summary: 'Retrieve ban history for a user' })
@@ -779,19 +793,20 @@ export class AdminController {
             return [];
         }
 
-        const historyWithStatus: AdminUserBanHistoryResponseDTO = ban.history!.map(
-            (entry, index: number) => {
+        const historyWithStatus: AdminUserBanHistoryResponseDTO =
+            ban.history!.map((entry, index: number) => {
                 const item = new AdminBanHistoryItemDTO();
                 const e = entry as Record<string, unknown>;
                 item._id = String(e._id || '');
                 item.reason = String(e.reason || '');
                 item.timestamp = (e.timestamp as Date) || new Date();
-                item.expirationTimestamp = (e.expirationTimestamp as Date) || new Date();
+                item.expirationTimestamp =
+                    (e.expirationTimestamp as Date) || new Date();
                 item.issuedBy = String(e.issuedBy || 'unknown');
-                item.active = index === ban.history!.length - 1 && (ban.active || false);
+                item.active =
+                    index === ban.history!.length - 1 && (ban.active || false);
                 return item;
-            },
-        );
+            });
         return historyWithStatus;
     }
 
@@ -835,7 +850,6 @@ export class AdminController {
         return response;
     }
 
-
     @Post('users/:userId/warn')
     @HttpCode(200)
     @Permissions('warnUsers')
@@ -851,7 +865,9 @@ export class AdminController {
 
         const warning = await this.warningRepo.create({
             userId,
-            issuedBy: (req as ExpressRequest & { user?: JWTPayload }).user?.id || 'unknown',
+            issuedBy:
+                (req as ExpressRequest & { user?: JWTPayload }).user?.id ||
+                'unknown',
             message,
         });
 
@@ -886,9 +902,11 @@ export class AdminController {
     @ApiOperation({ summary: 'Retrieve warnings for a user' })
     @ApiResponse({ status: 200, type: [AdminWarnUserResponseDTO] })
     @ApiResponse({ status: 403, description: 'Forbidden' })
-    public async getUserWarnings(@Path('userId') userId: string): Promise<AdminUserWarningsResponseDTO> {
+    public async getUserWarnings(
+        @Path('userId') userId: string,
+    ): Promise<AdminUserWarningsResponseDTO> {
         const warnings = await this.warningRepo.findByUserId(userId);
-        return warnings.map(w => {
+        return warnings.map((w) => {
             const dto = new AdminWarnUserResponseDTO();
             dto._id = w._id.toString();
             dto.userId = w.userId.toString();
@@ -914,7 +932,7 @@ export class AdminController {
             limit: Number(limit),
             offset: Number(offset),
         });
-        return warnings.map(w => {
+        return warnings.map((w) => {
             const dto = new AdminWarnUserResponseDTO();
             dto._id = w._id.toString();
             dto.userId = w.userId.toString();
@@ -942,7 +960,6 @@ export class AdminController {
         });
         return logs;
     }
-
 
     @Get('servers')
     @Permissions('manageServer')
@@ -1000,7 +1017,6 @@ export class AdminController {
         return enrichedServers;
     }
 
-
     @Delete('servers/:serverId')
     @Permissions('manageServer')
     @ApiOperation({ summary: 'Soft deletes a server' })
@@ -1032,7 +1048,6 @@ export class AdminController {
         response.message = 'Server deleted';
         return response;
     }
-
 
     // Restores a deleted server
     @Post('servers/:serverId/restore')
@@ -1071,10 +1086,11 @@ export class AdminController {
         return response;
     }
 
-
     @Get('users/:userId/details')
     @Permissions('viewUsers')
-    @ApiOperation({ summary: 'Retrieve extended user details including servers' })
+    @ApiOperation({
+        summary: 'Retrieve extended user details including servers',
+    })
     @ApiResponse({ status: 200, type: AdminExtendedUserDetailsDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'User not found' })
@@ -1089,8 +1105,8 @@ export class AdminController {
         const profilePictureUrl = user.deletedAt
             ? '/images/deleted-cat.jpg'
             : user.profilePicture
-                ? `/api/v1/profile/picture/${user.profilePicture}`
-                : null;
+              ? `/api/v1/profile/picture/${user.profilePicture}`
+              : null;
 
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
@@ -1138,7 +1154,9 @@ export class AdminController {
         response.bio = user.bio || '';
         response.pronouns = user.pronouns || '';
         response.badges = badges as string[];
-        response.banner = user.banner ? `/api/v1/profile/banner/${user.banner}` : null;
+        response.banner = user.banner
+            ? `/api/v1/profile/banner/${user.banner}`
+            : null;
         response.deletedAt = user.deletedAt;
         response.deletedReason = user.deletedReason;
         response.servers = serverList;
@@ -1146,4 +1164,3 @@ export class AdminController {
         return response;
     }
 }
-
