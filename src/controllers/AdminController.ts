@@ -130,7 +130,7 @@ export class AdminController {
         @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) {}
+    ) { }
 
     @Get('stats')
     @Permissions('viewLogs')
@@ -212,7 +212,6 @@ export class AdminController {
                 const item = new AdminUserListItemDTO();
                 item._id = user._id.toString();
                 item.username = user.username || '';
-                item.login = user.login || '';
                 item.displayName = user.displayName || null;
                 item.profilePicture = user.profilePicture || null;
                 item.permissions =
@@ -262,7 +261,6 @@ export class AdminController {
         const details = new AdminUserDetailsDTO();
         details._id = user._id.toString();
         details.username = user.username || '';
-        details.login = user.login || '';
         details.displayName = user.displayName || null;
         details.profilePicture = user.profilePicture || null;
         details.permissions =
@@ -1105,8 +1103,8 @@ export class AdminController {
         const profilePictureUrl = user.deletedAt
             ? '/images/deleted-cat.jpg'
             : user.profilePicture
-              ? `/api/v1/profile/picture/${user.profilePicture}`
-              : null;
+                ? `/api/v1/profile/picture/${user.profilePicture}`
+                : null;
 
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
@@ -1144,7 +1142,6 @@ export class AdminController {
         const response = new AdminExtendedUserDetailsDTO();
         response._id = user._id.toString();
         response.username = user.username || '';
-        response.login = user.login || '';
         response.displayName = user.displayName || null;
         response.profilePicture = profilePictureUrl;
         response.permissions = user.permissions || '0';

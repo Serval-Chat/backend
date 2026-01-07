@@ -130,7 +130,7 @@ export function setupExpressApp(app: Application): Application {
         }),
     );
 
-    app.options('*', cors());
+    app.options(/.*/, cors());
 
     // Gzip
     app.use(compression());

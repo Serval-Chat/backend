@@ -6,8 +6,6 @@ export class AdminUserListItemDTO {
     _id!: string;
     @ApiProperty()
     username!: string;
-    @ApiProperty()
-    login!: string;
     @ApiProperty({ nullable: true })
     displayName!: string | null;
     @ApiProperty({ nullable: true })

@@ -62,7 +62,7 @@ export class AuthController {
         @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-    ) {}
+    ) { }
 
     // Authenticates a user and returns a JWT
     @Post('login')
@@ -109,8 +109,8 @@ export class AuthController {
 
         const token = generateJWT({
             id: user._id.toString(),
-            login: user.login,
-            username: user.username,
+            login: user.login!,
+            username: user.username!,
             tokenVersion: user.tokenVersion || 0,
             permissions: user.permissions,
         });
@@ -248,8 +248,8 @@ export class AuthController {
 
         const token = generateJWT({
             id: updatedUser._id.toString(),
-            login: updatedUser.login || '',
-            username: updatedUser.username || '',
+            login: updatedUser.login!,
+            username: updatedUser.username!,
             tokenVersion: updatedUser.tokenVersion || 0,
             permissions: updatedUser.permissions,
         });
@@ -299,8 +299,8 @@ export class AuthController {
 
         const token = generateJWT({
             id: user._id.toString(),
-            login: user.login || '',
-            username: user.username || '',
+            login: user.login!,
+            username: user.username!,
             tokenVersion: user.tokenVersion || 0,
             permissions: user.permissions,
         });

@@ -39,9 +39,6 @@ export class UserProfileResponseDTO {
     @ApiProperty()
     username!: string;
 
-    @ApiProperty()
-    login!: string;
-
     @ApiProperty({ nullable: true })
     displayName!: string | null;
 

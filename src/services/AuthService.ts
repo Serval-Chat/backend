@@ -4,12 +4,12 @@ import { ILogger } from '@/di/interfaces/ILogger';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { IBanRepository } from '@/di/interfaces/IBanRepository';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { type MappedUser } from '@/utils/user';
+import { type IUser } from '@/di/interfaces/IUserRepository';
 
 // Authentication result
 export interface AuthResult {
     success: boolean;
-    user?: MappedUser;
+    user?: IUser;
     error?: string;
     ban?: {
         reason: string;
@@ -34,7 +34,7 @@ export class AuthService {
         @inject(TYPES.BanRepository)
         @Inject(TYPES.BanRepository)
         private banRepo: IBanRepository,
-    ) {}
+    ) { }
 
     // Authenticate a user with login credentials.
     //
@@ -103,7 +103,7 @@ export class AuthService {
         this.logger.info(`Login successful: ${login}`);
         return {
             success: true,
-            user: user as unknown as MappedUser,
+            user,
         };
     }
 }
