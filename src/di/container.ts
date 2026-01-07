@@ -82,6 +82,11 @@ import { UserWarningController } from '@/controllers/UserWarningController';
 import { UserPingController } from '@/controllers/UserPingController';
 import { FileCompatibilityController } from '@/controllers/FileCompatibilityController';
 
+// WebSocket
+import { WsServer } from '@/ws/server';
+import { WsDispatcher } from '@/ws/dispatcher';
+import { PingController } from '@/ws/controller/PingController';
+
 // Dependency Injection Container
 //
 // Central container for managing all application dependencies
@@ -332,5 +337,10 @@ container
     .bind<FileCompatibilityController>(FileCompatibilityController)
     .toSelf()
     .inTransientScope();
+
+// WebSocket
+container.bind<WsServer>(TYPES.WsServer).to(WsServer).inSingletonScope();
+container.bind<WsDispatcher>(TYPES.WsDispatcher).to(WsDispatcher).inSingletonScope();
+container.bind<PingController>(PingController).toSelf().inTransientScope();
 
 export { container };

@@ -1,6 +1,6 @@
 import type { WsEvent } from "./event";
 
-type WsErrorCode = 'AUTHENTICATION_FAILED' |
+export type WsErrorCode = 'AUTHENTICATION_FAILED' |
     'INTERNAL_ERROR' |
     'MALFORMED_MESSAGE' |
     'UNAUTHORIZED' |
