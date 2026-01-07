@@ -39,4 +39,6 @@ export const TYPES = {
 
     // Application
     ExpressApp: Symbol.for('ExpressApp'),
+    WsServer: Symbol.for('WsServer'),
+    WsDispatcher: Symbol.for('WsDispatcher'),
 };

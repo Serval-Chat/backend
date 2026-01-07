@@ -11,10 +11,8 @@ import { connectDB } from '@/config/db';
 import { createSocketServer } from '@/socket/init';
 import { startMetricsUpdater } from '@/utils/metrics-updater';
 import { container } from '@/di/container';
-import { WsServer } from '@/ws/server';
+import type { WsServer } from '@/ws/server';
 import { TYPES } from '@/di/types';
-import { IUserRepository } from '@/di/interfaces/IUserRepository';
-import { IBanRepository } from '@/di/interfaces/IBanRepository';
 import * as YAML from 'yaml';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
@@ -81,7 +79,9 @@ async function bootstrap() {
     // Initialize Real-time and Metrics
     const httpServer = app.getHttpServer();
     await createSocketServer(httpServer, container);
-    new WsServer(httpServer);
+
+    const wsServer = container.get<WsServer>(TYPES.WsServer);
+    wsServer.initialize(httpServer);
 
     // Initialize Swagger
     const config = new DocumentBuilder()

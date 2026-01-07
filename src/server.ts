@@ -107,7 +107,19 @@ export function setupExpressApp(app: Application): Application {
     // CORS
     app.use(
         cors({
-            origin: '*',
+            origin: (origin, callback) => {
+                const allowedOrigins = [
+                    'https://catfla.re',
+                    'http://localhost:5173',
+                    'http://localhost:3000',
+                ];
+
+                if (!origin || allowedOrigins.includes(origin)) {
+                    callback(null, true);
+                } else {
+                    callback(new Error('Not allowed by CORS'));
+                }
+            },
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization'],
             credentials: true,
