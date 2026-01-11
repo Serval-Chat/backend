@@ -110,6 +110,7 @@ export function setupExpressApp(app: Application): Application {
             origin: (origin, callback) => {
                 const allowedOrigins = [
                     'https://catfla.re',
+                    'https://rolling.catfla.re',
                     'http://localhost:5173',
                     'http://localhost:3000',
                 ];
