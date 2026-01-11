@@ -1,8 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MONGO_URI } from '@/config/env';
+import { TYPES } from '@/di/types';
+import { container } from '@/di/container';
+import { WsServer } from '@/ws/server';
 import { DatabaseModule } from './modules/database/database.module';
 import { RepositoryModule } from './modules/repository/repository.module';
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
@@ -75,6 +78,12 @@ import { SettingsController } from './controllers/SettingsController';
             provide: APP_FILTER,
             useClass: ApiErrorFilter,
         },
+        {
+            provide: TYPES.WsServer,
+            useFactory: () => container.get<WsServer>(TYPES.WsServer),
+        },
     ],
 })
-export class AppModule {}
+export class AppModule {
+    configure(_consumer: MiddlewareConsumer) {}
+}

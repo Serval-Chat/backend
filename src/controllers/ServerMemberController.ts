@@ -18,6 +18,7 @@ import {
     ApiResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
+import { WsServer } from '@/ws/server';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -30,7 +31,7 @@ import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import { getIO } from '@/socket';
+
 import { mapUser } from '@/utils/user';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -75,6 +76,9 @@ export class ServerMemberController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
     ) {}
 
     // Retrieves all members of a server
@@ -204,10 +208,9 @@ export class ServerMemberController {
 
         await this.serverMemberRepo.remove(serverId, userId);
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('member_removed', {
-            serverId,
-            userId,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_removed',
+            payload: { serverId, userId },
         });
 
         return { message: 'Member kicked' };
@@ -260,12 +263,14 @@ export class ServerMemberController {
         // Automatically remove the member from the server upon banning
         await this.serverMemberRepo.remove(serverId, userId);
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('member_removed', {
-            serverId,
-            userId,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_removed',
+            payload: { serverId, userId },
         });
-        io.to(`server:${serverId}`).emit('member_banned', { serverId, userId });
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_banned',
+            payload: { serverId, userId },
+        });
 
         return { message: 'Member banned' };
     }
@@ -300,10 +305,9 @@ export class ServerMemberController {
 
         await this.serverBanRepo.unban(serverId, userId);
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('member_unbanned', {
-            serverId,
-            userId,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_unbanned',
+            payload: { serverId, userId },
         });
 
         return { message: 'Member unbanned' };
@@ -391,11 +395,13 @@ export class ServerMemberController {
             roleId,
         );
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('member_updated', {
-            serverId,
-            userId,
-            member: updatedMember,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_updated',
+            payload: {
+                serverId,
+                userId,
+                member: updatedMember,
+            },
         });
 
         return updatedMember;
@@ -444,11 +450,13 @@ export class ServerMemberController {
             roleId,
         );
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('member_updated', {
-            serverId,
-            userId,
-            member: updatedMember,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_updated',
+            payload: {
+                serverId,
+                userId,
+                member: updatedMember,
+            },
         });
 
         return updatedMember;
@@ -477,10 +485,9 @@ export class ServerMemberController {
 
         await this.serverMemberRepo.remove(serverId, userId);
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('member_removed', {
-            serverId,
-            userId,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_removed',
+            payload: { serverId, userId },
         });
 
         return { message: 'Left server' };
@@ -524,11 +531,13 @@ export class ServerMemberController {
 
         await this.serverRepo.update(serverId, { ownerId: newOwnerId });
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('ownership_transferred', {
-            serverId,
-            oldOwnerId: userId,
-            newOwnerId,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'ownership_transferred',
+            payload: {
+                serverId,
+                oldOwnerId: userId,
+                newOwnerId: newOwnerId,
+            },
         });
 
         return { message: 'Ownership transferred' };

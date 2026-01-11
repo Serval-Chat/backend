@@ -39,7 +39,6 @@ interface MetaCacheEntry {
 import { FileProxyMetaResponseDTO } from './dto/file-proxy.response.dto';
 import { injectable, inject } from 'inversify';
 
-// Controller for proxying remote files to avoid CORS issues and SSRF attacks
 @ApiTags('File Proxy')
 @injectable()
 @Controller('api/v1/file-proxy')
@@ -56,7 +55,6 @@ export class FileProxyController {
     // Rewrite the old URL to new URL so old messages that use the old URL are still valid
     private rewriteKbityUrl(url: URL): URL {
         if (url.hostname === 'kbity.catflare.cloud') {
-            // Rewrite legacy kbity.catflare.cloud URLs to catfla.re
             const newUrl = new URL(url.toString());
             newUrl.hostname = 'catfla.re';
             return newUrl;

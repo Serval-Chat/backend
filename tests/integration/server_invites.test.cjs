@@ -40,13 +40,6 @@ describe('Server Invites Integration Tests', () => {
             const server = await createTestServer(owner._id);
             const token = generateAuthToken(owner);
 
-            // Add owner as member with manageInvites permission
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
-
             const res = await request(app)
                 .post(`/api/v1/servers/${server._id}/invites`)
                 .set('Authorization', `Bearer ${token}`)
@@ -70,11 +63,7 @@ describe('Server Invites Integration Tests', () => {
             const server = await createTestServer(owner._id);
             const token = generateAuthToken(owner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             const res = await request(app)
                 .post(`/api/v1/servers/${server._id}/invites`)
@@ -95,11 +84,7 @@ describe('Server Invites Integration Tests', () => {
             const server = await createTestServer(owner._id);
             const token = generateAuthToken(owner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             const res = await request(app)
                 .post(`/api/v1/servers/${server._id}/invites`)
@@ -124,11 +109,7 @@ describe('Server Invites Integration Tests', () => {
             const server = await createTestServer(owner._id);
             const token = generateAuthToken(owner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             const res = await request(app)
                 .post(`/api/v1/servers/${server._id}/invites`)
@@ -202,11 +183,7 @@ describe('Server Invites Integration Tests', () => {
             const server = await createTestServer(owner._id);
             const token = generateAuthToken(owner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             // Create first invite
             await request(app)
@@ -234,11 +211,7 @@ describe('Server Invites Integration Tests', () => {
             const server = await createTestServer(owner._id);
             const token = generateAuthToken(owner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             // Create multiple invites
             const invite1 = await request(app)
@@ -288,11 +261,7 @@ describe('Server Invites Integration Tests', () => {
             const server = await createTestServer(owner._id);
             const token = generateAuthToken(owner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             // Create invite
             const createRes = await request(app)
@@ -324,11 +293,7 @@ describe('Server Invites Integration Tests', () => {
             const server = await createTestServer(owner._id);
             const token = generateAuthToken(owner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             // Create invite
             const createRes = await request(app)
@@ -361,11 +326,7 @@ describe('Server Invites Integration Tests', () => {
             const ownerToken = generateAuthToken(owner);
             const joinerToken = generateAuthToken(joiner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             // Create invite
             const createRes = await request(app)
@@ -398,11 +359,7 @@ describe('Server Invites Integration Tests', () => {
             const ownerToken = generateAuthToken(owner);
             const joinerToken = generateAuthToken(joiner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             // Create invite with maxUses
             await request(app)
@@ -431,11 +388,7 @@ describe('Server Invites Integration Tests', () => {
             const server = await createTestServer(owner._id);
             const ownerToken = generateAuthToken(owner);
 
-            await ServerMember.create({
-                serverId: server._id,
-                userId: owner._id,
-                joinedAt: new Date(),
-            });
+
 
             // Create invite with maxUses = 1
             await request(app)

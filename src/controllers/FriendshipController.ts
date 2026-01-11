@@ -13,7 +13,7 @@ import { TYPES } from '@/di/types';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { IMessageRepository } from '@/di/interfaces/IMessageRepository';
-import { PresenceService } from '@/realtime/services/PresenceService';
+import { WsServer } from '@/ws/server';
 import { ILogger } from '@/di/interfaces/ILogger';
 import {
     ApiTags,
@@ -22,7 +22,6 @@ import {
     ApiOperation,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { getIO } from '@/socket';
 import { type SerializedCustomStatus } from '@/utils/status';
 import { mapUser } from '@/utils/user';
 import { Request } from 'express';
@@ -60,9 +59,9 @@ export class FriendshipController {
         @inject(TYPES.MessageRepository)
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
-        @inject(TYPES.PresenceService)
-        @Inject(TYPES.PresenceService)
-        private presenceService: PresenceService,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
@@ -287,16 +286,13 @@ export class FriendshipController {
         };
 
         try {
-            const io = getIO();
-            const targetUsername = friendUser.username || '';
-            const recipientSockets =
-                this.presenceService.getSockets(targetUsername);
-
-            if (recipientSockets) {
-                recipientSockets.forEach((sid) =>
-                    io.to(sid).emit('incoming_request_added', requestPayload),
-                );
-            }
+            this.wsServer.broadcastToUser(friendId, {
+                type: 'incoming_request_added',
+                payload: {
+                    ...requestPayload,
+                    from: requestPayload.from || '',
+                },
+            });
         } catch (err) {
             this.logger.error(
                 'Failed to emit incoming_request_added event:',
@@ -363,30 +359,24 @@ export class FriendshipController {
         const toFriendPayload = this.mapUserToFriendPayload(toUser);
 
         try {
-            const io = getIO();
-            const toUsername = toUser.username || '';
-            const toSockets = this.presenceService.getSockets(toUsername);
-
-            if (toSockets && fromFriendPayload) {
-                toSockets.forEach((sid) => {
-                    io.to(sid).emit('friend_added', {
-                        friend: fromFriendPayload,
-                    });
-                    io.to(sid).emit('incoming_request_removed', {
-                        from: fromUser.username,
-                        fromId: fromFriendPayload?._id,
-                    });
+            if (fromFriendPayload && toFriendPayload) {
+                // Notify sender (fromUser)
+                this.wsServer.broadcastToUser(fromId, {
+                    type: 'friend_added',
+                    payload: { friend: toFriendPayload },
                 });
-            }
 
-            const fromUsername = fromUser.username || '';
-            const fromSockets = this.presenceService.getSockets(fromUsername);
-
-            if (fromSockets && toFriendPayload) {
-                fromSockets.forEach((sid) => {
-                    io.to(sid).emit('friend_added', {
-                        friend: toFriendPayload,
-                    });
+                // Notify recipient (toUser)
+                this.wsServer.broadcastToUser(toId, {
+                    type: 'friend_added',
+                    payload: { friend: fromFriendPayload },
+                });
+                this.wsServer.broadcastToUser(toId, {
+                    type: 'incoming_request_removed',
+                    payload: {
+                        from: fromUser.username || '',
+                        fromId: fromFriendPayload._id,
+                    },
                 });
             }
         } catch (err) {
@@ -466,30 +456,21 @@ export class FriendshipController {
         await this.friendshipRepo.remove(meId, friendId);
 
         try {
-            const io = getIO();
-            const mySockets = this.presenceService.getSockets(
-                meUser.username || '',
-            );
-            if (mySockets) {
-                mySockets.forEach((sid) =>
-                    io.to(sid).emit('friend_removed', {
-                        username: friend.username,
-                        userId: friendId,
-                    }),
-                );
-            }
+            this.wsServer.broadcastToUser(meId, {
+                type: 'friend_removed',
+                payload: {
+                    username: friend.username || '',
+                    userId: friendId,
+                },
+            });
 
-            const friendSockets = this.presenceService.getSockets(
-                friend.username || '',
-            );
-            if (friendSockets) {
-                friendSockets.forEach((sid) =>
-                    io.to(sid).emit('friend_removed', {
-                        username: meUser.username,
-                        userId: meId,
-                    }),
-                );
-            }
+            this.wsServer.broadcastToUser(friendId, {
+                type: 'friend_removed',
+                payload: {
+                    username: meUser.username || '',
+                    userId: meId,
+                },
+            });
         } catch (err) {
             this.logger.error('Failed to emit friend_removed event:', err);
         }

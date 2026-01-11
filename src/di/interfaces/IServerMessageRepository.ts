@@ -1,4 +1,4 @@
-import type { Types } from 'mongoose';
+import type { Types, ClientSession } from 'mongoose';
 
 // Server Message interface (domain model)
 //
@@ -29,17 +29,20 @@ export interface IServerMessage {
 // Encapsulates server message operations
 export interface IServerMessageRepository {
     // Create a new server message
-    create(data: {
-        serverId: string | Types.ObjectId;
-        channelId: string | Types.ObjectId;
-        senderId: string | Types.ObjectId;
-        text: string;
-        isWebhook?: boolean | undefined;
-        webhookUsername?: string | undefined;
-        webhookAvatarUrl?: string | undefined;
-        replyToId?: string | Types.ObjectId | undefined;
-        repliedToMessageId?: Types.ObjectId | undefined;
-    }): Promise<IServerMessage>;
+    create(
+        data: {
+            serverId: string | Types.ObjectId;
+            channelId: string | Types.ObjectId;
+            senderId: string | Types.ObjectId;
+            text: string;
+            isWebhook?: boolean | undefined;
+            webhookUsername?: string | undefined;
+            webhookAvatarUrl?: string | undefined;
+            replyToId?: string | Types.ObjectId | undefined;
+            repliedToMessageId?: Types.ObjectId | undefined;
+        },
+        session?: ClientSession,
+    ): Promise<IServerMessage>;
 
     // Delete message by ID
     delete(id: string): Promise<boolean>;

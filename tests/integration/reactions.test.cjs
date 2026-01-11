@@ -38,15 +38,8 @@ describe('Reaction Integration Tests', () => {
         server = await createTestServer(user1._id);
         channel = await createTestChannel(server._id);
 
-        // Add user1 (owner) to server
-        const ServerMember = mongoose.model('ServerMember');
-        await ServerMember.create({
-            serverId: server._id,
-            userId: user1._id,
-            roles: []
-        });
-
         // Add user2 to server
+        const { ServerMember } = require('../../src/models/Server');
         await ServerMember.create({
             serverId: server._id,
             userId: user2._id,

@@ -61,39 +61,42 @@ const {
     createTestUser
 } = require('../utils/test-utils.cjs');
 
-// Mock PresenceService
-function createMockPresenceService() {
+// Mock StatusService
+function createMockStatusService() {
     return {
-        isUserOnline: () => true,
-        getUserSockets: () => ['socket-1']
+        getSubscribers: () => []
     };
 }
 
-const { setIO } = require('../../src/socket/index');
-const emits = [];
-const mockIO = {
-    to: (room) => ({
-        emit: (event, data) => {
-            emits.push({ room, event, data });
-            return mockIO;
+// Mock WsServer
+function createMockWsServer() {
+    const broadcasts = [];
+    return {
+        broadcasts,
+        broadcastToServer: (serverId, event) => {
+            broadcasts.push({ type: 'server', target: serverId, event });
+        },
+        broadcastToUser: (userId, event) => {
+            broadcasts.push({ type: 'user', target: userId, event });
         }
-    })
-};
-setIO(mockIO);
+    };
+}
 
 test('ProfileController - uploadProfilePicture calls repository and emits event', async () => {
     const mockLogger = createMockLogger();
     const mockUserRepo = createMockUserRepository();
-    const mockPresenceService = createMockPresenceService();
+    const mockStatusService = createMockStatusService();
     const mockServerMemberRepo = createMockServerMemberRepository();
     const mockFriendshipRepo = createMockFriendshipRepository();
+    const mockWsServer = createMockWsServer();
 
     const controller = new ProfileController(
         mockUserRepo,
         mockLogger,
-        mockPresenceService,
+        mockStatusService,
         mockServerMemberRepo,
-        mockFriendshipRepo
+        mockFriendshipRepo,
+        mockWsServer
     );
 
     const userId = new Types.ObjectId().toString();
@@ -121,11 +124,11 @@ test('ProfileController - uploadProfilePicture calls repository and emits event'
     assert.equal(mockUserRepo.calls.updateProfilePicture.length, 1);
     assert.equal(mockUserRepo.calls.updateProfilePicture[0].id, userId);
 
-    // Check if event was emitted
-    const userUpdateEmit = emits.find(e => e.event === 'user_updated');
-    assert.ok(userUpdateEmit);
-    assert.equal(userUpdateEmit.data.userId, userId);
-    assert.equal(userUpdateEmit.data.profilePicture, result.profilePicture);
+    // Check if event was emitted via WsServer
+    const userUpdateBroadcast = mockWsServer.broadcasts.find(b => b.event.type === 'user_updated' && b.type === 'user' && b.target === userId);
+    assert.ok(userUpdateBroadcast);
+    assert.equal(userUpdateBroadcast.event.payload.userId, userId);
+    assert.equal(userUpdateBroadcast.event.payload.profilePicture, result.profilePicture);
 });
 
 test.after(() => {

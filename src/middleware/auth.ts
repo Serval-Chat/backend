@@ -19,13 +19,6 @@ export interface AuthenticatedRequest extends Request {
 }
 
 // Authenticate JWT token from request headers.
-//
-// Security mitigations:
-// - validates token existence and format (Bearer).
-// - checks if the account is soft-deleted.
-// - validates 'tokenVersion' to support global logout/session invalidation.
-// - checks for active bans (including automated expiration).
-// - prevents re-authentication if 'req.user' is already set.
 export const authenticateToken = async (
     req: Request,
     res: Response,

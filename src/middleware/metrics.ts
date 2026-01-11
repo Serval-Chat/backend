@@ -4,13 +4,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import { container } from '@/di/container';
 import { TYPES } from '@/di/types';
 
-// Creates a metrics middleware with dependency injection support.
-//
-// Captures request duration and total request count, labeled by method,
-// Route, and status code.
-//
-// Takes an optional logger instance for recording metric collection errors.
-// Returns express middleware function for metrics collection.
+// Creates a metrics middleware
 export const createMetricsMiddleware = (logger?: ILogger) => {
     // Use injected logger or fallback to console
     const metricsLogger = logger || {

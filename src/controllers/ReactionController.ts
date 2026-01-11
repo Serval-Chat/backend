@@ -27,10 +27,11 @@ import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import { getIO } from '@/socket';
-import { PresenceService } from '@/realtime/services/PresenceService';
+
+import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -42,6 +43,10 @@ import {
     RemoveUnicodeReactionRequestDTO,
     RemoveCustomReactionRequestDTO,
 } from './dto/reaction.request.dto';
+import type {
+    IReactionAddedEvent,
+    IReactionRemovedEvent,
+} from '@/ws/protocol/events/reactions';
 
 @injectable()
 @Controller('api/v1')
@@ -68,12 +73,15 @@ export class ReactionController {
         @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.PresenceService)
-        @Inject(TYPES.PresenceService)
-        private presenceService: PresenceService,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: IWsServer,
         @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
+        @inject(TYPES.FriendshipRepository)
+        @Inject(TYPES.FriendshipRepository)
+        private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
@@ -172,30 +180,49 @@ export class ReactionController {
             throw err;
         }
 
+        const areFriends = await this.friendshipRepo.areFriends(
+            message.senderId.toString(),
+            message.receiverId.toString(),
+        );
+
+        if (!areFriends) {
+            await this.reactionRepo.removeReaction(
+                messageId,
+                'dm',
+                userId,
+                emoji,
+                emojiId,
+            );
+            throw new ApiError(403, ErrorMessages.REACTION.ACCESS_DENIED);
+        }
+
         const reactions = await this.reactionRepo.getReactionsByMessage(
             messageId,
             'dm',
             userId,
         );
 
-        const io = getIO();
         const receiverId =
             message.senderId.toString() === userId
                 ? message.receiverId.toString()
                 : message.senderId.toString();
 
+        // Broadcast reaction to both users
+        const event: IReactionAddedEvent = {
+            type: 'reaction_added',
+            payload: {
+                messageId,
+                userId,
+                username: (req as Request & { user: JWTPayload }).user.username,
+                emoji,
+                emojiType,
+                emojiId,
+                messageType: 'dm',
+            },
+        };
+
         for (const uid of [userId, receiverId]) {
-            const user = await this.userRepo.findById(uid);
-            if (user?.username) {
-                const sockets = this.presenceService.getSockets(user.username);
-                sockets.forEach((sid: string) => {
-                    io.to(sid).emit('reaction_added', {
-                        messageId,
-                        messageType: 'dm',
-                        reactions,
-                    });
-                });
-            }
+            this.wsServer.broadcastToUser(uid, event);
         }
 
         return { reactions };
@@ -255,24 +282,26 @@ export class ReactionController {
             userId,
         );
 
-        const io = getIO();
         const receiverId =
             message.senderId.toString() === userId
                 ? message.receiverId.toString()
                 : message.senderId.toString();
 
+        // Broadcast reaction removal to both users
+        const event: IReactionRemovedEvent = {
+            type: 'reaction_removed',
+            payload: {
+                messageId,
+                userId,
+                emoji: emoji!,
+                emojiType: emojiId ? 'custom' : 'unicode',
+                emojiId,
+                messageType: 'dm',
+            },
+        };
+
         for (const uid of [userId, receiverId]) {
-            const user = await this.userRepo.findById(uid);
-            if (user?.username) {
-                const sockets = this.presenceService.getSockets(user.username);
-                sockets.forEach((sid: string) => {
-                    io.to(sid).emit('reaction_removed', {
-                        messageId,
-                        messageType: 'dm',
-                        reactions,
-                    });
-                });
-            }
+            this.wsServer.broadcastToUser(uid, event);
         }
 
         return { reactions };
@@ -365,14 +394,20 @@ export class ReactionController {
             userId,
         );
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('reaction_added', {
-            messageId,
-            messageType: 'server',
-            serverId,
-            channelId,
-            reactions,
-        });
+        const event: IReactionAddedEvent = {
+            type: 'reaction_added',
+            payload: {
+                messageId,
+                userId,
+                username: (req as Request & { user: JWTPayload }).user.username,
+                emoji,
+                emojiType,
+                emojiId,
+                messageType: 'server',
+            },
+        };
+
+        this.wsServer.broadcastToServer(serverId, event);
 
         return { reactions };
     }
@@ -472,14 +507,19 @@ export class ReactionController {
             userId,
         );
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('reaction_removed', {
-            messageId,
-            messageType: 'server',
-            serverId,
-            channelId,
-            reactions,
-        });
+        const event: IReactionRemovedEvent = {
+            type: 'reaction_removed',
+            payload: {
+                messageId,
+                userId,
+                emoji: emoji!,
+                emojiType: emojiId ? 'custom' : 'unicode',
+                emojiId,
+                messageType: 'server',
+            },
+        };
+
+        this.wsServer.broadcastToServer(serverId, event);
 
         return { reactions };
     }

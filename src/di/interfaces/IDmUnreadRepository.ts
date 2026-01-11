@@ -1,4 +1,4 @@
-import type { Types } from 'mongoose';
+import type { Types, ClientSession } from 'mongoose';
 
 // DM Unread interface
 //
@@ -27,7 +27,12 @@ export interface IDmUnreadRepository {
     ): Promise<IDmUnread | null>;
 
     // Increment the unread count for a user from a peer
-    increment(userId: string, peerId: string): Promise<void>;
+    // Returns the new count after increment
+    increment(
+        userId: string,
+        peerId: string,
+        session?: ClientSession,
+    ): Promise<number>;
 
     // Reset the unread count for a user from a peer to zero
     reset(userId: string, peerId: string): Promise<void>;

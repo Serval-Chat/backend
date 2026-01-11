@@ -205,4 +205,7 @@ export interface IUserRepository {
 
     // Update user's banner
     updateBanner(id: string, filename: string | null): Promise<void>;
+
+    // Verify if user is currently banned
+    isBanned(userId: string): Promise<boolean>;
 }

@@ -21,8 +21,9 @@ import {
     ApiResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
+import { WsServer } from '@/ws/server';
+import { injectable, inject } from 'inversify';
 import type {
     IInviteRepository,
     IInvite,
@@ -34,7 +35,7 @@ import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import { PermissionService } from '@/services/PermissionService';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import { getIO } from '@/socket';
+
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -74,6 +75,9 @@ export class ServerInviteController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
     ) {}
 
     // Retrieves all active invites for a server
@@ -372,8 +376,10 @@ export class ServerInviteController {
         // Increment invite usage count after successful join
         await this.inviteRepo.incrementUses(invite._id.toString());
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('member_added', { serverId, userId });
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_added',
+            payload: { serverId, userId },
+        });
 
         return { serverId };
     }

@@ -1,28 +1,23 @@
-import type { WsEvent } from "./event";
+import type { WsEvent } from './event';
 
-export type WsErrorCode = 'AUTHENTICATION_FAILED' |
-    'INTERNAL_ERROR' |
-    'MALFORMED_MESSAGE' |
-    'UNAUTHORIZED' |
-    'DUPLICATE_MESSAGE' |
-    'RATE_LIMIT' |
-    'FORBIDDEN';
+export type WsErrorCode =
+    | 'AUTHENTICATION_FAILED'
+    | 'INTERNAL_ERROR'
+    | 'MALFORMED_MESSAGE'
+    | 'UNAUTHORIZED'
+    | 'DUPLICATE_MESSAGE'
+    | 'RATE_LIMIT'
+    | 'TIMEOUT'
+    | 'FORBIDDEN'
+    | 'BAD_REQUEST'
+    | 'NOT_FOUND'
+    | 'CONFLICT';
 
-export interface IWsErrorEvent<
-    WSEDetails = unknown
-> extends WsEvent<"error", {
-    code: WsErrorCode;
-    details?: WSEDetails;
-}> { };
-
-function createAuthenticationFailedWsError(): IWsErrorEvent<null> {
-    const e: IWsErrorEvent<null> = {
-        type: "error",
-        payload: {
-            code: "AUTHENTICATION_FAILED",
-            details: null,
+export interface IWsErrorEvent<WSEDetails = unknown>
+    extends WsEvent<
+        'error',
+        {
+            code: WsErrorCode;
+            details?: WSEDetails;
         }
-    };
-
-    return e;
-}
+    > {}

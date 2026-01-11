@@ -307,4 +307,13 @@ export class MongooseUserRepository implements IUserRepository {
     async updateBanner(id: string, filename: string | null): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { banner: filename });
     }
+
+    async isBanned(userId: string): Promise<boolean> {
+        await this.banModel.checkExpired(userId);
+        const activeBan = await this.banModel.findOne({
+            userId,
+            active: true,
+        });
+        return !!activeBan;
+    }
 }

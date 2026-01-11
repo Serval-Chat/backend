@@ -37,14 +37,13 @@ import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository'
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import { PermissionService } from '@/services/PermissionService';
 import { ILogger } from '@/di/interfaces/ILogger';
-import { getIO } from '@/socket';
+import { WsServer } from '@/ws/server';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { IChannel } from '@/di/interfaces/IChannelRepository';
-import { PresenceService } from '@/realtime/services/PresenceService';
 import { storage } from '@/config/multer';
 import path from 'path';
 import fs from 'fs';
@@ -107,9 +106,9 @@ export class ServerController {
         @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.PresenceService)
-        @Inject(TYPES.PresenceService)
-        private presenceService: PresenceService,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
@@ -330,15 +329,11 @@ export class ServerController {
         const users = await this.userRepo.findByIds(userIds);
         const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
-        const onlineUsernames = new Set(
-            this.presenceService.getAllOnlineUsers(),
-        );
-
         // Calculate online count by checking presence for each member
         let onlineCount = 0;
         for (const m of members) {
-            const user = userMap.get(m.userId.toString());
-            if (user?.username && onlineUsernames.has(user.username)) {
+            const userIdStr = m.userId.toString();
+            if (this.wsServer.isUserOnline(userIdStr)) {
                 onlineCount++;
             }
         }
@@ -426,10 +421,12 @@ export class ServerController {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('server_updated', {
-            serverId,
-            server,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'server_updated',
+            payload: {
+                serverId,
+                server,
+            },
         });
 
         return server;
@@ -479,11 +476,15 @@ export class ServerController {
             defaultRoleId: roleId || undefined,
         });
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('server_updated', {
-            serverId,
-            server,
-        });
+        if (server) {
+            this.wsServer.broadcastToServer(serverId, {
+                type: 'server_updated',
+                payload: {
+                    serverId,
+                    server,
+                },
+            });
+        }
 
         return { defaultRoleId: roleId || null };
     }
@@ -514,8 +515,10 @@ export class ServerController {
         await this.inviteRepo.deleteByServerId(serverId);
         await this.serverMessageRepo.deleteByServerId(serverId);
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('server_deleted', { serverId });
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'server_deleted',
+            payload: { serverId },
+        });
 
         return { message: 'Server deleted' };
     }
@@ -578,12 +581,19 @@ export class ServerController {
         }
 
         const iconUrl = `/api/v1/servers/icon/${filename}`;
-        await this.serverRepo.update(serverId, { icon: iconUrl });
-
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('server_icon_updated', {
-            serverId,
+        const updatedServer = await this.serverRepo.update(serverId, {
             icon: iconUrl,
+        });
+        if (!updatedServer) {
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'server_icon_updated',
+            payload: {
+                serverId,
+                icon: iconUrl,
+            },
         });
 
         return { icon: iconUrl };
@@ -655,14 +665,19 @@ export class ServerController {
         }
 
         const bannerUrl = `/api/v1/servers/banner/${filename}`;
-        await this.serverRepo.update(serverId, {
+        const updatedServer = await this.serverRepo.update(serverId, {
             banner: { type: 'image', value: bannerUrl },
         });
+        if (!updatedServer) {
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+        }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('server_banner_updated', {
-            serverId,
-            banner: { type: 'image', value: bannerUrl },
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'server_banner_updated',
+            payload: {
+                serverId,
+                banner: { type: 'image', value: bannerUrl },
+            },
         });
 
         return { banner: bannerUrl };
@@ -711,11 +726,15 @@ export class ServerController {
             defaultRoleId: roleId || undefined,
         });
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('server_updated', {
-            serverId,
-            server,
-        });
+        if (server) {
+            this.wsServer.broadcastToServer(serverId, {
+                type: 'server_updated',
+                payload: {
+                    serverId,
+                    server,
+                },
+            });
+        }
 
         return { defaultRoleId: roleId || null };
     }

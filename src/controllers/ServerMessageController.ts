@@ -32,7 +32,13 @@ import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import { getIO } from '@/socket';
+import type { IWsServer } from '@/ws/interfaces/IWsServer';
+import type {
+    IMessageServerEvent,
+    IChannelUnreadUpdatedEvent,
+    IMessageServerEditedEvent,
+    IMessageServerDeletedEvent,
+} from '@/ws/protocol/events/messages';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -71,6 +77,9 @@ export class ServerMessageController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: IWsServer,
     ) {}
 
     // Retrieves messages for a specific channel with pagination
@@ -186,7 +195,7 @@ export class ServerMessageController {
             channelId: new mongoose.Types.ObjectId(channelId),
             senderId: new mongoose.Types.ObjectId(userId),
             text: messageText,
-            replyToId: body.replyToId
+            repliedToMessageId: body.replyToId
                 ? new mongoose.Types.ObjectId(body.replyToId)
                 : undefined,
         });
@@ -198,16 +207,43 @@ export class ServerMessageController {
         messagesSentCounter.labels('server').inc();
         websocketMessagesCounter.labels('server_message', 'outbound').inc();
 
-        const io = getIO();
-        io.to(`channel:${channelId}`).emit('server_message', message);
+        const messagePayload: IMessageServerEvent = {
+            type: 'message_server',
+            payload: {
+                messageId: message._id.toString(),
+                serverId: serverId,
+                channelId: channelId,
+                senderId: userId,
+                senderUsername: (req as ExpressRequest & { user: JWTPayload })
+                    .user.username,
+                text: messageText,
+                createdAt:
+                    message.createdAt instanceof Date
+                        ? message.createdAt.toISOString()
+                        : new Date().toISOString(),
+                replyToId: message.repliedToMessageId?.toString(),
+                isEdited: false,
+                isWebhook: message.isWebhook || false,
+                webhookUsername: message.webhookUsername,
+                webhookAvatarUrl: message.webhookAvatarUrl,
+            },
+        };
+        this.wsServer.broadcastToChannel(channelId, messagePayload);
 
         // Notify all server members about new activity in this channel
-        io.to(`server:${serverId}`).emit('channel_unread', {
-            serverId,
-            channelId,
-            lastMessageAt: message.createdAt,
-            senderId: userId,
-        });
+        const unreadPayload: IChannelUnreadUpdatedEvent = {
+            type: 'channel_unread_updated',
+            payload: {
+                serverId,
+                channelId,
+                lastMessageAt:
+                    message.createdAt instanceof Date
+                        ? message.createdAt.toISOString()
+                        : new Date().toISOString(),
+                senderId: userId,
+            },
+        };
+        this.wsServer.broadcastToServer(serverId, unreadPayload);
 
         return message;
     }
@@ -325,11 +361,18 @@ export class ServerMessageController {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
-        const io = getIO();
-        io.to(`channel:${channelId}`).emit(
-            'server_message_updated',
-            updatedMessage,
-        );
+        const event: IMessageServerEditedEvent = {
+            type: 'message_server_edited',
+            payload: {
+                messageId,
+                serverId,
+                channelId,
+                text: messageText,
+                editedAt: new Date().toISOString(),
+                isEdited: true,
+            },
+        };
+        this.wsServer.broadcastToChannel(channelId, event);
 
         return updatedMessage;
     }
@@ -370,11 +413,14 @@ export class ServerMessageController {
 
         await this.serverMessageRepo.delete(messageId);
 
-        const io = getIO();
-        io.to(`channel:${channelId}`).emit('server_message_deleted', {
-            messageId,
-            channelId,
-        });
+        const event: IMessageServerDeletedEvent = {
+            type: 'message_server_deleted',
+            payload: {
+                messageId,
+                channelId,
+            },
+        };
+        this.wsServer.broadcastToChannel(channelId, event);
 
         return { message: 'Message deleted' };
     }

@@ -23,6 +23,7 @@ const VAPID_PRI = process.env.VAPID_PRI || '';
 const SERVER_URL = process.env.SERVER_URL || '';
 const GRAFANA_USER = process.env.GRAFANA_USER || '';
 const GRAFANA_PASSWORD = process.env.GRAFANA_PASSWORD || '';
+const WS_AUTH_TIMEOUT = Number(process.env.WS_AUTH_TIMEOUT || 10000);
 
 if (PORT === -1) throw new Error('CHAT_PORT not set.');
 if (!JWT_SECRET) throw new Error('JWT_SECRET not set.');
@@ -78,4 +79,5 @@ export {
     SERVER_URL,
     GRAFANA_USER,
     GRAFANA_PASSWORD,
+    WS_AUTH_TIMEOUT,
 };

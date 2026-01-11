@@ -24,7 +24,7 @@ import {
     ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import {
     UserProfileResponseDTO,
     UserLookupResponseDTO,
@@ -47,7 +47,6 @@ import {
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JWTPayload, hasPermission } from '@/utils/jwt';
-import { getIO } from '@/socket';
 import { mapUser } from '@/utils/user';
 import {
     resolveSerializedCustomStatus,
@@ -64,9 +63,10 @@ import { IUserRepository, IUser } from '@/di/interfaces/IUserRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { ILogger } from '@/di/interfaces/ILogger';
-import { StatusService } from '@/realtime/services/StatusService';
+
 import { Badge } from '@/models/Badge';
 import { storage } from '@/config/multer';
+import type { WsServer } from '@/ws/server';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -83,15 +83,15 @@ export class ProfileController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.StatusService)
-        @Inject(TYPES.StatusService)
-        private statusService: StatusService,
         @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.FriendshipRepository)
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
     ) {}
 
     // Maps a user document to a public UserProfileResponseDTO payload
@@ -201,10 +201,12 @@ export class ProfileController {
             if (request.badgeIds.length === 0) {
                 await this.userRepo.update(user._id.toString(), { badges: [] });
 
-                const io = getIO();
-                io.to(`user:${user._id}`).emit('user_updated', {
-                    userId: user._id,
-                    badges: [],
+                this.wsServer.broadcastToUser(user._id.toString(), {
+                    type: 'user_updated',
+                    payload: {
+                        userId: user._id.toString(),
+                        badges: [],
+                    },
                 });
 
                 return {
@@ -235,10 +237,12 @@ export class ProfileController {
                 badges: validBadgeIds,
             });
 
-            const io = getIO();
-            io.to(`user:${user._id}`).emit('user_updated', {
-                userId: user._id,
-                badges: validBadgeIds,
+            this.wsServer.broadcastToUser(user._id.toString(), {
+                type: 'user_updated',
+                payload: {
+                    userId: user._id.toString(),
+                    badges: validBadgeIds,
+                },
             });
 
             this.logger.info(
@@ -392,17 +396,21 @@ export class ProfileController {
             const profilePictureUrl = `/api/v1/profile/picture/${filename}`;
 
             try {
-                const io = getIO();
                 const serverIds =
                     await this.serverMemberRepo.findServerIdsByUserId(userId);
                 const friendships =
                     await this.friendshipRepo.findAllByUserId(userId);
 
+                const updatePayload = {
+                    userId,
+                    profilePicture: profilePictureUrl,
+                };
+
                 // Emit to all servers the user is in
                 serverIds.forEach((serverId) => {
-                    io.to(`server:${serverId}`).emit('user_updated', {
-                        userId,
-                        profilePicture: profilePictureUrl,
+                    this.wsServer.broadcastToServer(serverId, {
+                        type: 'user_updated',
+                        payload: updatePayload,
                     });
                 });
 
@@ -412,16 +420,16 @@ export class ProfileController {
                         friendship.userId.toString() === userId
                             ? friendship.friendId.toString()
                             : friendship.userId.toString();
-                    io.to(`user:${friendId}`).emit('user_updated', {
-                        userId,
-                        profilePicture: profilePictureUrl,
+                    this.wsServer.broadcastToUser(friendId, {
+                        type: 'user_updated',
+                        payload: updatePayload,
                     });
                 });
 
                 // Also emit to the user themselves (for other sessions)
-                io.to(`user:${userId}`).emit('user_updated', {
-                    userId,
-                    profilePicture: profilePictureUrl,
+                this.wsServer.broadcastToUser(userId, {
+                    type: 'user_updated',
+                    payload: updatePayload,
                 });
             } catch (err) {
                 this.logger.error(
@@ -563,7 +571,6 @@ export class ProfileController {
             const bannerUrl = `/api/v1/profile/banner/${filename}`;
 
             try {
-                const io = getIO();
                 const serverIds =
                     await this.serverMemberRepo.findServerIdsByUserId(userId);
                 const friendships =
@@ -576,10 +583,10 @@ export class ProfileController {
 
                 // Emit to all servers the user is in
                 serverIds.forEach((serverId) => {
-                    io.to(`server:${serverId}`).emit(
-                        'user_banner_updated',
-                        updatePayload,
-                    );
+                    this.wsServer.broadcastToServer(serverId, {
+                        type: 'user_banner_updated',
+                        payload: updatePayload,
+                    });
                 });
 
                 // Emit to all friends
@@ -588,17 +595,17 @@ export class ProfileController {
                         friendship.userId.toString() === userId
                             ? friendship.friendId.toString()
                             : friendship.userId.toString();
-                    io.to(`user:${friendId}`).emit(
-                        'user_banner_updated',
-                        updatePayload,
-                    );
+                    this.wsServer.broadcastToUser(friendId, {
+                        type: 'user_banner_updated',
+                        payload: updatePayload,
+                    });
                 });
 
                 // Also emit to the user themselves (for other sessions)
-                io.to(`user:${userId}`).emit(
-                    'user_banner_updated',
-                    updatePayload,
-                );
+                this.wsServer.broadcastToUser(userId, {
+                    type: 'user_banner_updated',
+                    payload: updatePayload,
+                });
             } catch (err) {
                 this.logger.error('Failed to emit banner update:', err);
             }
@@ -729,10 +736,40 @@ export class ProfileController {
         const updatedUser = await this.userRepo.findById(userId);
 
         try {
-            const io = getIO();
-            io.emit('display_name_updated', {
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userId);
+
+            const payload = {
                 username,
                 displayName: updatedUser?.displayName || null,
+            };
+
+            // Emit to servers
+            serverIds.forEach((serverId) => {
+                this.wsServer.broadcastToServer(serverId, {
+                    type: 'display_name_updated',
+                    payload,
+                });
+            });
+
+            // Emit to friends
+            friendships.forEach((friendship) => {
+                const friendId =
+                    friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                this.wsServer.broadcastToUser(friendId, {
+                    type: 'display_name_updated',
+                    payload,
+                });
+            });
+
+            // Emit to self
+            this.wsServer.broadcastToUser(userId, {
+                type: 'display_name_updated',
+                payload,
             });
         } catch (err) {
             this.logger.error('Failed to emit display name update:', err);
@@ -774,8 +811,33 @@ export class ProfileController {
             await this.userRepo.updateCustomStatus(userId, null);
 
             try {
-                const io = getIO();
-                this.statusService.publishStatusUpdate(io, username, null);
+                // Broadcast status clear to friends and server members
+                const serverIds =
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                const friendships =
+                    await this.friendshipRepo.findAllByUserId(userId);
+
+                const payload = { username, status: null };
+
+                // Emit to servers
+                serverIds.forEach((serverId) => {
+                    this.wsServer.broadcastToServer(serverId, {
+                        type: 'status_update',
+                        payload,
+                    });
+                });
+
+                // Emit to friends
+                friendships.forEach((friendship) => {
+                    const friendId =
+                        friendship.userId.toString() === userId
+                            ? friendship.friendId.toString()
+                            : friendship.userId.toString();
+                    this.wsServer.broadcastToUser(friendId, {
+                        type: 'status_update',
+                        payload,
+                    });
+                });
             } catch (err) {
                 this.logger.error('Failed to publish status clear:', err);
             }
@@ -830,8 +892,33 @@ export class ProfileController {
             : null;
 
         try {
-            const io = getIO();
-            this.statusService.publishStatusUpdate(io, username, serialized);
+            // Broadcast status update to friends and server members
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userId);
+
+            const payload = { username, status: serialized };
+
+            // Emit to servers
+            serverIds.forEach((serverId) => {
+                this.wsServer.broadcastToServer(serverId, {
+                    type: 'status_update',
+                    payload,
+                });
+            });
+
+            // Emit to friends
+            friendships.forEach((friendship) => {
+                const friendId =
+                    friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                this.wsServer.broadcastToUser(friendId, {
+                    type: 'status_update',
+                    payload,
+                });
+            });
         } catch (err) {
             this.logger.error('Failed to publish custom status update:', err);
         }
@@ -859,8 +946,33 @@ export class ProfileController {
         await this.userRepo.updateCustomStatus(userId, null);
 
         try {
-            const io = getIO();
-            this.statusService.publishStatusUpdate(io, username, null);
+            // Broadcast status clear to friends and server members
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userId);
+
+            const payload = { username, status: null };
+
+            // Emit to servers
+            serverIds.forEach((serverId) => {
+                this.wsServer.broadcastToServer(serverId, {
+                    type: 'status_update',
+                    payload,
+                });
+            });
+
+            // Emit to friends
+            friendships.forEach((friendship) => {
+                const friendId =
+                    friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                this.wsServer.broadcastToUser(friendId, {
+                    type: 'status_update',
+                    payload,
+                });
+            });
         } catch (err) {
             this.logger.error('Failed to publish status clear:', err);
         }
@@ -934,7 +1046,6 @@ export class ProfileController {
     }> {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
-        const username = userPayload.username;
 
         const { usernameFont, usernameGradient, usernameGlow } = body;
 
@@ -947,12 +1058,42 @@ export class ProfileController {
         const updatedUser = await this.userRepo.findById(userId);
 
         try {
-            const io = getIO();
-            io.emit('username_style_updated', {
-                username,
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userId);
+
+            const payload = {
+                userId,
                 usernameFont: updatedUser?.usernameFont,
                 usernameGradient: updatedUser?.usernameGradient,
                 usernameGlow: updatedUser?.usernameGlow,
+            };
+
+            // Emit to servers
+            serverIds.forEach((serverId) => {
+                this.wsServer.broadcastToServer(serverId, {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            // Emit to friends
+            friendships.forEach((friendship) => {
+                const friendId =
+                    friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                this.wsServer.broadcastToUser(friendId, {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            // Emit to self
+            this.wsServer.broadcastToUser(userId, {
+                type: 'user_updated',
+                payload,
             });
         } catch (err) {
             this.logger.error('Failed to emit username style update:', err);
@@ -1013,11 +1154,16 @@ export class ProfileController {
 
         // Emit socket event
         try {
-            const io = getIO();
             const updatedUser = await this.userRepo.findById(
                 user._id.toString(),
             );
-            io.emit('username_changed', {
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userId);
+
+            const payload = {
+                userId,
                 oldUsername,
                 newUsername,
                 profilePicture: updatedUser?.profilePicture
@@ -1026,6 +1172,32 @@ export class ProfileController {
                 usernameFont: updatedUser?.usernameFont,
                 usernameGradient: updatedUser?.usernameGradient,
                 usernameGlow: updatedUser?.usernameGlow,
+            };
+
+            // Emit to servers
+            serverIds.forEach((serverId) => {
+                this.wsServer.broadcastToServer(serverId, {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            // Emit to friends
+            friendships.forEach((friendship) => {
+                const friendId =
+                    friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                this.wsServer.broadcastToUser(friendId, {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            // Emit to self
+            this.wsServer.broadcastToUser(userId, {
+                type: 'user_updated',
+                payload,
             });
         } catch (err) {
             this.logger.error('Failed to emit username change:', err);

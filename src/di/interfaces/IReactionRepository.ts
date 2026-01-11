@@ -1,7 +1,4 @@
 // Reaction Repository Interface
-//
-// Provides methods for managing emoji reactions on messages
-// Supports both DM and server messages with Unicode and custom emojis
 
 import type { IReaction } from '@/models/Reaction';
 

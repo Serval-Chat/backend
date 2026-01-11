@@ -1,5 +1,6 @@
 import { injectable } from 'inversify';
 import { Injectable } from '@nestjs/common';
+import type { ClientSession } from 'mongoose';
 import {
     IChannelRepository,
     IChannel,
@@ -101,11 +102,12 @@ export class MongooseChannelRepository implements IChannelRepository {
     async updateLastMessageAt(
         id: string,
         date: Date = new Date(),
+        session?: ClientSession,
     ): Promise<IChannel | null> {
         const result = await Channel.findByIdAndUpdate(
             id,
             { lastMessageAt: date },
-            { new: true },
+            { new: true, session },
         ).lean();
         return transformChannel(result);
     }

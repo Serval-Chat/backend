@@ -33,14 +33,12 @@ export class PingService {
         pingData: Omit<PingNotification, 'id' | 'timestamp'>,
     ): Promise<PingNotification> {
         // Check if ping already exists
-        const messageId =
-            typeof pingData.message._id === 'string'
-                ? pingData.message._id
-                : String(pingData.message._id);
-        const senderId =
-            typeof pingData.senderId === 'string'
-                ? pingData.senderId
-                : String(pingData.senderId);
+        const msg = pingData.message as {
+            _id?: string;
+            messageId?: string;
+        };
+        const messageId = (msg?._id || msg?.messageId)?.toString() || 'unknown';
+        const senderId = pingData.senderId?.toString() || 'unknown';
 
         const exists = await this.pingRepo.exists(userId, senderId, messageId);
         if (exists) {

@@ -30,7 +30,8 @@ export function WsController(): ClassDecorator {
  */
 export function Event(type: AnyWsEventType): MethodDecorator {
     return (target, propertyKey) => {
-        const events = Reflect.getMetadata(WS_EVENT_METADATA, target.constructor) || [];
+        const events =
+            Reflect.getMetadata(WS_EVENT_METADATA, target.constructor) || [];
         events.push({ type, method: propertyKey });
         Reflect.defineMetadata(WS_EVENT_METADATA, events, target.constructor);
     };
@@ -41,7 +42,12 @@ export function Event(type: AnyWsEventType): MethodDecorator {
  */
 export function NeedAuth(): MethodDecorator {
     return (target, propertyKey) => {
-        Reflect.defineMetadata(WS_NEED_AUTH_METADATA, true, target, propertyKey);
+        Reflect.defineMetadata(
+            WS_NEED_AUTH_METADATA,
+            true,
+            target,
+            propertyKey,
+        );
     };
 }
 
@@ -61,7 +67,12 @@ export function Dedup(): MethodDecorator {
  */
 export function RateLimit(points: number, duration: number): MethodDecorator {
     return (target, propertyKey) => {
-        Reflect.defineMetadata(WS_RATE_LIMIT_METADATA, { points, duration }, target, propertyKey);
+        Reflect.defineMetadata(
+            WS_RATE_LIMIT_METADATA,
+            { points, duration },
+            target,
+            propertyKey,
+        );
     };
 }
 
@@ -71,7 +82,12 @@ export function RateLimit(points: number, duration: number): MethodDecorator {
  */
 export function Validate(schema: ZodSchema): MethodDecorator {
     return (target, propertyKey) => {
-        Reflect.defineMetadata(WS_VALIDATE_METADATA, schema, target, propertyKey);
+        Reflect.defineMetadata(
+            WS_VALIDATE_METADATA,
+            schema,
+            target,
+            propertyKey,
+        );
     };
 }
 
@@ -91,7 +107,8 @@ export function Cache(ttl: number): MethodDecorator {
  */
 export function Before(hook: Function): MethodDecorator {
     return (target, propertyKey) => {
-        const hooks = Reflect.getMetadata(WS_BEFORE_METADATA, target, propertyKey) || [];
+        const hooks =
+            Reflect.getMetadata(WS_BEFORE_METADATA, target, propertyKey) || [];
         hooks.push(hook);
         Reflect.defineMetadata(WS_BEFORE_METADATA, hooks, target, propertyKey);
     };
@@ -103,7 +120,8 @@ export function Before(hook: Function): MethodDecorator {
  */
 export function After(hook: Function): MethodDecorator {
     return (target, propertyKey) => {
-        const hooks = Reflect.getMetadata(WS_AFTER_METADATA, target, propertyKey) || [];
+        const hooks =
+            Reflect.getMetadata(WS_AFTER_METADATA, target, propertyKey) || [];
         hooks.push(hook);
         Reflect.defineMetadata(WS_AFTER_METADATA, hooks, target, propertyKey);
     };
@@ -115,9 +133,16 @@ export function After(hook: Function): MethodDecorator {
  */
 export function OnError(hook: Function): MethodDecorator {
     return (target, propertyKey) => {
-        const hooks = Reflect.getMetadata(WS_ON_ERROR_METADATA, target, propertyKey) || [];
+        const hooks =
+            Reflect.getMetadata(WS_ON_ERROR_METADATA, target, propertyKey) ||
+            [];
         hooks.push(hook);
-        Reflect.defineMetadata(WS_ON_ERROR_METADATA, hooks, target, propertyKey);
+        Reflect.defineMetadata(
+            WS_ON_ERROR_METADATA,
+            hooks,
+            target,
+            propertyKey,
+        );
     };
 }
 
