@@ -22,4 +22,4 @@ import { PingService } from '@/services/PingService';
     ],
     exports: [TYPES.AuthService, TYPES.PermissionService, TYPES.PingService],
 })
-export class ServicesModule {}
+export class ServicesModule { }

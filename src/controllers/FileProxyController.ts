@@ -50,7 +50,7 @@ export class FileProxyController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     // Rewrite the old URL to new URL so old messages that use the old URL are still valid
     private rewriteKbityUrl(url: URL): URL {

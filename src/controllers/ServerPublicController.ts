@@ -32,7 +32,7 @@ export class ServerPublicController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     // Serves a server icon file
     @Get('icon/:filename')

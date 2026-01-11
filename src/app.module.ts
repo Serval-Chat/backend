@@ -85,5 +85,5 @@ import { SettingsController } from './controllers/SettingsController';
     ],
 })
 export class AppModule {
-    configure(_consumer: MiddlewareConsumer) {}
+    configure(_consumer: MiddlewareConsumer) { }
 }

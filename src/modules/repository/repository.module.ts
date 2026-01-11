@@ -128,4 +128,4 @@ import { MongooseWebhookRepository } from '@/infrastructure/repositories/Mongoos
         TYPES.WebhookRepository,
     ],
 })
-export class RepositoryModule {}
+export class RepositoryModule { }

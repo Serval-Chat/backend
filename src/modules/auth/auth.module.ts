@@ -23,7 +23,7 @@ export class JwtAuthGuard implements CanActivate {
         @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @Inject(TYPES.BanRepository) private banRepo: IBanRepository,
         private reflector: Reflector,
-    ) {}
+    ) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
@@ -80,7 +80,7 @@ export class JwtAuthGuard implements CanActivate {
                 const hasAllPermissions = requiredPermissions.every(
                     (p) =>
                         (userPermissions as unknown as Record<string, boolean>)[
-                            p
+                        p
                         ] === true,
                 );
 
@@ -109,4 +109,4 @@ export class JwtAuthGuard implements CanActivate {
     providers: [JwtAuthGuard],
     exports: [JwtAuthGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

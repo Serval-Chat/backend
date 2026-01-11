@@ -46,7 +46,8 @@
     }
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "src/di/types.ts"
   ],
   "exclude": [
     "frontend",

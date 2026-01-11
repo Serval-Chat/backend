@@ -85,7 +85,7 @@ export class UserMessageController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     // Retrieves unread DM counts for the current user, grouped by peer
     @Get('unread')
@@ -170,7 +170,7 @@ export class UserMessageController {
                 ...msgObj,
                 reactions:
                     (reactionsMap as Record<string, unknown[]>)[
-                        msg._id.toString()
+                    msg._id.toString()
                     ] || [],
             } as MessageWithReactions;
         });

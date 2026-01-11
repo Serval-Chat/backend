@@ -92,7 +92,7 @@ export class ProfileController {
         @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     // Maps a user document to a public UserProfileResponseDTO payload
     private async mapToProfile(user: IUser): Promise<UserProfileResponseDTO> {

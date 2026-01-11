@@ -12,4 +12,4 @@ import { WinstonLogger } from '@/infrastructure/WinstonLogger';
     ],
     exports: [TYPES.Logger],
 })
-export class InfrastructureModule {}
+export class InfrastructureModule { }

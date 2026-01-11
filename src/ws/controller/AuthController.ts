@@ -28,7 +28,7 @@ export class AuthController {
 
     constructor(
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) {}
+    ) { }
 
     /**
      * Handles the 'authenticate' event.

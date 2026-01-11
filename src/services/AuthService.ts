@@ -34,7 +34,7 @@ export class AuthService {
         @inject(TYPES.BanRepository)
         @Inject(TYPES.BanRepository)
         private banRepo: IBanRepository,
-    ) {}
+    ) { }
 
     // Authenticate a user with login credentials.
     //

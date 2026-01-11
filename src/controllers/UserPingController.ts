@@ -45,7 +45,7 @@ export class UserPingController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     @Get()
     @ApiOperation({ summary: 'Get all pings for the current user' })

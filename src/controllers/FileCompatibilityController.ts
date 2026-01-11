@@ -20,7 +20,7 @@ export class FileCompatibilityController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     @Get('download/:filename')
     @ApiOperation({ summary: 'Download a file (legacy)' })

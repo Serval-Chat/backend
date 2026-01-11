@@ -79,7 +79,7 @@ export class ServerMemberController {
         @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     // Retrieves all members of a server
     // Enforces server membership
