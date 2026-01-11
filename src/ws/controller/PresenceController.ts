@@ -33,7 +33,7 @@ export class PresenceController {
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) {}
+    ) { }
 
     @postConstruct()
     public setupEventListeners() {

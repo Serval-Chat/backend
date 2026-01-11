@@ -40,7 +40,7 @@ export class ReactionController {
         @inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) {}
+    ) { }
 
     /**
      * Handles 'add_reaction' event.
@@ -144,7 +144,7 @@ export class ReactionController {
                                 message.createdAt instanceof Date
                                     ? message.createdAt.toISOString()
                                     : (message.createdAt as unknown as string) ||
-                                      new Date().toISOString(),
+                                    new Date().toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited || false,
                         },
@@ -234,7 +234,7 @@ export class ReactionController {
                                 message.createdAt instanceof Date
                                     ? message.createdAt.toISOString()
                                     : (message.createdAt as unknown as string) ||
-                                      new Date().toISOString(),
+                                    new Date().toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited || false,
                             isWebhook: message.isWebhook || false,

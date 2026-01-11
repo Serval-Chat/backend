@@ -56,7 +56,7 @@ export class ChatController {
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
-    ) {}
+    ) { }
 
     /**
      * Handles 'send_message_dm' event.
@@ -136,11 +136,11 @@ export class ChatController {
             replyToId: created.replyToId,
             repliedTo: repliedToMessage
                 ? {
-                      messageId: repliedToMessage._id.toString(),
-                      senderId: repliedToMessage.senderId.toString(),
-                      senderUsername: '', // Will be populated in broadcast
-                      text: repliedToMessage.text,
-                  }
+                    messageId: repliedToMessage._id.toString(),
+                    senderId: repliedToMessage.senderId.toString(),
+                    senderUsername: '', // Will be populated in broadcast
+                    text: repliedToMessage.text,
+                }
                 : undefined,
             isEdited: false,
         };
@@ -181,10 +181,10 @@ export class ChatController {
             replyToId: created.replyToId,
             repliedTo: repliedToMessage
                 ? {
-                      messageId: repliedToMessage._id.toString(),
-                      senderId: repliedToMessage.senderId.toString(),
-                      text: repliedToMessage.text,
-                  }
+                    messageId: repliedToMessage._id.toString(),
+                    senderId: repliedToMessage.senderId.toString(),
+                    text: repliedToMessage.text,
+                }
                 : undefined,
         };
     }

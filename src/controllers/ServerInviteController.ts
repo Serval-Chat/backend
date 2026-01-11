@@ -78,7 +78,7 @@ export class ServerInviteController {
         @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     // Retrieves all active invites for a server
     // Enforces 'manageInvites' permission

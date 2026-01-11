@@ -16,7 +16,7 @@ export class MetricsController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     @Get()
     @ApiOperation({ summary: 'Retrieve Prometheus metrics' })

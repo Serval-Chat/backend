@@ -78,7 +78,7 @@ export class ServerController {
         @inject(TYPES.PingService) private pingService: PingService,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
-    ) {}
+    ) { }
 
     /**
      * Handles 'join_server' event.

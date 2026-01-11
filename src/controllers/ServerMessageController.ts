@@ -80,7 +80,7 @@ export class ServerMessageController {
         @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: IWsServer,
-    ) {}
+    ) { }
 
     // Retrieves messages for a specific channel with pagination
     // Enforces server membership
@@ -133,7 +133,7 @@ export class ServerMessageController {
                 ...msgObj,
                 reactions:
                     (reactionsMap as Record<string, unknown[]>)[
-                        msg._id.toString()
+                    msg._id.toString()
                     ] || [],
             };
         });
@@ -305,7 +305,7 @@ export class ServerMessageController {
         return {
             message: {
                 ...('toObject' in message &&
-                typeof message.toObject === 'function'
+                    typeof message.toObject === 'function'
                     ? message.toObject()
                     : message),
                 reactions,

@@ -135,7 +135,7 @@ export class AdminController {
         @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) {}
+    ) { }
 
     @Get('stats')
     @Permissions('viewLogs')
@@ -1118,8 +1118,8 @@ export class AdminController {
         const profilePictureUrl = user.deletedAt
             ? '/images/deleted-cat.jpg'
             : user.profilePicture
-              ? `/api/v1/profile/picture/${user.profilePicture}`
-              : null;
+                ? `/api/v1/profile/picture/${user.profilePicture}`
+                : null;
 
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());

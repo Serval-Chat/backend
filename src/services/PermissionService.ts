@@ -31,7 +31,7 @@ export class PermissionService {
         @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-    ) {}
+    ) { }
 
     // Get user's highest role position in a server.
     //

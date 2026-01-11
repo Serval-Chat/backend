@@ -44,7 +44,7 @@ export class FileController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     @Post('upload')
     @ApiBearerAuth()

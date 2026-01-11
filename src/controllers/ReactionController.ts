@@ -85,7 +85,7 @@ export class ReactionController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     @Get('messages/:messageId/reactions')
     @ApiOperation({ summary: 'Get DM reactions' })

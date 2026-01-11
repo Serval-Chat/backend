@@ -37,7 +37,7 @@ export class EmojiController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     @Get()
     @ApiBearerAuth()
