@@ -78,7 +78,7 @@ module.exports = {
  * Create a test server
  */
 async function createTestServer(ownerId, overrides = {}) {
-    const { Server, Role } = require('../../src/models/Server');
+    const { Server, Role, ServerMember } = require('../../src/models/Server');
     const server = await Server.create({
         name: `Test Server ${Date.now()}`,
         ownerId,
@@ -104,6 +104,13 @@ async function createTestServer(ownerId, overrides = {}) {
             addReactions: true,
             manageReactions: false
         }
+    });
+
+    // Add owner as member
+    await ServerMember.create({
+        serverId: server._id,
+        userId: ownerId,
+        roles: []
     });
 
     return server;

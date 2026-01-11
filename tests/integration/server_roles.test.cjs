@@ -57,12 +57,11 @@ describe('Server Roles Integration Tests', () => {
         // Add member to server
         const { ServerMember } = require('../../src/models/Server');
 
-        // Add owner as member
-        await ServerMember.create({
-            serverId: server._id,
-            userId: owner._id,
-            roles: [everyoneRole._id]
-        });
+        // Update owner member with roles
+        await ServerMember.updateOne(
+            { serverId: server._id, userId: owner._id },
+            { $set: { roles: [everyoneRole._id] } }
+        );
 
         // Add regular member
         await ServerMember.create({

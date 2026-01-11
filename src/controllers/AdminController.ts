@@ -29,11 +29,16 @@ import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import { PresenceService } from '@/realtime/services/PresenceService';
+import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import crypto from 'crypto';
-import { getIO } from '@/socket';
+import type { IUserUpdatedEvent } from '@/ws/protocol/events/presence';
+import type {
+    IMemberRemovedEvent,
+    IServerDeletedEvent,
+    IWarningEvent,
+} from '@/ws/protocol/events/server_notifications';
 import { Badge } from '@/models/Badge';
 import { Ban } from '@/models/Ban';
 import { ServerBan } from '@/models/Server';
@@ -109,9 +114,9 @@ export class AdminController {
         @inject(TYPES.FriendshipRepository)
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-        @inject(TYPES.PresenceService)
-        @Inject(TYPES.PresenceService)
-        private presenceService: PresenceService,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: IWsServer,
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
@@ -164,8 +169,7 @@ export class AdminController {
             return Math.round(((current - previous) / previous) * 100);
         };
 
-        const activeUsersCount =
-            this.presenceService.getAllOnlineUsers().length;
+        const activeUsersCount = this.wsServer.getAllOnlineUsers().length;
 
         const stats = new DashBoardStatsDTO();
         stats.users = users;
@@ -326,30 +330,32 @@ export class AdminController {
 
         if (usernameChanged) {
             try {
-                const io = getIO();
                 const updatedUser = await this.userRepo.findById(userId);
 
-                io.emit('username_changed', {
-                    oldUsername,
-                    newUsername: updateData.username,
-                    profilePicture: updatedUser?.profilePicture
-                        ? `/api/v1/profile/picture/${updatedUser.profilePicture}`
-                        : null,
-                    usernameFont: updatedUser?.usernameFont,
-                    usernameGradient: updatedUser?.usernameGradient,
-                    usernameGlow: updatedUser?.usernameGlow,
-                });
+                const event: IUserUpdatedEvent = {
+                    type: 'user_updated',
+                    payload: {
+                        userId,
+                        oldUsername,
+                        newUsername: updateData.username as string,
+                        profilePicture: updatedUser?.profilePicture
+                            ? `/api/v1/profile/picture/${updatedUser.profilePicture}`
+                            : null,
+                        usernameFont: updatedUser?.usernameFont,
+                        usernameGradient: updatedUser?.usernameGradient,
+                        usernameGlow: updatedUser?.usernameGlow,
+                    },
+                };
+                this.wsServer.broadcastToAll(event);
 
-                const sockets = this.presenceService.getSockets(oldUsername);
+                const sockets = this.wsServer.getUserSockets(userId);
                 if (sockets && sockets.length > 0) {
-                    sockets.forEach((socketId) => {
-                        const socket = io.sockets.sockets.get(socketId);
-                        if (socket) {
-                            socket.emit('force_logout', {
-                                reason: 'Your username has been reset by a moderator.',
-                            });
-                            socket.disconnect(true);
-                        }
+                    sockets.forEach((ws) => {
+                        this.wsServer.closeConnection(
+                            ws,
+                            1008,
+                            'Your username has been reset by a moderator.',
+                        );
                     });
                 }
             } catch (err) {
@@ -464,8 +470,17 @@ export class AdminController {
         });
 
         const friendships = await this.friendshipRepo.findAllByUserId(userId);
-        const io = getIO();
         const offlineFriends: string[] = [];
+
+        const event: IUserUpdatedEvent = {
+            type: 'user_updated',
+            payload: {
+                userId: user._id.toString(),
+                oldUsername,
+                newUsername: anonymizedUsername,
+                profilePicture: DELETED_AVATAR_PATH,
+            },
+        };
 
         for (const friendship of friendships) {
             const friendUsername =
@@ -477,34 +492,23 @@ export class AdminController {
                 friendUsername || '',
             );
             if (friendUser) {
-                const sockets = this.presenceService.getSockets(
-                    friendUser.username || '',
-                );
-                if (sockets && sockets.length > 0) {
-                    sockets.forEach((socketId) => {
-                        io.to(socketId).emit('user_soft_deleted', {
-                            oldUsername,
-                            newUsername: anonymizedUsername,
-                            userId: user._id.toString(),
-                            avatar: DELETED_AVATAR_PATH,
-                        });
-                    });
+                const friendUserId = friendUser._id.toString();
+                if (this.wsServer.isUserOnline(friendUserId)) {
+                    this.wsServer.broadcastToUser(friendUserId, event);
                 } else {
-                    offlineFriends.push(friendUser._id.toString());
+                    offlineFriends.push(friendUserId);
                 }
             }
         }
 
-        const deletedUserSockets = this.presenceService.getSockets(oldUsername);
-        if (deletedUserSockets) {
-            deletedUserSockets.forEach((socketId) => {
-                const socket = io.sockets.sockets.get(socketId);
-                if (socket) {
-                    socket.emit('account_deleted', {
-                        reason: 'Account has been deleted',
-                    });
-                    socket.disconnect(true);
-                }
+        const deletedUserSockets = this.wsServer.getUserSockets(userId);
+        if (deletedUserSockets && deletedUserSockets.length > 0) {
+            deletedUserSockets.forEach((ws) => {
+                this.wsServer.closeConnection(
+                    ws,
+                    1008,
+                    'Account has been deleted',
+                );
             });
         }
 
@@ -595,8 +599,17 @@ export class AdminController {
 
             await session.commitTransaction();
 
-            const io = getIO();
             const offlineFriends: string[] = [];
+
+            const event: IUserUpdatedEvent = {
+                type: 'user_updated',
+                payload: {
+                    userId,
+                    oldUsername: username,
+                    newUsername: 'Deleted User',
+                    profilePicture: DELETED_AVATAR_PATH,
+                },
+            };
 
             for (const friendship of friendships) {
                 const friendUsername =
@@ -608,33 +621,23 @@ export class AdminController {
                     friendUsername || '',
                 );
                 if (friendUser) {
-                    const sockets = this.presenceService.getSockets(
-                        friendUser.username || '',
-                    );
-                    if (sockets && sockets.length > 0) {
-                        sockets.forEach((socketId) => {
-                            io.to(socketId).emit('user_hard_deleted', {
-                                username,
-                                userId,
-                            });
-                        });
+                    const friendUserId = friendUser._id.toString();
+                    if (this.wsServer.isUserOnline(friendUserId)) {
+                        this.wsServer.broadcastToUser(friendUserId, event);
                     } else {
-                        offlineFriends.push(friendUser._id.toString());
+                        offlineFriends.push(friendUserId);
                     }
                 }
             }
 
-            const deletedUserSockets =
-                this.presenceService.getSockets(username);
-            if (deletedUserSockets) {
-                deletedUserSockets.forEach((socketId) => {
-                    const socket = io.sockets.sockets.get(socketId);
-                    if (socket) {
-                        socket.emit('account_deleted', {
-                            reason: 'Account has been deleted',
-                        });
-                        socket.disconnect(true);
-                    }
+            const deletedUserSockets = this.wsServer.getUserSockets(userId);
+            if (deletedUserSockets && deletedUserSockets.length > 0) {
+                deletedUserSockets.forEach((ws) => {
+                    this.wsServer.closeConnection(
+                        ws,
+                        1008,
+                        'Account has been deleted',
+                    );
                 });
             }
 
@@ -727,28 +730,31 @@ export class AdminController {
 
         const serverMemberships =
             await this.serverMemberRepo.findAllByUserId(userId);
-        const io = getIO();
 
         for (const membership of serverMemberships) {
             await this.serverMemberRepo.deleteById(membership._id.toString());
-            io.to(`server:${membership.serverId}`).emit('server_member_left', {
-                serverId: membership.serverId,
-                userId: targetUser.username || '',
-            });
+
+            const event: IMemberRemovedEvent = {
+                type: 'member_removed',
+                payload: {
+                    serverId: membership.serverId.toString(),
+                    userId,
+                },
+            };
+            this.wsServer.broadcastToServer(
+                membership.serverId.toString(),
+                event,
+            );
         }
 
-        const sockets = this.presenceService.getSockets(
-            targetUser.username || '',
-        );
+        const sockets = this.wsServer.getUserSockets(userId);
         if (sockets && sockets.length > 0) {
-            sockets.forEach((sid) => {
-                io.to(sid).emit('ban', {
-                    reason: reason.trim(),
-                    issuedBy: (req as ExpressRequest & { user?: JWTPayload })
-                        .user?.username,
-                    expirationTimestamp,
-                });
-                io.sockets.sockets.get(sid)?.disconnect(true);
+            sockets.forEach((ws) => {
+                this.wsServer.closeConnection(
+                    ws,
+                    1008,
+                    `Banned: ${reason.trim()}`,
+                );
             });
         }
 
@@ -876,16 +882,20 @@ export class AdminController {
         });
 
         const user = await this.userRepo.findById(userId);
-        if (user) {
-            const sockets = this.presenceService.getSockets(
-                user.username || '',
-            );
-            if (sockets) {
-                const io = getIO();
-                sockets.forEach((sid) => {
-                    io.to(sid).emit('warning', warning);
-                });
-            }
+        if (user && this.wsServer.isUserOnline(userId)) {
+            const event: IWarningEvent = {
+                type: 'warning',
+                payload: {
+                    _id: warning._id.toString(),
+                    userId: warning.userId.toString(),
+                    issuedBy: warning.issuedBy.toString(),
+                    message: warning.message,
+                    timestamp: warning.timestamp,
+                    acknowledged: warning.acknowledged,
+                    acknowledgedAt: warning.acknowledgedAt,
+                },
+            };
+            this.wsServer.broadcastToUser(userId, event);
         }
 
         const response = new AdminWarnUserResponseDTO();
@@ -1034,8 +1044,11 @@ export class AdminController {
 
         await this.serverRepo.softDelete(serverId);
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('server_deleted', { serverId });
+        const event: IServerDeletedEvent = {
+            type: 'server_deleted',
+            payload: { serverId },
+        };
+        this.wsServer.broadcastToServer(serverId, event);
 
         await this.logAdminAction(
             req,

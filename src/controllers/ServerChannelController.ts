@@ -16,8 +16,9 @@ import {
     ApiResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
+import { WsServer } from '@/ws/server';
+import { injectable, inject } from 'inversify';
 import type {
     IChannelRepository,
     IChannel,
@@ -31,7 +32,7 @@ import type {
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import { getIO } from '@/socket';
+
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
@@ -81,6 +82,9 @@ export class ServerChannelController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
     ) {}
 
     @Get('channels')
@@ -190,10 +194,9 @@ export class ServerChannelController {
             ...(body.description && { description: body.description }),
         });
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('channel_created', {
-            serverId,
-            channel,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'channel_created',
+            payload: { serverId, channel },
         });
 
         return channel;
@@ -223,10 +226,9 @@ export class ServerChannelController {
             await this.channelRepo.update(channelId, { position });
         }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('channels_reordered', {
-            serverId,
-            channelPositions: body.channelPositions,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'channels_reordered',
+            payload: { serverId, channelPositions: body.channelPositions },
         });
 
         return { message: 'Channels reordered' };
@@ -307,10 +309,9 @@ export class ServerChannelController {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('channel_updated', {
-            serverId,
-            channel,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'channel_updated',
+            payload: { serverId, channel },
         });
 
         return channel;
@@ -339,10 +340,9 @@ export class ServerChannelController {
 
         await this.channelRepo.delete(channelId);
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('channel_deleted', {
-            serverId,
-            channelId,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'channel_deleted',
+            payload: { serverId, channelId },
         });
 
         return { message: 'Channel deleted' };
@@ -383,10 +383,9 @@ export class ServerChannelController {
             position: finalPosition,
         });
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('category_created', {
-            serverId,
-            category,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'category_created',
+            payload: { serverId, category },
         });
 
         return category;
@@ -423,10 +422,9 @@ export class ServerChannelController {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('category_updated', {
-            serverId,
-            category,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'category_updated',
+            payload: { serverId, category },
         });
 
         return category;
@@ -465,10 +463,9 @@ export class ServerChannelController {
             }
         }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('category_deleted', {
-            serverId,
-            categoryId,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'category_deleted',
+            payload: { serverId, categoryId },
         });
 
         return { message: 'Category deleted' };
@@ -498,10 +495,9 @@ export class ServerChannelController {
             await this.categoryRepo.update(categoryId, { position });
         }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('categories_reordered', {
-            serverId,
-            categoryPositions: body.categoryPositions,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'categories_reordered',
+            payload: { serverId, categoryPositions: body.categoryPositions },
         });
 
         return { message: 'Categories reordered' };
@@ -575,11 +571,13 @@ export class ServerChannelController {
             permissions: body.permissions || {},
         });
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('channel_permissions_updated', {
-            serverId,
-            channelId,
-            permissions: body.permissions || {},
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'channel_permissions_updated',
+            payload: {
+                serverId,
+                channelId,
+                permissions: body.permissions || {},
+            },
         });
 
         return { permissions: body.permissions || {} };
@@ -653,11 +651,13 @@ export class ServerChannelController {
             permissions: body.permissions || {},
         });
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('category_permissions_updated', {
-            serverId,
-            categoryId,
-            permissions: body.permissions || {},
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'category_permissions_updated',
+            payload: {
+                serverId,
+                categoryId,
+                permissions: body.permissions || {},
+            },
         });
 
         return { permissions: body.permissions || {} };

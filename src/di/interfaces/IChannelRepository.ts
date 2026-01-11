@@ -1,4 +1,4 @@
-import type { Types } from 'mongoose';
+import type { Types, ClientSession } from 'mongoose';
 
 // Channel interface
 //
@@ -76,7 +76,11 @@ export interface IChannelRepository {
     updatePosition(id: string, position: number): Promise<IChannel | null>;
 
     // Update last message timestamp
-    updateLastMessageAt(id: string, date?: Date): Promise<IChannel | null>;
+    updateLastMessageAt(
+        id: string,
+        date?: Date,
+        session?: ClientSession,
+    ): Promise<IChannel | null>;
 
     // Delete all channels for a server (bulk delete)
     deleteByServerId(serverId: string): Promise<number>;

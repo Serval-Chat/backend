@@ -5,13 +5,6 @@ import mongoose, { Schema } from 'mongoose';
 //
 // Stores emoji reactions for messages (both DM and server messages)
 // Supports Unicode emojis and custom emojis from servers
-//
-// Key features:
-// - Maximum 20 unique emoji types per message
-// - Users can only react once per emoji per message
-// - Custom emojis reference the Emoji model by ID
-// - Reactions are automatically cleaned up when messages are deleted
-
 export interface IReaction extends Document {
     _id: Types.ObjectId;
     messageId: Types.ObjectId; // Reference to Message or ServerMessage

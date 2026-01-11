@@ -5,7 +5,7 @@ import {
 } from '@/di/interfaces/IServerMessageRepository';
 import { ServerMessage } from '@/models/Server';
 import { Reaction } from '@/models/Reaction';
-import type { Types, FilterQuery } from 'mongoose';
+import type { Types, FilterQuery, ClientSession } from 'mongoose';
 
 // Mongoose Server Message repository
 //
@@ -14,19 +14,22 @@ import type { Types, FilterQuery } from 'mongoose';
 export class MongooseServerMessageRepository
     implements IServerMessageRepository
 {
-    async create(data: {
-        serverId: string | Types.ObjectId;
-        channelId: string | Types.ObjectId;
-        senderId: string | Types.ObjectId;
-        text: string;
-        isWebhook?: boolean;
-        webhookUsername?: string;
-        webhookAvatarUrl?: string;
-        replyToId?: string | Types.ObjectId;
-        repliedToMessageId?: Types.ObjectId;
-    }): Promise<IServerMessage> {
+    async create(
+        data: {
+            serverId: string | Types.ObjectId;
+            channelId: string | Types.ObjectId;
+            senderId: string | Types.ObjectId;
+            text: string;
+            isWebhook?: boolean;
+            webhookUsername?: string;
+            webhookAvatarUrl?: string;
+            replyToId?: string | Types.ObjectId;
+            repliedToMessageId?: Types.ObjectId;
+        },
+        session?: ClientSession,
+    ): Promise<IServerMessage> {
         const message = new ServerMessage(data);
-        const savedMessage = await message.save();
+        const savedMessage = await message.save({ session });
         return { ...savedMessage.toObject(), reactions: [] };
     }
 
@@ -58,12 +61,6 @@ export class MongooseServerMessageRepository
     }
 
     // Find messages in a channel with pagination
-    //
-    // Supports:
-    // - 'Before': Older messages before a specific ID or date
-    // - 'Around': Contextual messages around a specific message (split limit)
-    //
-    // Automatically fetches and attaches aggregated reactions */
     async findByChannelId(
         channelId: string,
         limit = 50,

@@ -3,8 +3,9 @@ import { Container } from 'inversify';
 import { TYPES } from '@/di/types';
 
 // Interfaces
+import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import type { IEventEmitter } from '@/di/interfaces/IEventEmitter';
+
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IBanRepository } from '@/di/interfaces/IBanRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
@@ -25,6 +26,7 @@ import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 
 // Infrastructure implementations
 import { WinstonLogger } from '@/infrastructure/WinstonLogger';
+import { TransactionManager } from '@/infrastructure/TransactionManager';
 
 // Repository implementations
 import { MongooseUserRepository } from '@/infrastructure/repositories/MongooseUserRepository';
@@ -54,8 +56,6 @@ import { MongooseReactionRepository } from '@/infrastructure/repositories/Mongoo
 // Services
 import { AuthService } from '@/services/AuthService';
 import { PermissionService } from '@/services/PermissionService';
-import { PresenceService } from '@/realtime/services/PresenceService';
-import { StatusService } from '@/realtime/services/StatusService';
 import { PingService } from '@/services/PingService';
 import { AdminController } from '@/controllers/AdminController';
 import { AuthController } from '@/controllers/AuthController';
@@ -82,19 +82,15 @@ import { UserWarningController } from '@/controllers/UserWarningController';
 import { UserPingController } from '@/controllers/UserPingController';
 import { FileCompatibilityController } from '@/controllers/FileCompatibilityController';
 
-// WebSocket
 import { WsServer } from '@/ws/server';
 import { WsDispatcher } from '@/ws/dispatcher';
 import { PingController } from '@/ws/controller/PingController';
+import { AuthController as WsAuthController } from '@/ws/controller/AuthController';
+import { ChatController as WsChatController } from '@/ws/controller/ChatController';
+import { PresenceController as WsPresenceController } from '@/ws/controller/PresenceController';
+import { ReactionController as WsReactionController } from '@/ws/controller/ReactionController';
+import { ServerController as WsServerController } from '@/ws/controller/ServerController';
 
-// Dependency Injection Container
-//
-// Central container for managing all application dependencies
-// Configured during application startup in main.ts
-//
-// Strategy:
-// - Singleton: Core infrastructure and services that maintain state or are expensive to create
-// - Transient: Repositories and controllers that should be fresh for each request/use
 const container = new Container();
 
 // ====================
@@ -102,6 +98,10 @@ const container = new Container();
 // ====================
 
 container.bind<ILogger>(TYPES.Logger).to(WinstonLogger).inSingletonScope();
+container
+    .bind<TransactionManager>(TYPES.TransactionManager)
+    .to(TransactionManager)
+    .inSingletonScope();
 
 // ==================
 // Repository Layer
@@ -222,16 +222,6 @@ container
     .inTransientScope();
 
 container
-    .bind<PresenceService>(TYPES.PresenceService)
-    .to(PresenceService)
-    .inSingletonScope();
-
-container
-    .bind<StatusService>(TYPES.StatusService)
-    .to(StatusService)
-    .inSingletonScope();
-
-container
     .bind<PingService>(TYPES.PingService)
     .to(PingService)
     .inTransientScope();
@@ -339,8 +329,41 @@ container
     .inTransientScope();
 
 // WebSocket
-container.bind<WsServer>(TYPES.WsServer).to(WsServer).inSingletonScope();
-container.bind<WsDispatcher>(TYPES.WsDispatcher).to(WsDispatcher).inSingletonScope();
+container.bind<IWsServer>(TYPES.WsServer).to(WsServer).inSingletonScope();
+container
+    .bind<WsDispatcher>(TYPES.WsDispatcher)
+    .to(WsDispatcher)
+    .inSingletonScope();
+
+// Individual controllers
 container.bind<PingController>(PingController).toSelf().inTransientScope();
+container.bind<WsAuthController>(WsAuthController).toSelf().inTransientScope();
+container.bind<WsChatController>(WsChatController).toSelf().inTransientScope();
+container
+    .bind<WsPresenceController>(WsPresenceController)
+    .toSelf()
+    .inTransientScope();
+container
+    .bind<WsReactionController>(WsReactionController)
+    .toSelf()
+    .inTransientScope();
+container
+    .bind<WsServerController>(WsServerController)
+    .toSelf()
+    .inTransientScope();
+
+// Presence controller specifically for WsServer property injection
+container
+    .bind<WsPresenceController>(TYPES.PresenceController)
+    .to(WsPresenceController)
+    .inTransientScope();
+
+// All controllers for WsDispatcher multi-injection
+container.bind(TYPES.WsController).to(PingController);
+container.bind(TYPES.WsController).to(WsAuthController);
+container.bind(TYPES.WsController).to(WsChatController);
+container.bind(TYPES.WsController).to(WsPresenceController);
+container.bind(TYPES.WsController).to(WsReactionController);
+container.bind(TYPES.WsController).to(WsServerController);
 
 export { container };

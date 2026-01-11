@@ -1,11 +1,10 @@
 // Dependency Injection Type Identifiers
-//
-// Symbols used to identify and resolve dependencies in the InversifyJS container
 
 export const TYPES = {
     // Infrastructure
     Logger: Symbol.for('Logger'),
-    EventEmitter: Symbol.for('EventEmitter'),
+
+    TransactionManager: Symbol.for('TransactionManager'),
 
     // Repositories
     UserRepository: Symbol.for('UserRepository'),
@@ -33,12 +32,13 @@ export const TYPES = {
     AuthService: Symbol.for('AuthService'),
     PermissionService: Symbol.for('PermissionService'),
     WebPushService: Symbol.for('WebPushService'),
-    PresenceService: Symbol.for('PresenceService'),
-    StatusService: Symbol.for('StatusService'),
+
     PingService: Symbol.for('PingService'),
 
     // Application
     ExpressApp: Symbol.for('ExpressApp'),
     WsServer: Symbol.for('WsServer'),
     WsDispatcher: Symbol.for('WsDispatcher'),
+    WsController: Symbol.for('WsController'),
+    PresenceController: Symbol.for('PresenceController'),
 };

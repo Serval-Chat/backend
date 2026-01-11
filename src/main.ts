@@ -8,7 +8,6 @@ import type { HttpsOptions } from '@nestjs/common/interfaces/external/https-opti
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { setupExpressApp } from './server';
 import { connectDB } from '@/config/db';
-import { createSocketServer } from '@/socket/init';
 import { startMetricsUpdater } from '@/utils/metrics-updater';
 import { container } from '@/di/container';
 import type { WsServer } from '@/ws/server';
@@ -17,7 +16,6 @@ import * as YAML from 'yaml';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
-    // Ensure necessary directories exist
     const uploadDirs = [
         'uploads',
         'uploads/uploads',
@@ -32,7 +30,6 @@ async function bootstrap() {
         }
     }
 
-    // Database Connection
     try {
         await connectDB();
     } catch (err) {
@@ -40,7 +37,7 @@ async function bootstrap() {
         process.exit(1);
     }
 
-    // Configure HTTPS if enabled
+    // Configure HTTPS if enabl
     let httpsOptions: HttpsOptions | undefined;
     if (USE_HTTPS === 'on') {
         const keyPath = path.join(CERTS_PATH, 'key.pem');
@@ -72,13 +69,10 @@ async function bootstrap() {
         }),
     );
 
-    // Integrate legacy Express configuration
     const expressApp = app.getHttpAdapter().getInstance();
     setupExpressApp(expressApp);
 
-    // Initialize Real-time and Metrics
     const httpServer = app.getHttpServer();
-    await createSocketServer(httpServer, container);
 
     const wsServer = container.get<WsServer>(TYPES.WsServer);
     wsServer.initialize(httpServer);
@@ -110,6 +104,18 @@ async function bootstrap() {
     // Start the application
     await app.listen(PORT);
     Logger.log(`Application is running on: ${await app.getUrl()}`, 'Bootstrap');
+
+    // Enable graceful shutdown
+    app.enableShutdownHooks();
+
+    // Handle signals for WsServer shutdown
+    const cleanup = () => {
+        Logger.log('Shutting down WebSocket server...', 'Bootstrap');
+        wsServer.shutdown();
+    };
+
+    process.on('SIGTERM', cleanup);
+    process.on('SIGINT', cleanup);
 }
 
 bootstrap();

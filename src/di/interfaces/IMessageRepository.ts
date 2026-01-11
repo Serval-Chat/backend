@@ -1,4 +1,4 @@
-import type { Types } from 'mongoose';
+import type { Types, ClientSession } from 'mongoose';
 
 // Message interface (domain model)
 //
@@ -40,12 +40,16 @@ export interface IMessageRepository {
     ): Promise<IMessage[]>;
 
     // Create a new message
-    create(data: {
-        senderId: string;
-        receiverId: string;
-        text: string;
-        replyToId?: string;
-    }): Promise<IMessage>;
+    create(
+        data: {
+            senderId: string;
+            receiverId: string;
+            text: string;
+            replyToId?: string;
+            repliedToMessageId?: Types.ObjectId;
+        },
+        session?: ClientSession,
+    ): Promise<IMessage>;
 
     // Update message (for editing)
     update(id: string, text: string): Promise<IMessage | null>;

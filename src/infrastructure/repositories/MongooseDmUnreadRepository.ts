@@ -1,4 +1,5 @@
 import { injectable } from 'inversify';
+import type { ClientSession } from 'mongoose';
 import {
     IDmUnreadRepository,
     IDmUnread,
@@ -26,12 +27,18 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     // Increment the unread count for a user from a peer
     //
     // Uses upsert to create the record if it doesn't exist
-    async increment(userId: string, peerId: string): Promise<void> {
-        await DmUnread.updateOne(
+    // Returns the new count after increment (atomic operation)
+    async increment(
+        userId: string,
+        peerId: string,
+        session?: ClientSession,
+    ): Promise<number> {
+        const result = await DmUnread.findOneAndUpdate(
             { user: userId, peer: peerId },
             { $inc: { count: 1 } },
-            { upsert: true },
+            { upsert: true, new: true, projection: { count: 1 }, session },
         );
+        return result?.count ?? 1;
     }
 
     // Reset the unread count for a user from a peer to zero

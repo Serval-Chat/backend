@@ -1,4 +1,5 @@
 import { injectable } from 'inversify';
+import type { ClientSession } from 'mongoose';
 import {
     IServerChannelReadRepository,
     IServerChannelRead,
@@ -30,21 +31,18 @@ export class MongooseServerChannelReadRepository
     }
 
     // Update or create a read record for a channel
-    //
-    // Sets the 'lastReadAt' timestamp to the current time
-    // Uses upsert to ensure the record exists
     async upsert(
         serverId: string,
         channelId: string,
         userId: string,
+        session?: ClientSession,
     ): Promise<IServerChannelRead> {
         const result = (await ServerChannelRead.findOneAndUpdate(
             { serverId, channelId, userId },
             { lastReadAt: new Date() },
-            { new: true, upsert: true },
+            { new: true, upsert: true, session },
         ).lean()) as unknown as IServerChannelRead;
 
-        // Handle the case where lean() might return null
         if (!result) {
             throw new Error(ErrorMessages.SERVER.FAILED_UPSERT_READ);
         }

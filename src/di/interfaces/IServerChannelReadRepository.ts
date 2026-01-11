@@ -1,4 +1,4 @@
-import type { Types } from 'mongoose';
+import type { Types, ClientSession } from 'mongoose';
 
 // Server Channel Read interface (domain model)
 //
@@ -31,5 +31,6 @@ export interface IServerChannelReadRepository {
         serverId: string,
         channelId: string,
         userId: string,
+        session?: ClientSession,
     ): Promise<IServerChannelRead>;
 }

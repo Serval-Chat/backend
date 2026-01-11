@@ -38,7 +38,11 @@ import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRep
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { generateWebhookToken } from '@/services/WebhookService';
-import { getIO } from '@/socket';
+import type { IWsServer } from '@/ws/interfaces/IWsServer';
+import type {
+    IMessageServerEvent,
+    IChannelUnreadUpdatedEvent,
+} from '@/ws/protocol/events/messages';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import type { Request as ExpressRequest, Response } from 'express';
 import path from 'path';
@@ -86,6 +90,9 @@ export class WebhookController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: IWsServer,
     ) {
         // Ensure the uploads directory exists for webhook avatars
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -428,27 +435,46 @@ export class WebhookController {
         messagesSentCounter.labels('webhook').inc();
         websocketMessagesCounter.labels('server_message', 'outbound').inc();
 
-        const io = getIO();
-        const m = message as unknown as Record<string, unknown>;
-        const msg = m.toObject
-            ? (m.toObject as () => Record<string, unknown>)()
-            : m;
-
-        msg._id = String(msg._id);
-        msg.serverId = webhook.serverId.toString();
-        msg.channelId = webhook.channelId.toString();
-
-        io.to(`channel:${webhook.channelId.toString()}`).emit(
-            'server_message',
-            msg,
+        const messagePayload: IMessageServerEvent = {
+            type: 'message_server',
+            payload: {
+                messageId: message._id.toString(),
+                serverId: webhook.serverId.toString(),
+                channelId: webhook.channelId.toString(),
+                senderId: webhookSystemUserId.toHexString(),
+                senderUsername: webhookUsername,
+                text: content,
+                createdAt:
+                    message.createdAt instanceof Date
+                        ? message.createdAt.toISOString()
+                        : new Date().toISOString(),
+                isEdited: false,
+                isWebhook: true,
+                webhookUsername,
+                webhookAvatarUrl: webhookAvatarUrl || undefined,
+            },
+        };
+        this.wsServer.broadcastToChannel(
+            webhook.channelId.toString(),
+            messagePayload,
         );
 
-        io.to(`server:${webhook.serverId.toString()}`).emit('channel_unread', {
-            serverId: webhook.serverId.toString(),
-            channelId: webhook.channelId.toString(),
-            lastMessageAt: message.createdAt,
-            senderId: webhookSystemUserId.toHexString(),
-        });
+        const unreadPayload: IChannelUnreadUpdatedEvent = {
+            type: 'channel_unread_updated',
+            payload: {
+                serverId: webhook.serverId.toString(),
+                channelId: webhook.channelId.toString(),
+                lastMessageAt:
+                    message.createdAt instanceof Date
+                        ? message.createdAt.toISOString()
+                        : new Date().toISOString(),
+                senderId: webhookSystemUserId.toHexString(),
+            },
+        };
+        this.wsServer.broadcastToServer(
+            webhook.serverId.toString(),
+            unreadPayload,
+        );
 
         return {
             id: message._id.toString(),

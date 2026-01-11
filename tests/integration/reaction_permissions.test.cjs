@@ -73,13 +73,6 @@ describe('Reaction Permissions Integration Tests', () => {
         // Add users to server with roles
         const ServerMember = mongoose.model('ServerMember');
 
-        // Add owner as member
-        await ServerMember.create({
-            serverId: server._id,
-            userId: owner._id,
-            roles: [] // Owner doesn't need roles for permission check
-        });
-
         await ServerMember.create({
             serverId: server._id,
             userId: userWithPerms._id,

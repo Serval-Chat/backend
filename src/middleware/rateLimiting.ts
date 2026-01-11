@@ -43,9 +43,6 @@ export const registrationLimiter = rateLimit({
 });
 
 // Rate limiter for sensitive authenticated operations.
-//
-// Limits to 3 attempts per hour per user for operations like password or login changes.
-// Skips successful requests to allow normal usage while blocking repeated failures.
 export const sensitiveOperationLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3,

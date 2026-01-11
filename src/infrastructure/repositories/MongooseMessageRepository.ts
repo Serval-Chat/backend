@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { type FilterQuery, Types } from 'mongoose';
+import { type FilterQuery, Types, ClientSession } from 'mongoose';
 import {
     IMessageRepository,
     IMessage,
@@ -8,9 +8,6 @@ import { Message } from '@/models/Message';
 import { injectable } from 'inversify';
 
 // Mongoose Message repository
-//
-// Implements IMessageRepository using Mongoose Message model
-// Encapsulates all direct message operations
 @injectable()
 @Injectable()
 export class MongooseMessageRepository implements IMessageRepository {
@@ -22,10 +19,6 @@ export class MongooseMessageRepository implements IMessageRepository {
     }
 
     // Find messages between two users with pagination
-    //
-    // Supports:
-    // - 'Before': Older messages before a specific ID or date
-    // - 'Around': Contextual messages around a specific message (split limit)
     async findByConversation(
         user1Id: string,
         user2Id: string,
@@ -82,14 +75,11 @@ export class MongooseMessageRepository implements IMessageRepository {
         const query = { ...baseQuery };
 
         if (before) {
-            // Check if 'before' is a valid ObjectId (24 hex characters)
             const isValidObjectId = /^[a-f\d]{24}$/i.test(before);
 
             if (isValidObjectId) {
-                // Use _id comparison for ObjectId-based pagination
                 query._id = { $lt: before };
             } else {
-                // Fall back to date-based comparison for timestamp strings
                 query.createdAt = { $lt: new Date(before) };
             }
         }
@@ -104,15 +94,18 @@ export class MongooseMessageRepository implements IMessageRepository {
         return messages.reverse();
     }
 
-    async create(data: {
-        senderId: string;
-        receiverId: string;
-        text: string;
-        replyToId?: string;
-        repliedToMessageId?: Types.ObjectId;
-    }): Promise<IMessage> {
+    async create(
+        data: {
+            senderId: string;
+            receiverId: string;
+            text: string;
+            replyToId?: string;
+            repliedToMessageId?: Types.ObjectId;
+        },
+        session?: ClientSession,
+    ): Promise<IMessage> {
         const message = new this.messageModel(data);
-        return await message.save();
+        return await message.save({ session });
     }
 
     async update(id: string, text: string): Promise<IMessage | null> {

@@ -2,7 +2,7 @@
  * Integration Test Setup
  */
 
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const { MongoMemoryReplSet } = require('mongodb-memory-server');
 const mongoose = require('mongoose');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -18,13 +18,19 @@ let mongoServer;
 let server;
 let io;
 let app;
+let nextApp;
 
 /**
  * Global setup for integration tests
  */
 async function setup() {
     // 1. Start MongoDB Memory Server
-    mongoServer = await MongoMemoryServer.create();
+    mongoServer = await MongoMemoryReplSet.create({
+        replSet: {
+            count: 1,
+            storageEngine: 'wiredTiger',
+        }
+    });
     const uri = mongoServer.getUri();
     process.env.MONGO_URI = uri;
 
@@ -47,7 +53,7 @@ async function setup() {
     const { AppModule } = require('../../src/app.module');
 
     // Initialize Nest app
-    const nextApp = await NestFactory.create(AppModule);
+    nextApp = await NestFactory.create(AppModule);
     const { ValidationPipe } = require('@nestjs/common');
     nextApp.useGlobalPipes(
         new ValidationPipe({
@@ -68,10 +74,13 @@ async function setup() {
     // 4. Create HTTP Server
     server = createServer(app);
 
-    // 5. Initialize Socket.IO
-    const { createSocketServer } = require('../../src/socket/init');
+    // 5. Initialize WebSocket Server
     const { container } = require('../../src/di/container');
-    io = await createSocketServer(server, container);
+    const { TYPES } = require('../../src/di/types');
+
+    const wsServer = container.get(TYPES.WsServer);
+    wsServer.initialize(server);
+    io = null; // No Socket.IO anymore
 
     // 6. Start Server
     await new Promise((resolve) => {
@@ -93,6 +102,19 @@ async function teardown() {
 
     if (io) {
         await io.close();
+    }
+
+    // 3. Shutdown WebSocket Server
+    const { container } = require('../../src/di/container');
+    const { TYPES } = require('../../src/di/types');
+    const wsServer = container.get(TYPES.WsServer);
+    if (wsServer) {
+        await wsServer.shutdown();
+    }
+
+    // 4. Close NestJS Application
+    if (nextApp) {
+        await nextApp.close();
     }
 
     await mongoose.disconnect();

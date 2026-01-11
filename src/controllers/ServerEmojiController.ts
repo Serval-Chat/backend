@@ -26,14 +26,15 @@ import {
     ApiConsumes,
     ApiBody,
 } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
+import { WsServer } from '@/ws/server';
+import { injectable, inject } from 'inversify';
 import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import { getIO } from '@/socket';
+
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { IEmoji } from '@/di/interfaces/IEmojiRepository';
@@ -75,6 +76,9 @@ export class ServerEmojiController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
     ) {
         // Ensure emoji upload directory exists at startup to avoid runtime write failures
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -236,8 +240,10 @@ export class ServerEmojiController {
             );
         }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('emoji_updated', { serverId });
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'emoji_updated',
+            payload: { serverId },
+        });
 
         return populatedEmoji;
     }
@@ -311,7 +317,9 @@ export class ServerEmojiController {
 
         await this.emojiRepo.delete(emojiId);
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('emoji_updated', { serverId });
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'emoji_updated',
+            payload: { serverId },
+        });
     }
 }

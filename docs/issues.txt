@@ -1,0 +1,1 @@
+frontend does not register on server events lol gotta fix that.

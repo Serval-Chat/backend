@@ -182,10 +182,7 @@ export async function resolveAndCheck(hostname: string) {
     }
 }
 
-// Ensure URL is allowed by applying a set of SSRF checks.
-// - blocklisted hostnames/suffixes
-// - if hostname is an IP literal, validate it directly
-// - resolve DNS (verbatim) and validate resolved addresses
+// Ensure URL is allowed
 export async function ensureUrlAllowed(url: URL): Promise<void> {
     const hostname = normalizeHostname(url.hostname);
 

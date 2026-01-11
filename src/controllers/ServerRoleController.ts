@@ -19,13 +19,14 @@ import {
     ApiResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
+import { WsServer } from '@/ws/server';
+import { injectable, inject } from 'inversify';
 import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/services/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import { getIO } from '@/socket';
+
 import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JWTPayload } from '@/utils/jwt';
@@ -57,6 +58,9 @@ export class ServerRoleController {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @inject(TYPES.WsServer)
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
     ) {}
 
     // Retrieves all roles for a specific server
@@ -133,8 +137,10 @@ export class ServerRoleController {
             permissions: body.permissions || {},
         });
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('role_created', { serverId, role });
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'role_created',
+            payload: { serverId, role },
+        });
 
         return role;
     }
@@ -171,10 +177,12 @@ export class ServerRoleController {
             await this.roleRepo.update(roleId, { position });
         }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('roles_reordered', {
-            serverId,
-            rolePositions: body.rolePositions,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'roles_reordered',
+            payload: {
+                serverId,
+                rolePositions: body.rolePositions,
+            },
         });
 
         return await this.roleRepo.findByServerId(serverId);
@@ -243,10 +251,12 @@ export class ServerRoleController {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('role_updated', {
-            serverId,
-            role: updatedRole,
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'role_updated',
+            payload: {
+                serverId,
+                role: updatedRole,
+            },
         });
 
         return updatedRole;
@@ -295,8 +305,10 @@ export class ServerRoleController {
 
         await this.roleRepo.delete(roleId);
 
-        const io = getIO();
-        io.to(`server:${serverId}`).emit('role_deleted', { serverId, roleId });
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'role_deleted',
+            payload: { serverId, roleId },
+        });
 
         return { message: 'Role deleted' };
     }
