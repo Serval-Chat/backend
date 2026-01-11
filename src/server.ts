@@ -74,6 +74,8 @@ export function setupExpressApp(app: Application): Application {
                         'https://unpkg.com',
                         'https://*.githubusercontent.com',
                         'https://www.gravatar.com',
+                        'https://catfla.re/',
+                        'https://rolling.catfla.re/'
                     ],
                     connectSrc: [
                         "'self'",
