@@ -42,9 +42,9 @@ export function IsUsername(validationOptions?: ValidationOptions) {
             ...validationOptions,
             message: 'Username must be at least 3 characters',
         }),
-        MaxLength(20, {
+        MaxLength(22, {
             ...validationOptions,
-            message: 'Username must be at most 20 characters',
+            message: 'Username must be at most 22 characters',
         }),
         Matches(/^[a-zA-Z0-9_]/, {
             ...validationOptions,
@@ -363,7 +363,7 @@ export const objectIdSchema = z
 export const usernameSchema = z
     .string()
     .min(3, 'Username must be at least 3 characters')
-    .max(20, 'Username must be at most 20 characters')
+    .max(22, 'Username must be at most 22 characters')
     .regex(
         /^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/,
         'Username can only contain letters, numbers, underscores, hyphens, and dots',
