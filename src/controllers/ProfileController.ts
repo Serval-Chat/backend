@@ -92,7 +92,7 @@ export class ProfileController {
         @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) { }
+    ) {}
 
     // Maps a user document to a public UserProfileResponseDTO payload
     private async mapToProfile(user: IUser): Promise<UserProfileResponseDTO> {
@@ -532,12 +532,12 @@ export class ProfileController {
                     );
                 }
 
-                // Check if the banner is webp
-                if (metadata.format !== 'webp') {
+                // Check if the banner is webp or gif
+                if (metadata.format !== 'webp' && metadata.format !== 'gif') {
                     fs.unlinkSync(uploadedPath);
                     throw new ApiError(
                         400,
-                        'Invalid file format. Only WebP is allowed.',
+                        'Invalid file format. Only WebP and GIF are allowed.',
                     );
                 }
             } catch (validationErr: unknown) {
@@ -552,7 +552,8 @@ export class ProfileController {
                 );
             }
 
-            const ext = '.webp';
+            const metadata = await sharp(uploadedPath).metadata();
+            const ext = metadata.format === 'gif' ? '.gif' : '.webp';
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(bannersDir, filename);
 

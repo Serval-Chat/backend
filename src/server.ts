@@ -75,7 +75,7 @@ export function setupExpressApp(app: Application): Application {
                         'https://*.githubusercontent.com',
                         'https://www.gravatar.com',
                         'https://catfla.re/',
-                        'https://rolling.catfla.re/'
+                        'https://rolling.catfla.re/',
                     ],
                     connectSrc: [
                         "'self'",
