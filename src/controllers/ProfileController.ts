@@ -92,7 +92,7 @@ export class ProfileController {
         @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     // Maps a user document to a public UserProfileResponseDTO payload
     private async mapToProfile(user: IUser): Promise<UserProfileResponseDTO> {
@@ -309,9 +309,10 @@ export class ProfileController {
             // Allow profile pictures up to 5MB
             const MAX_SIZE = 5 * 1024 * 1024;
             if (profilePicture.size > MAX_SIZE) {
+                const sizeMB = (profilePicture.size / (1024 * 1024)).toFixed(2);
                 throw new ApiError(
                     400,
-                    'File size too large. Max 5MB allowed.',
+                    `File size too large (${sizeMB}MB). Max 5MB allowed.`,
                 );
             }
 
@@ -484,9 +485,10 @@ export class ProfileController {
             // Allow banners up to 5MB
             const MAX_SIZE = 5 * 1024 * 1024;
             if (banner.size > MAX_SIZE) {
+                const sizeMB = (banner.size / (1024 * 1024)).toFixed(2);
                 throw new ApiError(
                     400,
-                    'File size too large. Max 5MB allowed.',
+                    `File size too large (${sizeMB}MB). Max 5MB allowed.`,
                 );
             }
 
