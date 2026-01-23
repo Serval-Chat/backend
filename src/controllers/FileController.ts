@@ -24,7 +24,8 @@ import {
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Request, Response } from 'express';
 import path from 'path';
-import fs from 'fs';
+import fs, { promises as fsPromises } from 'fs';
+import mime from 'mime-types';
 import { SERVER_URL } from '@/config/env';
 import { extractOriginalFilename, storage } from '@/config/multer';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -40,6 +41,12 @@ import { injectable, inject } from 'inversify';
 @injectable()
 @Controller('api/v1/files')
 export class FileController {
+    private readonly uploadsDir = path.join(
+        process.cwd(),
+        'uploads',
+        'uploads',
+    );
+
     constructor(
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
@@ -84,44 +91,27 @@ export class FileController {
     public async getFileMetadata(
         @Param('filename') filename: string,
     ): Promise<FileMetadataResponseDTO> {
-        const safeFilename = path.basename(filename);
-        if (safeFilename !== filename) {
-            throw new ApiError(400, 'Invalid filename');
-        }
-
-        const uploadsDir = path.join(process.cwd(), 'uploads', 'uploads');
-        const filePath = path.join(uploadsDir, safeFilename);
-
-        if (!fs.existsSync(filePath)) {
-            throw new ApiError(404, ErrorMessages.FILE.NOT_FOUND);
-        }
-
-        const stats = fs.statSync(filePath);
-        const isNewFormat = /^[a-f0-9]{20}-.+$/.test(safeFilename);
-        const originalFilename = isNewFormat
-            ? extractOriginalFilename(safeFilename)
-            : safeFilename;
+        const filePath = await this.getFilePath(filename);
+        const stats = await fsPromises.stat(filePath);
+        const originalFilename = this.getOriginalFilename(filename);
 
         let isBinary = false;
         try {
             const buffer = Buffer.alloc(Math.min(8192, stats.size));
-            const fd = fs.openSync(filePath, 'r');
-            fs.readSync(fd, buffer, 0, buffer.length, 0);
-            fs.closeSync(fd);
+            const handle = await fsPromises.open(filePath, 'r');
+            await handle.read(buffer, 0, buffer.length, 0);
+            await handle.close();
             isBinary = buffer.includes(0);
-        } catch (err) {
+        } catch (err: unknown) {
             this.logger.error('Error detecting binary:', err);
             isBinary = true;
         }
-
-        const ext = path.extname(originalFilename).toLowerCase();
-        const mimeType = this.getMimeType(ext);
 
         return {
             filename: originalFilename,
             size: stats.size,
             isBinary,
-            mimeType,
+            mimeType: this.getMimeType(originalFilename),
             createdAt: stats.birthtime,
             modifiedAt: stats.mtime,
         };
@@ -134,37 +124,21 @@ export class FileController {
     @ApiResponse({ status: 404, description: 'File not found' })
     public async downloadFile(
         @Param('filename') filename: string,
-        @Req() req: Request,
         @Res() res: Response,
     ): Promise<void> {
-        const safeFilename = path.basename(filename);
-        if (safeFilename !== filename) {
-            throw new ApiError(400, 'Invalid filename');
-        }
-
-        const uploadsDir = path.join(process.cwd(), 'uploads', 'uploads');
-        const filePath = path.join(uploadsDir, safeFilename);
-
-        if (!fs.existsSync(filePath)) {
-            throw new ApiError(404, ErrorMessages.FILE.NOT_FOUND);
-        }
-
-        const isNewFormat = /^[a-f0-9]{20}-.+$/.test(safeFilename);
-        const originalFilename = isNewFormat
-            ? extractOriginalFilename(safeFilename)
-            : safeFilename;
+        const filePath = await this.getFilePath(filename);
+        const stats = await fsPromises.stat(filePath);
+        const originalFilename = this.getOriginalFilename(filename);
 
         const escapedFilename = originalFilename.replace(/["\\]/g, '\\$&');
         const encodedFilename = encodeURIComponent(originalFilename);
 
-        const ext = path.extname(originalFilename).toLowerCase();
-        const stats = fs.statSync(filePath);
         res.setHeader(
             'Content-Disposition',
             `attachment; filename="${escapedFilename}"; filename*=UTF-8''${encodedFilename}`,
         );
         res.setHeader('Content-Length', stats.size);
-        res.setHeader('Content-Type', this.getMimeType(ext));
+        res.setHeader('Content-Type', this.getContentType(originalFilename));
 
         const fileStream = fs.createReadStream(filePath);
 
@@ -179,21 +153,58 @@ export class FileController {
         });
     }
 
-    private getMimeType(ext: string): string {
-        const mimeTypes: { [key: string]: string } = {
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.gif': 'image/gif',
-            '.webp': 'image/webp',
-            '.svg': 'image/svg+xml',
-            '.mp4': 'video/mp4',
-            '.webm': 'video/webm',
-            '.mp3': 'audio/mpeg',
-            '.wav': 'audio/wav',
-            '.pdf': 'application/pdf',
-            '.txt': 'text/plain',
-        };
-        return mimeTypes[ext] || 'application/octet-stream';
+    /**
+     * Extracts the original filename from a stored filename.
+     * Handles both new format (hash-prefixed) and legacy format.
+     * @param filename Stored filename
+     * @returns Original filename
+     */
+    private getOriginalFilename(filename: string): string {
+        const safeFilename = path.basename(filename);
+        const isNewFormat = /^[a-f0-9]{20}-.+$/.test(safeFilename);
+        return isNewFormat
+            ? extractOriginalFilename(safeFilename)
+            : safeFilename;
+    }
+
+    /**
+     * Resolves a filename to its full path and validates its existence.
+     * @param filename User-provided filename
+     * @returns Full path to the file
+     * @throws ApiError if filename is invalid or file doesn't exist
+     */
+    private async getFilePath(filename: string): Promise<string> {
+        const safeFilename = path.basename(filename);
+        if (safeFilename !== filename) {
+            throw new ApiError(400, 'Invalid filename');
+        }
+
+        const filePath = path.join(this.uploadsDir, safeFilename);
+
+        try {
+            await fsPromises.access(filePath, fs.constants.F_OK);
+        } catch (err: unknown) {
+            throw new ApiError(404, ErrorMessages.FILE.NOT_FOUND);
+        }
+
+        return filePath;
+    }
+
+    /**
+     * Determines the MIME type of a file based on its filename.
+     * @param filename File name with extension
+     * @returns MIME type string, defaults to 'application/octet-stream'
+     */
+    private getMimeType(filename: string): string {
+        return mime.lookup(filename) || 'application/octet-stream';
+    }
+
+    /**
+     * Gets the Content-Type header value for a file, including charset if available.
+     * @param filename File name with extension
+     * @returns Content-Type string, defaults to 'application/octet-stream'
+     */
+    private getContentType(filename: string): string {
+        return mime.contentType(filename) || 'application/octet-stream';
     }
 }

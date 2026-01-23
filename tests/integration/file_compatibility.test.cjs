@@ -39,7 +39,7 @@ describe('File Compatibility Integration Tests', () => {
             .expect(200);
 
         assert.equal(res.text, testContent);
-        assert.equal(res.headers['content-type'], 'text/plain');
+        assert.ok(res.headers['content-type'].includes('text/plain'));
         assert.ok(res.headers['content-disposition'].includes(testFilename));
     });
 
@@ -49,7 +49,7 @@ describe('File Compatibility Integration Tests', () => {
             .expect(200);
 
         assert.equal(res.text, testContent);
-        assert.equal(res.headers['content-type'], 'text/plain');
+        assert.ok(res.headers['content-type'].includes('text/plain'));
         assert.ok(res.headers['content-disposition'].includes(testFilename));
     });
 
