@@ -35,6 +35,7 @@ import {
     FileMetadataResponseDTO,
 } from './dto/file.response.dto';
 import { injectable, inject } from 'inversify';
+import { isText } from 'istextorbinary';
 
 // Controller for file uploads, metadata retrieval, and downloads
 @ApiTags('Files')
@@ -97,11 +98,11 @@ export class FileController {
 
         let isBinary = false;
         try {
-            const buffer = Buffer.alloc(Math.min(8192, stats.size));
+            const buffer = Buffer.alloc(Math.min(4096, stats.size));
             const handle = await fsPromises.open(filePath, 'r');
             await handle.read(buffer, 0, buffer.length, 0);
             await handle.close();
-            isBinary = buffer.includes(0);
+            isBinary = !isText(filename, buffer);
         } catch (err: unknown) {
             this.logger.error('Error detecting binary:', err);
             isBinary = true;
@@ -111,7 +112,7 @@ export class FileController {
             filename: originalFilename,
             size: stats.size,
             isBinary,
-            mimeType: this.getMimeType(originalFilename),
+            mimeType: await this.getMimeType(originalFilename),
             createdAt: stats.birthtime,
             modifiedAt: stats.mtime,
         };
@@ -195,8 +196,30 @@ export class FileController {
      * @param filename File name with extension
      * @returns MIME type string, defaults to 'application/octet-stream'
      */
-    private getMimeType(filename: string): string {
-        return mime.lookup(filename) || 'application/octet-stream';
+    private async getMimeType(filename: string): Promise<string> {
+        const mimeType = mime.lookup(filename);
+
+        if (mimeType) {
+            return mimeType;
+        }
+
+        // If mime-types doesn't recognize it, check if it's binary using istextorbinary
+        const filePath = path.join(this.uploadsDir, path.basename(filename));
+
+        try {
+            const stats = await fsPromises.stat(filePath);
+            const buffer = Buffer.alloc(Math.min(4096, stats.size));
+            const handle = await fsPromises.open(filePath, 'r');
+            await handle.read(buffer, 0, buffer.length, 0);
+            await handle.close();
+
+            return isText(filename, buffer)
+                ? 'text/plain'
+                : 'application/octet-stream';
+        } catch (err: unknown) {
+            this.logger.error('Error detecting mime type:', err);
+            return 'application/octet-stream';
+        }
     }
 
     /**
