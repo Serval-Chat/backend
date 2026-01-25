@@ -126,6 +126,7 @@ export function setupExpressApp(app: Application): Application {
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization'],
             credentials: true,
+            maxAge: 86400,
         }),
     );
 
