@@ -84,7 +84,10 @@ import {
     AdminUserWarningsResponseDTO,
     AdminWarningListResponseDTO,
 } from './dto/admin-warnings.response.dto';
-import { AdminAuditLogListResponseDTO } from './dto/admin-audit-logs.response.dto';
+import {
+    AdminAuditLogListResponseDTO,
+} from './dto/admin-audit-logs.response.dto';
+import { AdminListAuditLogsRequestDTO } from './dto/admin-audit-logs.request.dto';
 import {
     AdminServerListResponseDTO,
     AdminDeleteServerResponseDTO,
@@ -135,7 +138,7 @@ export class AdminController {
         @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) {}
+    ) { }
 
     @Get('stats')
     @Permissions('viewLogs')
@@ -961,12 +964,16 @@ export class AdminController {
     @ApiResponse({ status: 200, type: [Object] })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async listAuditLogs(
-        @Query('limit') limit: number = 100,
-        @Query('offset') offset: number = 0,
+        @Query() query: AdminListAuditLogsRequestDTO,
     ): Promise<AdminAuditLogListResponseDTO> {
         const logs = await this.auditLogRepo.find({
-            limit: Number(limit),
-            offset: Number(offset),
+            limit: Number(query.limit ?? 100),
+            offset: Number(query.offset ?? 0),
+            adminId: query.adminId,
+            actionType: query.actionType,
+            targetUserId: query.targetUserId,
+            startDate: query.startDate ? new Date(query.startDate) : undefined,
+            endDate: query.endDate ? new Date(query.endDate) : undefined,
         });
         return logs;
     }
@@ -1118,8 +1125,8 @@ export class AdminController {
         const profilePictureUrl = user.deletedAt
             ? '/images/deleted-cat.jpg'
             : user.profilePicture
-              ? `/api/v1/profile/picture/${user.profilePicture}`
-              : null;
+                ? `/api/v1/profile/picture/${user.profilePicture}`
+                : null;
 
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());

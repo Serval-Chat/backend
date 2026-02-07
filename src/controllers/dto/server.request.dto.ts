@@ -47,6 +47,11 @@ export class UpdateServerRequestDTO {
     @IsOptional()
     @IsBoolean()
     disableCustomFonts?: boolean;
+
+    @ApiPropertyOptional({ nullable: true, type: String })
+    @IsOptional()
+    @IsRoleId()
+    defaultRoleId?: string | null;
 }
 
 export class SetDefaultRoleRequestDTO {

@@ -43,10 +43,10 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
 
     // Reset the unread count for a user from a peer to zero
     async reset(userId: string, peerId: string): Promise<void> {
-        await DmUnread.updateOne(
+        await DmUnread.findOneAndUpdate(
             { user: userId, peer: peerId },
-            { count: 0 },
-            { upsert: true },
+            { $set: { count: 0 } },
+            { upsert: true, new: true, session: undefined },
         );
     }
 }

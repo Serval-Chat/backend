@@ -416,6 +416,31 @@ export class ServerController {
         if (body.disableCustomFonts !== undefined)
             updates.disableCustomFonts = body.disableCustomFonts;
 
+        if (body.defaultRoleId !== undefined) {
+            const roleId = body.defaultRoleId;
+            if (roleId) {
+                const role = await this.roleRepo.findById(roleId);
+                if (!role) {
+                    throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
+                }
+                if (role.serverId.toString() !== serverId) {
+                    throw new ApiError(400, ErrorMessages.ROLE.NOT_IN_SERVER);
+                }
+                if (
+                    role.name &&
+                    role.name.trim().toLowerCase() === '@everyone'
+                ) {
+                    throw new ApiError(
+                        400,
+                        ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT,
+                    );
+                }
+                updates.defaultRoleId = roleId;
+            } else {
+                updates.defaultRoleId = null;
+            }
+        }
+
         const server = await this.serverRepo.update(serverId, updates);
         if (!server) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
