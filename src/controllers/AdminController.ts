@@ -56,6 +56,7 @@ import {
     AdminUserListItemDTO,
     AdminUserDetailsDTO,
     AdminExtendedUserDetailsDTO,
+    AdminUserShortDTO,
 } from './dto/admin-users.response.dto';
 import {
     AdminResetProfileRequestDTO,
@@ -233,6 +234,25 @@ export class AdminController {
         );
 
         return enrichedUsers;
+    }
+
+    @Get('users/admins')
+    @Permissions('viewUsers')
+    @ApiOperation({ summary: 'List all administrators (short info)' })
+    @ApiResponse({ status: 200, type: [AdminUserShortDTO] })
+    public async listAdmins(): Promise<AdminUserShortDTO[]> {
+        const users = await this.userRepo.findMany({
+            filter: 'admin',
+            limit: 1000,
+        });
+
+        return users.map((user) => {
+            const dto = new AdminUserShortDTO();
+            dto._id = user._id.toString();
+            dto.username = user.username || '';
+            dto.displayName = user.displayName || null;
+            return dto;
+        });
     }
 
     @Get('users/:userId')
