@@ -39,6 +39,7 @@ export interface IRole {
     separateFromOtherRoles?: boolean;
     position: number;
     permissions: IRolePermissions;
+    icon?: string;
     createdAt?: Date;
 }
 
@@ -64,6 +65,7 @@ export interface IRoleRepository {
         separateFromOtherRoles?: boolean;
         position?: number;
         permissions?: Partial<IRolePermissions>;
+        icon?: string;
     }): Promise<IRole>;
 
     // Update role

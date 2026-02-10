@@ -12,12 +12,18 @@ import {
     NotFoundException,
     ForbiddenException,
     BadRequestException,
+    UseInterceptors,
+    UploadedFile,
+    Res,
+    HttpCode,
 } from '@nestjs/common';
 import {
     ApiTags,
     ApiOperation,
     ApiResponse,
     ApiBearerAuth,
+    ApiConsumes,
+    ApiBody,
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
@@ -36,13 +42,20 @@ import {
     UpdateRoleRequestDTO,
     ReorderRolesRequestDTO,
 } from './dto/server-role.request.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { storage } from '@/config/multer';
+import sharp from 'sharp';
+import path from 'path';
+import fs from 'fs';
+import { randomBytes } from 'crypto';
+import type { Response } from 'express';
+import { ApiError } from '@/utils/ApiError';
 
 // Controller for managing server roles and their permissions
 // Enforces 'manageRoles' permission checks and protects the mandatory '@everyone' role
 @injectable()
 @Controller('api/v1/servers/:serverId/roles')
 @ApiTags('Server Roles')
-@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ServerRoleController {
     constructor(
@@ -66,9 +79,12 @@ export class ServerRoleController {
     // Retrieves all roles for a specific server
     // Enforces server membership
     @Get()
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Get server roles' })
     @ApiResponse({ status: 200, description: 'Roles retrieved' })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
+    @UseGuards(JwtAuthGuard)
     public async getServerRoles(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -88,12 +104,15 @@ export class ServerRoleController {
     // Creates a new role in a server
     // Enforces 'manageRoles' permission and automatically calculates the next position
     @Post()
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Create a role' })
     @ApiResponse({ status: 201, description: 'Role created' })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
     })
+    @UseGuards(JwtAuthGuard)
     public async createRole(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -148,12 +167,15 @@ export class ServerRoleController {
     // Reorders roles within a server's hierarchy
     // Enforces 'manageRoles' permission
     @Patch('reorder')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Reorder roles' })
     @ApiResponse({ status: 200, description: 'Roles reordered' })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
     })
+    @UseGuards(JwtAuthGuard)
     public async reorderRoles(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -191,6 +213,8 @@ export class ServerRoleController {
     // Updates an existing role's properties
     // Enforces 'manageRoles' permission
     @Patch(':roleId')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Update a role' })
     @ApiResponse({ status: 200, description: 'Role updated' })
     @ApiResponse({
@@ -198,6 +222,7 @@ export class ServerRoleController {
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
     })
     @ApiResponse({ status: 404, description: ErrorMessages.ROLE.NOT_FOUND })
+    @UseGuards(JwtAuthGuard)
     public async updateRole(
         @Param('serverId') serverId: string,
         @Param('roleId') roleId: string,
@@ -264,6 +289,8 @@ export class ServerRoleController {
 
     // Delete a role
     @Delete(':roleId')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Delete a role' })
     @ApiResponse({ status: 200, description: 'Role deleted' })
     @ApiResponse({
@@ -275,6 +302,7 @@ export class ServerRoleController {
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
     })
     @ApiResponse({ status: 404, description: ErrorMessages.ROLE.NOT_FOUND })
+    @UseGuards(JwtAuthGuard)
     public async deleteRole(
         @Param('serverId') serverId: string,
         @Param('roleId') roleId: string,
@@ -311,5 +339,159 @@ export class ServerRoleController {
         });
 
         return { message: 'Role deleted' };
+    }
+
+    // Upload role icon
+    @Post(':roleId/icon')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @UseInterceptors(FileInterceptor('icon', { storage }))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                icon: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
+    })
+    @HttpCode(200)
+    @ApiOperation({ summary: 'Upload role icon' })
+    @ApiResponse({ status: 200, description: 'Role icon uploaded' })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+    })
+    @UseGuards(JwtAuthGuard)
+    public async uploadRoleIcon(
+        @Param('serverId') serverId: string,
+        @Param('roleId') roleId: string,
+        @UploadedFile() icon: Express.Multer.File,
+        @Req() req: ExpressRequest,
+    ): Promise<IRole> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        if (
+            !(await this.permissionService.hasPermission(
+                serverId,
+                userId,
+                'manageRoles',
+            ))
+        ) {
+            throw new ForbiddenException(
+                ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+            );
+        }
+
+        const role = await this.roleRepo.findById(roleId);
+        if (!role || role.serverId.toString() !== serverId) {
+            throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
+        }
+
+        if (!icon) {
+            throw new BadRequestException('No file uploaded');
+        }
+
+        // max 1MB for icon
+        if (icon.size > 1024 * 1024) {
+            fs.unlinkSync(icon.path);
+            throw new BadRequestException('File size too large. Max 1MB.');
+        }
+
+        // Validate image
+        try {
+            const metadata = await sharp(icon.path).metadata();
+            if (!metadata.width || !metadata.height) {
+                throw new Error('Invalid image');
+            }
+        } catch (err) {
+            if (fs.existsSync(icon.path)) fs.unlinkSync(icon.path);
+            throw new BadRequestException('Invalid image file');
+        }
+
+        const iconsDir = path.join(process.cwd(), 'uploads', 'role-icons');
+        if (!fs.existsSync(iconsDir)) {
+            fs.mkdirSync(iconsDir, { recursive: true });
+        }
+
+        // Remove old icon if exists
+        if (role.icon) {
+            const oldPath = path.join(iconsDir, role.icon);
+            if (fs.existsSync(oldPath)) {
+                fs.unlinkSync(oldPath);
+            }
+        }
+
+        // Process and save new icon
+        const filename = `${randomBytes(16).toString('hex')}.webp`;
+        const targetPath = path.join(iconsDir, filename);
+
+        try {
+            await sharp(icon.path).resize(64, 64).webp().toFile(targetPath);
+
+            // Delete temp upload
+            if (fs.existsSync(icon.path)) {
+                fs.unlinkSync(icon.path);
+            }
+        } catch (err) {
+            if (fs.existsSync(icon.path)) fs.unlinkSync(icon.path);
+            this.logger.error('Failed to process role icon', err);
+            throw new ApiError(500, 'Failed to process role icon');
+        }
+
+        const updatedRole = await this.roleRepo.update(roleId, {
+            icon: filename,
+        });
+        if (!updatedRole) {
+            throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
+        }
+
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'role_updated',
+            payload: {
+                serverId,
+                role: updatedRole,
+            },
+        });
+
+        return updatedRole;
+    }
+
+    // Serve role icon
+    @Get('icon/:filename')
+    @ApiOperation({ summary: 'Get role icon' })
+    @ApiResponse({ status: 200, description: 'Role icon image' })
+    @ApiResponse({ status: 404, description: 'Icon not found' })
+    public async getRoleIcon(
+        @Param('filename') filename: string,
+        @Res() res: Response,
+    ): Promise<void> {
+        const filePath = path.join(
+            process.cwd(),
+            'uploads',
+            'role-icons',
+            filename,
+        );
+
+        if (!fs.existsSync(filePath)) {
+            res.status(404).send({ error: 'Icon not found' });
+            return;
+        }
+
+        res.setHeader('Content-Type', 'image/webp');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+
+        return new Promise<void>((resolve, _reject) => {
+            res.sendFile(filePath, (err) => {
+                if (err) {
+                    if (!res.headersSent) {
+                        res.status(500).send({ error: 'Failed to send icon' });
+                    }
+                }
+                resolve();
+            });
+        });
     }
 }

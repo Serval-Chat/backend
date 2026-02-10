@@ -113,6 +113,7 @@ export interface IRole extends Document {
         addReactions: boolean;
     };
     separateFromOtherRoles?: boolean;
+    icon?: string;
     createdAt: Date;
 }
 
@@ -275,6 +276,7 @@ const roleSchema = new Schema<IRole>({
         addReactions: { type: Boolean, default: true },
     },
     separateFromOtherRoles: { type: Boolean, default: false },
+    icon: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
 });
 roleSchema.index({ serverId: 1, position: 1 });
