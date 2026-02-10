@@ -8,6 +8,7 @@ import {
     IsInt,
     Min,
     Max,
+    ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsName, IsColor, IsRoleId } from '@/validation/schemas/common';
@@ -35,6 +36,7 @@ export class CreateRoleRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsArray()
+    @ArrayMaxSize(15)
     @IsColor({ each: true })
     colors?: string[];
 
@@ -98,6 +100,7 @@ export class UpdateRoleRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsArray()
+    @ArrayMaxSize(15)
     @IsColor({ each: true })
     colors?: string[];
 
