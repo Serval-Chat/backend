@@ -1,4 +1,6 @@
 import { injectable } from 'inversify';
+import { User } from '@/models/User';
+import { mapUser, MappedUser } from '@/utils/user';
 import {
     IServerBanRepository,
     IServerBan,
@@ -20,6 +22,24 @@ export class MongooseServerBanRepository implements IServerBanRepository {
 
     async findByServerId(serverId: string): Promise<IServerBan[]> {
         return await ServerBan.find({ serverId }).lean();
+    }
+
+    async findByServerIdWithUserInfo(
+        serverId: string,
+    ): Promise<(IServerBan & { user: MappedUser | null })[]> {
+        const bans = await ServerBan.find({ serverId }).lean();
+        const userIds = bans.map((b) => b.userId.toString());
+        const users = await User.find({ _id: { $in: userIds } }).lean();
+
+        return bans.map((b) => {
+            const user = users.find(
+                (u) => u._id.toString() === b.userId.toString(),
+            );
+            return {
+                ...b,
+                user: user ? mapUser(user) : null,
+            };
+        });
     }
 
     async create(data: CreateServerBanDTO): Promise<IServerBan> {

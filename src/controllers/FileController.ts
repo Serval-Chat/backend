@@ -184,7 +184,7 @@ export class FileController {
 
         try {
             await fsPromises.access(filePath, fs.constants.F_OK);
-        } catch (err: unknown) {
+        } catch {
             throw new ApiError(404, ErrorMessages.FILE.NOT_FOUND);
         }
 

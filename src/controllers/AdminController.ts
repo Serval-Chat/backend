@@ -85,9 +85,7 @@ import {
     AdminUserWarningsResponseDTO,
     AdminWarningListResponseDTO,
 } from './dto/admin-warnings.response.dto';
-import {
-    AdminAuditLogListResponseDTO,
-} from './dto/admin-audit-logs.response.dto';
+import { AdminAuditLogListResponseDTO } from './dto/admin-audit-logs.response.dto';
 import { AdminListAuditLogsRequestDTO } from './dto/admin-audit-logs.request.dto';
 import {
     AdminServerListResponseDTO,
@@ -139,7 +137,7 @@ export class AdminController {
         @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) { }
+    ) {}
 
     @Get('stats')
     @Permissions('viewLogs')
@@ -1145,8 +1143,8 @@ export class AdminController {
         const profilePictureUrl = user.deletedAt
             ? '/images/deleted-cat.jpg'
             : user.profilePicture
-                ? `/api/v1/profile/picture/${user.profilePicture}`
-                : null;
+              ? `/api/v1/profile/picture/${user.profilePicture}`
+              : null;
 
         const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId.toString());
@@ -1163,8 +1161,12 @@ export class AdminController {
                 return {
                     _id: server._id.toString(),
                     name: server.name,
-                    icon: server.icon ? `${server.icon}` : null,
-                    banner: server.banner,
+                    icon: server.icon
+                        ? `/api/v1/servers/icon/${server.icon}`
+                        : null,
+                    banner: server.banner
+                        ? `/api/v1/servers/banner/${server.banner}`
+                        : null,
                     ownerId: server.ownerId.toString(),
                     memberCount,
                     joinedAt: membership?.joinedAt,

@@ -405,7 +405,19 @@ export class ServerMessageController {
             channelId,
             'manageMessages',
         );
-        if (!canManage && message.senderId.toString() !== userId) {
+        const canDeleteOthers =
+            await this.permissionService.hasChannelPermission(
+                serverId,
+                userId,
+                channelId,
+                'deleteMessagesOfOthers',
+            );
+
+        if (
+            !canManage &&
+            !canDeleteOthers &&
+            message.senderId.toString() !== userId
+        ) {
             throw new ForbiddenException(
                 ErrorMessages.MESSAGE.NO_PERMISSION_DELETE,
             );

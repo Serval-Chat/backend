@@ -1,4 +1,5 @@
 import type { Types } from 'mongoose';
+import type { MappedUser } from '@/utils/user';
 
 // Server Ban interface (domain model)
 //
@@ -33,6 +34,11 @@ export interface IServerBanRepository {
 
     // Find all bans for a server
     findByServerId(serverId: string): Promise<IServerBan[]>;
+
+    // Find all bans for a server with user info populated
+    findByServerIdWithUserInfo(
+        serverId: string,
+    ): Promise<(IServerBan & { user: MappedUser | null })[]>;
 
     // Create a new server ban
     create(data: CreateServerBanDTO): Promise<IServerBan>;

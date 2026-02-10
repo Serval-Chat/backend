@@ -206,6 +206,24 @@ export class ServerMemberController {
             );
         }
 
+        // Enforce role hierarchy: cannot kick someone with equal or higher role
+        const currentUserHighest =
+            await this.permissionService.getHighestRolePosition(
+                serverId,
+                currentUserId,
+            );
+        const targetHighest =
+            await this.permissionService.getHighestRolePosition(
+                serverId,
+                userId,
+            );
+
+        if (currentUserHighest <= targetHighest) {
+            throw new ForbiddenException(
+                'You cannot kick a member with a role equal to or higher than your own',
+            );
+        }
+
         await this.serverMemberRepo.remove(serverId, userId);
 
         this.wsServer.broadcastToServer(serverId, {
@@ -250,6 +268,24 @@ export class ServerMemberController {
         const server = await this.serverRepo.findById(serverId);
         if (server?.ownerId.toString() === userId) {
             throw new ForbiddenException(ErrorMessages.MEMBER.CANNOT_BAN_OWNER);
+        }
+
+        // Enforce role hierarchy: cannot ban someone with equal or higher role
+        const currentUserHighest =
+            await this.permissionService.getHighestRolePosition(
+                serverId,
+                currentUserId,
+            );
+        const targetHighest =
+            await this.permissionService.getHighestRolePosition(
+                serverId,
+                userId,
+            );
+
+        if (currentUserHighest <= targetHighest) {
+            throw new ForbiddenException(
+                'You cannot ban a member with a role equal to or higher than your own',
+            );
         }
 
         // Ban workflow: record ban, remove member, notify clients
@@ -340,7 +376,7 @@ export class ServerMemberController {
             );
         }
 
-        return await this.serverBanRepo.findByServerId(serverId);
+        return await this.serverBanRepo.findByServerIdWithUserInfo(serverId);
     }
 
     // Add a role to a member
