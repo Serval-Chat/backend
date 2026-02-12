@@ -61,6 +61,11 @@ export class UpdateChannelRequestDTO {
     @IsString()
     @MaxLength(200)
     description?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    icon?: string;
 }
 
 export class ChannelPositionDTO {
