@@ -38,6 +38,11 @@ export class CreateChannelRequestDTO {
     @IsString()
     @MaxLength(200)
     description?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    icon?: string;
 }
 
 export class UpdateChannelRequestDTO {

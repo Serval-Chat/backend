@@ -42,6 +42,7 @@ export interface CreateChannelDTO {
         };
     };
     description?: string;
+    icon?: string;
 }
 
 // Channel Repository Interface
