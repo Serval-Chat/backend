@@ -393,6 +393,38 @@ export class ServerChannelController {
         return category;
     }
 
+    @Patch('categories/reorder')
+    @ApiOperation({ summary: 'Reorder categories' })
+    @ApiResponse({ status: 200, description: 'Categories reordered' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async reorderCategories(
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
+        @Body() body: ReorderCategoriesRequestDTO,
+    ): Promise<{ message: string }> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        if (
+            !(await this.permissionService.hasPermission(
+                serverId,
+                userId,
+                'manageChannels',
+            ))
+        ) {
+            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+        }
+
+        for (const { categoryId, position } of body.categoryPositions) {
+            await this.categoryRepo.update(categoryId, { position });
+        }
+
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'categories_reordered',
+            payload: { serverId, categoryPositions: body.categoryPositions },
+        });
+
+        return { message: 'Categories reordered' };
+    }
+
     @Patch('categories/:categoryId')
     @ApiOperation({ summary: 'Update category' })
     @ApiResponse({ status: 200, type: CategoryResponseDTO })
@@ -473,37 +505,6 @@ export class ServerChannelController {
         return { message: 'Category deleted' };
     }
 
-    @Patch('categories/reorder')
-    @ApiOperation({ summary: 'Reorder categories' })
-    @ApiResponse({ status: 200, description: 'Categories reordered' })
-    @ApiResponse({ status: 403, description: 'Forbidden' })
-    public async reorderCategories(
-        @Param('serverId') serverId: string,
-        @Req() req: Request,
-        @Body() body: ReorderCategoriesRequestDTO,
-    ): Promise<{ message: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
-        if (
-            !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
-                'manageChannels',
-            ))
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
-
-        for (const { categoryId, position } of body.categoryPositions) {
-            await this.categoryRepo.update(categoryId, { position });
-        }
-
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'categories_reordered',
-            payload: { serverId, categoryPositions: body.categoryPositions },
-        });
-
-        return { message: 'Categories reordered' };
-    }
 
     @Get('channels/:channelId/permissions')
     @ApiOperation({ summary: 'Get channel permissions' })
