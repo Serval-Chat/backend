@@ -5,7 +5,7 @@ import { Schema, model } from 'mongoose';
 //
 // Represents a record of an administrative action for accountability
 export interface IAuditLog extends Document {
-    adminId: Types.ObjectId;
+    actorId: Types.ObjectId;
     actionType: string;
     targetUserId?: Types.ObjectId;
     additionalData?: Record<string, unknown>;
@@ -13,7 +13,7 @@ export interface IAuditLog extends Document {
 }
 
 const schema = new Schema<IAuditLog>({
-    adminId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    actorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     actionType: { type: String, required: true },
     targetUserId: { type: Schema.Types.ObjectId, ref: 'User' },
     additionalData: { type: Schema.Types.Mixed },

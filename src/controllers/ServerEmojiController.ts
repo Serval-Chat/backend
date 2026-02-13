@@ -186,35 +186,44 @@ export class ServerEmojiController {
             );
         }
 
-        const metadata = await sharp(input).metadata();
-        const isAnimated = metadata.pages && metadata.pages > 1;
+        let fileName: string;
+        try {
+            const metadata = await sharp(input).metadata();
+            const isAnimated = metadata.pages && metadata.pages > 1;
 
-        let ext = '.png';
-        let pipeline = sharp(input, { animated: true });
+            let ext = '.png';
+            let pipeline = sharp(input, { animated: true });
 
-        // Determine format based on animation; preserve GIFs or fallback to WebP/PNG
-        if (isAnimated) {
-            if (metadata.format === 'gif') {
-                ext = '.gif';
-                pipeline = pipeline.gif();
+            // Determine format based on animation; preserve GIFs or fallback to WebP/PNG
+            if (isAnimated) {
+                if (metadata.format === 'gif') {
+                    ext = '.gif';
+                    pipeline = pipeline.gif();
+                } else {
+                    ext = '.webp';
+                    pipeline = pipeline.webp();
+                }
             } else {
-                ext = '.webp';
-                pipeline = pipeline.webp();
+                ext = '.png';
+                pipeline = pipeline.png();
             }
-        } else {
-            ext = '.png';
-            pipeline = pipeline.png();
+
+            fileName = `${emojiId}${ext}`;
+            const filePath = path.join(this.UPLOADS_DIR, fileName);
+
+            await pipeline
+                .resize(128, 128, {
+                    fit: 'contain',
+                    background: { r: 0, g: 0, b: 0, alpha: 0 },
+                })
+                .toFile(filePath);
+        } catch (error) {
+            const errorMessage =
+                error instanceof Error ? error.message : 'Unknown error';
+            throw new BadRequestException(
+                'Invalid image data or format: ' + errorMessage,
+            );
         }
-
-        const fileName = `${emojiId}${ext}`;
-        const filePath = path.join(this.UPLOADS_DIR, fileName);
-
-        await pipeline
-            .resize(128, 128, {
-                fit: 'contain',
-                background: { r: 0, g: 0, b: 0, alpha: 0 },
-            })
-            .toFile(filePath);
 
         // Cleanup temporary Multer file if it was written to disk
         if (emoji.path && fs.existsSync(emoji.path)) {

@@ -24,6 +24,29 @@ const SERVER_URL = process.env.SERVER_URL || '';
 const GRAFANA_USER = process.env.GRAFANA_USER || '';
 const GRAFANA_PASSWORD = process.env.GRAFANA_PASSWORD || '';
 const WS_AUTH_TIMEOUT = Number(process.env.WS_AUTH_TIMEOUT || 10000);
+const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY || '';
+const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN || '';
+const MAILGUN_BASE_URL =
+    process.env.MAILGUN_BASE_URL || 'https://api.mailgun.net';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const METRICS_TOKEN = process.env.METRICS_TOKEN || '';
+
+if (!MAILGUN_API_KEY)
+    console.warn('MAILGUN_API_KEY not set. Password reset will fail.');
+if (!MAILGUN_DOMAIN)
+    console.warn('MAILGUN_DOMAIN not set. Password reset will fail.');
+
+if (MAILGUN_API_KEY && !FRONTEND_URL) {
+    throw new Error('FRONTEND_URL must be set when MAILGUN is configured');
+}
+
+if (FRONTEND_URL) {
+    try {
+        new URL(FRONTEND_URL);
+    } catch {
+        throw new Error('FRONTEND_URL must be a valid URL');
+    }
+}
 
 if (PORT === -1) throw new Error('CHAT_PORT not set.');
 if (!JWT_SECRET) throw new Error('JWT_SECRET not set.');
@@ -80,4 +103,9 @@ export {
     GRAFANA_USER,
     GRAFANA_PASSWORD,
     WS_AUTH_TIMEOUT,
+    MAILGUN_API_KEY,
+    MAILGUN_DOMAIN,
+    MAILGUN_BASE_URL,
+    FRONTEND_URL,
+    METRICS_TOKEN,
 };

@@ -96,6 +96,15 @@ async function setup() {
  * Global teardown for integration tests
  */
 async function teardown() {
+    // 1. Shutdown WebSocket Server first
+    const { container } = require('../../src/di/container');
+    const { TYPES } = require('../../src/di/types');
+    const wsServer = container.get(TYPES.WsServer);
+    if (wsServer) {
+        await wsServer.shutdown();
+    }
+
+    // 2. Close HTTP Server
     if (server) {
         await new Promise((resolve) => server.close(resolve));
     }
@@ -104,15 +113,7 @@ async function teardown() {
         await io.close();
     }
 
-    // 3. Shutdown WebSocket Server
-    const { container } = require('../../src/di/container');
-    const { TYPES } = require('../../src/di/types');
-    const wsServer = container.get(TYPES.WsServer);
-    if (wsServer) {
-        await wsServer.shutdown();
-    }
-
-    // 4. Close NestJS Application
+    // 3. Close NestJS Application
     if (nextApp) {
         await nextApp.close();
     }

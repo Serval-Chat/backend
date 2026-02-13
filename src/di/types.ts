@@ -34,6 +34,10 @@ export const TYPES = {
     WebPushService: Symbol.for('WebPushService'),
 
     PingService: Symbol.for('PingService'),
+    MailService: Symbol.for('MailService'),
+    MailConfig: Symbol.for('MailConfig'),
+    MetricsService: Symbol.for('MetricsService'),
+    PasswordResetRepository: Symbol.for('PasswordResetRepository'),
 
     // Application
     ExpressApp: Symbol.for('ExpressApp'),

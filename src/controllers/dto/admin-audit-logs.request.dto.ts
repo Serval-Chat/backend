@@ -20,12 +20,12 @@ export class AdminListAuditLogsRequestDTO {
     offset?: number;
 
     /**
-     * Filter by administrator ID
+     * Filter by actor ID
      */
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    adminId?: string;
+    actorId?: string;
 
     /**
      * Filter by action type

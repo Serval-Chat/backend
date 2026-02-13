@@ -2,6 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
     Matches as MatchesValidator,
     MinLength as MinLengthValidator,
+    IsEmail,
+    IsString,
 } from 'class-validator';
 import {
     IsLogin,
@@ -23,9 +25,8 @@ export class LoginRequestDTO {
 }
 
 export class RegisterRequestDTO {
-    @ApiProperty()
-    @IsLogin()
-    @MatchesValidator(/@/, { message: ErrorMessages.AUTH.INVALID_EMAIL })
+    @ApiProperty({ example: 'user@example.com' })
+    @IsEmail({}, { message: ErrorMessages.AUTH.INVALID_EMAIL })
     login!: string;
 
     @ApiProperty()
@@ -45,10 +46,7 @@ export class RegisterRequestDTO {
 
 export class ChangeLoginRequestDTO {
     @ApiProperty()
-    @IsLogin()
-    @MatchesValidator(/^[a-zA-Z0-9._-]{3,24}$/, {
-        message: ErrorMessages.AUTH.LOGIN_FORMAT,
-    })
+    @IsEmail()
     newLogin!: string;
 
     @ApiProperty()
@@ -62,6 +60,24 @@ export class ChangePasswordRequestDTO {
     currentPassword!: string;
 
     @ApiProperty()
+    @IsStrongPassword()
+    newPassword!: string;
+}
+
+export class PasswordResetRequestDTO {
+    @ApiProperty({ example: 'user@example.com' })
+    @IsEmail({}, { message: ErrorMessages.AUTH.INVALID_EMAIL })
+    email!: string;
+}
+
+export class PasswordResetConfirmDTO {
+    @ApiProperty()
+    @IsString()
+    @MatchesValidator(/^[a-f0-9]{64}$/i, { message: 'Invalid token format' })
+    token!: string;
+
+    @ApiProperty({ minLength: 8 })
+    @MinLengthValidator(8)
     @IsStrongPassword()
     newPassword!: string;
 }

@@ -5,7 +5,7 @@ import type { Types } from 'mongoose';
 // Represents a permanent, immutable record of actions
 export interface IAuditLog {
     _id: Types.ObjectId | string;
-    adminId: Types.ObjectId | string;
+    actorId: Types.ObjectId | string;
     actionType: string;
     targetUserId?: Types.ObjectId | string;
     additionalData?: Record<string, unknown>;
@@ -18,7 +18,7 @@ export interface IAuditLog {
 export interface IAuditLogRepository {
     // Create a new audit log entry
     create(data: {
-        adminId: string;
+        actorId: string;
         actionType: string;
         targetUserId?: string;
         additionalData?: Record<string, unknown>;
@@ -28,7 +28,7 @@ export interface IAuditLogRepository {
     find(options: {
         limit?: number;
         offset?: number;
-        adminId?: string;
+        actorId?: string;
         actionType?: string;
         targetUserId?: string;
         startDate?: Date;
@@ -40,7 +40,7 @@ export interface IAuditLogRepository {
 
     // Count audit logs matching criteria
     count(options: {
-        adminId?: string;
+        actorId?: string;
         actionType?: string;
         targetUserId?: string;
         startDate?: Date;

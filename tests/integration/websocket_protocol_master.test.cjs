@@ -266,7 +266,7 @@ describe('WebSocket Protocol Master Suite', { timeout: 60000 }, function () {
         const res = await request(app)
             .post(`/api/v1/servers/${server._id}/emojis`)
             .set('Authorization', `Bearer ${tokenOwner}`)
-            .attach('emoji', Buffer.from('fake-image-data'), 'emoji.png')
+            .attach('emoji', Buffer.from('UklGRkAAAABXRUJQVlA4WAoAAAAQAAAAAAAAAAAAQUxQSAIAAAAAAFZQOCAYAAAAMAEAnQEqAQABAAFAJiWkAANwAP79NmgA', 'base64'), 'emoji.webp')
             .field('name', 'blobhappy');
 
         assert.ok(res.status === 200 || res.status === 201, `Emoji upload failed: ${res.status} - ${JSON.stringify(res.body)}`);

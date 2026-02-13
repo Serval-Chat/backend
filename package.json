@@ -60,6 +60,7 @@
     "jsdom": "^27.3.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.562.0",
+    "mailgun.js": "^12.7.0",
     "mime-types": "^3.0.2",
     "mongodb": "^7.0.0",
     "mongoose": "^8.19.3",

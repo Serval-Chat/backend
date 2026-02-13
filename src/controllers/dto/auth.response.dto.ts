@@ -34,3 +34,14 @@ export class AuthErrorResponseDTO {
     @ApiProperty({ required: false })
     ban?: Record<string, unknown>;
 }
+
+export class PasswordResetResponseDTO {
+    @ApiProperty()
+    message!: string;
+
+    @ApiProperty({
+        description: 'Request ID for support reference',
+        example: 'a1b2c3d4e5f6g7h8',
+    })
+    requestId?: string;
+}

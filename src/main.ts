@@ -109,13 +109,40 @@ async function bootstrap() {
     app.enableShutdownHooks();
 
     // Handle signals for WsServer shutdown
-    const cleanup = () => {
-        Logger.log('Shutting down WebSocket server...', 'Bootstrap');
-        wsServer.shutdown();
+    let isShuttingDown = false;
+    const cleanup = async (signal: string) => {
+        if (isShuttingDown) {
+            Logger.warn(`Shutdown already in progress, ignoring ${signal}`);
+            return;
+        }
+        isShuttingDown = true;
+
+        Logger.log(
+            `Received ${signal}, shutting down gracefully...`,
+            'Bootstrap',
+        );
+
+        // Set a timeout to force exit if graceful shutdown takes too long
+        const forceExitTimeout = setTimeout(() => {
+            Logger.error('Forced exit after timeout', 'Bootstrap');
+            process.exit(1);
+        }, 30000); // 30 seconds
+
+        try {
+            await wsServer.shutdown();
+            await app.close();
+            clearTimeout(forceExitTimeout);
+            Logger.log('Application shut down successfully', 'Bootstrap');
+            process.exit(0);
+        } catch (error) {
+            clearTimeout(forceExitTimeout);
+            Logger.error('Error during shutdown', error, 'Bootstrap');
+            process.exit(1);
+        }
     };
 
-    process.on('SIGTERM', cleanup);
-    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', () => cleanup('SIGTERM'));
+    process.on('SIGINT', () => cleanup('SIGINT'));
 }
 
 bootstrap();

@@ -20,6 +20,7 @@ import { MongooseServerBanRepository } from '@/infrastructure/repositories/Mongo
 import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
 import { MongooseDmUnreadRepository } from '@/infrastructure/repositories/MongooseDmUnreadRepository';
 import { MongooseWebhookRepository } from '@/infrastructure/repositories/MongooseWebhookRepository';
+import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
 
 @Global()
 @Module({
@@ -104,6 +105,10 @@ import { MongooseWebhookRepository } from '@/infrastructure/repositories/Mongoos
             provide: TYPES.WebhookRepository,
             useClass: MongooseWebhookRepository,
         },
+        {
+            provide: TYPES.PasswordResetRepository,
+            useClass: MongoosePasswordResetRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -126,6 +131,7 @@ import { MongooseWebhookRepository } from '@/infrastructure/repositories/Mongoos
         TYPES.ServerChannelReadRepository,
         TYPES.DmUnreadRepository,
         TYPES.WebhookRepository,
+        TYPES.PasswordResetRepository,
     ],
 })
 export class RepositoryModule {}

@@ -406,7 +406,7 @@ export class ServerRoleController {
             if (!metadata.width || !metadata.height) {
                 throw new Error('Invalid image');
             }
-        } catch (err) {
+        } catch {
             if (fs.existsSync(icon.path)) fs.unlinkSync(icon.path);
             throw new BadRequestException('Invalid image file');
         }

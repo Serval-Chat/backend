@@ -44,7 +44,7 @@ export const auditLogsQuerySchema = z.object({
     limit: limitSchema,
     offset: offsetSchema,
     actionType: z.string().optional(),
-    adminId: objectIdSchema.optional(),
+    actorId: objectIdSchema.optional(),
     targetUserId: objectIdSchema.optional(),
     startDate: z.string().datetime().optional(),
     endDate: z.string().datetime().optional(),

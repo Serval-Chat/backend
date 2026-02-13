@@ -23,6 +23,9 @@ import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository'
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import type { IPingRepository } from '@/di/interfaces/IPingRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
+import type { IPasswordResetRepository } from '@/di/interfaces/IPasswordResetRepository';
+import type { IMailService } from '@/di/interfaces/IMailService';
+import type { IMetricsService } from '@/di/interfaces/IMetricsService';
 
 // Infrastructure implementations
 import { WinstonLogger } from '@/infrastructure/WinstonLogger';
@@ -52,6 +55,9 @@ import { MongooseServerBanRepository } from '@/infrastructure/repositories/Mongo
 import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
 import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePingRepository';
 import { MongooseReactionRepository } from '@/infrastructure/repositories/MongooseReactionRepository';
+import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
+import { MailService } from '@/services/MailService';
+import { MetricsService } from '@/services/MetricsService';
 
 // Services
 import { AuthService } from '@/services/AuthService';
@@ -207,6 +213,11 @@ container
     .to(MongooseReactionRepository)
     .inTransientScope();
 
+container
+    .bind<IPasswordResetRepository>(TYPES.PasswordResetRepository)
+    .to(MongoosePasswordResetRepository)
+    .inTransientScope();
+
 // ===============
 // Service Layer
 // ===============
@@ -224,6 +235,20 @@ container
 container
     .bind<PingService>(TYPES.PingService)
     .to(PingService)
+    .inTransientScope();
+
+container
+    .bind<IMailService>(TYPES.MailService)
+    .to(MailService)
+    .inTransientScope();
+
+container.bind(TYPES.MailConfig).toConstantValue({
+    skipSending: process.env.NODE_ENV === 'test',
+});
+
+container
+    .bind<IMetricsService>(TYPES.MetricsService)
+    .to(MetricsService)
     .inTransientScope();
 
 container.bind<AdminController>(AdminController).toSelf().inTransientScope();

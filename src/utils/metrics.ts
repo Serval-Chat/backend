@@ -127,3 +127,18 @@ export const totalMessagesGauge = new Gauge({
     help: 'Total number of messages in the database',
     registers: [register],
 });
+
+// Counter for password reset emails
+export const passwordResetEmailCounter = new Counter({
+    name: 'chat_password_reset_email_total',
+    help: 'Total number of password reset emails sent',
+    labelNames: ['status'], // Status can be 'success' or 'failure'
+    registers: [register],
+});
+
+// Counter for password reset rate limiting
+export const passwordResetRateLimitedCounter = new Counter({
+    name: 'chat_password_reset_rate_limited_total',
+    help: 'Total number of password reset rate limit exceeded events',
+    registers: [register],
+});

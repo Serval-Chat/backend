@@ -14,6 +14,7 @@ export const ErrorMessages = {
         USERNAME_TAKEN: 'Username is already taken',
         EMAIL_TAKEN: 'Email is already taken',
         INVALID_TOKEN: 'Invalid token',
+        INVALID_RESET_TOKEN: 'Invalid or expired password reset token',
         TOKEN_REQUIRED: 'Token is required',
         SESSION_EXPIRED: 'Session expired',
         INVALID_EMAIL: 'Invalid email address',

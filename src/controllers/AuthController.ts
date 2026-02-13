@@ -22,6 +22,7 @@ import {
 import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { extractClientIp } from '@/utils/ip';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { ApiTags, ApiResponse, ApiSecurity } from '@nestjs/swagger';
@@ -34,17 +35,21 @@ interface RequestWithUser extends Request {
 }
 
 import {
-    LoginRequestDTO,
-    RegisterRequestDTO,
-    ChangeLoginRequestDTO,
-    ChangePasswordRequestDTO,
-} from './dto/auth.request.dto';
-import {
     LoginResponseDTO,
     RegisterResponseDTO,
     ChangeLoginResponseDTO,
     ChangePasswordResponseDTO,
+    PasswordResetResponseDTO,
 } from './dto/auth.response.dto';
+
+import {
+    LoginRequestDTO,
+    RegisterRequestDTO,
+    ChangeLoginRequestDTO,
+    ChangePasswordRequestDTO,
+    PasswordResetRequestDTO,
+    PasswordResetConfirmDTO,
+} from './dto/auth.request.dto';
 
 import { injectable, inject } from 'inversify';
 
@@ -308,6 +313,47 @@ export class AuthController {
         return {
             message: 'Password updated successfully',
             token,
+        };
+    }
+    // Requests a password reset email
+    @Post('password/reset')
+    @HttpCode(HttpStatus.OK)
+    @ApiResponse({ status: 200, type: PasswordResetResponseDTO })
+    public async requestPasswordReset(
+        @Body() body: PasswordResetRequestDTO,
+        @Req() req: Request,
+    ): Promise<PasswordResetResponseDTO> {
+        // Extract real IP, handling proxies via X-Forwarded-For
+        const ip = extractClientIp(req);
+
+        const requestId = await this.authService.requestPasswordReset(
+            body.email,
+            ip,
+        );
+
+        return {
+            message:
+                'If an account with that email exists, a reset link has been sent.',
+            requestId,
+        };
+    }
+
+    // Confirms a password reset using a token
+    @Post('password/reset/confirm')
+    @HttpCode(HttpStatus.OK)
+    @ApiResponse({ status: 200, type: PasswordResetResponseDTO })
+    @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+    public async confirmPasswordReset(
+        @Body() body: PasswordResetConfirmDTO,
+    ): Promise<PasswordResetResponseDTO> {
+        const requestId = await this.authService.confirmPasswordReset(
+            body.token,
+            body.newPassword,
+        );
+
+        return {
+            message: 'Password has been reset successfully.',
+            requestId,
         };
     }
 }

@@ -1,7 +1,2 @@
-~~1. Rewrite all this garbage in to NestJS~~
-  -- Done --
-
-2. Make DTOs fully validated
-3. Rewrite tests and cover 100% of them (HOPEFULLY)
-4. Write unit tests for services and shit.
-5. Move to WebSockets.
+1. Rewrite tests and cover 100% of them (HOPEFULLY)
+2. Write unit tests for services and shit.

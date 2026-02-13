@@ -93,7 +93,6 @@ test('ProfileController - uploadProfilePicture calls repository and emits event'
     const controller = new ProfileController(
         mockUserRepo,
         mockLogger,
-        mockStatusService,
         mockServerMemberRepo,
         mockFriendshipRepo,
         mockWsServer

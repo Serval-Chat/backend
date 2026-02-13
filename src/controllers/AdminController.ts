@@ -417,12 +417,12 @@ export class AdminController {
             }
 
             const auditData: {
-                adminId: string;
+                actorId: string;
                 actionType: string;
                 additionalData: Record<string, unknown>;
                 targetUserId?: string;
             } = {
-                adminId:
+                actorId:
                     (req as ExpressRequest & { user?: JWTPayload }).user?.id ||
                     'unknown',
                 actionType,
@@ -987,7 +987,7 @@ export class AdminController {
         const logs = await this.auditLogRepo.find({
             limit: Number(query.limit ?? 100),
             offset: Number(query.offset ?? 0),
-            adminId: query.adminId,
+            actorId: query.actorId,
             actionType: query.actionType,
             targetUserId: query.targetUserId,
             startDate: query.startDate ? new Date(query.startDate) : undefined,

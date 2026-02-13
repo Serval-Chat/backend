@@ -15,13 +15,13 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     constructor() {}
 
     async create(data: {
-        adminId: string;
+        actorId: string;
         actionType: string;
         targetUserId?: string;
         additionalData?: Record<string, unknown>;
     }): Promise<IAuditLog> {
         const auditLog = new this.auditLogModel({
-            adminId: new Types.ObjectId(data.adminId),
+            actorId: new Types.ObjectId(data.actorId),
             actionType: data.actionType,
             targetUserId: data.targetUserId
                 ? new Types.ObjectId(data.targetUserId)
@@ -37,7 +37,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     async find(options: {
         limit?: number;
         offset?: number;
-        adminId?: string;
+        actorId?: string;
         actionType?: string;
         targetUserId?: string;
         startDate?: Date;
@@ -45,8 +45,8 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }): Promise<IAuditLog[]> {
         const query: FilterQuery<IAuditLog> = {};
 
-        if (options.adminId) {
-            query.adminId = new Types.ObjectId(options.adminId);
+        if (options.actorId) {
+            query.actorId = new Types.ObjectId(options.actorId);
         }
 
         if (options.actionType) {
@@ -72,8 +72,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             .sort({ timestamp: -1 })
             .limit(options.limit || 100)
             .skip(options.offset || 0)
-            // Populate admin and target user info for UI display
-            .populate('adminId', 'username')
+            .populate('actorId', 'username')
             .populate('targetUserId', 'username')
             .lean()
             .exec();
@@ -84,7 +83,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     async findById(id: string): Promise<IAuditLog | null> {
         const result = await this.auditLogModel
             .findById(id)
-            .populate('adminId', 'username')
+            .populate('actorId', 'username')
             .populate('targetUserId', 'username')
             .lean()
             .exec();
@@ -93,7 +92,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }
 
     async count(options: {
-        adminId?: string;
+        actorId?: string;
         actionType?: string;
         targetUserId?: string;
         startDate?: Date;
@@ -101,8 +100,8 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }): Promise<number> {
         const query: FilterQuery<IAuditLog> = {};
 
-        if (options.adminId) {
-            query.adminId = new Types.ObjectId(options.adminId);
+        if (options.actorId) {
+            query.actorId = new Types.ObjectId(options.actorId);
         }
 
         if (options.actionType) {

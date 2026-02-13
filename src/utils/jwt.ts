@@ -12,7 +12,7 @@ export interface JWTPayload {
     permissions?: AdminPermissions;
 }
 
-// Type-safe helper to check if user has a specific permission
+// Helper to check if user has a specific permission
 export function hasPermission(
     user: JWTPayload | undefined,
     permission: keyof AdminPermissions,
@@ -22,6 +22,5 @@ export function hasPermission(
 }
 
 // Generate a JWT for authenticated users
-// Token expires after 7 days
 export const generateJWT = (payload: JWTPayload) =>
     jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
