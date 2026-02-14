@@ -33,6 +33,7 @@ import type {
     IDeleteMessageServerEvent,
     IMarkChannelReadEvent,
     IChannelUnreadUpdatedEvent,
+    IServerUnreadUpdatedEvent,
     ITypingServerEvent,
     ITypingServerBroadcastEvent,
     IMessageServer,
@@ -371,6 +372,24 @@ export class ServerController {
             ws,
         );
 
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'server_unread_updated',
+                payload: { serverId, hasUnread: true },
+            } as IServerUnreadUpdatedEvent,
+            async (targetUserId) => {
+                return this.permissionService.hasChannelPermission(
+                    serverId,
+                    targetUserId,
+                    channelId,
+                    'viewChannel',
+                );
+            },
+            undefined,
+            ws,
+        );
+
         return {
             messageId: created._id.toString(),
             serverId,
@@ -562,6 +581,25 @@ export class ServerController {
             type: 'channel_unread_updated',
             payload: unreadPayload,
         });
+
+        // Notify whether server still has unread channels for this user
+        const channels = await this.channelRepo.findByServerIds([serverId]);
+        const reads = await this.serverChannelReadRepo.findByUserId(userId);
+        const readMap = new Map(
+            reads.map((r) => [r.channelId, r.lastReadAt as Date]),
+        );
+        const hasUnread = channels.some((ch) => {
+            const lastMessageAt = ch.lastMessageAt;
+            if (!lastMessageAt) return false;
+            const lastReadAt = readMap.get(ch._id.toString());
+            return (
+                !lastReadAt || new Date(lastMessageAt) > new Date(lastReadAt)
+            );
+        });
+        this.wsServer.broadcastToUser(userId, {
+            type: 'server_unread_updated',
+            payload: { serverId, hasUnread },
+        } as IServerUnreadUpdatedEvent);
 
         return { success: true };
     }

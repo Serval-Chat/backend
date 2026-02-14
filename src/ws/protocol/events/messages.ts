@@ -391,6 +391,19 @@ export interface IChannelUnreadUpdatedEvent
     > {}
 
 /**
+ * Server → Client (Broadcast to user's sessions)
+ * Server-level unread status updated (e.g. after channel message or mark channel read).
+ */
+export interface IServerUnreadUpdatedEvent
+    extends WsEvent<
+        'server_unread_updated',
+        {
+            serverId: string;
+            hasUnread: boolean;
+        }
+    > {}
+
+/**
  * Client → Server
  * Indicate typing in a channel.
  */

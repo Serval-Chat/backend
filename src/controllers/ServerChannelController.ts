@@ -85,7 +85,7 @@ export class ServerChannelController {
         @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) { }
+    ) {}
 
     @Get('channels')
     @ApiOperation({ summary: 'Get server channels' })
@@ -179,8 +179,8 @@ export class ServerChannelController {
             body.position !== undefined
                 ? body.position
                 : maxPositionChannel
-                    ? maxPositionChannel.position + 1
-                    : 0;
+                  ? maxPositionChannel.position + 1
+                  : 0;
 
         const channel = await this.channelRepo.create({
             serverId,
@@ -376,8 +376,8 @@ export class ServerChannelController {
             body.position !== undefined
                 ? body.position
                 : maxPositionCategory
-                    ? maxPositionCategory.position + 1
-                    : 0;
+                  ? maxPositionCategory.position + 1
+                  : 0;
 
         const category = await this.categoryRepo.create({
             serverId,
@@ -504,7 +504,6 @@ export class ServerChannelController {
 
         return { message: 'Category deleted' };
     }
-
 
     @Get('channels/:channelId/permissions')
     @ApiOperation({ summary: 'Get channel permissions' })
