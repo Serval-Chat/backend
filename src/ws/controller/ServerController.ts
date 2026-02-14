@@ -372,23 +372,34 @@ export class ServerController {
             ws,
         );
 
-        await this.wsServer.broadcastToServerWithPermission(
-            serverId,
-            {
-                type: 'server_unread_updated',
-                payload: { serverId, hasUnread: true },
-            } as IServerUnreadUpdatedEvent,
-            async (targetUserId) => {
-                return this.permissionService.hasChannelPermission(
+        // Notify all server members with view permission
+        const members = await this.serverMemberRepo.findByServerId(serverId);
+        const serverUnreadEvent: IServerUnreadUpdatedEvent = {
+            type: 'server_unread_updated',
+            payload: { serverId, hasUnread: true },
+        };
+        for (const m of members) {
+            const targetUserId = m.userId.toString();
+            if (targetUserId === userId) continue;
+            try {
+                const hasView = await this.permissionService.hasChannelPermission(
                     serverId,
                     targetUserId,
                     channelId,
                     'viewChannel',
                 );
-            },
-            undefined,
-            ws,
-        );
+                if (hasView) {
+                    this.wsServer.broadcastToUser(
+                        targetUserId,
+                        serverUnreadEvent,
+                    );
+                }
+            } catch (err) {
+                logger.debug(
+                    `[ServerController] Skip server_unread for user ${targetUserId}: ${(err as Error).message}`,
+                );
+            }
+        }
 
         return {
             messageId: created._id.toString(),
