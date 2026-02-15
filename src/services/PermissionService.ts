@@ -11,7 +11,6 @@ import type { IRole } from '@/di/interfaces/IRoleRepository';
 // Permission Service
 //
 // Handles server permission checks and role hierarchy.
-// Refactored from serverPermissions.ts to use dependency injection.
 @injectable()
 @Injectable()
 export class PermissionService {

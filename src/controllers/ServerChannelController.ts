@@ -30,7 +30,7 @@ import type {
     ICategory,
 } from '@/di/interfaces/ICategoryRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
 import { Request } from 'express';
@@ -573,6 +573,8 @@ export class ServerChannelController {
             permissions: body.permissions || {},
         });
 
+        this.permissionService.invalidateCache(serverId);
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'channel_permissions_updated',
             payload: {
@@ -652,6 +654,8 @@ export class ServerChannelController {
         await this.categoryRepo.update(categoryId, {
             permissions: body.permissions || {},
         });
+
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'category_permissions_updated',

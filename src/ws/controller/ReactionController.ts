@@ -17,7 +17,7 @@ import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRep
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IMentionEvent } from '@/ws/protocol/events/mentions';
-import type { PermissionService } from '@/services/PermissionService';
+import type { PermissionService } from '@/permissions/PermissionService';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 import logger from '@/utils/logger';

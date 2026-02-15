@@ -61,7 +61,7 @@ import { MetricsService } from '@/services/MetricsService';
 
 // Services
 import { AuthService } from '@/services/AuthService';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
 import { AdminController } from '@/controllers/AdminController';
 import { AuthController } from '@/controllers/AuthController';

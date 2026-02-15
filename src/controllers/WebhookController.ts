@@ -35,7 +35,7 @@ import type {
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { generateWebhookToken } from '@/services/WebhookService';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';

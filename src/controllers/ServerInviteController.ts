@@ -32,7 +32,7 @@ import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
 

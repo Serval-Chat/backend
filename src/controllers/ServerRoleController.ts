@@ -30,7 +30,7 @@ import { WsServer } from '@/ws/server';
 import { injectable, inject } from 'inversify';
 import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
 import type { Request as ExpressRequest } from 'express';
@@ -276,6 +276,8 @@ export class ServerRoleController {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
+        this.permissionService.invalidateCache(serverId);
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_updated',
             payload: {
@@ -332,6 +334,8 @@ export class ServerRoleController {
         }
 
         await this.roleRepo.delete(roleId);
+
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_deleted',

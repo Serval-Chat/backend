@@ -46,7 +46,7 @@ import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepos
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
-import type { PermissionService } from '@/services/PermissionService';
+import type { PermissionService } from '@/permissions/PermissionService';
 import type { PingService } from '@/services/PingService';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';

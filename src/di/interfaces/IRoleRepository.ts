@@ -12,7 +12,7 @@ export interface IRolePermissions {
     manageInvites: boolean;
     manageServer: boolean;
     administrator: boolean;
-    manageWebhooks?: boolean; // Additional permission
+    manageWebhooks?: boolean;
     pingRolesAndEveryone?: boolean; // Permission to ping @everyone and roles
     addReactions?: boolean;
     manageReactions?: boolean;

@@ -32,7 +32,7 @@ import { injectable, inject } from 'inversify';
 import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
 import type { Request as ExpressRequest } from 'express';

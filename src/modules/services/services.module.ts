@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { AuthService } from '@/services/AuthService';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
 import { MailService } from '@/services/MailService';
 import { MetricsService } from '@/services/MetricsService';

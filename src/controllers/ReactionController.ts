@@ -28,7 +28,7 @@ import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRep
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
 import type { IWsServer } from '@/ws/interfaces/IWsServer';

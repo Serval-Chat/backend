@@ -30,7 +30,7 @@ import type {
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type {

@@ -35,7 +35,7 @@ import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { WsServer } from '@/ws/server';
 import { ErrorMessages } from '@/constants/errorMessages';

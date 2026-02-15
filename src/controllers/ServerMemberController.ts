@@ -29,7 +29,7 @@ import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
-import { PermissionService } from '@/services/PermissionService';
+import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
 import { mapUser } from '@/utils/user';
