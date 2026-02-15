@@ -257,20 +257,31 @@ export class PermissionService {
                     : validRoles;
                 for (const role of rolesForOverride) {
                     const roleId = role._id?.toString();
-                    if (roleId && category.permissions[roleId]) {
-                        const permValue = (
-                            category.permissions[roleId] as unknown as Record<
-                                string,
-                                boolean | undefined
-                            >
-                        )[permission];
-                        if (permValue === false) {
-                            categoryPermissionValue = false;
-                            break;
+                    if (roleId) {
+                        let rolePerms;
+                        if (category.permissions instanceof Map) {
+                            if (category.permissions.has(roleId)) {
+                                rolePerms = category.permissions.get(roleId);
+                            }
+                        } else {
+                            rolePerms = (category.permissions as Record<string, unknown>)[roleId];
                         }
-                        if (permValue === true) {
-                            categoryPermissionValue = true;
-                            break;
+                        
+                        if (rolePerms) {
+                            const permValue = (
+                                rolePerms as unknown as Record<
+                                    string,
+                                    boolean | undefined
+                                >
+                            )[permission];
+                            if (permValue === false) {
+                                categoryPermissionValue = false;
+                                break;
+                            }
+                            if (permValue === true) {
+                                categoryPermissionValue = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -286,20 +297,31 @@ export class PermissionService {
                 : validRoles;
             for (const role of rolesForOverride) {
                 const roleId = role._id?.toString();
-                if (roleId && channel.permissions[roleId]) {
-                    const permValue = (
-                        channel.permissions[roleId] as unknown as Record<
-                            string,
-                            boolean | undefined
-                        >
-                    )[permission];
-                    if (permValue === false) {
-                        channelPermissionValue = false;
-                        break;
+                if (roleId) {
+                    let rolePerms;
+                    if (channel.permissions instanceof Map) {
+                        if (channel.permissions.has(roleId)) {
+                            rolePerms = channel.permissions.get(roleId);
+                        }
+                    } else {
+                        rolePerms = (channel.permissions as Record<string, unknown>)[roleId];
                     }
-                    if (permValue === true) {
-                        channelPermissionValue = true;
-                        break;
+                    
+                    if (rolePerms) {
+                        const permValue = (
+                            rolePerms as unknown as Record<
+                                string,
+                                boolean | undefined
+                            >
+                        )[permission];
+                        if (permValue === false) {
+                            channelPermissionValue = false;
+                            break;
+                        }
+                        if (permValue === true) {
+                            channelPermissionValue = true;
+                            break;
+                        }
                     }
                 }
             }
