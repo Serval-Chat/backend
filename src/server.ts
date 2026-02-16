@@ -39,6 +39,15 @@ export function setupExpressApp(app: Application): Application {
     // Security headers
     app.use(
         helmet({
+            noSniff: true, // prevents MIME type sniffing
+            strictTransportSecurity:
+                PROJECT_LEVEL === 'production'
+                    ? {
+                          maxAge: 31536000, // 1 year
+                          includeSubDomains: true,
+                          preload: true,
+                      }
+                    : false,
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ["'self'"],
@@ -57,7 +66,6 @@ export function setupExpressApp(app: Application): Application {
                     ],
                     styleSrc: [
                         "'self'",
-                        "'unsafe-inline'",
                         'https://cdn.jsdelivr.net',
                         'https://cdnjs.cloudflare.com',
                         'https://unpkg.com',
@@ -76,13 +84,36 @@ export function setupExpressApp(app: Application): Application {
                         'https://www.gravatar.com',
                         'https://catfla.re/',
                         'https://rolling.catfla.re/',
+                        ...(PROJECT_LEVEL === 'development'
+                            ? [
+                                  'http://localhost:8000',
+                                  'http://localhost:8001',
+                                  'http://127.0.0.1:8000',
+                                  'http://127.0.0.1:8001',
+                              ]
+                            : []),
                     ],
                     connectSrc: [
                         "'self'",
-                        'wss:',
+                        'https://catfla.re',
+                        'https://rolling.catfla.re',
+                        'wss://catfla.re',
+                        'wss://rolling.catfla.re',
                         'https://tenor.googleapis.com',
                         'https://static.cloudflareinsights.com',
-                        ...(PROJECT_LEVEL === 'development' ? ['ws:'] : []),
+                        'https://cloudflareinsights.com',
+                        ...(PROJECT_LEVEL === 'development'
+                            ? [
+                                  'http://localhost:8000',
+                                  'http://localhost:8001',
+                                  'http://127.0.0.1:8000',
+                                  'http://127.0.0.1:8001',
+                                  'ws://localhost:8000',
+                                  'ws://localhost:8001',
+                                  'ws://127.0.0.1:8000',
+                                  'ws://127.0.0.1:8001',
+                              ]
+                            : []),
                     ],
                     fontSrc: [
                         "'self'",
@@ -99,12 +130,25 @@ export function setupExpressApp(app: Application): Application {
                         'https://*.googleapis.com',
                     ],
                     frameSrc: ["'none'"],
+                    ...(PROJECT_LEVEL === 'production'
+                        ? { upgradeInsecureRequests: [] }
+                        : {}),
                 },
             },
-            crossOriginEmbedderPolicy: false,
+            crossOriginOpenerPolicy: { policy: 'same-origin' },
+            crossOriginEmbedderPolicy: { policy: 'credentialless' },
             crossOriginResourcePolicy: { policy: 'cross-origin' },
         }),
     );
+
+    // Permissions-Policy!
+    app.use((_req: Request, res: Response, next: NextFunction) => {
+        res.setHeader(
+            'Permissions-Policy',
+            'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+        );
+        next();
+    });
 
     // CORS
     app.use(
@@ -114,7 +158,7 @@ export function setupExpressApp(app: Application): Application {
                     'https://catfla.re',
                     'https://rolling.catfla.re',
                     'http://localhost:5173',
-                    'http://localhost:3000',
+                    'http://localhost:8001',
                 ];
 
                 if (!origin || allowedOrigins.includes(origin)) {
