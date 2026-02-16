@@ -44,7 +44,11 @@ import {
 } from './dto/server-role.request.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { storage } from '@/config/multer';
-import sharp from 'sharp';
+import {
+    processAndSaveImage,
+    ImagePresets,
+    getImageMetadata,
+} from '@/utils/imageProcessing';
 import path from 'path';
 import fs from 'fs';
 import { randomBytes } from 'crypto';
@@ -406,7 +410,7 @@ export class ServerRoleController {
 
         // Validate image
         try {
-            const metadata = await sharp(icon.path).metadata();
+            const metadata = await getImageMetadata(icon.path);
             if (!metadata.width || !metadata.height) {
                 throw new Error('Invalid image');
             }
@@ -428,12 +432,15 @@ export class ServerRoleController {
             }
         }
 
-        // Process and save new icon
         const filename = `${randomBytes(16).toString('hex')}.webp`;
         const targetPath = path.join(iconsDir, filename);
 
         try {
-            await sharp(icon.path).resize(64, 64).webp().toFile(targetPath);
+            await processAndSaveImage(
+                icon.path,
+                targetPath,
+                ImagePresets.roleIcon(),
+            );
 
             // Delete temp upload
             if (fs.existsSync(icon.path)) {

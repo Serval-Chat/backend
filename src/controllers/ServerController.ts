@@ -47,8 +47,11 @@ import { IChannel } from '@/di/interfaces/IChannelRepository';
 import { storage } from '@/config/multer';
 import path from 'path';
 import fs from 'fs';
-import sharp from 'sharp';
 import mongoose from 'mongoose';
+import {
+    processAndSaveImage,
+    ImagePresets,
+} from '@/utils/imageProcessing';
 import {
     CreateServerRequestDTO,
     UpdateServerRequestDTO,
@@ -594,11 +597,11 @@ export class ServerController {
             throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
         }
 
-        // Normalize server icons to 256x256 PNG
-        await sharp(input)
-            .resize(256, 256, { fit: 'cover' })
-            .png()
-            .toFile(filepath);
+        await processAndSaveImage(
+            input,
+            filepath,
+            ImagePresets.serverIcon(input),
+        );
 
         // Cleanup temporary Multer file if it was written to disk
         if (icon.path && fs.existsSync(icon.path)) {
@@ -671,18 +674,11 @@ export class ServerController {
             throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
         }
 
-        // Normalize server banners to 960x540; preserve animation for GIFs
-        if (ext === 'gif') {
-            await sharp(input, { animated: true })
-                .resize(960, 540, { fit: 'cover' })
-                .gif()
-                .toFile(filepath);
-        } else {
-            await sharp(input)
-                .resize(960, 540, { fit: 'cover' })
-                .png()
-                .toFile(filepath);
-        }
+        await processAndSaveImage(
+            input,
+            filepath,
+            ImagePresets.serverBanner(ext === 'gif'),
+        );
 
         // Cleanup temporary Multer file if it was written to disk
         if (banner.path && fs.existsSync(banner.path)) {

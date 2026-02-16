@@ -56,7 +56,6 @@ import {
 import { randomBytes } from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import sharp from 'sharp';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import { IUserRepository, IUser } from '@/di/interfaces/IUserRepository';
@@ -67,6 +66,11 @@ import { ILogger } from '@/di/interfaces/ILogger';
 import { Badge } from '@/models/Badge';
 import { storage } from '@/config/multer';
 import type { WsServer } from '@/ws/server';
+import {
+    processAndSaveImage,
+    ImagePresets,
+    getImageMetadata,
+} from '@/utils/imageProcessing';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -341,20 +345,21 @@ export class ProfileController {
 
             const uploadedPath = profilePicture.path;
 
-            // Validate dimensions
+            // Validate dimensions and format
+            let metadata;
             try {
-                const metadata = await sharp(uploadedPath).metadata();
+                metadata = await getImageMetadata(uploadedPath);
 
                 if (!metadata.width || !metadata.height) {
                     fs.unlinkSync(uploadedPath);
                     throw new ApiError(400, 'Could not read image dimensions');
                 }
 
-                if (metadata.width > 1024 || metadata.height > 1024) {
+                if (metadata.width > 128 || metadata.height > 128) {
                     fs.unlinkSync(uploadedPath);
                     throw new ApiError(
                         400,
-                        `Profile picture dimensions must be at most 1024x1024px. Received: ${metadata.width}x${metadata.height}px`,
+                        `Profile picture dimensions must be at most 128x128px. Received: ${metadata.width}x${metadata.height}px`,
                     );
                 }
 
@@ -378,18 +383,29 @@ export class ProfileController {
                 );
             }
 
-            const ext = `.${(await sharp(uploadedPath).metadata()).format}`;
+            const isAnimated = metadata.pages && metadata.pages > 1;
+            const format = metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'webp';
+            const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(profilesDir, filename);
 
             try {
-                fs.renameSync(uploadedPath, targetPath);
-            } catch (moveErr) {
-                this.logger.error('Profile picture file move error:', moveErr);
+                await processAndSaveImage(
+                    uploadedPath,
+                    targetPath,
+                    ImagePresets.profilePicture(),
+                );
+
+                // Delete temp upload
                 if (fs.existsSync(uploadedPath)) {
                     fs.unlinkSync(uploadedPath);
                 }
-                throw new ApiError(500, 'Failed to save profile picture image');
+            } catch (processErr) {
+                this.logger.error('Profile picture processing error:', processErr);
+                if (fs.existsSync(uploadedPath)) {
+                    fs.unlinkSync(uploadedPath);
+                }
+                throw new ApiError(500, 'Failed to process profile picture');
             }
 
             await this.userRepo.updateProfilePicture(userId, filename);
@@ -517,9 +533,9 @@ export class ProfileController {
 
             const uploadedPath = banner.path;
 
-            // Validate dimensions
+            let metadata;
             try {
-                const metadata = await sharp(uploadedPath).metadata();
+                metadata = await getImageMetadata(uploadedPath);
 
                 if (!metadata.width || !metadata.height) {
                     fs.unlinkSync(uploadedPath);
@@ -554,19 +570,29 @@ export class ProfileController {
                 );
             }
 
-            const metadata = await sharp(uploadedPath).metadata();
-            const ext = metadata.format === 'gif' ? '.gif' : '.webp';
+            const isAnimated = metadata.pages && metadata.pages > 1;
+            const format = metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'webp';
+            const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(bannersDir, filename);
 
             try {
-                fs.renameSync(uploadedPath, targetPath);
-            } catch (moveErr) {
-                this.logger.error('Banner file move error:', moveErr);
+                await processAndSaveImage(
+                    uploadedPath,
+                    targetPath,
+                    ImagePresets.profileBanner(),
+                );
+
+                // Delete temp upload
                 if (fs.existsSync(uploadedPath)) {
                     fs.unlinkSync(uploadedPath);
                 }
-                throw new ApiError(500, 'Failed to save banner image');
+            } catch (processErr) {
+                this.logger.error('Banner processing error:', processErr);
+                if (fs.existsSync(uploadedPath)) {
+                    fs.unlinkSync(uploadedPath);
+                }
+                throw new ApiError(500, 'Failed to process banner');
             }
 
             await this.userRepo.updateBanner(userId, filename);

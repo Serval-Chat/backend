@@ -40,11 +40,16 @@ import { JWTPayload } from '@/utils/jwt';
 import { IEmoji } from '@/di/interfaces/IEmojiRepository';
 import path from 'path';
 import fs from 'fs';
-import sharp from 'sharp';
 import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { storage } from '@/config/multer';
+import {
+    processAndSaveImage,
+    ImagePresets,
+    isAnimatedImage,
+    getImageMetadata,
+} from '@/utils/imageProcessing';
 
 // Controller for managing server-specific emojis
 // Enforces server membership and 'manageServer' permission checks
@@ -188,35 +193,18 @@ export class ServerEmojiController {
 
         let fileName: string;
         try {
-            const metadata = await sharp(input).metadata();
-            const isAnimated = metadata.pages && metadata.pages > 1;
+            const isAnimated = await isAnimatedImage(input);
+            const metadata = await getImageMetadata(input);
+            const format = metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'png';
 
-            let ext = '.png';
-            let pipeline = sharp(input, { animated: true });
-
-            // Determine format based on animation; preserve GIFs or fallback to WebP/PNG
-            if (isAnimated) {
-                if (metadata.format === 'gif') {
-                    ext = '.gif';
-                    pipeline = pipeline.gif();
-                } else {
-                    ext = '.webp';
-                    pipeline = pipeline.webp();
-                }
-            } else {
-                ext = '.png';
-                pipeline = pipeline.png();
-            }
-
-            fileName = `${emojiId}${ext}`;
+            fileName = `${emojiId}.${format}`;
             const filePath = path.join(this.UPLOADS_DIR, fileName);
 
-            await pipeline
-                .resize(128, 128, {
-                    fit: 'contain',
-                    background: { r: 0, g: 0, b: 0, alpha: 0 },
-                })
-                .toFile(filePath);
+            await processAndSaveImage(
+                input,
+                filePath,
+                ImagePresets.emoji(isAnimated, format),
+            );
         } catch (error) {
             const errorMessage =
                 error instanceof Error ? error.message : 'Unknown error';

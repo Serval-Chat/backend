@@ -47,7 +47,6 @@ import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import type { Request as ExpressRequest, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import sharp from 'sharp';
 import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -59,6 +58,10 @@ import {
     FilenameParamDTO,
 } from './dto/webhook.request.dto';
 import { storage } from '@/config/multer';
+import {
+    processAndSaveImage,
+    ImagePresets,
+} from '@/utils/imageProcessing';
 
 // Controller for managing and executing webhooks
 @injectable()
@@ -334,13 +337,12 @@ export class WebhookController {
             );
         }
 
-        // Process image to ensure consistent size and format to PNG
-        await sharp(input)
-            .resize(128, 128, { fit: 'cover' })
-            .png()
-            .toFile(filepath);
+        await processAndSaveImage(
+            input,
+            filepath,
+            ImagePresets.webhookAvatar(),
+        );
 
-        // Cleanup temporary Multer file from disk
         if (avatar.path && fs.existsSync(avatar.path)) {
             fs.unlinkSync(avatar.path);
         }
@@ -412,7 +414,6 @@ export class WebhookController {
         const webhookUsername = username || webhook.name;
         const webhookAvatarUrl = avatarUrl || webhook.avatarUrl;
 
-        // Use a dedicated system user ID for all webhook messages
         const webhookSystemUserId = new mongoose.Types.ObjectId(
             '000000000000000000000000',
         );
