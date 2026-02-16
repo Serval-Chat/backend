@@ -86,6 +86,14 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return members.map((m) => m.serverId.toString());
     }
 
+    async findUserIdsInServerIds(serverIds: string[]): Promise<string[]> {
+        if (serverIds.length === 0) return [];
+        const userIds = await this.serverMemberModel
+            .find({ serverId: { $in: serverIds } })
+            .distinct('userId');
+        return userIds.map((id) => id.toString());
+    }
+
     async countByServerId(serverId: string): Promise<number> {
         return await this.serverMemberModel.countDocuments({ serverId });
     }

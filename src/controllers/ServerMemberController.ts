@@ -90,7 +90,9 @@ export class ServerMemberController {
     public async getServerMembers(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
-    ): Promise<(IServerMember & { user: MappedUser | null })[]> {
+    ): Promise<
+        (IServerMember & { user: MappedUser | null; online: boolean })[]
+    > {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -100,7 +102,12 @@ export class ServerMemberController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        return await this.serverMemberRepo.findByServerIdWithUserInfo(serverId);
+        const members =
+            await this.serverMemberRepo.findByServerIdWithUserInfo(serverId);
+        return members.map((m) => ({
+            ...m,
+            online: this.wsServer.isUserOnline(m.userId.toString()),
+        }));
     }
 
     // Searches for members in a server by username or display name
@@ -113,7 +120,9 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @Query('q') q: string,
         @Req() req: ExpressRequest,
-    ): Promise<(IServerMember & { user: MappedUser | null })[]> {
+    ): Promise<
+        (IServerMember & { user: MappedUser | null; online: boolean })[]
+    > {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -123,7 +132,11 @@ export class ServerMemberController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        return await this.serverMemberRepo.searchMembers(serverId, q);
+        const members = await this.serverMemberRepo.searchMembers(serverId, q);
+        return members.map((m) => ({
+            ...m,
+            online: this.wsServer.isUserOnline(m.userId.toString()),
+        }));
     }
 
     // Retrieves details for a specific server member

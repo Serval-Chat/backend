@@ -56,6 +56,9 @@ export interface IServerMemberRepository {
     // Find all server IDs for a user
     findServerIdsByUserId(userId: string): Promise<string[]>;
 
+    // Find all user IDs that are members of any of the given servers
+    findUserIdsInServerIds(serverIds: string[]): Promise<string[]>;
+
     // Count members by server ID
     countByServerId(serverId: string): Promise<number>;
 

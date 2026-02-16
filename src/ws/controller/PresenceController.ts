@@ -108,11 +108,15 @@ export class PresenceController {
 
     /**
      * Sends initial presence sync after authentication.
+     * Online list includes: online friends + online members from servers the user is in.
      */
     public async sendPresenceSync(authenticatedUser: IWsUser): Promise<void> {
         const userId = authenticatedUser.userId;
 
-        const friendships = await this.friendshipRepo.findByUserId(userId);
+        const [friendships, serverIds] = await Promise.all([
+            this.friendshipRepo.findByUserId(userId),
+            this.serverMemberRepo.findServerIdsByUserId(userId),
+        ]);
 
         const friendIds = friendships.map((f) =>
             f.userId.toString() === userId
@@ -120,22 +124,30 @@ export class PresenceController {
                 : f.userId.toString(),
         );
 
-        const onlineFriendIds = friendIds.filter((id) =>
-            this.wsServer.isUserOnline(id),
-        );
-        const onlineFriendUsers =
-            onlineFriendIds.length > 0
-                ? await this.userRepo.findByIds(onlineFriendIds)
+        const serverMemberIds =
+            serverIds.length > 0
+                ? await this.serverMemberRepo.findUserIdsInServerIds(serverIds)
                 : [];
 
-        const onlineFriends = onlineFriendUsers.map((u) => ({
+        const relevantUserIds = new Set<string>([...friendIds, ...serverMemberIds]);
+        relevantUserIds.delete(userId);
+
+        const onlineRelevantIds = [...relevantUserIds].filter((id) =>
+            this.wsServer.isUserOnline(id),
+        );
+        const onlineUsers =
+            onlineRelevantIds.length > 0
+                ? await this.userRepo.findByIds(onlineRelevantIds)
+                : [];
+
+        const online = onlineUsers.map((u) => ({
             userId: u._id.toString(),
             username: u.username || '',
             status: u.status || undefined,
         }));
 
         const syncPayload: IPresenceSyncEvent['payload'] = {
-            online: onlineFriends,
+            online,
         };
 
         this.wsServer.broadcastToUser(userId, {
@@ -144,7 +156,7 @@ export class PresenceController {
         });
 
         logger.debug(
-            `[PresenceController] Sent presence sync to ${userId} (${onlineFriends.length} online friends)`,
+            `[PresenceController] Sent presence sync to ${userId} (${online.length} online: friends + server members)`,
         );
     }
 
