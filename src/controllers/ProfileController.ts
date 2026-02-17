@@ -355,11 +355,11 @@ export class ProfileController {
                     throw new ApiError(400, 'Could not read image dimensions');
                 }
 
-                if (metadata.width > 128 || metadata.height > 128) {
+                if (metadata.width > 256 || metadata.height > 256) {
                     fs.unlinkSync(uploadedPath);
                     throw new ApiError(
                         400,
-                        `Profile picture dimensions must be at most 128x128px. Received: ${metadata.width}x${metadata.height}px`,
+                        `Profile picture dimensions must be at most 256x256px. Received: ${metadata.width}x${metadata.height}px`,
                     );
                 }
 

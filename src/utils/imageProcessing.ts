@@ -23,11 +23,7 @@ export interface ImageProcessingOptions {
     stripMetadata?: boolean;
 }
 
-/**
- * Default processing options for common use cases
- */
 export const ImagePresets = {
-    /** Server icon: 256x256 PNG */
     serverIcon: (_input: string | Buffer): ImageProcessingOptions => ({
         width: 256,
         height: 256,
@@ -37,7 +33,6 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    /** Server banner: 960x540 PNG/GIF */
     serverBanner: (isGif: boolean): ImageProcessingOptions => ({
         width: 960,
         height: 540,
@@ -48,7 +43,6 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    /** Emoji: 128x128 PNG/WebP/GIF */
     emoji: (isAnimated: boolean, format: 'png' | 'webp' | 'gif'): ImageProcessingOptions => ({
         width: 256,
         height: 256,
@@ -60,7 +54,6 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    /** Role icon: 64x64 WebP */
     roleIcon: (): ImageProcessingOptions => ({
         width: 64,
         height: 64,
@@ -70,7 +63,6 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    /** Webhook avatar: 128x128 PNG */
     webhookAvatar: (): ImageProcessingOptions => ({
         width: 256,
         height: 256,
@@ -80,7 +72,6 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    /** Profile picture: 128x128 WebP */
     profilePicture: (): ImageProcessingOptions => ({
         width: 256,
         height: 256,
@@ -90,7 +81,6 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    /** Profile banner: up to 1136x400 WebP */
     profileBanner: (): ImageProcessingOptions => ({
         width: 1136,
         height: 400,
