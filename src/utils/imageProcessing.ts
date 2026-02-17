@@ -72,21 +72,23 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    profilePicture: (): ImageProcessingOptions => ({
+    profilePicture: (format: 'webp' | 'gif' = 'webp', animated: boolean = false): ImageProcessingOptions => ({
         width: 256,
         height: 256,
         fit: 'cover',
-        format: 'webp',
+        format,
         quality: 85,
+        animated,
         stripMetadata: true,
     }),
 
-    profileBanner: (): ImageProcessingOptions => ({
+    profileBanner: (format: 'webp' | 'gif' = 'webp', animated: boolean = false): ImageProcessingOptions => ({
         width: 1136,
         height: 400,
         fit: 'inside',
-        format: 'webp',
+        format,
         quality: 80,
+        animated,
         stripMetadata: true,
     }),
 };

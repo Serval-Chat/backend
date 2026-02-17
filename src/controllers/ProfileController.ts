@@ -383,7 +383,7 @@ export class ProfileController {
                 );
             }
 
-            const isAnimated = metadata.pages && metadata.pages > 1;
+            const isAnimated: boolean = !!(metadata.pages && metadata.pages > 1);
             const format = metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
@@ -393,7 +393,7 @@ export class ProfileController {
                 await processAndSaveImage(
                     uploadedPath,
                     targetPath,
-                    ImagePresets.profilePicture(),
+                    ImagePresets.profilePicture(format as 'webp' | 'gif', isAnimated),
                 );
 
                 // Delete temp upload
@@ -570,7 +570,7 @@ export class ProfileController {
                 );
             }
 
-            const isAnimated = metadata.pages && metadata.pages > 1;
+            const isAnimated: boolean = !!(metadata.pages && metadata.pages > 1);
             const format = metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
@@ -580,7 +580,7 @@ export class ProfileController {
                 await processAndSaveImage(
                     uploadedPath,
                     targetPath,
-                    ImagePresets.profileBanner(),
+                    ImagePresets.profileBanner(format as 'webp' | 'gif', isAnimated),
                 );
 
                 // Delete temp upload
