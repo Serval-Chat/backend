@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import type { OutputInfo } from 'sharp';
+import { writeFile } from 'fs/promises';
 
 /**
  * Image processing options for sharp pipeline configuration
@@ -182,7 +183,7 @@ export async function processAndSaveImage(
     options: ImageProcessingOptions,
 ): Promise<OutputInfo> {
     const { buffer, info } = await processImage(input, options);
-    await sharp(buffer).toFile(outputPath);
+    await writeFile(outputPath, buffer);
     return info;
 }
 
