@@ -61,6 +61,10 @@ async function bootstrap() {
         httpsOptions,
     });
 
+    const server = app.getHttpServer();
+    server.keepAliveTimeout = 30000;
+    server.headersTimeout = 31000;
+
     app.useGlobalPipes(
         new ValidationPipe({
             transform: true,
@@ -85,7 +89,7 @@ async function bootstrap() {
         .addBearerAuth()
         .build();
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('docs', app, document);
+    SwaggerModule.setup('/api/docs', app, document);
 
     // Generate openapi.yaml
     try {
