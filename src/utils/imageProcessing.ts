@@ -50,8 +50,8 @@ export const ImagePresets = {
 
     /** Emoji: 128x128 PNG/WebP/GIF */
     emoji: (isAnimated: boolean, format: 'png' | 'webp' | 'gif'): ImageProcessingOptions => ({
-        width: 128,
-        height: 128,
+        width: 256,
+        height: 256,
         fit: 'contain',
         format,
         quality: 90,
@@ -72,8 +72,8 @@ export const ImagePresets = {
 
     /** Webhook avatar: 128x128 PNG */
     webhookAvatar: (): ImageProcessingOptions => ({
-        width: 128,
-        height: 128,
+        width: 256,
+        height: 256,
         fit: 'cover',
         format: 'png',
         quality: 90,
@@ -82,8 +82,8 @@ export const ImagePresets = {
 
     /** Profile picture: 128x128 WebP */
     profilePicture: (): ImageProcessingOptions => ({
-        width: 128,
-        height: 128,
+        width: 256,
+        height: 256,
         fit: 'cover',
         format: 'webp',
         quality: 85,

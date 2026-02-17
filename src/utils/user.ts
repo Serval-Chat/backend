@@ -7,7 +7,6 @@ import { type AdminPermissions } from '@/routes/api/v1/admin/permissions';
 export interface MappedUser {
     _id: string;
     id: string;
-    login: string;
     username: string;
     displayName: string | null;
     profilePicture: string | null;
@@ -48,7 +47,6 @@ export function mapUser(user: any): MappedUser | null {
     return {
         _id: (user._id?.toString() || user.id) as string,
         id: (user._id?.toString() || user.id) as string,
-        login: (user.login as string) || '',
         username: user.username as string,
         displayName: (user.displayName as string) || null,
         profilePicture: profilePictureUrl,

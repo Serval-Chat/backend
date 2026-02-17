@@ -114,7 +114,7 @@ export class AuthController {
 
         const token = generateJWT({
             id: user._id.toString(),
-            login: user.login,
+            login: login,
             username: user.username,
             tokenVersion: user.tokenVersion || 0,
             permissions: user.permissions,
