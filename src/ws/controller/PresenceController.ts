@@ -129,7 +129,10 @@ export class PresenceController {
                 ? await this.serverMemberRepo.findUserIdsInServerIds(serverIds)
                 : [];
 
-        const relevantUserIds = new Set<string>([...friendIds, ...serverMemberIds]);
+        const relevantUserIds = new Set<string>([
+            ...friendIds,
+            ...serverMemberIds,
+        ]);
         relevantUserIds.delete(userId);
 
         const onlineRelevantIds = [...relevantUserIds].filter((id) =>

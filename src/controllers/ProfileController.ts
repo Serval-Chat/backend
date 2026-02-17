@@ -383,8 +383,15 @@ export class ProfileController {
                 );
             }
 
-            const isAnimated: boolean = !!(metadata.pages && metadata.pages > 1);
-            const format = metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'webp';
+            const isAnimated: boolean = !!(
+                metadata.pages && metadata.pages > 1
+            );
+            const format =
+                metadata.format === 'gif'
+                    ? 'gif'
+                    : isAnimated
+                      ? 'webp'
+                      : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(profilesDir, filename);
@@ -393,7 +400,10 @@ export class ProfileController {
                 await processAndSaveImage(
                     uploadedPath,
                     targetPath,
-                    ImagePresets.profilePicture(format as 'webp' | 'gif', isAnimated),
+                    ImagePresets.profilePicture(
+                        format as 'webp' | 'gif',
+                        isAnimated,
+                    ),
                 );
 
                 // Delete temp upload
@@ -401,7 +411,10 @@ export class ProfileController {
                     fs.unlinkSync(uploadedPath);
                 }
             } catch (processErr) {
-                this.logger.error('Profile picture processing error:', processErr);
+                this.logger.error(
+                    'Profile picture processing error:',
+                    processErr,
+                );
                 if (fs.existsSync(uploadedPath)) {
                     fs.unlinkSync(uploadedPath);
                 }
@@ -570,8 +583,15 @@ export class ProfileController {
                 );
             }
 
-            const isAnimated: boolean = !!(metadata.pages && metadata.pages > 1);
-            const format = metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'webp';
+            const isAnimated: boolean = !!(
+                metadata.pages && metadata.pages > 1
+            );
+            const format =
+                metadata.format === 'gif'
+                    ? 'gif'
+                    : isAnimated
+                      ? 'webp'
+                      : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(bannersDir, filename);
@@ -580,7 +600,10 @@ export class ProfileController {
                 await processAndSaveImage(
                     uploadedPath,
                     targetPath,
-                    ImagePresets.profileBanner(format as 'webp' | 'gif', isAnimated),
+                    ImagePresets.profileBanner(
+                        format as 'webp' | 'gif',
+                        isAnimated,
+                    ),
                 );
 
                 // Delete temp upload

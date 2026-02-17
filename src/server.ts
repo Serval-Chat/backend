@@ -146,10 +146,10 @@ export function setupExpressApp(app: Application): Application {
             'Permissions-Policy',
             'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
         );
-        
+
         res.setHeader('Connection', 'keep-alive');
         res.setHeader('Keep-Alive', 'timeout=30, max=1000');
-        
+
         next();
     });
 
@@ -157,7 +157,10 @@ export function setupExpressApp(app: Application): Application {
     app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
         // 1 year cache for images/avatars/banners (immutable)
         if (req.url.match(/\.(png|jpg|jpeg|gif|webp|svg)$/i)) {
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            res.setHeader(
+                'Cache-Control',
+                'public, max-age=31536000, immutable',
+            );
             res.setHeader('X-Content-Type-Options', 'nosniff');
         }
         // 1 day cache for other files

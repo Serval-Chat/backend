@@ -274,6 +274,7 @@ export interface IMessageServerSentEvent
             senderId: string;
             text: string;
             createdAt: string;
+            replyToId?: string;
         }
     > {}
 

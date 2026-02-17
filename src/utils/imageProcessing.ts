@@ -44,7 +44,10 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    emoji: (isAnimated: boolean, format: 'png' | 'webp' | 'gif'): ImageProcessingOptions => ({
+    emoji: (
+        isAnimated: boolean,
+        format: 'png' | 'webp' | 'gif',
+    ): ImageProcessingOptions => ({
         width: 256,
         height: 256,
         fit: 'contain',
@@ -73,7 +76,10 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    profilePicture: (format: 'webp' | 'gif' = 'webp', animated: boolean = false): ImageProcessingOptions => ({
+    profilePicture: (
+        format: 'webp' | 'gif' = 'webp',
+        animated: boolean = false,
+    ): ImageProcessingOptions => ({
         width: 256,
         height: 256,
         fit: 'cover',
@@ -83,7 +89,10 @@ export const ImagePresets = {
         stripMetadata: true,
     }),
 
-    profileBanner: (format: 'webp' | 'gif' = 'webp', animated: boolean = false): ImageProcessingOptions => ({
+    profileBanner: (
+        format: 'webp' | 'gif' = 'webp',
+        animated: boolean = false,
+    ): ImageProcessingOptions => ({
         width: 1136,
         height: 400,
         fit: 'inside',
@@ -95,9 +104,6 @@ export const ImagePresets = {
 };
 
 /**
- * Process an image with the specified options.
- * Strips all metadata (EXIF, GPS, etc.) and applies compression.
- *
  * @param input - Path to image file or Buffer
  * @param options - Processing options
  * @returns Promise resolving to processed image buffer and info
@@ -119,7 +125,6 @@ export async function processImage(
 
     let pipeline = sharp(input, { animated });
 
-    // Apply resize if dimensions specified
     if (width || height) {
         const resizeOptions: sharp.ResizeOptions = { fit };
         if (background && fit === 'contain') {
@@ -139,20 +144,20 @@ export async function processImage(
         case 'webp':
             pipeline = pipeline.webp({
                 quality,
-                effort: 6, // Higher effort = better compression
+                effort: 6,
                 ...(animated && { loop: 0 }),
             });
             break;
         case 'png':
             pipeline = pipeline.png({
                 quality,
-                compressionLevel: 9, // Maximum compression
+                compressionLevel: 9,
                 progressive: true,
             });
             break;
         case 'gif':
             pipeline = pipeline.gif({
-                effort: 10, // Maximum compression effort
+                effort: 10,
             });
             break;
     }
@@ -169,9 +174,6 @@ export async function processImage(
 }
 
 /**
- * Process an image and save directly to file.
- * Strips all metadata and applies compression.
- *
  * @param input - Path to image file or Buffer
  * @param outputPath - Destination file path
  * @param options - Processing options
@@ -188,9 +190,6 @@ export async function processAndSaveImage(
 }
 
 /**
- * Get image metadata without processing.
- * Useful for validation before processing.
- *
  * @param input - Path to image file or Buffer
  * @returns Promise resolving to metadata
  */
@@ -199,21 +198,17 @@ export async function getImageMetadata(input: string | Buffer) {
 }
 
 /**
- * Check if an image is animated (has multiple pages/frames).
- *
  * @param input - Path to image file or Buffer
  * @returns Promise resolving to boolean indicating if animated
  */
-export async function isAnimatedImage(input: string | Buffer): Promise<boolean> {
+export async function isAnimatedImage(
+    input: string | Buffer,
+): Promise<boolean> {
     const metadata = await sharp(input).metadata();
     return !!(metadata.pages && metadata.pages > 1);
 }
 
 /**
- * Strip metadata from an image without resizing or re-encoding.
- * This is useful when you want to keep original dimensions/format
- * but remove all identifying information.
- *
  * @param input - Path to image file or Buffer
  * @param outputPath - Destination file path (optional, returns buffer if not provided)
  * @returns Promise resolving to buffer or void

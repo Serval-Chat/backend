@@ -263,9 +263,11 @@ export class PermissionService {
                                 rolePerms = category.permissions.get(roleId);
                             }
                         } else {
-                            rolePerms = (category.permissions as Record<string, unknown>)[roleId];
+                            rolePerms = (
+                                category.permissions as Record<string, unknown>
+                            )[roleId];
                         }
-                        
+
                         if (rolePerms) {
                             const permValue = (
                                 rolePerms as unknown as Record<
@@ -303,9 +305,11 @@ export class PermissionService {
                             rolePerms = channel.permissions.get(roleId);
                         }
                     } else {
-                        rolePerms = (channel.permissions as Record<string, unknown>)[roleId];
+                        rolePerms = (
+                            channel.permissions as Record<string, unknown>
+                        )[roleId];
                     }
-                    
+
                     if (rolePerms) {
                         const permValue = (
                             rolePerms as unknown as Record<

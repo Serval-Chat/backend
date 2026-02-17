@@ -58,10 +58,7 @@ import {
     FilenameParamDTO,
 } from './dto/webhook.request.dto';
 import { storage } from '@/config/multer';
-import {
-    processAndSaveImage,
-    ImagePresets,
-} from '@/utils/imageProcessing';
+import { processAndSaveImage, ImagePresets } from '@/utils/imageProcessing';
 
 // Controller for managing and executing webhooks
 @injectable()

@@ -48,10 +48,7 @@ import { storage } from '@/config/multer';
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
-import {
-    processAndSaveImage,
-    ImagePresets,
-} from '@/utils/imageProcessing';
+import { processAndSaveImage, ImagePresets } from '@/utils/imageProcessing';
 import {
     CreateServerRequestDTO,
     UpdateServerRequestDTO,

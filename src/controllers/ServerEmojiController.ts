@@ -195,7 +195,8 @@ export class ServerEmojiController {
         try {
             const isAnimated = await isAnimatedImage(input);
             const metadata = await getImageMetadata(input);
-            const format = metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'png';
+            const format =
+                metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'png';
 
             fileName = `${emojiId}.${format}`;
             const filePath = path.join(this.UPLOADS_DIR, fileName);

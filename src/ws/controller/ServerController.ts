@@ -382,12 +382,13 @@ export class ServerController {
             const targetUserId = m.userId.toString();
             if (targetUserId === userId) continue;
             try {
-                const hasView = await this.permissionService.hasChannelPermission(
-                    serverId,
-                    targetUserId,
-                    channelId,
-                    'viewChannel',
-                );
+                const hasView =
+                    await this.permissionService.hasChannelPermission(
+                        serverId,
+                        targetUserId,
+                        channelId,
+                        'viewChannel',
+                    );
                 if (hasView) {
                     this.wsServer.broadcastToUser(
                         targetUserId,
@@ -409,6 +410,7 @@ export class ServerController {
             text: created.text,
             createdAt:
                 created.createdAt?.toISOString() || new Date().toISOString(),
+            replyToId: created.replyToId?.toString(),
         };
     }
 

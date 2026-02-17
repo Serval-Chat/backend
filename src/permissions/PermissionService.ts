@@ -5,8 +5,14 @@ import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IServerMember } from '@/di/interfaces/IServerMemberRepository';
 import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
-import type { ICategoryRepository, ICategory } from '@/di/interfaces/ICategoryRepository';
-import type { IChannelRepository, IChannel } from '@/di/interfaces/IChannelRepository';
+import type {
+    ICategoryRepository,
+    ICategory,
+} from '@/di/interfaces/ICategoryRepository';
+import type {
+    IChannelRepository,
+    IChannel,
+} from '@/di/interfaces/IChannelRepository';
 import { PermissionResolver } from '@/permissions/PermissionResolver';
 import type {
     Permissions,
@@ -67,9 +73,9 @@ function extractPermissionsObject(value: unknown): Permissions {
     return out;
 }
 
-function extractOverridesToMap(source: PermissionOverrideSource):
-    | Map<string, Permissions>
-    | undefined {
+function extractOverridesToMap(
+    source: PermissionOverrideSource,
+): Map<string, Permissions> | undefined {
     if (!source) return undefined;
 
     const map = new Map<string, Permissions>();
@@ -158,7 +164,9 @@ export class PermissionService {
         return resolver.canUserDo(userId, channelId, permission);
     }
 
-    private async getResolver(serverId: string): Promise<PermissionResolver | null> {
+    private async getResolver(
+        serverId: string,
+    ): Promise<PermissionResolver | null> {
         if (!serverId) return null;
 
         const now = Date.now();
@@ -177,18 +185,20 @@ export class PermissionService {
 
         if (!server) return null;
 
-        const everyoneRoleId = everyoneRole ? toIdString(everyoneRole._id) : undefined;
+        const everyoneRoleId = everyoneRole
+            ? toIdString(everyoneRole._id)
+            : undefined;
 
         const resolverData: ServerData = {
             serverId,
             ownerId: toIdString(server.ownerId),
             roles: roles.map((r): ServerRole => this.mapRole(r)),
             everyoneRoleId,
-            channels: channels.map((c): ResolverChannel =>
-                this.mapChannel(c, everyoneRoleId),
+            channels: channels.map(
+                (c): ResolverChannel => this.mapChannel(c, everyoneRoleId),
             ),
-            categories: categories.map((c): ResolverCategory =>
-                this.mapCategory(c, everyoneRoleId),
+            categories: categories.map(
+                (c): ResolverCategory => this.mapCategory(c, everyoneRoleId),
             ),
             members: members.map((m): ResolverMember => this.mapMember(m)),
         };

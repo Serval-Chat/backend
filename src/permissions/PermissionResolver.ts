@@ -59,7 +59,9 @@ export class PermissionResolver {
         this.data = data;
 
         this.roleById = new Map(data.roles.map((r) => [r.id, r] as const));
-        this.channelById = new Map(data.channels.map((c) => [c.id, c] as const));
+        this.channelById = new Map(
+            data.channels.map((c) => [c.id, c] as const),
+        );
         this.categoryById = new Map(
             data.categories.map((c) => [c.id, c] as const),
         );
@@ -88,7 +90,10 @@ export class PermissionResolver {
         if (this.hasAdministrator(rolesAscWithEveryone)) return true;
 
         // 3) Role permissions (merged)
-        const merged = mergeHighestRolePermission(rolesAscWithEveryone, permission);
+        const merged = mergeHighestRolePermission(
+            rolesAscWithEveryone,
+            permission,
+        );
         return merged ?? false;
     }
 
@@ -169,14 +174,18 @@ export class PermissionResolver {
         return roles;
     }
 
-    private hasAdministrator(rolesByAscPosition: readonly ServerRole[]): boolean {
+    private hasAdministrator(
+        rolesByAscPosition: readonly ServerRole[],
+    ): boolean {
         for (const role of rolesByAscPosition) {
             if (role.permissions.administrator === true) return true;
         }
         return false;
     }
 
-    private getEveryonePermission(permission: PermissionKey): boolean | undefined {
+    private getEveryonePermission(
+        permission: PermissionKey,
+    ): boolean | undefined {
         if (!this.everyoneRoleId) return undefined;
         const role = this.roleById.get(this.everyoneRoleId);
         if (!role) return undefined;
