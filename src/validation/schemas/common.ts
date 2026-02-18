@@ -307,13 +307,9 @@ export function IsEmoji(validationOptions?: ValidationOptions) {
                         if (typeof value !== 'string' || value.length === 0)
                             return true;
 
-                        // Custom emoji format: <emoji:id>
-                        const customEmojiMatch = value.match(
-                            /^<emoji:([a-fA-F0-9]{24})>$/,
-                        );
-                        if (customEmojiMatch) return true;
+                        const rawIdMatch = value.match(/^[a-fA-F0-9]{24}$/);
+                        if (rawIdMatch) return true;
 
-                        // Standard emoji grapheme check
                         const segmenter = new Intl.Segmenter('en', {
                             granularity: 'grapheme',
                         });
