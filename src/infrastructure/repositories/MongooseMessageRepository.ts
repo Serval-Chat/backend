@@ -14,8 +14,21 @@ export class MongooseMessageRepository implements IMessageRepository {
     private messageModel = Message;
     constructor() {}
 
+    private transformMessage(msg: any): IMessage {
+        const transformed = { ...msg };
+        if (msg.repliedToMessageId && typeof msg.repliedToMessageId === 'object') {
+            transformed.referenced_message = msg.repliedToMessageId;
+        }
+        return transformed;
+    }
+
+    private transformMessages(messages: any[]): IMessage[] {
+        return messages.map((msg) => this.transformMessage(msg));
+    }
+
     async findById(id: string): Promise<IMessage | null> {
-        return await this.messageModel.findById(id).lean();
+        const msg = await this.messageModel.findById(id).populate('repliedToMessageId').lean();
+        return msg ? this.transformMessage(msg) : null;
     }
 
     // Find messages between two users with pagination
@@ -65,11 +78,12 @@ export class MongooseMessageRepository implements IMessageRepository {
                 .lean();
 
             // Combine and sort ascending
-            return [...beforeMessages, ...afterMessages].sort(
+            const combined = [...beforeMessages, ...afterMessages].sort(
                 (a, b) =>
                     (a.createdAt?.getTime() || 0) -
                     (b.createdAt?.getTime() || 0),
             );
+            return this.transformMessages(combined);
         }
 
         const query = { ...baseQuery };
@@ -91,7 +105,7 @@ export class MongooseMessageRepository implements IMessageRepository {
             .populate('repliedToMessageId')
             .lean();
 
-        return messages.reverse();
+        return this.transformMessages(messages.reverse());
     }
 
     async create(
@@ -105,11 +119,13 @@ export class MongooseMessageRepository implements IMessageRepository {
         session?: ClientSession,
     ): Promise<IMessage> {
         const message = new this.messageModel(data);
-        return await message.save({ session });
+        const savedMessage = await message.save({ session });
+        const msgObj = savedMessage.toObject();
+        return this.transformMessage(msgObj);
     }
 
     async update(id: string, text: string): Promise<IMessage | null> {
-        return await this.messageModel
+        const msg = await this.messageModel
             .findByIdAndUpdate(
                 id,
                 {
@@ -119,7 +135,9 @@ export class MongooseMessageRepository implements IMessageRepository {
                 },
                 { new: true },
             )
+            .populate('repliedToMessageId')
             .lean();
+        return msg ? this.transformMessage(msg) : null;
     }
 
     async delete(id: string): Promise<boolean> {

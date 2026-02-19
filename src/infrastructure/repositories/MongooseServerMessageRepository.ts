@@ -14,6 +14,18 @@ import type { Types, FilterQuery, ClientSession } from 'mongoose';
 export class MongooseServerMessageRepository
     implements IServerMessageRepository
 {
+    private transformMessage(msg: any): IServerMessage {
+        const transformed = { ...msg };
+        if (msg.repliedToMessageId && typeof msg.repliedToMessageId === 'object') {
+            transformed.referenced_message = msg.repliedToMessageId;
+        }
+        return transformed;
+    }
+
+    private transformMessages(messages: any[]): IServerMessage[] {
+        return messages.map((msg) => this.transformMessage(msg));
+    }
+
     async create(
         data: {
             serverId: string | Types.ObjectId;
@@ -30,7 +42,7 @@ export class MongooseServerMessageRepository
     ): Promise<IServerMessage> {
         const message = new ServerMessage(data);
         const savedMessage = await message.save({ session });
-        return { ...savedMessage.toObject(), reactions: [] };
+        return this.transformMessage(savedMessage.toObject());
     }
 
     async delete(id: string): Promise<boolean> {
@@ -49,15 +61,18 @@ export class MongooseServerMessageRepository
     }
 
     async findById(id: string): Promise<IServerMessage | null> {
-        const message = await ServerMessage.findById(id).lean();
+        const message = await ServerMessage.findById(id)
+            .populate('repliedToMessageId')
+            .lean();
         if (!message) return null;
 
         // Fetch reactions for this message
         const reactions = await this.getReactionsForMessages([message._id]);
-        return {
+        const msg = {
             ...message,
             reactions: reactions[message._id.toString()] || [],
         };
+        return this.transformMessage(msg);
     }
 
     // Find messages in a channel with pagination
@@ -67,7 +82,7 @@ export class MongooseServerMessageRepository
         before?: string,
         around?: string,
     ): Promise<IServerMessage[]> {
-        let messages: IServerMessage[] = [];
+        let messages: any[] = [];
 
         if (around) {
             const targetMessage = await ServerMessage.findById(around);
@@ -123,12 +138,14 @@ export class MongooseServerMessageRepository
         const messageIds = messages.map((m) => m._id);
         const reactionsMap = await this.getReactionsForMessages(messageIds);
 
-        return messages
+        const messagesWithReactions = messages
             .map((msg) => ({
                 ...msg,
                 reactions: reactionsMap[msg._id.toString()] || [],
             }))
             .reverse();
+
+        return this.transformMessages(messagesWithReactions);
     }
 
     async update(
@@ -137,20 +154,23 @@ export class MongooseServerMessageRepository
     ): Promise<IServerMessage | null> {
         const updated = await ServerMessage.findByIdAndUpdate(id, data, {
             new: true,
-        }).lean();
+        })
+            .populate('repliedToMessageId')
+            .lean();
         if (!updated) return null;
 
         // Fetch reactions
         const reactions = await this.getReactionsForMessages([updated._id]);
-        return {
+        const msg = {
             ...updated,
             reactions: reactions[updated._id.toString()] || [],
         };
+        return this.transformMessage(msg);
     }
 
     // Helper to fetch aggregated reactions for multiple messages
     //
-    // Groups reactions by emoji type and collects user IDs */
+    // Groups reactions by emoji type and collects user IDs
     private async getReactionsForMessages(
         messageIds: (string | Types.ObjectId)[],
     ): Promise<Record<string, unknown[]>> {

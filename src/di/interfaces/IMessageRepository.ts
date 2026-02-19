@@ -3,14 +3,29 @@ import type { Types, ClientSession } from 'mongoose';
 // Message interface (domain model)
 //
 // Represents a direct message between two users
+export interface IReferencedMessage {
+    _id: string | string;
+    text: string;
+    senderId: string | string;
+    receiverId: string | string;
+    createdAt?: Date;
+    isEdited?: boolean;
+    editedAt?: Date;
+    senderDeleted?: boolean;
+    receiverDeleted?: boolean;
+    anonymizedSender?: string;
+    anonymizedReceiver?: string;
+}
+
 export interface IMessage {
-    _id: Types.ObjectId | string;
-    senderId: Types.ObjectId | string;
-    receiverId: Types.ObjectId | string;
+    _id: string | string;
+    senderId: string | string;
+    receiverId: string | string;
     text: string;
     createdAt?: Date;
     replyToId?: string;
-    repliedToMessageId?: Types.ObjectId;
+    repliedToMessageId?: string;
+    referenced_message?: IReferencedMessage;
     editedAt?: Date;
     isEdited?: boolean;
     // Flag indicating if the sender has "deleted" the message from their view
@@ -46,7 +61,7 @@ export interface IMessageRepository {
             receiverId: string;
             text: string;
             replyToId?: string;
-            repliedToMessageId?: Types.ObjectId;
+            repliedToMessageId?: Types.ObjectId | string;
         },
         session?: ClientSession,
     ): Promise<IMessage>;

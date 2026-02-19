@@ -1,0 +1,265 @@
+diff --git a/src/di/interfaces/IMessageRepository.ts b/src/di/interfaces/IMessageRepository.ts
+index 0deccde..5498179 100644
+--- a/src/di/interfaces/IMessageRepository.ts
++++ b/src/di/interfaces/IMessageRepository.ts
+@@ -3,14 +3,29 @@ import type { Types, ClientSession } from 'mongoose';
+ // Message interface (domain model)
+ //
+ // Represents a direct message between two users
++export interface IReferencedMessage {
++    _id: string | string;
++    text: string;
++    senderId: string | string;
++    receiverId: string | string;
++    createdAt?: Date;
++    isEdited?: boolean;
++    editedAt?: Date;
++    senderDeleted?: boolean;
++    receiverDeleted?: boolean;
++    anonymizedSender?: string;
++    anonymizedReceiver?: string;
++}
++
+ export interface IMessage {
+-    _id: Types.ObjectId | string;
+-    senderId: Types.ObjectId | string;
+-    receiverId: Types.ObjectId | string;
++    _id: string | string;
++    senderId: string | string;
++    receiverId: string | string;
+     text: string;
+     createdAt?: Date;
+     replyToId?: string;
+-    repliedToMessageId?: Types.ObjectId;
++    repliedToMessageId?: string;
++    referenced_message?: IReferencedMessage;
+     editedAt?: Date;
+     isEdited?: boolean;
+     // Flag indicating if the sender has "deleted" the message from their view
+@@ -46,7 +61,7 @@ export interface IMessageRepository {
+             receiverId: string;
+             text: string;
+             replyToId?: string;
+-            repliedToMessageId?: Types.ObjectId;
++            repliedToMessageId?: Types.ObjectId | string;
+         },
+         session?: ClientSession,
+     ): Promise<IMessage>;
+diff --git a/src/di/interfaces/IServerMessageRepository.ts b/src/di/interfaces/IServerMessageRepository.ts
+index 0f31373..ef4adb6 100644
+--- a/src/di/interfaces/IServerMessageRepository.ts
++++ b/src/di/interfaces/IServerMessageRepository.ts
+@@ -3,6 +3,20 @@ import type { Types, ClientSession } from 'mongoose';
+ // Server Message interface (domain model)
+ //
+ // Represents a message sent within a server channel
++export interface IReferencedServerMessage {
++    _id: Types.ObjectId | string;
++    serverId: Types.ObjectId | string;
++    channelId: Types.ObjectId | string;
++    senderId: Types.ObjectId | string;
++    text: string;
++    createdAt: Date;
++    isEdited?: boolean;
++    editedAt?: Date;
++    isWebhook?: boolean;
++    webhookUsername?: string;
++    webhookAvatarUrl?: string;
++}
++
+ export interface IServerMessage {
+     _id: Types.ObjectId | string;
+     serverId: Types.ObjectId | string;
+@@ -11,7 +25,8 @@ export interface IServerMessage {
+     text: string;
+     createdAt: Date;
+     replyToId?: Types.ObjectId | string;
+-    repliedToMessageId?: Types.ObjectId;
++    repliedToMessageId?: Types.ObjectId | IReferencedServerMessage;
++    referenced_message?: IReferencedServerMessage;
+     editedAt?: Date;
+     isEdited?: boolean;
+     // Flag indicating if the message was sent via a webhook
+diff --git a/src/infrastructure/repositories/MongooseMessageRepository.ts b/src/infrastructure/repositories/MongooseMessageRepository.ts
+index cdc3d6d..2443a0b 100644
+--- a/src/infrastructure/repositories/MongooseMessageRepository.ts
++++ b/src/infrastructure/repositories/MongooseMessageRepository.ts
+@@ -14,8 +14,22 @@ export class MongooseMessageRepository implements IMessageRepository {
+     private messageModel = Message;
+     constructor() {}
+ 
++    private transformMessage(msg: any): IMessage {
++        // Map repliedToMessageId to referenced_message for clarity
++        const transformed = { ...msg };
++        if (msg.repliedToMessageId && typeof msg.repliedToMessageId === 'object') {
++            transformed.referenced_message = msg.repliedToMessageId;
++        }
++        return transformed;
++    }
++
++    private transformMessages(messages: any[]): IMessage[] {
++        return messages.map((msg) => this.transformMessage(msg));
++    }
++
+     async findById(id: string): Promise<IMessage | null> {
+-        return await this.messageModel.findById(id).lean();
++        const msg = await this.messageModel.findById(id).populate('repliedToMessageId').lean();
++        return msg ? this.transformMessage(msg) : null;
+     }
+ 
+     // Find messages between two users with pagination
+@@ -65,11 +79,12 @@ export class MongooseMessageRepository implements IMessageRepository {
+                 .lean();
+ 
+             // Combine and sort ascending
+-            return [...beforeMessages, ...afterMessages].sort(
++            const combined = [...beforeMessages, ...afterMessages].sort(
+                 (a, b) =>
+                     (a.createdAt?.getTime() || 0) -
+                     (b.createdAt?.getTime() || 0),
+             );
++            return this.transformMessages(combined);
+         }
+ 
+         const query = { ...baseQuery };
+@@ -91,7 +106,7 @@ export class MongooseMessageRepository implements IMessageRepository {
+             .populate('repliedToMessageId')
+             .lean();
+ 
+-        return messages.reverse();
++        return this.transformMessages(messages.reverse());
+     }
+ 
+     async create(
+@@ -105,11 +120,13 @@ export class MongooseMessageRepository implements IMessageRepository {
+         session?: ClientSession,
+     ): Promise<IMessage> {
+         const message = new this.messageModel(data);
+-        return await message.save({ session });
++        const savedMessage = await message.save({ session });
++        const msgObj = savedMessage.toObject();
++        return this.transformMessage(msgObj);
+     }
+ 
+     async update(id: string, text: string): Promise<IMessage | null> {
+-        return await this.messageModel
++        const msg = await this.messageModel
+             .findByIdAndUpdate(
+                 id,
+                 {
+@@ -119,7 +136,9 @@ export class MongooseMessageRepository implements IMessageRepository {
+                 },
+                 { new: true },
+             )
++            .populate('repliedToMessageId')
+             .lean();
++        return msg ? this.transformMessage(msg) : null;
+     }
+ 
+     async delete(id: string): Promise<boolean> {
+diff --git a/src/infrastructure/repositories/MongooseServerMessageRepository.ts b/src/infrastructure/repositories/MongooseServerMessageRepository.ts
+index ffa12db..d3bf3b5 100644
+--- a/src/infrastructure/repositories/MongooseServerMessageRepository.ts
++++ b/src/infrastructure/repositories/MongooseServerMessageRepository.ts
+@@ -14,6 +14,19 @@ import type { Types, FilterQuery, ClientSession } from 'mongoose';
+ export class MongooseServerMessageRepository
+     implements IServerMessageRepository
+ {
++    private transformMessage(msg: any): IServerMessage {
++        // Map repliedToMessageId to referenced_message for clarity
++        const transformed = { ...msg };
++        if (msg.repliedToMessageId && typeof msg.repliedToMessageId === 'object') {
++            transformed.referenced_message = msg.repliedToMessageId;
++        }
++        return transformed;
++    }
++
++    private transformMessages(messages: any[]): IServerMessage[] {
++        return messages.map((msg) => this.transformMessage(msg));
++    }
++
+     async create(
+         data: {
+             serverId: string | Types.ObjectId;
+@@ -30,7 +43,7 @@ export class MongooseServerMessageRepository
+     ): Promise<IServerMessage> {
+         const message = new ServerMessage(data);
+         const savedMessage = await message.save({ session });
+-        return { ...savedMessage.toObject(), reactions: [] };
++        return this.transformMessage(savedMessage.toObject());
+     }
+ 
+     async delete(id: string): Promise<boolean> {
+@@ -49,15 +62,18 @@ export class MongooseServerMessageRepository
+     }
+ 
+     async findById(id: string): Promise<IServerMessage | null> {
+-        const message = await ServerMessage.findById(id).lean();
++        const message = await ServerMessage.findById(id)
++            .populate('repliedToMessageId')
++            .lean();
+         if (!message) return null;
+ 
+         // Fetch reactions for this message
+         const reactions = await this.getReactionsForMessages([message._id]);
+-        return {
++        const msg = {
+             ...message,
+             reactions: reactions[message._id.toString()] || [],
+         };
++        return this.transformMessage(msg);
+     }
+ 
+     // Find messages in a channel with pagination
+@@ -67,7 +83,7 @@ export class MongooseServerMessageRepository
+         before?: string,
+         around?: string,
+     ): Promise<IServerMessage[]> {
+-        let messages: IServerMessage[] = [];
++        let messages: any[] = [];
+ 
+         if (around) {
+             const targetMessage = await ServerMessage.findById(around);
+@@ -123,12 +139,14 @@ export class MongooseServerMessageRepository
+         const messageIds = messages.map((m) => m._id);
+         const reactionsMap = await this.getReactionsForMessages(messageIds);
+ 
+-        return messages
++        const messagesWithReactions = messages
+             .map((msg) => ({
+                 ...msg,
+                 reactions: reactionsMap[msg._id.toString()] || [],
+             }))
+             .reverse();
++
++        return this.transformMessages(messagesWithReactions);
+     }
+ 
+     async update(
+@@ -137,20 +155,23 @@ export class MongooseServerMessageRepository
+     ): Promise<IServerMessage | null> {
+         const updated = await ServerMessage.findByIdAndUpdate(id, data, {
+             new: true,
+-        }).lean();
++        })
++            .populate('repliedToMessageId')
++            .lean();
+         if (!updated) return null;
+ 
+         // Fetch reactions
+         const reactions = await this.getReactionsForMessages([updated._id]);
+-        return {
++        const msg = {
+             ...updated,
+             reactions: reactions[updated._id.toString()] || [],
+         };
++        return this.transformMessage(msg);
+     }
+ 
+     // Helper to fetch aggregated reactions for multiple messages
+     //
+-    // Groups reactions by emoji type and collects user IDs */
++    // Groups reactions by emoji type and collects user IDs
+     private async getReactionsForMessages(
+         messageIds: (string | Types.ObjectId)[],
+     ): Promise<Record<string, unknown[]>> {

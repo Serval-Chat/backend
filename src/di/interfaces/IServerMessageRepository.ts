@@ -3,6 +3,20 @@ import type { Types, ClientSession } from 'mongoose';
 // Server Message interface (domain model)
 //
 // Represents a message sent within a server channel
+export interface IReferencedServerMessage {
+    _id: Types.ObjectId | string;
+    serverId: Types.ObjectId | string;
+    channelId: Types.ObjectId | string;
+    senderId: Types.ObjectId | string;
+    text: string;
+    createdAt: Date;
+    isEdited?: boolean;
+    editedAt?: Date;
+    isWebhook?: boolean;
+    webhookUsername?: string;
+    webhookAvatarUrl?: string;
+}
+
 export interface IServerMessage {
     _id: Types.ObjectId | string;
     serverId: Types.ObjectId | string;
@@ -11,7 +25,8 @@ export interface IServerMessage {
     text: string;
     createdAt: Date;
     replyToId?: Types.ObjectId | string;
-    repliedToMessageId?: Types.ObjectId;
+    repliedToMessageId?: Types.ObjectId | IReferencedServerMessage;
+    referenced_message?: IReferencedServerMessage;
     editedAt?: Date;
     isEdited?: boolean;
     // Flag indicating if the message was sent via a webhook
