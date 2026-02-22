@@ -170,6 +170,11 @@ export class ServerController {
         }
 
         // Subscribe to channel
+        const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+        if (channel?.type === 'link') {
+            throw new Error('FORBIDDEN: Cannot join a link channel');
+        }
+
         this.wsServer.subscribeToChannel(ws, channelId);
         logger.debug(
             `[ServerController] User ${userId} joined channel ${channelId}`,
@@ -231,6 +236,11 @@ export class ServerController {
         }
 
         // Check sendMessages permission
+        const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+        if (channel?.type === 'link') {
+            throw new Error('FORBIDDEN: Cannot send messages to a link channel');
+        }
+
         const canSend = await this.permissionService.hasChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),

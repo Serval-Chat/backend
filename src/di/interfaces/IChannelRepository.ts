@@ -7,11 +7,9 @@ export interface IChannel {
     _id: Types.ObjectId;
     serverId: Types.ObjectId;
     name: string;
-    type: 'text' | 'voice';
+    type: 'text' | 'voice' | 'link';
     position: number;
-    // Optionally parent category ID
     categoryId?: Types.ObjectId | null;
-    // Role-based permission overrides specific to this channel
     permissions?: {
         [roleId: string]: {
             sendMessages?: boolean;
@@ -20,18 +18,17 @@ export interface IChannel {
         };
     };
     createdAt: Date;
-    // Timestamp of the last message sent in this channel
-    // Used for unread tracking and channel sorting
     lastMessageAt?: Date;
     icon?: string;
     description?: string;
+    link?: string;
 }
 
 // Channel creation DTO
 export interface CreateChannelDTO {
     serverId: Types.ObjectId;
     name: string;
-    type: 'text' | 'voice';
+    type: 'text' | 'voice' | 'link';
     position: number;
     categoryId?: Types.ObjectId | null;
     permissions?: {
@@ -43,6 +40,7 @@ export interface CreateChannelDTO {
     };
     description?: string;
     icon?: string;
+    link?: string;
 }
 
 // Channel Repository Interface

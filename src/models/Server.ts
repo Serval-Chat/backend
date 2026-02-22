@@ -56,7 +56,7 @@ export interface IChannel extends Document {
     serverId: mongoose.Types.ObjectId;
     categoryId?: mongoose.Types.ObjectId;
     name: string;
-    type: 'text' | 'voice';
+    type: 'text' | 'voice' | 'link';
     position: number;
     permissions?: {
         [roleId: string]: {
@@ -71,6 +71,7 @@ export interface IChannel extends Document {
     lastMessageAt?: Date;
     icon?: string;
     description?: string;
+    link?: string;
 }
 
 // Server member interface
@@ -222,7 +223,7 @@ const channelSchema = new Schema<IChannel>({
         required: false,
     },
     name: { type: String, required: true },
-    type: { type: String, enum: ['text', 'voice'], default: 'text' },
+    type: { type: String, enum: ['text', 'voice', 'link'], default: 'text' },
     position: { type: Number, default: 0 },
     permissions: {
         type: Map,
@@ -239,6 +240,7 @@ const channelSchema = new Schema<IChannel>({
     lastMessageAt: { type: Date, default: Date.now },
     icon: { type: String },
     description: { type: String, maxlength: 200 },
+    link: { type: String, required: false },
 });
 channelSchema.index({ serverId: 1, categoryId: 1, position: 1 });
 channelSchema.index({ serverId: 1, lastMessageAt: -1 });

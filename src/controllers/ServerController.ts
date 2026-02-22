@@ -211,6 +211,7 @@ export class ServerController {
         for (const channel of channels) {
             const serverId = channel.serverId.toString();
             if (unreadMap[serverId]) continue;
+            if (channel.type === 'link') continue;
 
             const lastMessageAt = channel.lastMessageAt;
             if (!lastMessageAt) continue;

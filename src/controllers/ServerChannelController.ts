@@ -198,6 +198,7 @@ export class ServerChannelController {
             },
             ...(body.description && { description: body.description }),
             ...(body.icon && { icon: body.icon }),
+            ...(body.link && { link: body.link }),
         });
 
         this.wsServer.broadcastToServer(serverId.toString(), {
@@ -316,6 +317,11 @@ export class ServerChannelController {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
+        const existingChannel = await this.channelRepo.findById(channelOid);
+        if (!existingChannel || existingChannel.serverId.toString() !== serverId) {
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
+        }
+
         const updates: Partial<IChannel> = {};
         if (body.name) updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
@@ -323,7 +329,15 @@ export class ServerChannelController {
             updates.categoryId = body.categoryId ? new Types.ObjectId(body.categoryId) : null;
         if (body.description !== undefined)
             updates.description = body.description;
-        if (body.icon !== undefined) updates.icon = body.icon;
+
+        if (body.icon !== undefined) {
+            if (existingChannel.type === 'link') {
+                throw new ApiError(400, 'Cannot set a custom icon for a link channel');
+            }
+            updates.icon = body.icon;
+        }
+
+        if (body.link !== undefined) updates.link = body.link;
 
         const channel = await this.channelRepo.update(channelOid, updates);
         if (!channel) {

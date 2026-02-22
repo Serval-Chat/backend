@@ -11,7 +11,7 @@ import {
     IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsName, IsChannelId, IsCategoryId } from '@/validation/schemas/common';
+import { IsName, IsChannelId, IsCategoryId, IsUrlField } from '@/validation/schemas/common';
 import { ChannelTypeDTO } from './common.request.dto';
 
 export class CreateChannelRequestDTO {
@@ -45,6 +45,11 @@ export class CreateChannelRequestDTO {
     @IsOptional()
     @IsString()
     icon?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsUrlField()
+    link?: string;
 }
 
 export class UpdateChannelRequestDTO {
@@ -74,6 +79,11 @@ export class UpdateChannelRequestDTO {
     @IsOptional()
     @IsString()
     icon?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsUrlField()
+    link?: string;
 }
 
 export class ChannelPositionDTO {

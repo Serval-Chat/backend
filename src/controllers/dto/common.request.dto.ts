@@ -17,6 +17,7 @@ export type ResetProfileRequestFieldTypeDTO = ProfileFieldDTO;
 export enum ChannelTypeDTO {
     TEXT = 'text',
     VOICE = 'voice',
+    LINK = 'link',
 }
 
 export enum MessageAlignmentDTO {

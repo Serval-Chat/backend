@@ -102,6 +102,14 @@ export class ServerMessageController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
+        const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+        if (!channel || channel.serverId.toString() !== serverId) {
+            throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
+        }
+        if (channel.type === 'link') {
+            throw new ForbiddenException('Cannot read messages from a link channel');
+        }
+
         // Fetch messages using cursor-based pagination (before / around)
         const msgs = await this.serverMessageRepo.findByChannelId(
             new mongoose.Types.ObjectId(channelId),
@@ -175,6 +183,9 @@ export class ServerMessageController {
         const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
+        }
+        if (channel.type === 'link') {
+            throw new ForbiddenException('Cannot send messages to a link channel via API');
         }
 
         const messageText = (body.content || body.text || '').trim();
@@ -263,6 +274,14 @@ export class ServerMessageController {
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
+        }
+
+        const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+        if (!channel || channel.serverId.toString() !== serverId) {
+            throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
+        }
+        if (channel.type === 'link') {
+            throw new ForbiddenException('Cannot read a message from a link channel');
         }
 
         const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
