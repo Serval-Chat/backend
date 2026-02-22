@@ -14,14 +14,14 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseBanRepository implements IBanRepository {
     private banModel = Ban;
-    constructor() {}
+    constructor() { }
 
-    async findActiveByUserId(userId: string): Promise<IBan | null> {
+    async findActiveByUserId(userId: Types.ObjectId): Promise<IBan | null> {
         return await this.banModel.findOne({ userId, active: true }).lean();
     }
 
     async create(
-        userId: string,
+        userId: Types.ObjectId,
         reason: string,
         expirationTimestamp?: Date,
     ): Promise<IBan> {
@@ -34,7 +34,7 @@ export class MongooseBanRepository implements IBanRepository {
         return await ban.save();
     }
 
-    async expire(banId: string): Promise<boolean> {
+    async expire(banId: Types.ObjectId): Promise<boolean> {
         const result = await this.banModel.updateOne(
             { _id: banId },
             { active: false },
@@ -42,7 +42,7 @@ export class MongooseBanRepository implements IBanRepository {
         return result.modifiedCount ? result.modifiedCount > 0 : false;
     }
 
-    async checkExpired(userId: string): Promise<void> {
+    async checkExpired(userId: Types.ObjectId): Promise<void> {
         await this.banModel.checkExpired(userId);
     }
 
@@ -53,7 +53,7 @@ export class MongooseBanRepository implements IBanRepository {
             .lean();
     }
 
-    async findByUserIdWithHistory(userId: string): Promise<IBan | null> {
+    async findByUserIdWithHistory(userId: Types.ObjectId): Promise<IBan | null> {
         return await this.banModel
             .findOne({ userId })
             .populate('history.issuedBy', 'username')
@@ -65,9 +65,9 @@ export class MongooseBanRepository implements IBanRepository {
     // If a ban already exists for the user, it is updated and the new ban
     // Is added to the history array. If no ban exists, a new one is created.
     async createOrUpdateWithHistory(data: {
-        userId: string;
+        userId: Types.ObjectId;
         reason: string;
-        issuedBy: string;
+        issuedBy: Types.ObjectId;
         expirationTimestamp?: Date;
     }): Promise<IBan> {
         const { userId, reason, issuedBy, expirationTimestamp } = data;
@@ -120,7 +120,7 @@ export class MongooseBanRepository implements IBanRepository {
     }
 
     async deactivateAllForUser(
-        userId: string,
+        userId: Types.ObjectId,
     ): Promise<{ modifiedCount: number }> {
         const result = await this.banModel.updateMany(
             { userId, active: true },
@@ -129,7 +129,9 @@ export class MongooseBanRepository implements IBanRepository {
         return { modifiedCount: result.modifiedCount };
     }
 
-    async deleteAllForUser(userId: string): Promise<{ deletedCount: number }> {
+    async deleteAllForUser(
+        userId: Types.ObjectId,
+    ): Promise<{ deletedCount: number }> {
         const result = await this.banModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }

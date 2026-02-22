@@ -9,13 +9,16 @@ import { type FilterQuery, Types } from 'mongoose';
 // Encapsulates all ping operations
 @injectable()
 export class MongoosePingRepository implements IPingRepository {
-    async findById(id: string): Promise<IPing | null> {
+    async findById(id: Types.ObjectId): Promise<IPing | null> {
         return await Ping.findById(id).lean();
     }
 
-    async findByUserId(userId: string, maxAge?: number): Promise<IPing[]> {
+    async findByUserId(
+        userId: Types.ObjectId,
+        maxAge?: number,
+    ): Promise<IPing[]> {
         const query: FilterQuery<IPing> = {
-            userId: new Types.ObjectId(userId),
+            userId,
         };
 
         // Filter out old pings if maxAge is specified (in milliseconds)
@@ -28,30 +31,30 @@ export class MongoosePingRepository implements IPingRepository {
     }
 
     async create(data: {
-        userId: string;
+        userId: Types.ObjectId;
         type: 'mention';
         sender: string;
-        senderId: string;
-        serverId?: string;
-        channelId?: string;
-        messageId: string;
+        senderId: Types.ObjectId;
+        serverId?: Types.ObjectId;
+        channelId?: Types.ObjectId;
+        messageId: Types.ObjectId;
         message: Record<string, unknown>;
         timestamp?: Date;
     }): Promise<IPing> {
         const pingData = {
-            userId: new Types.ObjectId(data.userId),
+            userId: data.userId,
             type: data.type,
             sender: data.sender,
-            senderId: new Types.ObjectId(data.senderId),
-            messageId: new Types.ObjectId(data.messageId),
+            senderId: data.senderId,
+            messageId: data.messageId,
             message: data.message,
             timestamp: data.timestamp ?? new Date(),
 
             ...(data.serverId && {
-                serverId: new Types.ObjectId(data.serverId),
+                serverId: data.serverId,
             }),
             ...(data.channelId && {
-                channelId: new Types.ObjectId(data.channelId),
+                channelId: data.channelId,
             }),
         };
 
@@ -75,37 +78,37 @@ export class MongoosePingRepository implements IPingRepository {
     }
 
     async exists(
-        userId: string,
-        senderId: string,
-        messageId: string,
+        userId: Types.ObjectId,
+        senderId: Types.ObjectId,
+        messageId: Types.ObjectId,
     ): Promise<boolean> {
         const count = await Ping.countDocuments({
-            userId: new Types.ObjectId(userId),
-            senderId: new Types.ObjectId(senderId),
-            messageId: new Types.ObjectId(messageId),
+            userId,
+            senderId,
+            messageId,
         });
         return count > 0;
     }
 
-    async delete(id: string): Promise<boolean> {
+    async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Ping.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
     async deleteByChannelId(
-        userId: string,
-        channelId: string,
+        userId: Types.ObjectId,
+        channelId: Types.ObjectId,
     ): Promise<number> {
         const result = await Ping.deleteMany({
-            userId: new Types.ObjectId(userId),
-            channelId: new Types.ObjectId(channelId),
+            userId,
+            channelId,
         });
         return result.deletedCount || 0;
     }
 
-    async deleteByUserId(userId: string): Promise<number> {
+    async deleteByUserId(userId: Types.ObjectId): Promise<number> {
         const result = await Ping.deleteMany({
-            userId: new Types.ObjectId(userId),
+            userId,
         });
         return result.deletedCount || 0;
     }

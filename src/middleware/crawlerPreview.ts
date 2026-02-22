@@ -44,14 +44,14 @@ export const discordCrawlerPreview = async (
             }
 
             const server = await serverRepo.findById(
-                invite.serverId.toString(),
+                invite.serverId,
             );
             if (!server) {
                 return next();
             }
 
             const memberCount = await memberRepo.countByServerId(
-                invite.serverId.toString(),
+                invite.serverId,
             );
 
             const title = `Join ${server.name}`;

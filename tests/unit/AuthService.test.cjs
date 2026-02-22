@@ -209,7 +209,7 @@ test('AuthService - login calls ban expiration check', async () => {
 
     // Verify checkExpired was called before findActiveByUserId
     assert.equal(mockBanRepo.calls.checkExpired.length, 1);
-    assert.equal(mockBanRepo.calls.checkExpired[0], testUser._id.toString());
+    assert.equal(mockBanRepo.calls.checkExpired[0].toString(), testUser._id.toString());
 });
 
 test('AuthService - login without active ban succeeds', async () => {

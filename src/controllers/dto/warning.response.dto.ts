@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsString } from 'class-validator';
 
 export class UserWarningIssuedByDTO {
     @ApiProperty()
@@ -7,9 +8,13 @@ export class UserWarningIssuedByDTO {
 
 export class UserWarningResponseDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
 
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     userId!: string;
 
     @ApiProperty()

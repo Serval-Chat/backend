@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
 import type { FilterQuery } from 'mongoose';
 import {
     IServerRepository,
@@ -15,10 +16,10 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseServerRepository implements IServerRepository {
     private serverModel = Server;
-    constructor() {}
+    constructor() { }
 
     async findById(
-        id: string,
+        id: Types.ObjectId,
         includeDeleted: boolean = false,
     ): Promise<IServer | null> {
         const query: FilterQuery<IServer> = { _id: id };
@@ -28,7 +29,7 @@ export class MongooseServerRepository implements IServerRepository {
         return await this.serverModel.findOne(query).lean();
     }
 
-    async findByIds(ids: string[]): Promise<IServer[]> {
+    async findByIds(ids: Types.ObjectId[]): Promise<IServer[]> {
         return await this.serverModel
             .find({
                 _id: { $in: ids },
@@ -37,7 +38,7 @@ export class MongooseServerRepository implements IServerRepository {
             .lean();
     }
 
-    async findByOwnerId(ownerId: string): Promise<IServer[]> {
+    async findByOwnerId(ownerId: Types.ObjectId): Promise<IServer[]> {
         return await this.serverModel
             .find({
                 ownerId,
@@ -51,7 +52,7 @@ export class MongooseServerRepository implements IServerRepository {
         return await server.save();
     }
 
-    async update(id: string, data: Partial<IServer>): Promise<IServer | null> {
+    async update(id: Types.ObjectId, data: Partial<IServer>): Promise<IServer | null> {
         return await this.serverModel
             .findOneAndUpdate(
                 { _id: id, deletedAt: { $exists: false } },
@@ -61,7 +62,7 @@ export class MongooseServerRepository implements IServerRepository {
             .lean();
     }
 
-    async delete(id: string): Promise<boolean> {
+    async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await this.serverModel.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
@@ -69,7 +70,7 @@ export class MongooseServerRepository implements IServerRepository {
     // Soft delete a server
     //
     // Marks the server as deleted by setting 'deletedAt' timestamp
-    async softDelete(id: string): Promise<boolean> {
+    async softDelete(id: Types.ObjectId): Promise<boolean> {
         const result = await this.serverModel.updateOne(
             { _id: id },
             { $set: { deletedAt: new Date() } },
@@ -78,7 +79,7 @@ export class MongooseServerRepository implements IServerRepository {
     }
 
     // Restore a soft-deleted server
-    async restore(id: string): Promise<boolean> {
+    async restore(id: Types.ObjectId): Promise<boolean> {
         const result = await this.serverModel.updateOne(
             { _id: id },
             { $unset: { deletedAt: 1 } },
@@ -86,7 +87,7 @@ export class MongooseServerRepository implements IServerRepository {
         return result.modifiedCount > 0;
     }
 
-    async clearDefaultRole(serverId: string, roleId: string): Promise<boolean> {
+    async clearDefaultRole(serverId: Types.ObjectId, roleId: Types.ObjectId): Promise<boolean> {
         const result = await this.serverModel.updateOne(
             { _id: serverId, defaultRoleId: roleId },
             { $unset: { defaultRoleId: 1 } },

@@ -7,6 +7,7 @@ import {
     IsEnum,
     ValidateIf,
     MinLength,
+    IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsName, IsRoleId, IsColor } from '@/validation/schemas/common';
@@ -50,6 +51,7 @@ export class UpdateServerRequestDTO {
 
     @ApiPropertyOptional({ nullable: true, type: String })
     @IsOptional()
+    @IsMongoId()
     @IsRoleId()
     defaultRoleId?: string | null;
 }
@@ -57,6 +59,7 @@ export class UpdateServerRequestDTO {
 export class SetDefaultRoleRequestDTO {
     @ApiProperty({ nullable: true, type: String })
     @IsOptional()
+    @IsMongoId()
     @IsRoleId()
     roleId!: string | null;
 }

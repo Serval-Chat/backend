@@ -8,6 +8,7 @@ import {
     ValidateNested,
     IsObject,
     MaxLength,
+    IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsName, IsChannelId, IsCategoryId } from '@/validation/schemas/common';
@@ -30,6 +31,7 @@ export class CreateChannelRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
+    @IsMongoId()
     @IsCategoryId()
     categoryId?: string;
 
@@ -58,6 +60,7 @@ export class UpdateChannelRequestDTO {
 
     @ApiPropertyOptional({ nullable: true, type: String })
     @IsOptional()
+    @IsMongoId()
     @IsCategoryId()
     categoryId?: string | null;
 
@@ -75,6 +78,7 @@ export class UpdateChannelRequestDTO {
 
 export class ChannelPositionDTO {
     @ApiProperty()
+    @IsMongoId()
     @IsChannelId()
     channelId!: string;
 
@@ -116,6 +120,7 @@ export class UpdateCategoryRequestDTO {
 
 export class CategoryPositionDTO {
     @ApiProperty()
+    @IsMongoId()
     @IsCategoryId()
     categoryId!: string;
 

@@ -1,4 +1,5 @@
 import { injectable, inject } from 'inversify';
+import mongoose from 'mongoose';
 import { WsController, Event, NeedAuth, Validate } from '@/ws/decorators';
 import type { WebSocket } from 'ws';
 import {
@@ -40,7 +41,7 @@ export class ReactionController {
         @inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) {}
+    ) { }
 
     /**
      * Handles 'add_reaction' event.
@@ -62,7 +63,7 @@ export class ReactionController {
         const userId = authenticatedUser.userId;
 
         if (messageType === 'dm') {
-            const message = await this.messageRepo.findById(messageId);
+            const message = await this.messageRepo.findById(new mongoose.Types.ObjectId(messageId));
             if (!message) {
                 throw new Error('NOT_FOUND: Message not found');
             }
@@ -76,9 +77,9 @@ export class ReactionController {
             }
 
             await this.reactionRepo.addReaction(
-                messageId,
+                new mongoose.Types.ObjectId(messageId),
                 'dm',
-                userId,
+                new mongoose.Types.ObjectId(userId),
                 emoji,
                 emojiType,
                 emojiId,
@@ -123,8 +124,8 @@ export class ReactionController {
             if (message.senderId.toString() !== userId) {
                 const authorId = message.senderId.toString();
                 const [author, receiver] = await Promise.all([
-                    this.userRepo.findById(authorId),
-                    this.userRepo.findById(message.receiverId.toString()),
+                    this.userRepo.findById(new mongoose.Types.ObjectId(authorId)),
+                    this.userRepo.findById(message.receiverId),
                 ]);
 
                 if (author && receiver) {
@@ -144,7 +145,7 @@ export class ReactionController {
                                 message.createdAt instanceof Date
                                     ? message.createdAt.toISOString()
                                     : (message.createdAt as unknown as string) ||
-                                      new Date().toISOString(),
+                                    new Date().toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited || false,
                         },
@@ -157,7 +158,7 @@ export class ReactionController {
                 }
             }
         } else if (messageType === 'server') {
-            const message = await this.serverMessageRepo.findById(messageId);
+            const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
             if (!message) {
                 throw new Error('NOT_FOUND: Message not found');
             }
@@ -167,9 +168,9 @@ export class ReactionController {
             const channelId = message.channelId.toString();
 
             const canReact = await this.permissionService.hasChannelPermission(
-                serverId,
-                userId,
-                channelId,
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
+                new mongoose.Types.ObjectId(channelId),
                 'addReactions',
             );
 
@@ -179,9 +180,9 @@ export class ReactionController {
 
             // Add reaction
             await this.reactionRepo.addReaction(
-                messageId,
+                new mongoose.Types.ObjectId(messageId),
                 'server',
-                userId,
+                new mongoose.Types.ObjectId(userId),
                 emoji,
                 emojiType,
                 emojiId,
@@ -215,7 +216,7 @@ export class ReactionController {
             // Send notification to message author if they are not the reactor
             if (message.senderId.toString() !== userId) {
                 const authorId = message.senderId.toString();
-                const author = await this.userRepo.findById(authorId);
+                const author = await this.userRepo.findById(new mongoose.Types.ObjectId(authorId));
                 if (author) {
                     const mentionPayload: IMentionEvent['payload'] = {
                         type: 'reaction',
@@ -234,7 +235,7 @@ export class ReactionController {
                                 message.createdAt instanceof Date
                                     ? message.createdAt.toISOString()
                                     : (message.createdAt as unknown as string) ||
-                                      new Date().toISOString(),
+                                    new Date().toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited || false,
                             isWebhook: message.isWebhook || false,
@@ -275,7 +276,7 @@ export class ReactionController {
 
         // Validate message exists and get context
         if (messageType === 'dm') {
-            const message = await this.messageRepo.findById(messageId);
+            const message = await this.messageRepo.findById(new mongoose.Types.ObjectId(messageId));
             if (!message) {
                 throw new Error('NOT_FOUND: Message not found');
             }
@@ -291,9 +292,9 @@ export class ReactionController {
 
             // Remove reaction
             await this.reactionRepo.removeReaction(
-                messageId,
+                new mongoose.Types.ObjectId(messageId),
                 'dm',
-                userId,
+                new mongoose.Types.ObjectId(userId),
                 emoji,
                 emojiId,
             );
@@ -332,7 +333,7 @@ export class ReactionController {
                 ws,
             );
         } else if (messageType === 'server') {
-            const message = await this.serverMessageRepo.findById(messageId);
+            const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
             if (!message) {
                 throw new Error('NOT_FOUND: Message not found');
             }
@@ -341,9 +342,9 @@ export class ReactionController {
 
             // Remove reaction
             await this.reactionRepo.removeReaction(
-                messageId,
+                new mongoose.Types.ObjectId(messageId),
                 'server',
-                userId,
+                new mongoose.Types.ObjectId(userId),
                 emoji,
                 emojiId,
             );

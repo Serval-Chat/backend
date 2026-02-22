@@ -1,4 +1,5 @@
 import { injectable } from 'inversify';
+import { Types } from 'mongoose';
 import {
     IWebhookRepository,
     IWebhook,
@@ -10,7 +11,7 @@ import { Webhook } from '@/models/Webhook';
 // Implements IWebhookRepository using Mongoose Webhook model
 @injectable()
 export class MongooseWebhookRepository implements IWebhookRepository {
-    async findById(id: string): Promise<IWebhook | null> {
+    async findById(id: Types.ObjectId): Promise<IWebhook | null> {
         return await Webhook.findById(id).lean();
     }
 
@@ -21,34 +22,34 @@ export class MongooseWebhookRepository implements IWebhookRepository {
         return await Webhook.findOne({ token }).lean();
     }
 
-    async findByServerId(serverId: string): Promise<IWebhook[]> {
+    async findByServerId(serverId: Types.ObjectId): Promise<IWebhook[]> {
         return await Webhook.find({ serverId }).lean();
     }
 
-    async findByChannelId(channelId: string): Promise<IWebhook[]> {
+    async findByChannelId(channelId: Types.ObjectId): Promise<IWebhook[]> {
         return await Webhook.find({ channelId }).lean();
     }
 
     async create(data: {
-        serverId: string;
-        channelId: string;
+        serverId: Types.ObjectId;
+        channelId: Types.ObjectId;
         name: string;
         token: string;
         avatarUrl?: string;
-        createdBy: string;
+        createdBy: Types.ObjectId;
     }): Promise<IWebhook> {
         const webhook = new Webhook(data);
         return await webhook.save();
     }
 
     async update(
-        id: string,
+        id: Types.ObjectId,
         data: Partial<IWebhook>,
     ): Promise<IWebhook | null> {
         return await Webhook.findByIdAndUpdate(id, data, { new: true }).lean();
     }
 
-    async delete(id: string): Promise<boolean> {
+    async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Webhook.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }

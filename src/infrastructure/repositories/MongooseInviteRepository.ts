@@ -1,3 +1,6 @@
+import { Types } from 'mongoose';
+import type { FilterQuery } from 'mongoose';
+
 import { injectable } from 'inversify';
 import {
     CreateInviteDTO,
@@ -5,7 +8,6 @@ import {
     IInviteRepository,
 } from '@/di/interfaces/IInviteRepository';
 import { Invite } from '@/models/Server';
-import type { FilterQuery } from 'mongoose';
 
 // Mongoose Invite repository
 //
@@ -16,7 +18,7 @@ export class MongooseInviteRepository implements IInviteRepository {
         return (await Invite.findOne({ code }).lean()) as IInvite | null;
     }
 
-    async findById(id: string): Promise<IInvite | null> {
+    async findById(id: Types.ObjectId): Promise<IInvite | null> {
         return (await Invite.findById(id).lean()) as IInvite | null;
     }
 
@@ -43,7 +45,7 @@ export class MongooseInviteRepository implements IInviteRepository {
         return (await Invite.findOne(query).lean()) as IInvite | null;
     }
 
-    async findByServerId(serverId: string): Promise<IInvite[]> {
+    async findByServerId(serverId: Types.ObjectId): Promise<IInvite[]> {
         return (await Invite.find({ serverId }).lean()) as unknown as IInvite[];
     }
 
@@ -55,7 +57,7 @@ export class MongooseInviteRepository implements IInviteRepository {
         return (await invite.save()) as unknown as IInvite;
     }
 
-    async incrementUses(id: string): Promise<IInvite | null> {
+    async incrementUses(id: Types.ObjectId): Promise<IInvite | null> {
         return (await Invite.findByIdAndUpdate(
             id,
             { $inc: { uses: 1 } },
@@ -63,12 +65,12 @@ export class MongooseInviteRepository implements IInviteRepository {
         ).lean()) as IInvite | null;
     }
 
-    async delete(id: string): Promise<boolean> {
+    async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Invite.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
-    async deleteByServerId(serverId: string): Promise<number> {
+    async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
         const result = await Invite.deleteMany({ serverId });
         return result.deletedCount || 0;
     }

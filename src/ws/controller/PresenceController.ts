@@ -1,4 +1,5 @@
 import { injectable, inject, postConstruct } from 'inversify';
+import mongoose from 'mongoose';
 import { WsController, Event, NeedAuth, Validate } from '@/ws/decorators';
 import type { WebSocket } from 'ws';
 import { SetStatusSchema } from '@/validation/schemas/ws/messages.schema';
@@ -33,7 +34,7 @@ export class PresenceController {
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) {}
+    ) { }
 
     @postConstruct()
     public setupEventListeners() {
@@ -81,7 +82,7 @@ export class PresenceController {
         const { status } = payload;
         const userId = authenticatedUser.userId;
 
-        await this.userRepo.update(userId, { status: status || '' });
+        await this.userRepo.update(new mongoose.Types.ObjectId(userId), { status: status || '' });
 
         logger.debug(
             `[PresenceController] User ${userId} set status: ${status}`,
@@ -114,8 +115,8 @@ export class PresenceController {
         const userId = authenticatedUser.userId;
 
         const [friendships, serverIds] = await Promise.all([
-            this.friendshipRepo.findByUserId(userId),
-            this.serverMemberRepo.findServerIdsByUserId(userId),
+            this.friendshipRepo.findByUserId(new mongoose.Types.ObjectId(userId)),
+            this.serverMemberRepo.findServerIdsByUserId(new mongoose.Types.ObjectId(userId)),
         ]);
 
         const friendIds = friendships.map((f) =>
@@ -131,7 +132,7 @@ export class PresenceController {
 
         const relevantUserIds = new Set<string>([
             ...friendIds,
-            ...serverMemberIds,
+            ...serverMemberIds.map((id) => id.toString()),
         ]);
         relevantUserIds.delete(userId);
 
@@ -140,7 +141,9 @@ export class PresenceController {
         );
         const onlineUsers =
             onlineRelevantIds.length > 0
-                ? await this.userRepo.findByIds(onlineRelevantIds)
+                ? await this.userRepo.findByIds(
+                    onlineRelevantIds.map((id) => new mongoose.Types.ObjectId(id)),
+                )
                 : [];
 
         const online = onlineUsers.map((u) => ({
@@ -170,7 +173,7 @@ export class PresenceController {
         userId: string,
         username: string,
     ): Promise<void> {
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(new mongoose.Types.ObjectId(userId));
         const status = user?.status || undefined;
 
         const onlinePayload: IUserOnlineEvent['payload'] = {
@@ -215,7 +218,7 @@ export class PresenceController {
         event: AnyResponseWsEvent,
         excludeWs?: WebSocket,
     ): Promise<void> {
-        const friendships = await this.friendshipRepo.findByUserId(userId);
+        const friendships = await this.friendshipRepo.findByUserId(new mongoose.Types.ObjectId(userId));
         const friendIds = friendships.map((f) =>
             f.userId.toString() === userId
                 ? f.friendId.toString()
@@ -226,11 +229,11 @@ export class PresenceController {
             this.wsServer.isUserOnline(id),
         );
         const serverIds =
-            await this.serverMemberRepo.findServerIdsByUserId(userId);
+            await this.serverMemberRepo.findServerIdsByUserId(new mongoose.Types.ObjectId(userId));
 
         this.wsServer.broadcastToPresenceAudience(
             onlineFriendIds,
-            serverIds,
+            serverIds.map((id) => id.toString()),
             event,
             excludeWs,
         );

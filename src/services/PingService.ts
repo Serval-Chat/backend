@@ -1,4 +1,5 @@
 import { injectable, inject } from 'inversify';
+import mongoose from 'mongoose';
 import { Injectable, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { IPingRepository } from '@/di/interfaces/IPingRepository';
@@ -25,11 +26,11 @@ export class PingService {
         @inject(TYPES.PingRepository)
         @Inject(TYPES.PingRepository)
         private pingRepo: IPingRepository,
-    ) {}
+    ) { }
 
     // Store a ping for a user (both online and offline)
     async addPing(
-        userId: string,
+        userId: mongoose.Types.ObjectId,
         pingData: Omit<PingNotification, 'id' | 'timestamp'>,
     ): Promise<PingNotification> {
         // Check if ping already exists
@@ -40,7 +41,11 @@ export class PingService {
         const messageId = (msg?._id || msg?.messageId)?.toString() || 'unknown';
         const senderId = pingData.senderId?.toString() || 'unknown';
 
-        const exists = await this.pingRepo.exists(userId, senderId, messageId);
+        const exists = await this.pingRepo.exists(
+            userId,
+            new mongoose.Types.ObjectId(senderId),
+            new mongoose.Types.ObjectId(messageId),
+        );
         if (exists) {
             // Return existing ping format
             const existingPings = await this.pingRepo.findByUserId(userId);
@@ -56,29 +61,29 @@ export class PingService {
 
         // Create new ping
         const createData: {
-            userId: string;
+            userId: mongoose.Types.ObjectId;
             type: 'mention';
             sender: string;
-            senderId: string;
-            serverId?: string;
-            channelId?: string;
-            messageId: string;
+            senderId: mongoose.Types.ObjectId;
+            serverId?: mongoose.Types.ObjectId;
+            channelId?: mongoose.Types.ObjectId;
+            messageId: mongoose.Types.ObjectId;
             message: Record<string, unknown>;
             timestamp?: Date;
         } = {
             userId,
             type: 'mention',
             sender: pingData.sender,
-            senderId,
-            messageId,
+            senderId: new mongoose.Types.ObjectId(senderId),
+            messageId: new mongoose.Types.ObjectId(messageId),
             message: pingData.message,
         };
 
         if (pingData.serverId) {
-            createData.serverId = pingData.serverId;
+            createData.serverId = new mongoose.Types.ObjectId(pingData.serverId);
         }
         if (pingData.channelId) {
-            createData.channelId = pingData.channelId;
+            createData.channelId = new mongoose.Types.ObjectId(pingData.channelId);
         }
 
         const created = await this.pingRepo.create(createData);
@@ -87,26 +92,29 @@ export class PingService {
     }
 
     // Get all pings for a user (with age filtering)
-    async getPingsForUser(userId: string): Promise<PingNotification[]> {
+    async getPingsForUser(userId: mongoose.Types.ObjectId): Promise<PingNotification[]> {
         const pings = await this.pingRepo.findByUserId(userId, this.maxAge);
         return pings.map((p) => this.mapToNotification(p));
     }
 
     // Remove a specific ping
-    async removePing(userId: string, pingId: string): Promise<boolean> {
+    async removePing(
+        userId: mongoose.Types.ObjectId,
+        pingId: mongoose.Types.ObjectId,
+    ): Promise<boolean> {
         return await this.pingRepo.delete(pingId);
     }
 
     // Clear all pings for a specific channel
     async clearChannelPings(
-        userId: string,
-        channelId: string,
+        userId: mongoose.Types.ObjectId,
+        channelId: mongoose.Types.ObjectId,
     ): Promise<number> {
         return await this.pingRepo.deleteByChannelId(userId, channelId);
     }
 
     // Clear all pings for a user
-    async clearAllPings(userId: string): Promise<void> {
+    async clearAllPings(userId: mongoose.Types.ObjectId): Promise<void> {
         await this.pingRepo.deleteByUserId(userId);
     }
 

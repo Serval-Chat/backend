@@ -1,4 +1,5 @@
 import { injectable } from 'inversify';
+import { Types } from 'mongoose';
 import type { ClientSession } from 'mongoose';
 import {
     IDmUnreadRepository,
@@ -12,14 +13,14 @@ import { DmUnread } from '@/models/DmUnread';
 @injectable()
 export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     // Find all unread counts for a specific user
-    async findByUser(userId: string): Promise<IDmUnread[]> {
+    async findByUser(userId: Types.ObjectId): Promise<IDmUnread[]> {
         return await DmUnread.find({ user: userId }).lean();
     }
 
     // Find unread count for a user from a specific peer
     async findByUserAndPeer(
-        userId: string,
-        peerId: string,
+        userId: Types.ObjectId,
+        peerId: Types.ObjectId,
     ): Promise<IDmUnread | null> {
         return await DmUnread.findOne({ user: userId, peer: peerId }).lean();
     }
@@ -29,8 +30,8 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     // Uses upsert to create the record if it doesn't exist
     // Returns the new count after increment (atomic operation)
     async increment(
-        userId: string,
-        peerId: string,
+        userId: Types.ObjectId,
+        peerId: Types.ObjectId,
         session?: ClientSession,
     ): Promise<number> {
         const result = await DmUnread.findOneAndUpdate(
@@ -42,7 +43,7 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     }
 
     // Reset the unread count for a user from a peer to zero
-    async reset(userId: string, peerId: string): Promise<void> {
+    async reset(userId: Types.ObjectId, peerId: Types.ObjectId): Promise<void> {
         await DmUnread.findOneAndUpdate(
             { user: userId, peer: peerId },
             { $set: { count: 0 } },

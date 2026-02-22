@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsString } from 'class-validator';
 
 export class AdminServerOwnerDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
     @ApiProperty()
     username!: string;
@@ -20,6 +23,8 @@ export class AdminServerBannerDTO {
 
 export class AdminServerListItemDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
     @ApiProperty()
     name!: string;
@@ -28,6 +33,8 @@ export class AdminServerListItemDTO {
     @ApiPropertyOptional({ type: AdminServerBannerDTO })
     banner?: AdminServerBannerDTO;
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     ownerId!: string;
     @ApiProperty()
     memberCount!: number;

@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Req, UseGuards, Inject } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -15,7 +16,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JWTPayload } from '@/utils/jwt';
 import { EmojiResponseDTO } from './dto/emoji.response.dto';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -28,16 +29,13 @@ interface RequestWithUser extends Request {
 @Controller('api/v1/emojis')
 export class EmojiController {
     constructor(
-        @inject(TYPES.EmojiRepository)
         @Inject(TYPES.EmojiRepository)
         private emojiRepo: IEmojiRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     @Get()
     @ApiBearerAuth()
@@ -48,10 +46,11 @@ export class EmojiController {
         @Req() req: Request,
     ): Promise<EmojiResponseDTO[]> {
         const userId = (req as unknown as RequestWithUser).user.id;
+        const userOid = new Types.ObjectId(userId);
 
-        const memberships = await this.serverMemberRepo.findAllByUserId(userId);
+        const memberships = await this.serverMemberRepo.findAllByUserId(userOid);
         // Extract server IDs from membership objects
-        const serverIds = memberships.map((m) => m.serverId.toString());
+        const serverIds = memberships.map((m) => m.serverId);
 
         const emojis = await this.emojiRepo.findByServerIds(serverIds);
         return emojis.map((e) => ({
@@ -72,7 +71,8 @@ export class EmojiController {
         @Param('emojiId') emojiId: string,
     ): Promise<EmojiResponseDTO> {
         // Fetch emoji by its unique ID
-        const emoji = await this.emojiRepo.findById(emojiId);
+        const emojiOid = new Types.ObjectId(emojiId);
+        const emoji = await this.emojiRepo.findById(emojiOid);
         if (!emoji) {
             throw new ApiError(404, ErrorMessages.EMOJI.NOT_FOUND);
         }

@@ -16,11 +16,17 @@ const { randomBytes } = require('crypto');
 const mockSharpObj = {
     resize: () => mockSharpObj,
     webp: () => mockSharpObj,
+    withMetadata: () => mockSharpObj,
     toFile: async () => ({ size: 1024 }),
-    toBuffer: async () => Buffer.from('mocked-webp-data'),
+    toBuffer: async (opts) => {
+        if (opts && opts.resolveWithObject) {
+            return { data: Buffer.from('mocked-webp-data'), info: { size: 1024 } };
+        }
+        return Buffer.from('mocked-webp-data');
+    },
     metadata: async () => ({
-        width: 512,
-        height: 512,
+        width: 256,
+        height: 256,
         format: 'webp'
     })
 };
@@ -50,6 +56,13 @@ fs.existsSync = (p) => {
 fs.mkdirSync = (p, options) => {
     if (typeof p === 'string' && (p.includes('uploads') || p.includes('tmp'))) return;
     return originalMkdirSync(p, options);
+};
+
+const fsp = require('fs/promises');
+const originalWriteFile = fsp.writeFile;
+fsp.writeFile = async (p, data, options) => {
+    if (typeof p === 'string' && (p.includes('uploads') || p.includes('tmp'))) return;
+    return originalWriteFile(p, data, options);
 };
 
 const { ProfileController } = require('../../src/controllers/ProfileController');
@@ -85,7 +98,6 @@ function createMockWsServer() {
 test('ProfileController - uploadProfilePicture calls repository and emits event', async () => {
     const mockLogger = createMockLogger();
     const mockUserRepo = createMockUserRepository();
-    const mockStatusService = createMockStatusService();
     const mockServerMemberRepo = createMockServerMemberRepository();
     const mockFriendshipRepo = createMockFriendshipRepository();
     const mockWsServer = createMockWsServer();
@@ -121,7 +133,7 @@ test('ProfileController - uploadProfilePicture calls repository and emits event'
 
     assert.ok(result.profilePicture);
     assert.equal(mockUserRepo.calls.updateProfilePicture.length, 1);
-    assert.equal(mockUserRepo.calls.updateProfilePicture[0].id, userId);
+    assert.equal(mockUserRepo.calls.updateProfilePicture[0].id.toString(), userId);
 
     // Check if event was emitted via WsServer
     const userUpdateBroadcast = mockWsServer.broadcasts.find(b => b.event.type === 'user_updated' && b.type === 'user' && b.target === userId);
@@ -135,4 +147,5 @@ test.after(() => {
     fs.renameSync = originalRenameSync;
     fs.existsSync = originalExistsSync;
     fs.mkdirSync = originalMkdirSync;
+    fsp.writeFile = originalWriteFile;
 });

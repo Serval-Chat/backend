@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsMongoId, IsOptional, IsString } from 'class-validator';
 import { IsLimit, IsOffset } from '@/validation/schemas/common';
 
 export class AdminListAuditLogsRequestDTO {
@@ -24,6 +24,7 @@ export class AdminListAuditLogsRequestDTO {
      */
     @ApiPropertyOptional()
     @IsOptional()
+    @IsMongoId()
     @IsString()
     actorId?: string;
 
@@ -41,6 +42,7 @@ export class AdminListAuditLogsRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
+    @IsMongoId()
     targetUserId?: string;
 
     /**

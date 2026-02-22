@@ -1,14 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsString } from 'class-validator';
 import { SerializedCustomStatus } from '@/utils/status';
-import { Types } from 'mongoose';
 import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 import { UsernameGradientDTO, UsernameGlowDTO } from './profile.request.dto';
 
 export class BadgeResponseDTO {
-    @ApiProperty({ type: String })
-    _id!: Types.ObjectId | string;
+    @ApiProperty()
+    @IsMongoId()
+    @IsString()
+    _id!: string;
 
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     id!: string;
 
     @ApiProperty()
@@ -29,11 +33,15 @@ export class BadgeResponseDTO {
 
 export class UserLookupResponseDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
 }
 
 export class UserProfileResponseDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     id!: string;
 
     @ApiProperty()
@@ -58,7 +66,7 @@ export class UserProfileResponseDTO {
     customStatus!: SerializedCustomStatus | null;
 
     @ApiProperty()
-    permissions!: string | AdminPermissions;
+    permissions!: AdminPermissions;
 
     @ApiProperty()
     createdAt!: Date;

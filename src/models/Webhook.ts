@@ -12,7 +12,7 @@ export interface IWebhook extends Document {
     name: string;
     token: string;
     avatarUrl?: string;
-    createdBy: string;
+    createdBy: mongoose.Types.ObjectId;
     createdAt: Date;
 }
 
@@ -22,7 +22,7 @@ const webhookSchema = new Schema<IWebhook>({
     name: { type: String, required: true, maxlength: 100 },
     token: { type: String, required: true, unique: true, length: 128 },
     avatarUrl: { type: String, required: false },
-    createdBy: { type: String, required: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     createdAt: { type: Date, default: Date.now },
 });
 

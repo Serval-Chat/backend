@@ -15,29 +15,41 @@ const {
     createMockServerRepository,
     createMockBanRepository,
     createMockServerMemberRepository,
+    createTestUser,
+    createMockAuditLogRepository,
+    createMockWsServer,
+    createMockMessageRepository,
     createMockFriendshipRepository,
-    createTestUser
+    createMockWarningRepository
 } = require('../utils/test-utils.cjs');
 
 test('AdminController - resetUserProfile resets banner', async () => {
     const mockLogger = createMockLogger();
     const mockUserRepo = createMockUserRepository();
-    const mockServerRepo = createMockServerRepository();
-    const mockBanRepo = createMockBanRepository();
-    const mockServerMemberRepo = createMockServerMemberRepository();
+    const mockAuditLogRepo = createMockAuditLogRepository();
     const mockFriendshipRepo = createMockFriendshipRepository();
+    const mockWsServer = createMockWsServer();
+    const mockBanRepo = createMockBanRepository();
+    const mockServerRepo = createMockServerRepository();
+    const mockMessageRepo = createMockMessageRepository();
+    const mockWarningRepo = createMockWarningRepository();
+    const mockServerMemberRepo = createMockServerMemberRepository();
 
     const controller = new AdminController(
         mockUserRepo,
-        mockServerRepo,
-        mockBanRepo,
+        mockAuditLogRepo,
+        mockFriendshipRepo,
+        mockWsServer,
         mockLogger,
-        mockServerMemberRepo,
-        mockFriendshipRepo
+        mockBanRepo,
+        mockServerRepo,
+        mockMessageRepo,
+        mockWarningRepo,
+        mockServerMemberRepo
     );
 
     const userId = new Types.ObjectId().toString();
-    const testUser = createTestUser({ _id: userId, banner: 'old-banner.png' });
+    const testUser = createTestUser({ _id: new Types.ObjectId(userId), banner: 'old-banner.png' });
 
     mockUserRepo.findById = async () => testUser;
     mockUserRepo.update = async (id, data) => {
@@ -53,7 +65,7 @@ test('AdminController - resetUserProfile resets banner', async () => {
     const result = await controller.resetUserProfile(userId, { fields: ['banner'] }, mockReq);
 
     assert.equal(mockUserRepo.calls.update.length, 1);
-    assert.equal(mockUserRepo.calls.update[0].id, userId);
+    assert.equal(mockUserRepo.calls.update[0].id.toString(), userId);
     assert.strictEqual(mockUserRepo.calls.update[0].data.banner, null);
     assert.equal(result.message, 'User profile fields reset');
 });

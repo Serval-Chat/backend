@@ -17,6 +17,7 @@ import {
     InternalServerErrorException,
     StreamableFile,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -26,7 +27,7 @@ import {
     ApiBody,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
     IWebhookRepository,
@@ -72,25 +73,18 @@ export class WebhookController {
     );
 
     constructor(
-        @inject(TYPES.WebhookRepository)
         @Inject(TYPES.WebhookRepository)
         private webhookRepo: IWebhookRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-        @inject(TYPES.ServerMessageRepository)
         @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
-        @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: IWsServer,
     ) {
@@ -114,9 +108,12 @@ export class WebhookController {
         @Req() req: ExpressRequest,
     ): Promise<Record<string, unknown>[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const channelOid = new Types.ObjectId(channelId);
+        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
@@ -124,8 +121,8 @@ export class WebhookController {
 
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageWebhooks',
             ))
         ) {
@@ -133,14 +130,14 @@ export class WebhookController {
         }
 
         const channel = await this.channelRepo.findByIdAndServer(
-            channelId,
-            serverId,
+            channelOid,
+            serverOid,
         );
         if (!channel) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const webhooks = await this.webhookRepo.findByChannelId(channelId);
+        const webhooks = await this.webhookRepo.findByChannelId(channelOid);
         return webhooks.map((w) => ({
             _id: w._id,
             name: w.name,
@@ -166,11 +163,13 @@ export class WebhookController {
     ): Promise<IWebhook> {
         const user = (req as ExpressRequest & { user: JWTPayload }).user;
         const userId = user.id;
-        const username = user.username;
+        const serverOid = new Types.ObjectId(serverId);
+        const channelOid = new Types.ObjectId(channelId);
+        const userOid = new Types.ObjectId(userId);
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
@@ -178,8 +177,8 @@ export class WebhookController {
 
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageWebhooks',
             ))
         ) {
@@ -187,8 +186,8 @@ export class WebhookController {
         }
 
         const channel = await this.channelRepo.findByIdAndServer(
-            channelId,
-            serverId,
+            channelOid,
+            serverOid,
         );
         if (!channel) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
@@ -205,12 +204,12 @@ export class WebhookController {
         } while (await this.webhookRepo.findByToken(token));
 
         const webhook = await this.webhookRepo.create({
-            serverId,
-            channelId,
+            serverId: serverOid,
+            channelId: channelOid,
             name: body.name.trim(),
             token,
             avatarUrl: body.avatarUrl?.trim() || undefined,
-            createdBy: username,
+            createdBy: userOid,
         });
 
         return webhook;
@@ -231,9 +230,13 @@ export class WebhookController {
         @Req() req: ExpressRequest,
     ): Promise<{ message: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const channelOid = new Types.ObjectId(channelId);
+        const userOid = new Types.ObjectId(userId);
+        const webhookOid = new Types.ObjectId(webhookId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
@@ -241,24 +244,24 @@ export class WebhookController {
 
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageWebhooks',
             ))
         ) {
             throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
         }
 
-        const webhook = await this.webhookRepo.findById(webhookId);
+        const webhook = await this.webhookRepo.findById(webhookOid);
         if (
             !webhook ||
-            webhook.serverId.toString() !== serverId ||
-            webhook.channelId.toString() !== channelId
+            !webhook.serverId.equals(serverOid) ||
+            !webhook.channelId.equals(channelOid)
         ) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        await this.webhookRepo.delete(webhookId);
+        await this.webhookRepo.delete(webhookOid);
 
         return { message: 'Webhook deleted successfully' };
     }
@@ -291,25 +294,30 @@ export class WebhookController {
         @UploadedFile() avatar: Express.Multer.File,
     ): Promise<{ avatarUrl: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const channelOid = new Types.ObjectId(channelId);
+        const userOid = new Types.ObjectId(userId);
+        const webhookOid = new Types.ObjectId(webhookId);
+
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         const canManage = await this.permissionService.hasPermission(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
             'manageWebhooks',
         );
 
-        const webhook = await this.webhookRepo.findById(webhookId);
+        const webhook = await this.webhookRepo.findById(webhookOid);
         if (
             !webhook ||
-            webhook.serverId.toString() !== serverId ||
-            webhook.channelId.toString() !== channelId
+            !webhook.serverId.equals(serverOid) ||
+            !webhook.channelId.equals(channelOid)
         ) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
@@ -345,7 +353,7 @@ export class WebhookController {
         }
 
         const avatarUrl = `/api/v1/webhooks/avatar/${filename}`;
-        await this.webhookRepo.update(webhookId, { avatarUrl });
+        await this.webhookRepo.update(webhookOid, { avatarUrl });
 
         return { avatarUrl };
     }
@@ -416,10 +424,8 @@ export class WebhookController {
         );
 
         const message = await this.serverMessageRepo.create({
-            serverId: new mongoose.Types.ObjectId(webhook.serverId.toString()),
-            channelId: new mongoose.Types.ObjectId(
-                webhook.channelId.toString(),
-            ),
+            serverId: webhook.serverId,
+            channelId: webhook.channelId,
             senderId: webhookSystemUserId,
             text: content,
             isWebhook: true,
@@ -427,9 +433,7 @@ export class WebhookController {
             webhookAvatarUrl: webhookAvatarUrl || undefined,
         });
 
-        await this.channelRepo.updateLastMessageAt(
-            webhook.channelId.toString(),
-        );
+        await this.channelRepo.updateLastMessageAt(webhook.channelId);
         messagesSentCounter.labels('webhook').inc();
         websocketMessagesCounter.labels('server_message', 'outbound').inc();
 

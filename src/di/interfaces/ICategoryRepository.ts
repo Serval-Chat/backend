@@ -5,8 +5,8 @@ import type { Types } from 'mongoose';
 // Categories group channels together and can provide default permission
 // Overrides for all channels within them
 export interface ICategory {
-    _id: Types.ObjectId | string;
-    serverId: Types.ObjectId | string;
+    _id: Types.ObjectId;
+    serverId: Types.ObjectId;
     name: string;
     position: number;
     // Role-based permission overrides for the category
@@ -29,7 +29,7 @@ export interface ICategory {
 
 // Category creation DTO
 export interface CreateCategoryDTO {
-    serverId: string;
+    serverId: Types.ObjectId;
     name: string;
     position: number;
     permissions?: {
@@ -53,34 +53,45 @@ export interface CreateCategoryDTO {
 // Encapsulates category operations
 export interface ICategoryRepository {
     // Find category by ID
-    findById(id: string): Promise<ICategory | null>;
+    findById(id: Types.ObjectId): Promise<ICategory | null>;
 
     // Find category by ID and Server ID
-    findByIdAndServer(id: string, serverId: string): Promise<ICategory | null>;
+    findByIdAndServer(
+        id: Types.ObjectId,
+        serverId: Types.ObjectId,
+    ): Promise<ICategory | null>;
 
     // Find all categories for a server
-    findByServerId(serverId: string): Promise<ICategory[]>;
+    findByServerId(serverId: Types.ObjectId): Promise<ICategory[]>;
 
     // Find category with maximum position for a server
-    findMaxPositionByServerId(serverId: string): Promise<ICategory | null>;
+    findMaxPositionByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<ICategory | null>;
 
     // Create a new category
     create(data: CreateCategoryDTO): Promise<ICategory>;
 
     // Update category by ID
-    update(id: string, data: Partial<ICategory>): Promise<ICategory | null>;
+    update(
+        id: Types.ObjectId,
+        data: Partial<ICategory>,
+    ): Promise<ICategory | null>;
 
     // Delete category by ID
-    delete(id: string): Promise<boolean>;
+    delete(id: Types.ObjectId): Promise<boolean>;
 
     // Update category position
-    updatePosition(id: string, position: number): Promise<ICategory | null>;
+    updatePosition(
+        id: Types.ObjectId,
+        position: number,
+    ): Promise<ICategory | null>;
 
     // Delete all categories for a server (bulk delete)
-    deleteByServerId(serverId: string): Promise<number>;
+    deleteByServerId(serverId: Types.ObjectId): Promise<number>;
 
     // Update category positions (bulk reorder)
     updatePositions(
-        updates: { id: string; position: number }[],
+        updates: { id: Types.ObjectId; position: number }[],
     ): Promise<boolean>;
 }

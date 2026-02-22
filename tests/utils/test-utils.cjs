@@ -31,7 +31,14 @@ function createMockUserRepository() {
         update: [],
         incrementTokenVersion: [],
         updateBanner: [],
-        updateProfilePicture: []
+        updateProfilePicture: [],
+        count: [],
+        countCreatedAfter: [],
+        findMany: [],
+        updatePermissions: [],
+        hardDelete: [],
+        findByUsername: [],
+        findByLogin: []
     };
 
     return {
@@ -68,6 +75,24 @@ function createMockUserRepository() {
         },
         updateProfilePicture: async (id, filename) => {
             calls.updateProfilePicture.push({ id, filename });
+        },
+        count: async () => {
+            calls.count.push(true);
+            return 0;
+        },
+        countCreatedAfter: async (date) => {
+            calls.countCreatedAfter.push(date);
+            return 0;
+        },
+        findMany: async (options) => {
+            calls.findMany.push(options);
+            return [];
+        },
+        updatePermissions: async (id, permissions) => {
+            calls.updatePermissions.push({ id, permissions });
+        },
+        hardDelete: async (id) => {
+            calls.hardDelete.push(id);
         }
     };
 }
@@ -450,13 +475,18 @@ function createMockRoleRepository() {
         findByServerId: [],
         create: [],
         update: [],
-        delete: []
+        delete: [],
+        findEveryoneRole: [],
+        findByServerIdAndName: [],
+        updatePosition: [],
+        deleteByServerId: [],
+        findMaxPositionByServerId: []
     };
 
     return {
         calls,
         findById: async (id) => {
-            calls.findById.push(id);
+            calls.findById.push(id.toString());
             return null;
         },
         findByServerId: async (serverId) => {
@@ -474,6 +504,26 @@ function createMockRoleRepository() {
         delete: async (id) => {
             calls.delete.push(id);
             return true;
+        },
+        findEveryoneRole: async (serverId) => {
+            calls.findEveryoneRole.push(serverId);
+            return null;
+        },
+        findByServerIdAndName: async (serverId, name) => {
+            calls.findByServerIdAndName.push({ serverId, name });
+            return null;
+        },
+        updatePosition: async (id, position) => {
+            calls.updatePosition.push({ id, position });
+            return null;
+        },
+        deleteByServerId: async (serverId) => {
+            calls.deleteByServerId.push(serverId);
+            return 0;
+        },
+        findMaxPositionByServerId: async (serverId) => {
+            calls.findMaxPositionByServerId.push(serverId);
+            return null;
         }
     };
 }
@@ -486,7 +536,10 @@ function createMockServerMemberRepository() {
         findByServerAndUser: [],
         findByServer: [],
         create: [],
+        create: [],
         delete: [],
+        deleteById: [],
+        findAllByUserId: [],
         findServerIdsByUserId: []
     };
 
@@ -507,6 +560,14 @@ function createMockServerMemberRepository() {
         delete: async (serverId, userId) => {
             calls.delete.push({ serverId, userId });
             return true;
+        },
+        deleteById: async (id) => {
+            calls.deleteById.push(id);
+            return true;
+        },
+        findAllByUserId: async (userId) => {
+            calls.findAllByUserId.push(userId);
+            return [];
         },
         findServerIdsByUserId: async (userId) => {
             calls.findServerIdsByUserId.push(userId);
@@ -926,6 +987,117 @@ function createTestEmoji(overrides = {}) {
     };
 }
 
+/**
+ * Create a mock audit log repository
+ */
+function createMockAuditLogRepository() {
+    const calls = {
+        create: [],
+        findMany: [],
+        count: []
+    };
+
+    return {
+        calls,
+        create: async (data) => {
+            calls.create.push(data);
+            return null;
+        },
+        findMany: async (options) => {
+            calls.findMany.push(options);
+            return [];
+        },
+        count: async (options) => {
+            calls.count.push(options);
+            return 0;
+        }
+    };
+}
+
+/**
+ * Create a mock WebSocket server
+ */
+function createMockWsServer() {
+    const calls = {
+        broadcastToAll: [],
+        broadcastToUser: [],
+        broadcastToServer: [],
+        broadcastPresence: [],
+        getUserSockets: [],
+        closeConnection: [],
+        getAllOnlineUsers: [],
+        isUserOnline: []
+    };
+
+    return {
+        calls,
+        broadcastToAll: (event) => {
+            calls.broadcastToAll.push(event);
+        },
+        broadcastToUser: (userId, event) => {
+            calls.broadcastToUser.push({ userId, event });
+        },
+        broadcastToServer: (serverId, event) => {
+            calls.broadcastToServer.push({ serverId, event });
+        },
+        broadcastPresence: (userId, event) => {
+            calls.broadcastPresence.push({ userId, event });
+        },
+        getUserSockets: (userId) => {
+            calls.getUserSockets.push(userId);
+            return [];
+        },
+        closeConnection: (socket, code, reason) => {
+            calls.closeConnection.push({ socket, code, reason });
+        },
+        getAllOnlineUsers: () => {
+            calls.getAllOnlineUsers.push(true);
+            return [];
+        },
+        isUserOnline: (userId) => {
+            calls.isUserOnline.push(userId);
+            return false;
+        }
+    };
+}
+
+/**
+ * Create a mock warning repository
+ */
+function createMockWarningRepository() {
+    const calls = {
+        create: [],
+        findByUserId: [],
+        countByUserId: [],
+        deleteById: [],
+        deleteAllForUser: []
+    };
+
+    return {
+        calls,
+        create: async (data) => {
+            calls.create.push(data);
+            return null;
+        },
+        findByUserId: async (userId, limit, offset) => {
+            calls.findByUserId.push({ userId, limit, offset });
+            return [];
+        },
+        countByUserId: async (userId) => {
+            calls.countByUserId.push(userId);
+            return 0;
+        },
+        deleteById: async (id) => {
+            calls.deleteById.push(id);
+            return true;
+        },
+        deleteAllForUser: async (userId) => {
+            calls.deleteAllForUser.push(userId);
+            return 0;
+        }
+    };
+}
+
 module.exports = {
     createMockLogger,
     createMockUserRepository,
@@ -942,6 +1114,9 @@ module.exports = {
     createMockServerMessageRepository,
     createMockWebhookRepository,
     createMockEmojiRepository,
+    createMockAuditLogRepository,
+    createMockWsServer,
+    createMockWarningRepository,
     createMockRequest,
     createMockResponse,
     createMockNext,

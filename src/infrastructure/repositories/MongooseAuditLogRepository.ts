@@ -12,20 +12,18 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseAuditLogRepository implements IAuditLogRepository {
     private auditLogModel = AuditLog;
-    constructor() {}
+    constructor() { }
 
     async create(data: {
-        actorId: string;
+        actorId: Types.ObjectId;
         actionType: string;
-        targetUserId?: string;
+        targetUserId?: Types.ObjectId;
         additionalData?: Record<string, unknown>;
     }): Promise<IAuditLog> {
         const auditLog = new this.auditLogModel({
-            actorId: new Types.ObjectId(data.actorId),
+            actorId: data.actorId,
             actionType: data.actionType,
-            targetUserId: data.targetUserId
-                ? new Types.ObjectId(data.targetUserId)
-                : undefined,
+            targetUserId: data.targetUserId,
             additionalData: data.additionalData,
             timestamp: new Date(),
         });
@@ -37,16 +35,16 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     async find(options: {
         limit?: number;
         offset?: number;
-        actorId?: string;
+        actorId?: Types.ObjectId;
         actionType?: string;
-        targetUserId?: string;
+        targetUserId?: Types.ObjectId;
         startDate?: Date;
         endDate?: Date;
     }): Promise<IAuditLog[]> {
         const query: FilterQuery<IAuditLog> = {};
 
         if (options.actorId) {
-            query.actorId = new Types.ObjectId(options.actorId);
+            query.actorId = options.actorId;
         }
 
         if (options.actionType) {
@@ -54,7 +52,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         }
 
         if (options.targetUserId) {
-            query.targetUserId = new Types.ObjectId(options.targetUserId);
+            query.targetUserId = options.targetUserId;
         }
 
         if (options.startDate || options.endDate) {
@@ -80,7 +78,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         return results as unknown as IAuditLog[];
     }
 
-    async findById(id: string): Promise<IAuditLog | null> {
+    async findById(id: Types.ObjectId): Promise<IAuditLog | null> {
         const result = await this.auditLogModel
             .findById(id)
             .populate('actorId', 'username')
@@ -92,16 +90,16 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }
 
     async count(options: {
-        actorId?: string;
+        actorId?: Types.ObjectId;
         actionType?: string;
-        targetUserId?: string;
+        targetUserId?: Types.ObjectId;
         startDate?: Date;
         endDate?: Date;
     }): Promise<number> {
         const query: FilterQuery<IAuditLog> = {};
 
         if (options.actorId) {
-            query.actorId = new Types.ObjectId(options.actorId);
+            query.actorId = options.actorId;
         }
 
         if (options.actionType) {
@@ -109,7 +107,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         }
 
         if (options.targetUserId) {
-            query.targetUserId = new Types.ObjectId(options.targetUserId);
+            query.targetUserId = options.targetUserId;
         }
 
         if (options.startDate || options.endDate) {

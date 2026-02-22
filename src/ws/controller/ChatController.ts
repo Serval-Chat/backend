@@ -37,6 +37,7 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 import logger from '@/utils/logger';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
+import { Types } from 'mongoose';
 
 /**
  * Controller for handling direct message events
@@ -56,7 +57,7 @@ export class ChatController {
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
-    ) {}
+    ) { }
 
     /**
      * Handles 'send_message_dm' event.
@@ -79,14 +80,14 @@ export class ChatController {
         const { receiverId, text, replyToId } = payload;
         const senderId = authenticatedUser.userId;
 
-        const receiverUser = await this.userRepo.findById(receiverId);
+        const receiverUser = await this.userRepo.findById(new Types.ObjectId(receiverId));
         if (!receiverUser) {
             throw new Error('NOT_FOUND: Receiver not found');
         }
 
         const receiverUsername = receiverUser.username || '';
 
-        if (!(await this.friendshipRepo.areFriends(senderId, receiverId))) {
+        if (!(await this.friendshipRepo.areFriends(new Types.ObjectId(senderId), new Types.ObjectId(receiverId)))) {
             throw new Error('FORBIDDEN: Not friends with receiver');
         }
 
@@ -96,17 +97,19 @@ export class ChatController {
 
         let repliedToMessage = null;
         if (replyToId) {
-            repliedToMessage = await this.messageRepo.findById(replyToId);
+            repliedToMessage = await this.messageRepo.findById(new Types.ObjectId(replyToId));
         }
 
         const { created, newCount } =
             await this.transactionManager.runInTransaction(async (session) => {
                 const msg = await this.messageRepo.create(
                     {
-                        senderId,
-                        receiverId,
+                        senderId: new Types.ObjectId(senderId),
+                        receiverId: new Types.ObjectId(receiverId),
                         text,
-                        ...(replyToId ? { replyToId } : {}),
+                        ...(replyToId
+                            ? { replyToId: new Types.ObjectId(replyToId) }
+                            : {}),
                     },
                     session,
                 );
@@ -116,8 +119,8 @@ export class ChatController {
                 );
 
                 const count = await this.dmUnreadRepo.increment(
-                    receiverId,
-                    senderId,
+                    new Types.ObjectId(receiverId),
+                    new Types.ObjectId(senderId),
                     session,
                 );
 
@@ -133,14 +136,14 @@ export class ChatController {
             text: created.text,
             createdAt:
                 created.createdAt?.toISOString() || new Date().toISOString(),
-            replyToId: created.replyToId,
+            replyToId: created.replyToId?.toString(),
             repliedTo: repliedToMessage
                 ? {
-                      messageId: repliedToMessage._id.toString(),
-                      senderId: repliedToMessage.senderId.toString(),
-                      senderUsername: '', // Will be populated in broadcast
-                      text: repliedToMessage.text,
-                  }
+                    messageId: repliedToMessage._id.toString(),
+                    senderId: repliedToMessage.senderId.toString(),
+                    senderUsername: '', // Will be populated in broadcast
+                    text: repliedToMessage.text,
+                }
                 : undefined,
             isEdited: false,
         };
@@ -178,13 +181,13 @@ export class ChatController {
             text: created.text,
             createdAt:
                 created.createdAt?.toISOString() || new Date().toISOString(),
-            replyToId: created.replyToId,
+            replyToId: created.replyToId?.toString(),
             repliedTo: repliedToMessage
                 ? {
-                      messageId: repliedToMessage._id.toString(),
-                      senderId: repliedToMessage.senderId.toString(),
-                      text: repliedToMessage.text,
-                  }
+                    messageId: repliedToMessage._id.toString(),
+                    senderId: repliedToMessage.senderId.toString(),
+                    text: repliedToMessage.text,
+                }
                 : undefined,
         };
     }
@@ -207,7 +210,7 @@ export class ChatController {
         const { messageId, text } = payload;
         const userId = authenticatedUser.userId;
 
-        const message = await this.messageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
         if (!message) {
             throw new Error('NOT_FOUND: Message not found');
         }
@@ -216,7 +219,7 @@ export class ChatController {
             throw new Error('FORBIDDEN: Can only edit your own messages');
         }
 
-        const updated = await this.messageRepo.update(messageId, text);
+        const updated = await this.messageRepo.update(new Types.ObjectId(messageId), text);
         if (!updated) {
             throw new Error('INTERNAL_ERROR: Failed to update message');
         }
@@ -272,7 +275,7 @@ export class ChatController {
         const { messageId } = payload;
         const userId = authenticatedUser.userId;
 
-        const message = await this.messageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
         if (!message) {
             throw new Error('NOT_FOUND: Message not found');
         }
@@ -281,7 +284,7 @@ export class ChatController {
             throw new Error('FORBIDDEN: Can only delete your own messages');
         }
 
-        await this.messageRepo.delete(messageId);
+        await this.messageRepo.delete(new Types.ObjectId(messageId));
 
         logger.info(
             `[ChatController] DM message ${messageId} deleted by ${userId}`,
@@ -328,10 +331,10 @@ export class ChatController {
         const userId = authenticatedUser.userId;
 
         // Reset unread count
-        await this.dmUnreadRepo.reset(userId, peerId);
+        await this.dmUnreadRepo.reset(new Types.ObjectId(userId), new Types.ObjectId(peerId));
 
         // Get peer username for broadcast
-        const peerUser = await this.userRepo.findById(peerId);
+        const peerUser = await this.userRepo.findById(new Types.ObjectId(peerId));
         const peerUsername = peerUser?.username || '';
 
         logger.debug(
@@ -371,7 +374,7 @@ export class ChatController {
         const { receiverId } = payload;
         const senderId = authenticatedUser.userId;
 
-        if (!(await this.friendshipRepo.areFriends(senderId, receiverId))) {
+        if (!(await this.friendshipRepo.areFriends(new Types.ObjectId(senderId), new Types.ObjectId(receiverId)))) {
             return;
         }
 

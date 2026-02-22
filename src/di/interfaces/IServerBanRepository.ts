@@ -5,20 +5,20 @@ import type { MappedUser } from '@/utils/user';
 //
 // Represents a user who has been banned from a specific server
 export interface IServerBan {
-    _id: Types.ObjectId | string;
-    serverId: Types.ObjectId | string;
-    userId: Types.ObjectId | string;
+    _id: Types.ObjectId;
+    serverId: Types.ObjectId;
+    userId: Types.ObjectId;
     // The administrator who issued the ban
-    bannedBy: Types.ObjectId | string;
+    bannedBy: Types.ObjectId;
     reason?: string;
     createdAt: Date;
 }
 
 // Server Ban creation DTO
 export interface CreateServerBanDTO {
-    serverId: string;
-    userId: string;
-    bannedBy: string | Types.ObjectId;
+    serverId: Types.ObjectId;
+    userId: Types.ObjectId;
+    bannedBy: Types.ObjectId;
     reason?: string;
 }
 
@@ -28,27 +28,27 @@ export interface CreateServerBanDTO {
 export interface IServerBanRepository {
     // Find ban by server and user
     findByServerAndUser(
-        serverId: string,
-        userId: string,
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
     ): Promise<IServerBan | null>;
 
     // Find all bans for a server
-    findByServerId(serverId: string): Promise<IServerBan[]>;
+    findByServerId(serverId: Types.ObjectId): Promise<IServerBan[]>;
 
     // Find all bans for a server with user info populated
     findByServerIdWithUserInfo(
-        serverId: string,
+        serverId: Types.ObjectId,
     ): Promise<(IServerBan & { user: MappedUser | null })[]>;
 
     // Create a new server ban
     create(data: CreateServerBanDTO): Promise<IServerBan>;
 
     // Delete ban by ID
-    delete(id: string): Promise<boolean>;
+    delete(id: Types.ObjectId): Promise<boolean>;
 
     // Delete all bans for a server (bulk delete)
-    deleteByServerId(serverId: string): Promise<number>;
+    deleteByServerId(serverId: Types.ObjectId): Promise<number>;
 
     // Unban user from server
-    unban(serverId: string, userId: string): Promise<boolean>;
+    unban(serverId: Types.ObjectId, userId: Types.ObjectId): Promise<boolean>;
 }

@@ -10,6 +10,7 @@ import {
     HttpCode,
     HttpStatus,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { AuthService } from '@/services/AuthService';
@@ -51,7 +52,7 @@ import {
     PasswordResetConfirmDTO,
 } from './dto/auth.request.dto';
 
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 
 // Controller for user authentication and account management
 // Handles login, registration, and credential updates
@@ -60,14 +61,12 @@ import { injectable, inject } from 'inversify';
 @Controller('api/v1/auth')
 export class AuthController {
     constructor(
-        @inject(TYPES.Logger) @Inject(TYPES.Logger) private logger: ILogger,
-        @inject(TYPES.AuthService)
+        @Inject(TYPES.Logger) private logger: ILogger,
         @Inject(TYPES.AuthService)
         private authService: AuthService,
-        @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-    ) {}
+    ) { }
 
     // Authenticates a user and returns a JWT
     @Post('login')
@@ -141,7 +140,6 @@ export class AuthController {
 
         let tokens: string[];
         try {
-            // Read valid invite tokens from tokens.txt; failure blocks registration
             const file = fs.readFileSync(path.join('tokens.txt'), 'utf-8');
             tokens = file
                 .split(/\r?\n/)
@@ -217,9 +215,10 @@ export class AuthController {
         @Body() body: ChangeLoginRequestDTO,
     ): Promise<ChangeLoginResponseDTO> {
         const userId = (req as unknown as RequestWithUser).user.id;
+        const userOid = new Types.ObjectId(userId);
         const { newLogin, password } = body;
 
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -229,7 +228,7 @@ export class AuthController {
         }
 
         const passwordValid = await this.userRepo.comparePassword(
-            userId,
+            userOid,
             password,
         );
         if (!passwordValid) {
@@ -241,9 +240,9 @@ export class AuthController {
             throw new ApiError(409, ErrorMessages.AUTH.LOGIN_TAKEN);
         }
 
-        await this.userRepo.updateLogin(userId, newLogin);
+        await this.userRepo.updateLogin(userOid, newLogin);
 
-        const updatedUser = await this.userRepo.findById(userId);
+        const updatedUser = await this.userRepo.findById(userOid);
         if (!updatedUser) {
             throw new ApiError(
                 500,
@@ -278,19 +277,20 @@ export class AuthController {
         @Body() body: ChangePasswordRequestDTO,
     ): Promise<ChangePasswordResponseDTO> {
         const userId = (req as unknown as RequestWithUser).user.id;
+        const userOid = new Types.ObjectId(userId);
         const { currentPassword, newPassword } = body;
 
         if (newPassword === currentPassword) {
             throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_SAME);
         }
 
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const passwordValid = await this.userRepo.comparePassword(
-            userId,
+            userOid,
             currentPassword,
         );
         if (!passwordValid) {
@@ -300,7 +300,7 @@ export class AuthController {
             );
         }
 
-        await this.userRepo.updatePassword(userId, newPassword);
+        await this.userRepo.updatePassword(userOid, newPassword);
 
         const token = generateJWT({
             id: user._id.toString(),

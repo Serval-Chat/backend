@@ -13,6 +13,7 @@ import {
     HttpCode,
     NotFoundException,
     BadRequestException,
+    ForbiddenException,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -42,15 +43,13 @@ import type {
 import { Badge } from '@/models/Badge';
 import { Ban } from '@/models/Ban';
 import { ServerBan } from '@/models/Server';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import {
     generateAnonymizedUsername,
     DELETED_AVATAR_PATH,
     deleteAvatarFile,
 } from '@/utils/deletion';
-import type { Request as ExpressRequest } from 'express';
 import { DashBoardStatsDTO } from './dto/admin-dashboard-stats.response.dto';
-import { JWTPayload } from '@/utils/jwt';
 import { AdminPermissions, ProfileFieldDTO } from './dto/common.request.dto';
 import {
     AdminUserListItemDTO,
@@ -97,7 +96,8 @@ import { AdminListUsersRequestDTO } from './dto/admin-list-users.request.dto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Permissions } from '@/modules/auth/permissions.decorator';
 
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
+import { AuthenticatedRequest } from '@/middleware/auth';
 
 // Controller for administrative actions and dashboard statistics
 @ApiTags('Admin')
@@ -107,37 +107,27 @@ import { injectable, inject } from 'inversify';
 @Controller('api/v1/admin')
 export class AdminController {
     constructor(
-        @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-        @inject(TYPES.AuditLogRepository)
         @Inject(TYPES.AuditLogRepository)
         private auditLogRepo: IAuditLogRepository,
-        @inject(TYPES.FriendshipRepository)
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: IWsServer,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.BanRepository)
         @Inject(TYPES.BanRepository)
         private banRepo: IBanRepository,
-        @inject(TYPES.ServerRepository)
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
-        @inject(TYPES.MessageRepository)
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
-        @inject(TYPES.WarningRepository)
         @Inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) {}
+    ) { }
 
     @Get('stats')
     @Permissions('viewLogs')
@@ -210,10 +200,10 @@ export class AdminController {
         const enrichedUsers = await Promise.all(
             users.map(async (user) => {
                 const activeBan = await this.banRepo.findActiveByUserId(
-                    user._id.toString(),
+                    user._id,
                 );
                 const warningCount = await this.warningRepo.countByUserId(
-                    user._id.toString(),
+                    user._id,
                 );
                 const item = new AdminUserListItemDTO();
                 item._id = user._id.toString();
@@ -263,21 +253,22 @@ export class AdminController {
     @ApiResponse({ status: 404, description: 'User not found' })
     public async getUserDetails(
         @Path('userId') userId: string,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminUserDetailsDTO> {
-        const user = await this.userRepo.findById(userId);
+        const userOid = new Types.ObjectId(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             this.logger.warn(
-                `Admin ${(req as ExpressRequest & { user?: JWTPayload }).user?.login} tried to view non-existent user ${userId}`,
+                `Admin ${req.user.login} tried to view non-existent user ${userId}`,
             );
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         this.logger.info(
-            `Admin ${(req as ExpressRequest & { user?: JWTPayload }).user?.login} viewed user details for ${userId}`,
+            `Admin ${req.user.login} viewed user details for ${userId}`,
         );
-        const activeBan = await this.banRepo.findActiveByUserId(userId);
-        const warningCount = await this.warningRepo.countByUserId(userId);
+        const activeBan = await this.banRepo.findActiveByUserId(userOid);
+        const warningCount = await this.warningRepo.countByUserId(userOid);
 
         let badges: unknown[] = [];
         if (user.badges && user.badges.length > 0) {
@@ -319,10 +310,11 @@ export class AdminController {
     public async resetUserProfile(
         @Path('userId') userId: string,
         @Body() requestBody: AdminResetProfileRequestDTO,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminResetProfileResponseDTO> {
         const { fields } = requestBody;
-        const user = await this.userRepo.findById(userId);
+        const userOid = new Types.ObjectId(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -343,7 +335,7 @@ export class AdminController {
         if (fields.includes(ProfileFieldDTO.BIO)) updateData.bio = '';
         if (fields.includes(ProfileFieldDTO.BANNER)) updateData.banner = null;
 
-        await this.userRepo.update(userId, updateData);
+        await this.userRepo.update(userOid, updateData);
 
         await this.logAdminAction(req, 'reset_user_profile', userId, {
             fields,
@@ -351,7 +343,7 @@ export class AdminController {
 
         if (usernameChanged) {
             try {
-                const updatedUser = await this.userRepo.findById(userId);
+                const updatedUser = await this.userRepo.findById(userOid);
 
                 const event: IUserUpdatedEvent = {
                     type: 'user_updated',
@@ -395,7 +387,7 @@ export class AdminController {
 
     // Helper method to log admin actions to audit log
     private async logAdminAction(
-        req: ExpressRequest,
+        req: AuthenticatedRequest,
         actionType: string,
         targetUserId?: string,
         additionalData?: Record<string, unknown>,
@@ -416,21 +408,25 @@ export class AdminController {
                     safeData.fields = additionalData.fields;
             }
 
+            const actorId = req.user.id;
+
+            if (!actorId) {
+                throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
+            }
+
             const auditData: {
-                actorId: string;
+                actorId: Types.ObjectId;
                 actionType: string;
                 additionalData: Record<string, unknown>;
-                targetUserId?: string;
+                targetUserId?: Types.ObjectId;
             } = {
-                actorId:
-                    (req as ExpressRequest & { user?: JWTPayload }).user?.id ||
-                    'unknown',
+                actorId: new Types.ObjectId(actorId),
                 actionType,
                 additionalData: safeData,
             };
 
             if (targetUserId) {
-                auditData.targetUserId = targetUserId;
+                auditData.targetUserId = new Types.ObjectId(targetUserId);
             }
 
             await this.auditLogRepo.create(auditData);
@@ -450,11 +446,12 @@ export class AdminController {
     public async softDeleteUser(
         @Path('userId') userId: string,
         @Body() body: AdminSoftDeleteUserRequestDTO,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminSoftDeleteUserResponseDTO> {
         const { reason = 'No reason provided' } = body;
+        const userOid = new Types.ObjectId(userId);
 
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -471,7 +468,7 @@ export class AdminController {
         const anonymizedUsername =
             user.anonymizedUsername || generateAnonymizedUsername(userId);
 
-        await this.userRepo.update(userId, {
+        await this.userRepo.update(userOid, {
             deletedAt: new Date(),
             deletedReason: reason,
             profilePicture: DELETED_AVATAR_PATH,
@@ -484,13 +481,13 @@ export class AdminController {
             await deleteAvatarFile(oldAvatar);
         }
 
-        await this.friendshipRepo.deleteAllRequestsForUser(userId);
+        await this.friendshipRepo.deleteAllRequestsForUser(userOid);
 
         await this.logAdminAction(req, 'soft_delete_user', userId, {
             reason,
         });
 
-        const friendships = await this.friendshipRepo.findAllByUserId(userId);
+        const friendships = await this.friendshipRepo.findAllByUserId(userOid);
         const offlineFriends: string[] = [];
 
         const event: IUserUpdatedEvent = {
@@ -551,7 +548,7 @@ export class AdminController {
     public async deleteUser(
         @Path('userId') userId: string,
         @Body() body: AdminSoftDeleteUserRequestDTO,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminDeleteUserResponseDTO> {
         const result = await this.softDeleteUser(userId, body, req);
         const response = new AdminDeleteUserResponseDTO();
@@ -570,15 +567,16 @@ export class AdminController {
     public async hardDeleteUser(
         @Path('userId') userId: string,
         @Body() body: AdminSoftDeleteUserRequestDTO,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminHardDeleteUserResponseDTO> {
         const session = await mongoose.startSession();
         session.startTransaction();
 
         try {
             const { reason = 'No reason provided' } = body;
+            const userOid = new Types.ObjectId(userId);
 
-            const user = await this.userRepo.findById(userId);
+            const user = await this.userRepo.findById(userOid);
             if (!user) {
                 await session.abortTransaction();
                 throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
@@ -588,31 +586,31 @@ export class AdminController {
             const oldAvatar = user.profilePicture;
 
             const sentMessagesUpdated =
-                await this.messageRepo.updateManyBySenderId(userId, {
+                await this.messageRepo.updateManyBySenderId(userOid, {
                     senderDeleted: true,
                     anonymizedSender: 'Deleted User',
                 });
 
             const receivedMessagesUpdated =
-                await this.messageRepo.updateManyByReceiverId(userId, {
+                await this.messageRepo.updateManyByReceiverId(userOid, {
                     receiverDeleted: true,
                     anonymizedReceiver: 'Deleted User',
                 });
 
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userId);
+                await this.friendshipRepo.findAllByUserId(userOid);
 
-            await this.friendshipRepo.deleteAllForUser(userId);
-            await this.friendshipRepo.deleteAllRequestsForUser(userId);
-            await this.warningRepo.deleteAllForUser(userId);
-            await this.banRepo.deleteAllForUser(userId);
-            await this.userRepo.incrementTokenVersion(userId);
+            await this.friendshipRepo.deleteAllForUser(userOid);
+            await this.friendshipRepo.deleteAllRequestsForUser(userOid);
+            await this.warningRepo.deleteAllForUser(userOid);
+            await this.banRepo.deleteAllForUser(userOid);
+            await this.userRepo.incrementTokenVersion(userOid);
 
             if (oldAvatar && oldAvatar !== DELETED_AVATAR_PATH) {
                 await deleteAvatarFile(oldAvatar);
             }
 
-            await this.userRepo.hardDelete(userId);
+            await this.userRepo.hardDelete(userOid);
 
             await this.logAdminAction(req, 'hard_delete_user', userId, {
                 reason,
@@ -688,22 +686,21 @@ export class AdminController {
     public async updateUserPermissions(
         @Path('userId') userId: string,
         @Body() body: AdminUpdateUserPermissionsRequestDTO,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminUpdateUserPermissionsResponseDTO> {
         const { permissions } = body;
+        const userOid = new Types.ObjectId(userId);
 
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        if (
-            userId === (req as ExpressRequest & { user?: JWTPayload }).user?.id
-        ) {
+        if (userId === req.user.id) {
             throw new BadRequestException('Cannot modify your own permissions');
         }
 
-        await this.userRepo.updatePermissions(userId, permissions);
+        await this.userRepo.updatePermissions(userOid, permissions);
         await this.logAdminAction(req, 'update_permissions', userId, {
             permissions,
         });
@@ -723,24 +720,30 @@ export class AdminController {
     public async banUser(
         @Path('userId') userId: string,
         @Body() body: AdminBanUserRequestDTO,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminBanUserResponseDTO> {
         const { reason, duration } = body;
+        const userOid = new Types.ObjectId(userId);
 
-        const targetUser = await this.userRepo.findById(userId);
+        const targetUser = await this.userRepo.findById(userOid);
         if (!targetUser) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const expirationTimestamp = new Date(Date.now() + duration * 60 * 1000);
-        const issuedById =
-            (req as ExpressRequest & { user?: JWTPayload }).user?.id ||
-            'unknown';
+        const issuedByIdStr = req.user.id;
+        const issuedBy = issuedByIdStr
+            ? new Types.ObjectId(issuedByIdStr)
+            : undefined;
+
+        if (!issuedBy) {
+            throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
+        }
 
         const ban = await this.banRepo.createOrUpdateWithHistory({
-            userId,
+            userId: userOid,
             reason: reason.trim(),
-            issuedBy: issuedById,
+            issuedBy,
             expirationTimestamp,
         });
 
@@ -750,10 +753,10 @@ export class AdminController {
         });
 
         const serverMemberships =
-            await this.serverMemberRepo.findAllByUserId(userId);
+            await this.serverMemberRepo.findAllByUserId(userOid);
 
         for (const membership of serverMemberships) {
-            await this.serverMemberRepo.deleteById(membership._id.toString());
+            await this.serverMemberRepo.deleteById(membership._id);
 
             const event: IMemberRemovedEvent = {
                 type: 'member_removed',
@@ -798,9 +801,10 @@ export class AdminController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async unbanUser(
         @Path('userId') userId: string,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminUnbanUserResponseDTO> {
-        await this.banRepo.deactivateAllForUser(userId);
+        const userOid = new Types.ObjectId(userId);
+        await this.banRepo.deactivateAllForUser(userOid);
         await this.logAdminAction(req, 'unban_user', userId);
         const response = new AdminUnbanUserResponseDTO();
         response.message = 'User unbanned';
@@ -815,13 +819,18 @@ export class AdminController {
     public async getUserBanHistory(
         @Path('userId') userId: string,
     ): Promise<AdminUserBanHistoryResponseDTO> {
-        const ban = await this.banRepo.findByUserIdWithHistory(userId);
+        const userOid = new Types.ObjectId(userId);
+        const ban = await this.banRepo.findByUserIdWithHistory(userOid);
         if (!ban || !ban.history || ban.history.length === 0) {
             return [];
         }
 
+        const getIsActive = (index: number) =>
+            index === (ban.history as unknown[]).length - 1 &&
+            (ban.active || false);
+
         const historyWithStatus: AdminUserBanHistoryResponseDTO =
-            ban.history!.map((entry, index: number) => {
+            ban.history.map((entry, index: number) => {
                 const item = new AdminBanHistoryItemDTO();
                 const e = entry as Record<string, unknown>;
                 item._id = String(e._id || '');
@@ -830,8 +839,7 @@ export class AdminController {
                 item.expirationTimestamp =
                     (e.expirationTimestamp as Date) || new Date();
                 item.issuedBy = String(e.issuedBy || 'unknown');
-                item.active =
-                    index === ban.history!.length - 1 && (ban.active || false);
+                item.active = getIsActive(index);
                 return item;
             });
         return historyWithStatus;
@@ -886,15 +894,18 @@ export class AdminController {
     public async warnUser(
         @Path('userId') userId: string,
         @Body() body: AdminWarnUserRequestDTO,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminWarnUserResponseDTO> {
         const { message } = body;
+        const userOid = new Types.ObjectId(userId);
+        const issuedByIdStr = req.user.id;
+        if (!issuedByIdStr) {
+            throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
+        }
 
         const warning = await this.warningRepo.create({
-            userId,
-            issuedBy:
-                (req as ExpressRequest & { user?: JWTPayload }).user?.id ||
-                'unknown',
+            userId: userOid,
+            issuedBy: new Types.ObjectId(issuedByIdStr),
             message,
         });
 
@@ -902,8 +913,8 @@ export class AdminController {
             reason: message,
         });
 
-        const user = await this.userRepo.findById(userId);
-        if (user && this.wsServer.isUserOnline(userId)) {
+        const user = await this.userRepo.findById(userOid);
+        if (user && this.wsServer.isUserOnline(userOid.toString())) {
             const event: IWarningEvent = {
                 type: 'warning',
                 payload: {
@@ -916,7 +927,7 @@ export class AdminController {
                     acknowledgedAt: warning.acknowledgedAt,
                 },
             };
-            this.wsServer.broadcastToUser(userId, event);
+            this.wsServer.broadcastToUser(userOid.toString(), event);
         }
 
         const response = new AdminWarnUserResponseDTO();
@@ -936,7 +947,8 @@ export class AdminController {
     public async getUserWarnings(
         @Path('userId') userId: string,
     ): Promise<AdminUserWarningsResponseDTO> {
-        const warnings = await this.warningRepo.findByUserId(userId);
+        const userOid = new Types.ObjectId(userId);
+        const warnings = await this.warningRepo.findByUserId(userOid);
         return warnings.map((w) => {
             const dto = new AdminWarnUserResponseDTO();
             dto._id = w._id.toString();
@@ -987,9 +999,9 @@ export class AdminController {
         const logs = await this.auditLogRepo.find({
             limit: Number(query.limit ?? 100),
             offset: Number(query.offset ?? 0),
-            actorId: query.actorId,
+            actorId: query.actorId ? new Types.ObjectId(query.actorId) : undefined,
             actionType: query.actionType,
-            targetUserId: query.targetUserId,
+            targetUserId: query.targetUserId ? new Types.ObjectId(query.targetUserId) : undefined,
             startDate: query.startDate ? new Date(query.startDate) : undefined,
             endDate: query.endDate ? new Date(query.endDate) : undefined,
         });
@@ -1020,11 +1032,9 @@ export class AdminController {
 
         const enrichedServers = await Promise.all(
             servers.map(async (server) => {
-                const owner = owners.find(
-                    (u) => u._id.toString() === server.ownerId.toString(),
-                );
+                const owner = owners.find((u) => u._id.equals(server.ownerId));
                 const memberCount = await this.serverMemberRepo.countByServerId(
-                    server._id.toString(),
+                    server._id,
                 );
                 const item = new AdminServerListItemDTO();
                 item._id = server._id.toString();
@@ -1060,14 +1070,15 @@ export class AdminController {
     @ApiResponse({ status: 404, description: 'Server not found' })
     public async deleteServer(
         @Path('serverId') serverId: string,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminDeleteServerResponseDTO> {
-        const server = await this.serverRepo.findById(serverId, true);
+        const serverOid = new Types.ObjectId(serverId);
+        const server = await this.serverRepo.findById(serverOid, true);
         if (!server) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        await this.serverRepo.softDelete(serverId);
+        await this.serverRepo.softDelete(serverOid);
 
         const event: IServerDeletedEvent = {
             type: 'server_deleted',
@@ -1098,9 +1109,10 @@ export class AdminController {
     @ApiResponse({ status: 404, description: 'Server not found' })
     public async restoreServer(
         @Path('serverId') serverId: string,
-        @Request() req: ExpressRequest,
+        @Request() req: AuthenticatedRequest,
     ): Promise<AdminRestoreServerResponseDTO> {
-        const server = await this.serverRepo.findById(serverId, true);
+        const serverOid = new Types.ObjectId(serverId);
+        const server = await this.serverRepo.findById(serverOid, true);
 
         if (!server) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
@@ -1110,7 +1122,7 @@ export class AdminController {
             throw new BadRequestException(ErrorMessages.SERVER.NOT_DELETED);
         }
 
-        await this.serverRepo.restore(serverId);
+        await this.serverRepo.restore(serverOid);
 
         await this.logAdminAction(
             req,
@@ -1135,7 +1147,8 @@ export class AdminController {
     public async getExtendedUserDetails(
         @Path('userId') userId: string,
     ): Promise<AdminExtendedUserDetailsDTO> {
-        const user = await this.userRepo.findById(userId);
+        const userOid = new Types.ObjectId(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -1143,20 +1156,20 @@ export class AdminController {
         const profilePictureUrl = user.deletedAt
             ? '/images/deleted-cat.jpg'
             : user.profilePicture
-              ? `/api/v1/profile/picture/${user.profilePicture}`
-              : null;
+                ? `/api/v1/profile/picture/${user.profilePicture}`
+                : null;
 
-        const memberships = await this.serverMemberRepo.findByUserId(userId);
-        const serverIds = memberships.map((m) => m.serverId.toString());
+        const memberships = await this.serverMemberRepo.findByUserId(userOid);
+        const serverIds = memberships.map((m) => m.serverId);
         const servers = await this.serverRepo.findByIds(serverIds);
 
         const serverList = await Promise.all(
             servers.map(async (server) => {
-                const membership = memberships.find(
-                    (m) => m.serverId.toString() === server._id.toString(),
+                const membership = memberships.find((m) =>
+                    m.serverId.equals(server._id),
                 );
                 const memberCount = await this.serverMemberRepo.countByServerId(
-                    server._id.toString(),
+                    server._id,
                 );
                 return {
                     _id: server._id.toString(),
@@ -1170,13 +1183,13 @@ export class AdminController {
                     ownerId: server.ownerId.toString(),
                     memberCount,
                     joinedAt: membership?.joinedAt,
-                    isOwner: server.ownerId.toString() === userId,
+                    isOwner: server.ownerId.equals(userOid),
                 };
             }),
         );
 
-        const activeBan = await this.banRepo.findActiveByUserId(userId);
-        const warningCount = await this.warningRepo.countByUserId(userId);
+        const activeBan = await this.banRepo.findActiveByUserId(userOid);
+        const warningCount = await this.warningRepo.countByUserId(userOid);
 
         let badges: unknown[] = [];
         if (user.badges && user.badges.length > 0) {

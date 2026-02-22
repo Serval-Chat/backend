@@ -136,20 +136,27 @@ describe('WebSocket Protocol Master Suite', { timeout: 60000 }, function () {
 
         // TRANSFER OWNERSHIP (ownership_transferred)
         promise = waitForEvent(wsOwner, 'ownership_transferred');
-        await request(app)
+        const resTransfer = await request(app)
             .post(`/api/v1/servers/${server._id}/transfer-ownership`)
             .set('Authorization', `Bearer ${tokenOwner}`)
             .send({ newOwnerId: user._id.toString() });
+        console.log('Transfer ownership response:', resTransfer.status, resTransfer.body);
         event = await promise;
         assert.strictEqual(event.newOwnerId, user._id.toString());
+
+        const checkServer = await require('../../src/models/Server').Server.findById(server._id).lean();
+        console.log('DB server owner:', checkServer.ownerId.toString(), 'Expected User:', user._id.toString());
 
         // BAN (member_banned)
         const tokenNewOwner = generateAuthToken(user);
         promise = waitForEvent(wsOwner, 'member_banned');
-        await request(app)
+        const resBan = await request(app)
             .post(`/api/v1/servers/${server._id}/bans`)
             .set('Authorization', `Bearer ${tokenNewOwner}`)
             .send({ userId: owner._id.toString(), reason: 'Test Ban' });
+        console.log('Ban response:', resBan.status, resBan.body);
+        assert.ok(resBan.status === 200 || resBan.status === 201, `Ban failed: ${resBan.status} - ${JSON.stringify(resBan.body)}`);
+
         event = await promise;
         assert.strictEqual(event.userId, owner._id.toString());
 

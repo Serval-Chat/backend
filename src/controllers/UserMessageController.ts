@@ -20,7 +20,7 @@ import {
     ApiBearerAuth,
     ApiQuery,
 } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
@@ -44,6 +44,7 @@ import {
     MessageIdParamDTO,
     UserMessageParamsDTO,
 } from './dto/user-message.request.dto';
+import { Types } from 'mongoose';
 
 interface UnreadCountsResponse {
     counts: Record<string, number>;
@@ -67,25 +68,19 @@ interface MessageResponse {
 @ApiBearerAuth()
 export class UserMessageController {
     constructor(
-        @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-        @inject(TYPES.FriendshipRepository)
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-        @inject(TYPES.MessageRepository)
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
-        @inject(TYPES.DmUnreadRepository)
         @Inject(TYPES.DmUnreadRepository)
         private dmUnreadRepo: IDmUnreadRepository,
-        @inject(TYPES.ReactionRepository)
         @Inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     // Retrieves unread DM counts for the current user, grouped by peer
     @Get('unread')
@@ -95,7 +90,7 @@ export class UserMessageController {
         @Req() req: ExpressRequest,
     ): Promise<UnreadCountsResponse> {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const docs = await this.dmUnreadRepo.findByUser(meId);
+        const docs = await this.dmUnreadRepo.findByUser(new Types.ObjectId(meId));
 
         // Map unread count documents to a simple peerId -> count record
         const unreadCounts: Record<string, number> = {};
@@ -129,51 +124,50 @@ export class UserMessageController {
         @Query() query: GetMessagesQueryDTO,
     ): Promise<MessageWithReactions[]> {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const { userId, limit, before, around } = query;
+        const { userId, limit, before, around, after } = query;
 
-        const userDoc = await this.userRepo.findById(userId);
+        const userDoc = await this.userRepo.findById(new Types.ObjectId(userId));
         if (!userDoc) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         const otherUserId = userDoc._id.toString();
 
         // Only allow message retrieval if a friendship exists
-        if (!(await this.friendshipRepo.areFriends(meId, otherUserId))) {
+        if (!(await this.friendshipRepo.areFriends(new Types.ObjectId(meId), new Types.ObjectId(otherUserId)))) {
             throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
         // Enforce an upper limit to prevent excessive data retrieval
         const messageLimit = Math.min(limit, 500);
         // Fetch messages using cursor-based pagination (before / around)
+        // Repository already includes referenced_message from populate
         const msgs = await this.messageRepo.findByConversation(
-            meId,
-            otherUserId,
+            new Types.ObjectId(meId),
+            new Types.ObjectId(otherUserId),
             messageLimit,
             before,
             around,
+            after,
         );
 
         // Bulk fetch reactions for all retrieved messages to avoid N+1 query patterns
-        const messageIds = msgs.map((m) => m._id.toString());
+        const messageIds = msgs.map((m) => m._id);
         const reactionsMap = await this.reactionRepo.getReactionsForMessages(
             messageIds,
             'dm',
-            meId,
+            new Types.ObjectId(meId),
         );
 
-        const messagesWithReactions = msgs.map((msg) => {
-            const m = msg as unknown as Record<string, unknown>;
-            const msgObj = m.toObject
-                ? (m.toObject as () => Record<string, unknown>)()
-                : m;
-            return {
-                ...msgObj,
-                reactions:
-                    (reactionsMap as Record<string, unknown[]>)[
+        const messagesWithReactions = msgs.map(
+            (msg) =>
+                ({
+                    ...msg,
+                    reactions:
+                        (reactionsMap as Record<string, unknown[]>)[
                         msg._id.toString()
-                    ] || [],
-            } as MessageWithReactions;
-        });
+                        ] || [],
+                }) as MessageWithReactions,
+        );
 
         return messagesWithReactions;
     }
@@ -197,17 +191,17 @@ export class UserMessageController {
         const { id } = params;
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
-        const userDoc = await this.userRepo.findById(userId);
+        const userDoc = await this.userRepo.findById(new Types.ObjectId(userId));
         if (!userDoc) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         const otherUserId = userDoc._id.toString();
 
-        if (!(await this.friendshipRepo.areFriends(meId, otherUserId))) {
+        if (!(await this.friendshipRepo.areFriends(new Types.ObjectId(meId), new Types.ObjectId(otherUserId)))) {
             throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
-        const targetMessage = await this.messageRepo.findById(id);
+        const targetMessage = await this.messageRepo.findById(new Types.ObjectId(id));
         if (!targetMessage) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -228,7 +222,7 @@ export class UserMessageController {
         let repliedMessage = null;
         if (targetMessage.replyToId) {
             repliedMessage = await this.messageRepo.findById(
-                targetMessage.replyToId.toString(),
+                targetMessage.replyToId,
             );
         }
 
@@ -253,7 +247,7 @@ export class UserMessageController {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         // Ensure users are friends before allowing message access
-        if (!(await this.friendshipRepo.areFriends(meId, userId))) {
+        if (!(await this.friendshipRepo.areFriends(new Types.ObjectId(meId), new Types.ObjectId(userId)))) {
             if (meId !== userId) {
                 throw new ForbiddenException(
                     ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
@@ -261,7 +255,7 @@ export class UserMessageController {
             }
         }
 
-        const message = await this.messageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
         if (!message) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -283,7 +277,7 @@ export class UserMessageController {
         // Resolve the replied-to message, handling both legacy and new ID fields
         if (message.repliedToMessageId) {
             repliedMessage = await this.messageRepo.findById(
-                message.repliedToMessageId.toString(),
+                message.repliedToMessageId,
             );
         } else if (message.replyToId) {
             repliedMessage = await this.messageRepo.findById(message.replyToId);
@@ -308,7 +302,7 @@ export class UserMessageController {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { content } = body;
 
-        const message = await this.messageRepo.findById(id);
+        const message = await this.messageRepo.findById(new Types.ObjectId(id));
         if (!message) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -318,7 +312,7 @@ export class UserMessageController {
             throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
-        const updated = await this.messageRepo.update(id, content);
+        const updated = await this.messageRepo.update(new Types.ObjectId(id), content);
         // Mark message as edited for client-side rendering
         if (!updated) {
             throw new InternalServerErrorException(
@@ -343,7 +337,7 @@ export class UserMessageController {
         const { id } = params;
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
-        const message = await this.messageRepo.findById(id);
+        const message = await this.messageRepo.findById(new Types.ObjectId(id));
         if (!message) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -353,8 +347,7 @@ export class UserMessageController {
             throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
-        const deleted = await this.messageRepo.delete(id);
-        // Return deletion result without exposing internal deletion details
+        const deleted = await this.messageRepo.delete(new Types.ObjectId(id));
         return { success: deleted };
     }
 }

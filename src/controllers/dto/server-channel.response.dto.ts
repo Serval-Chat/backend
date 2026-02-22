@@ -1,10 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsMongoId, IsOptional, IsString } from 'class-validator';
 
 export class ChannelResponseDTO {
     @ApiProperty({ required: false })
+    @IsOptional()
+    @IsMongoId()
+    @IsString()
     _id?: string;
 
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     serverId!: string;
 
     @ApiProperty()
@@ -20,6 +26,9 @@ export class ChannelResponseDTO {
     position!: number;
 
     @ApiProperty({ required: false, nullable: true, type: String })
+    @IsOptional()
+    @IsMongoId()
+    @IsString()
     categoryId?: string | null;
 
     @ApiProperty({ required: false })
@@ -46,6 +55,8 @@ export class ChannelWithReadResponseDTO extends ChannelResponseDTO {
 
 export class ChannelStatsResponseDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     channelId!: string;
 
     @ApiProperty()
@@ -60,9 +71,14 @@ export class ChannelStatsResponseDTO {
 
 export class CategoryResponseDTO {
     @ApiProperty({ required: false })
+    @IsOptional()
+    @IsMongoId()
+    @IsString()
     _id?: string;
 
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     serverId!: string;
 
     @ApiProperty()

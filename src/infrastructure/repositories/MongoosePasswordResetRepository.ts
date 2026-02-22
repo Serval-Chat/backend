@@ -1,13 +1,12 @@
 import { injectable } from 'inversify';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { IPasswordResetRepository } from '@/di/interfaces/IPasswordResetRepository';
 import { IPasswordReset, PasswordReset } from '@/models/PasswordReset';
 import { RateLimitError } from '@/utils/RateLimitError';
 
 @injectable()
 export class MongoosePasswordResetRepository
-    implements IPasswordResetRepository
-{
+    implements IPasswordResetRepository {
     private model: Model<IPasswordReset>;
 
     constructor() {
@@ -15,7 +14,7 @@ export class MongoosePasswordResetRepository
     }
 
     async create(data: {
-        userId: string;
+        userId: Types.ObjectId;
         hashedToken: string;
         expiresAt: Date;
         ipParam?: string;
@@ -45,12 +44,12 @@ export class MongoosePasswordResetRepository
         );
     }
 
-    async deleteByUser(userId: string): Promise<void> {
+    async deleteByUser(userId: Types.ObjectId): Promise<void> {
         await this.model.deleteMany({ userId });
     }
 
     async countActiveRequestsByUser(
-        userId: string,
+        userId: Types.ObjectId,
         windowStart: Date,
     ): Promise<number> {
         return this.model.countDocuments({
@@ -73,7 +72,7 @@ export class MongoosePasswordResetRepository
 
     async createIfUnderLimit(
         data: {
-            userId: string;
+            userId: Types.ObjectId;
             hashedToken: string;
             expiresAt: Date;
             ipParam: string;

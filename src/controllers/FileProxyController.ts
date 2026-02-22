@@ -37,7 +37,7 @@ interface MetaCacheEntry {
 }
 
 import { FileProxyMetaResponseDTO } from './dto/file-proxy.response.dto';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 
 @ApiTags('File Proxy')
 @injectable()
@@ -47,7 +47,6 @@ export class FileProxyController {
     private static metadataCache = new Map<string, MetaCacheEntry>();
 
     constructor(
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
     ) {}

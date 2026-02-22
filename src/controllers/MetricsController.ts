@@ -1,5 +1,5 @@
 import { Controller, Get, Headers, Inject } from '@nestjs/common';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import { register } from '@/utils/metrics';
 import { ILogger } from '@/di/interfaces/ILogger';
@@ -14,7 +14,6 @@ import { METRICS_TOKEN } from '@/config/env';
 @Controller('metrics')
 export class MetricsController {
     constructor(
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
     ) {}

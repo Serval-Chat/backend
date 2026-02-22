@@ -13,8 +13,14 @@ const { Types } = require('mongoose');
 const mockSharpObj = {
     resize: () => mockSharpObj,
     webp: () => mockSharpObj,
+    withMetadata: () => mockSharpObj,
     toFile: async () => ({ size: 1024 }),
-    toBuffer: async () => Buffer.from('mocked-webp-data'),
+    toBuffer: async (opts) => {
+        if (opts && opts.resolveWithObject) {
+            return { data: Buffer.from('mocked-webp-data'), info: { size: 1024 } };
+        }
+        return Buffer.from('mocked-webp-data');
+    },
     metadata: async () => ({
         width: 800,
         height: 300,
@@ -45,9 +51,16 @@ fs.existsSync = (path) => {
     if (typeof path === 'string' && (path.includes('uploads') || path.includes('tmp'))) return true;
     return originalExistsSync(path);
 };
-fs.mkdirSync = (path, options) => {
-    if (typeof path === 'string' && (path.includes('uploads') || path.includes('tmp'))) return;
-    return originalMkdirSync(path, options);
+fs.mkdirSync = (p, options) => {
+    if (typeof p === 'string' && (p.includes('uploads') || p.includes('tmp'))) return;
+    return originalMkdirSync(p, options);
+};
+
+const fsp = require('fs/promises');
+const originalWriteFile = fsp.writeFile;
+fsp.writeFile = async (p, data, options) => {
+    if (typeof p === 'string' && (p.includes('uploads') || p.includes('tmp'))) return;
+    return originalWriteFile(p, data, options);
 };
 
 const { ProfileController } = require('../../src/controllers/ProfileController');
@@ -56,7 +69,8 @@ const {
     createMockUserRepository,
     createMockServerMemberRepository,
     createMockFriendshipRepository,
-    createTestUser
+    createTestUser,
+    createMockWsServer
 } = require('../utils/test-utils.cjs');
 
 // Mock PresenceService
@@ -81,16 +95,16 @@ function createMockPresenceService() {
 test('ProfileController - uploadBanner calls repository and presence service', async () => {
     const mockLogger = createMockLogger();
     const mockUserRepo = createMockUserRepository();
-    const mockPresenceService = createMockPresenceService();
     const mockServerMemberRepo = createMockServerMemberRepository();
     const mockFriendshipRepo = createMockFriendshipRepository();
+    const mockWsServer = createMockWsServer();
 
     const controller = new ProfileController(
         mockUserRepo,
         mockLogger,
-        mockPresenceService,
         mockServerMemberRepo,
-        mockFriendshipRepo
+        mockFriendshipRepo,
+        mockWsServer
     );
 
     const userId = new Types.ObjectId().toString();
@@ -109,26 +123,19 @@ test('ProfileController - uploadBanner calls repository and presence service', a
     };
 
     const mockReq = {
-        user: { id: userId },
+        user: { id: userId, username: 'testuser' },
         io: {
             to: (room) => ({
-                emit: (event, data) => {
-                    // Track emits if needed
-                }
+                emit: (event, data) => { }
             })
         }
     };
-
-    // We need to mock the sharp processing or just the file system if it was used
-    // But ProfileController uses sharp. For unit tests, we might need to mock sharp.
-    // However, since we are running in a node environment with ts-node, 
-    // we can try to run it and see if it works or if we need to mock sharp.
 
     const result = await controller.uploadBanner(mockFile, mockReq);
 
     assert.ok(result.banner);
     assert.equal(mockUserRepo.calls.updateBanner.length, 1);
-    assert.equal(mockUserRepo.calls.updateBanner[0].id, userId);
+    assert.equal(mockUserRepo.calls.updateBanner[0].id.toString(), userId);
 });
 
 test.after(() => {
@@ -136,4 +143,5 @@ test.after(() => {
     fs.renameSync = originalRenameSync;
     fs.existsSync = originalExistsSync;
     fs.mkdirSync = originalMkdirSync;
+    fsp.writeFile = originalWriteFile;
 });

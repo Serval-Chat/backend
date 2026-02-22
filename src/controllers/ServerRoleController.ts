@@ -17,6 +17,7 @@ import {
     Res,
     HttpCode,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -27,7 +28,7 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/permissions/PermissionService';
@@ -63,22 +64,17 @@ import { ApiError } from '@/utils/ApiError';
 @ApiBearerAuth()
 export class ServerRoleController {
     constructor(
-        @inject(TYPES.RoleRepository)
         @Inject(TYPES.RoleRepository)
         private roleRepo: IRoleRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     // Retrieves all roles for a specific server
     // Enforces server membership
@@ -94,15 +90,17 @@ export class ServerRoleController {
         @Req() req: ExpressRequest,
     ): Promise<IRole[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        return await this.roleRepo.findByServerId(serverId);
+        return await this.roleRepo.findByServerId(serverOid);
     }
 
     // Creates a new role in a server
@@ -123,10 +121,12 @@ export class ServerRoleController {
         @Body() body: CreateRoleRequestDTO,
     ): Promise<IRole> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageRoles',
             ))
         ) {
@@ -137,18 +137,18 @@ export class ServerRoleController {
 
         // New roles are placed at the top of the hierarchy by default
         const maxPositionRole =
-            await this.roleRepo.findMaxPositionByServerId(serverId);
+            await this.roleRepo.findMaxPositionByServerId(serverOid);
         const position = maxPositionRole ? maxPositionRole.position + 1 : 1;
 
         const roleColor =
             body.startColor ||
-            body.endColor ||
-            (body.colors && body.colors.length > 0)
+                body.endColor ||
+                (body.colors && body.colors.length > 0)
                 ? null
                 : body.color || '#99aab5';
 
         const role = await this.roleRepo.create({
-            serverId,
+            serverId: serverOid,
             name: body.name.trim(),
             color: roleColor as string,
             startColor: body.startColor,
@@ -186,10 +186,12 @@ export class ServerRoleController {
         @Body() body: ReorderRolesRequestDTO,
     ): Promise<IRole[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageRoles',
             ))
         ) {
@@ -200,7 +202,9 @@ export class ServerRoleController {
 
         // Bulk update role positions to reflect the new hierarchy
         for (const { roleId, position } of body.rolePositions) {
-            await this.roleRepo.update(roleId, { position });
+            await this.roleRepo.update(new Types.ObjectId(roleId), {
+                position,
+            });
         }
 
         this.wsServer.broadcastToServer(serverId, {
@@ -211,7 +215,7 @@ export class ServerRoleController {
             },
         });
 
-        return await this.roleRepo.findByServerId(serverId);
+        return await this.roleRepo.findByServerId(serverOid);
     }
 
     // Updates an existing role's properties
@@ -234,10 +238,13 @@ export class ServerRoleController {
         @Body() body: UpdateRoleRequestDTO,
     ): Promise<IRole> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const roleOid = new Types.ObjectId(roleId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageRoles',
             ))
         ) {
@@ -246,8 +253,8 @@ export class ServerRoleController {
             );
         }
 
-        const role = await this.roleRepo.findById(roleId);
-        if (!role || role.serverId.toString() !== serverId) {
+        const role = await this.roleRepo.findById(roleOid);
+        if (!role || !role.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
@@ -275,12 +282,12 @@ export class ServerRoleController {
         if (body.permissions) updates.permissions = body.permissions;
         if (body.position !== undefined) updates.position = body.position;
 
-        const updatedRole = await this.roleRepo.update(roleId, updates);
+        const updatedRole = await this.roleRepo.update(roleOid, updates);
         if (!updatedRole) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
-        this.permissionService.invalidateCache(serverId);
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_updated',
@@ -315,9 +322,12 @@ export class ServerRoleController {
         @Req() req: ExpressRequest,
     ): Promise<{ message: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const roleOid = new Types.ObjectId(roleId);
         const hasPermission = await this.permissionService.hasPermission(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
             'manageRoles',
         );
         if (!hasPermission) {
@@ -326,8 +336,8 @@ export class ServerRoleController {
             );
         }
 
-        const role = await this.roleRepo.findById(roleId);
-        if (!role || role.serverId.toString() !== serverId) {
+        const role = await this.roleRepo.findById(roleOid);
+        if (!role || !role.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
@@ -337,9 +347,9 @@ export class ServerRoleController {
             );
         }
 
-        await this.roleRepo.delete(roleId);
+        await this.roleRepo.delete(roleOid);
 
-        this.permissionService.invalidateCache(serverId);
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_deleted',
@@ -381,10 +391,13 @@ export class ServerRoleController {
         @Req() req: ExpressRequest,
     ): Promise<IRole> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const roleOid = new Types.ObjectId(roleId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageRoles',
             ))
         ) {
@@ -393,8 +406,8 @@ export class ServerRoleController {
             );
         }
 
-        const role = await this.roleRepo.findById(roleId);
-        if (!role || role.serverId.toString() !== serverId) {
+        const role = await this.roleRepo.findById(roleOid);
+        if (!role || !role.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
@@ -452,7 +465,7 @@ export class ServerRoleController {
             throw new ApiError(500, 'Failed to process role icon');
         }
 
-        const updatedRole = await this.roleRepo.update(roleId, {
+        const updatedRole = await this.roleRepo.update(roleOid, {
             icon: filename,
         });
         if (!updatedRole) {

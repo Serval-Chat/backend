@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsMongoId, IsOptional, IsString } from 'class-validator';
 import { ServerBannerDTO } from './server.request.dto';
 
 export class ServerStatsResponseDTO {
@@ -12,6 +13,8 @@ export class ServerStatsResponseDTO {
     bannedUserCount!: number;
 
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     serverId!: string;
 
     @ApiProperty()
@@ -38,12 +41,17 @@ export class ServerStatsResponseDTO {
 
 export class ServerResponseDTO {
     @ApiProperty({ required: false })
+    @IsOptional()
+    @IsMongoId()
+    @IsString()
     _id?: string;
 
     @ApiProperty()
     name!: string;
 
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     ownerId!: string;
 
     @ApiProperty({ required: false })
@@ -56,6 +64,9 @@ export class ServerResponseDTO {
     description?: string;
 
     @ApiProperty({ required: false })
+    @IsOptional()
+    @IsMongoId()
+    @IsString()
     defaultRoleId?: string;
 
     @ApiProperty({ required: false })
@@ -76,6 +87,9 @@ export class ServerResponseDTO {
 
 export class SetDefaultRoleResponseDTO {
     @ApiProperty({ nullable: true, type: String })
+    @IsOptional()
+    @IsMongoId()
+    @IsString()
     defaultRoleId!: string | null;
 }
 

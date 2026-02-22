@@ -14,6 +14,7 @@ import {
     Inject,
     HttpCode,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiTags,
@@ -56,7 +57,7 @@ import {
 import { randomBytes } from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import { IUserRepository, IUser } from '@/di/interfaces/IUserRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -81,22 +82,17 @@ interface RequestWithUser extends Request {
 @Controller('api/v1/profile')
 export class ProfileController {
     constructor(
-        @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.FriendshipRepository)
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     // Maps a user document to a public UserProfileResponseDTO payload
     private async mapToProfile(user: IUser): Promise<UserProfileResponseDTO> {
@@ -116,7 +112,7 @@ export class ProfileController {
                     .exec();
                 // @ts-ignore - badges type mismatch in mapUser vs DTO but compatible at runtime
                 mapped.badges = badgeDocs.map((doc) => ({
-                    _id: doc._id,
+                    _id: doc._id.toString(),
                     id: doc.id,
                     name: doc.name,
                     description: doc.description,
@@ -147,7 +143,7 @@ export class ProfileController {
         @Req() req: Request,
     ): Promise<UserProfileResponseDTO> {
         const userId = (req as unknown as RequestWithUser).user.id;
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(new Types.ObjectId(userId));
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -163,7 +159,7 @@ export class ProfileController {
     public async getUserProfileResponseDTO(
         @Param('userId') userId: string,
     ): Promise<UserProfileResponseDTO> {
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(new Types.ObjectId(userId));
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -197,13 +193,13 @@ export class ProfileController {
                 );
             }
 
-            const user = await this.userRepo.findById(id);
+            const user = await this.userRepo.findById(new Types.ObjectId(id));
             if (!user) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
             if (request.badgeIds.length === 0) {
-                await this.userRepo.update(user._id.toString(), { badges: [] });
+                await this.userRepo.update(user._id, { badges: [] });
 
                 this.wsServer.broadcastToUser(user._id.toString(), {
                     type: 'user_updated',
@@ -237,7 +233,7 @@ export class ProfileController {
                 );
             }
 
-            await this.userRepo.update(user._id.toString(), {
+            await this.userRepo.update(user._id, {
                 badges: validBadgeIds,
             });
 
@@ -259,7 +255,7 @@ export class ProfileController {
             );
 
             const badgeResponse = validBadges.map((badge) => ({
-                _id: badge._id,
+                _id: badge._id.toString(),
                 id: badge.id,
                 name: badge.name,
                 description: badge.description,
@@ -320,7 +316,7 @@ export class ProfileController {
                 );
             }
 
-            const user = await this.userRepo.findById(userId);
+            const user = await this.userRepo.findById(new Types.ObjectId(userId));
             if (!user) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
@@ -390,8 +386,8 @@ export class ProfileController {
                 metadata.format === 'gif'
                     ? 'gif'
                     : isAnimated
-                      ? 'webp'
-                      : 'webp';
+                        ? 'webp'
+                        : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(profilesDir, filename);
@@ -421,15 +417,18 @@ export class ProfileController {
                 throw new ApiError(500, 'Failed to process profile picture');
             }
 
-            await this.userRepo.updateProfilePicture(userId, filename);
+            await this.userRepo.updateProfilePicture(
+                new Types.ObjectId(userId),
+                filename,
+            );
 
             const profilePictureUrl = `/api/v1/profile/picture/${filename}`;
 
             try {
                 const serverIds =
-                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                    await this.serverMemberRepo.findServerIdsByUserId(new Types.ObjectId(userId));
                 const friendships =
-                    await this.friendshipRepo.findAllByUserId(userId);
+                    await this.friendshipRepo.findAllByUserId(new Types.ObjectId(userId));
 
                 const updatePayload = {
                     userId,
@@ -438,7 +437,7 @@ export class ProfileController {
 
                 // Emit to all servers the user is in
                 serverIds.forEach((serverId) => {
-                    this.wsServer.broadcastToServer(serverId, {
+                    this.wsServer.broadcastToServer(serverId.toString(), {
                         type: 'user_updated',
                         payload: updatePayload,
                     });
@@ -521,7 +520,7 @@ export class ProfileController {
                 );
             }
 
-            const user = await this.userRepo.findById(userId);
+            const user = await this.userRepo.findById(new Types.ObjectId(userId));
             if (!user) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
@@ -590,8 +589,8 @@ export class ProfileController {
                 metadata.format === 'gif'
                     ? 'gif'
                     : isAnimated
-                      ? 'webp'
-                      : 'webp';
+                        ? 'webp'
+                        : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(bannersDir, filename);
@@ -618,15 +617,15 @@ export class ProfileController {
                 throw new ApiError(500, 'Failed to process banner');
             }
 
-            await this.userRepo.updateBanner(userId, filename);
+            await this.userRepo.updateBanner(new Types.ObjectId(userId), filename);
 
             const bannerUrl = `/api/v1/profile/banner/${filename}`;
 
             try {
                 const serverIds =
-                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                    await this.serverMemberRepo.findServerIdsByUserId(new Types.ObjectId(userId));
                 const friendships =
-                    await this.friendshipRepo.findAllByUserId(userId);
+                    await this.friendshipRepo.findAllByUserId(new Types.ObjectId(userId));
 
                 const updatePayload = {
                     username,
@@ -635,7 +634,7 @@ export class ProfileController {
 
                 // Emit to all servers the user is in
                 serverIds.forEach((serverId) => {
-                    this.wsServer.broadcastToServer(serverId, {
+                    this.wsServer.broadcastToServer(serverId.toString(), {
                         type: 'user_banner_updated',
                         payload: updatePayload,
                     });
@@ -740,7 +739,9 @@ export class ProfileController {
         const userId = (req as unknown as RequestWithUser).user.id;
         const { bio } = body;
 
-        await this.userRepo.update(userId, { bio: bio || '' });
+        await this.userRepo.update(new Types.ObjectId(userId), {
+            bio: bio || '',
+        });
 
         return {
             message: 'Bio updated successfully',
@@ -760,7 +761,9 @@ export class ProfileController {
         const userId = (req as unknown as RequestWithUser).user.id;
         const { pronouns } = body;
 
-        await this.userRepo.update(userId, { pronouns: pronouns || '' });
+        await this.userRepo.update(new Types.ObjectId(userId), {
+            pronouns: pronouns || '',
+        });
 
         return {
             message: 'Pronouns updated successfully',
@@ -783,15 +786,19 @@ export class ProfileController {
         const username = userPayload.username;
         const { displayName } = body;
 
-        await this.userRepo.updateDisplayName(userId, displayName || null);
+        await this.userRepo.updateDisplayName(
+            new Types.ObjectId(userId),
+            displayName || null,
+        );
 
-        const updatedUser = await this.userRepo.findById(userId);
+        const userOid = new Types.ObjectId(userId);
+        const updatedUser = await this.userRepo.findById(userOid);
 
         try {
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
+                await this.serverMemberRepo.findServerIdsByUserId(userOid);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userId);
+                await this.friendshipRepo.findAllByUserId(userOid);
 
             const payload = {
                 username,
@@ -800,7 +807,7 @@ export class ProfileController {
 
             // Emit to servers
             serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId, {
+                this.wsServer.broadcastToServer(serverId.toString(), {
                     type: 'display_name_updated',
                     payload,
                 });
@@ -847,8 +854,9 @@ export class ProfileController {
         const userId = userPayload.id;
         const username = userPayload.username;
         const { text, emoji, expiresAt, expiresInMinutes, clear } = body;
+        const userOid = new Types.ObjectId(userId);
 
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -860,20 +868,20 @@ export class ProfileController {
                 String(text).trim().length === 0) &&
                 (!emoji || String(emoji).trim().length === 0))
         ) {
-            await this.userRepo.updateCustomStatus(userId, null);
+            await this.userRepo.updateCustomStatus(userOid, null);
 
             try {
                 // Broadcast status clear to friends and server members
                 const serverIds =
-                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                    await this.serverMemberRepo.findServerIdsByUserId(userOid);
                 const friendships =
-                    await this.friendshipRepo.findAllByUserId(userId);
+                    await this.friendshipRepo.findAllByUserId(userOid);
 
                 const payload = { username, status: null };
 
                 // Emit to servers
                 serverIds.forEach((serverId) => {
-                    this.wsServer.broadcastToServer(serverId, {
+                    this.wsServer.broadcastToServer(serverId.toString(), {
                         type: 'status_update',
                         payload,
                     });
@@ -936,9 +944,9 @@ export class ProfileController {
             newStatus.emoji = emoji;
         }
 
-        await this.userRepo.updateCustomStatus(userId, newStatus);
+        await this.userRepo.updateCustomStatus(userOid, newStatus);
 
-        const updatedUser = await this.userRepo.findById(userId);
+        const updatedUser = await this.userRepo.findById(userOid);
         const serialized = updatedUser
             ? resolveSerializedCustomStatus(updatedUser.customStatus)
             : null;
@@ -946,15 +954,15 @@ export class ProfileController {
         try {
             // Broadcast status update to friends and server members
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
+                await this.serverMemberRepo.findServerIdsByUserId(userOid);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userId);
+                await this.friendshipRepo.findAllByUserId(userOid);
 
             const payload = { username, status: serialized };
 
             // Emit to servers
             serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId, {
+                this.wsServer.broadcastToServer(serverId.toString(), {
                     type: 'status_update',
                     payload,
                 });
@@ -989,26 +997,27 @@ export class ProfileController {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
         const username = userPayload.username;
+        const userOid = new Types.ObjectId(userId);
 
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        await this.userRepo.updateCustomStatus(userId, null);
+        await this.userRepo.updateCustomStatus(userOid, null);
 
         try {
             // Broadcast status clear to friends and server members
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
+                await this.serverMemberRepo.findServerIdsByUserId(userOid);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userId);
+                await this.friendshipRepo.findAllByUserId(userOid);
 
             const payload = { username, status: null };
 
             // Emit to servers
             serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId, {
+                this.wsServer.broadcastToServer(serverId.toString(), {
                     type: 'status_update',
                     payload,
                 });
@@ -1098,22 +1107,23 @@ export class ProfileController {
     }> {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
+        const userOid = new Types.ObjectId(userId);
 
         const { usernameFont, usernameGradient, usernameGlow } = body;
 
-        await this.userRepo.updateUsernameStyle(userId, {
+        await this.userRepo.updateUsernameStyle(userOid, {
             usernameFont,
             usernameGradient,
             usernameGlow,
         });
 
-        const updatedUser = await this.userRepo.findById(userId);
+        const updatedUser = await this.userRepo.findById(userOid);
 
         try {
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
+                await this.serverMemberRepo.findServerIdsByUserId(new Types.ObjectId(userId));
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userId);
+                await this.friendshipRepo.findAllByUserId(new Types.ObjectId(userId));
 
             const payload = {
                 userId,
@@ -1124,7 +1134,7 @@ export class ProfileController {
 
             // Emit to servers
             serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId, {
+                this.wsServer.broadcastToServer(serverId.toString(), {
                     type: 'user_updated',
                     payload,
                 });
@@ -1187,7 +1197,9 @@ export class ProfileController {
         @Req() req: Request,
         @Body() body: ChangeUsernameRequestDTO,
     ): Promise<{ message: string; username: string }> {
-        const userId = (req as unknown as RequestWithUser).user.id;
+        const userPayload = (req as unknown as RequestWithUser).user;
+        const userId = userPayload.id;
+        const userOid = new Types.ObjectId(userId);
         const { newUsername } = body;
 
         const existingUser = await this.userRepo.findByUsername(newUsername);
@@ -1195,24 +1207,22 @@ export class ProfileController {
             throw new ApiError(409, ErrorMessages.PROFILE.USERNAME_TAKEN);
         }
 
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const oldUsername = user.username || '';
 
-        await this.userRepo.updateUsername(user._id.toString(), newUsername);
+        await this.userRepo.updateUsername(userOid, newUsername);
 
         // Emit socket event
         try {
-            const updatedUser = await this.userRepo.findById(
-                user._id.toString(),
-            );
+            const updatedUser = await this.userRepo.findById(userOid);
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
+                await this.serverMemberRepo.findServerIdsByUserId(userOid);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userId);
+                await this.friendshipRepo.findAllByUserId(userOid);
 
             const payload = {
                 userId,
@@ -1228,7 +1238,7 @@ export class ProfileController {
 
             // Emit to servers
             serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId, {
+                this.wsServer.broadcastToServer(serverId.toString(), {
                     type: 'user_updated',
                     payload,
                 });
@@ -1282,7 +1292,7 @@ export class ProfileController {
             throw new ApiError(404, 'User not found');
         }
 
-        await this.userRepo.updateLanguage(user._id.toString(), language);
+        await this.userRepo.updateLanguage(user._id, language);
 
         return {
             message: 'Language preference updated successfully',

@@ -9,6 +9,7 @@ import {
     UseGuards,
     Inject,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
@@ -37,7 +38,7 @@ import {
     AcceptFriendRequestResponseDTO,
     FriendshipMessageResponseDTO,
 } from './dto/friendship.response.dto';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -50,22 +51,17 @@ interface RequestWithUser extends Request {
 @Controller('api/v1/friends')
 export class FriendshipController {
     constructor(
-        @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-        @inject(TYPES.FriendshipRepository)
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-        @inject(TYPES.MessageRepository)
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     // Maps a user document to a public friend payload
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
@@ -89,13 +85,14 @@ export class FriendshipController {
     @ApiResponse({ status: 200, type: [FriendResponseDTO] })
     public async getFriends(@Req() req: Request): Promise<FriendResponseDTO[]> {
         const userId = (req as unknown as RequestWithUser).user.id;
+        const userOid = new Types.ObjectId(userId);
 
-        const me = await this.userRepo.findById(userId);
+        const me = await this.userRepo.findById(userOid);
         if (!me) {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
-        const friendships = await this.friendshipRepo.findByUserId(userId);
+        const friendships = await this.friendshipRepo.findByUserId(userOid);
         const friendIds = new Set<string>();
         const legacyUsernames = new Set<string>();
 
@@ -114,7 +111,9 @@ export class FriendshipController {
 
         const friendsById = [];
         for (const friendId of Array.from(friendIds)) {
-            const friend = await this.userRepo.findById(friendId);
+            const friend = await this.userRepo.findById(
+                new Types.ObjectId(friendId),
+            );
             if (friend) friendsById.push(friend);
         }
 
@@ -141,8 +140,8 @@ export class FriendshipController {
                 }
                 const conversationMessages =
                     await this.messageRepo.findByConversation(
-                        userId,
-                        friendId,
+                        userOid,
+                        new Types.ObjectId(friendId),
                         1,
                     );
                 const latestMessage =
@@ -198,16 +197,15 @@ export class FriendshipController {
         @Req() req: Request,
     ): Promise<IncomingFriendRequestResponseDTO[]> {
         const userId = (req as unknown as RequestWithUser).user.id;
-        const incoming =
-            await this.friendshipRepo.findPendingRequestsFor(userId);
+        const incoming = await this.friendshipRepo.findPendingRequestsFor(
+            new Types.ObjectId(userId),
+        );
 
         return await Promise.all(
             incoming.map(async (r) => {
                 let fromUsername = r.from;
                 if (!fromUsername && r.fromId) {
-                    const fromUser = await this.userRepo.findById(
-                        r.fromId.toString(),
-                    );
+                    const fromUser = await this.userRepo.findById(r.fromId);
                     fromUsername = fromUser?.username;
                 }
 
@@ -236,7 +234,8 @@ export class FriendshipController {
         @Body() body: SendFriendRequestDTO,
     ): Promise<SendFriendRequestResponseDTO> {
         const meId = (req as unknown as RequestWithUser).user.id;
-        const meUser = await this.userRepo.findById(meId);
+        const meOid = new Types.ObjectId(meId);
+        const meUser = await this.userRepo.findById(meOid);
         if (!meUser) {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
@@ -248,17 +247,18 @@ export class FriendshipController {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        const friendId = friendUser._id.toString();
-        if (friendId === meId) {
+        const friendId = friendUser._id;
+        const friendIdStr = friendId.toString();
+        if (friendIdStr === meId) {
             throw new ApiError(400, ErrorMessages.FRIENDSHIP.CANNOT_ADD_SELF);
         }
 
-        if (await this.friendshipRepo.areFriends(meId, friendId)) {
+        if (await this.friendshipRepo.areFriends(meOid, friendId)) {
             throw new ApiError(400, ErrorMessages.FRIENDSHIP.ALREADY_FRIENDS);
         }
 
         const existingRequest = await this.friendshipRepo.findExistingRequest(
-            meId,
+            meOid,
             friendId,
         );
         if (existingRequest) {
@@ -268,12 +268,10 @@ export class FriendshipController {
                     ErrorMessages.FRIENDSHIP.REQUEST_ALREADY_SENT,
                 );
             }
-            await this.friendshipRepo.rejectRequest(
-                existingRequest._id.toString(),
-            );
+            await this.friendshipRepo.rejectRequest(existingRequest._id);
         }
 
-        const reqDoc = await this.friendshipRepo.createRequest(meId, friendId);
+        const reqDoc = await this.friendshipRepo.createRequest(meOid, friendId);
 
         const requestPayload = {
             _id: reqDoc._id.toString(),
@@ -286,7 +284,7 @@ export class FriendshipController {
         };
 
         try {
-            this.wsServer.broadcastToUser(friendId, {
+            this.wsServer.broadcastToUser(friendIdStr, {
                 type: 'incoming_request_added',
                 payload: {
                     ...requestPayload,
@@ -318,12 +316,14 @@ export class FriendshipController {
         @Req() req: Request,
     ): Promise<AcceptFriendRequestResponseDTO> {
         const meId = (req as unknown as RequestWithUser).user.id;
-        const meUser = await this.userRepo.findById(meId);
+        const meOid = new Types.ObjectId(meId);
+        const meUser = await this.userRepo.findById(meOid);
         if (!meUser) {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
-        const fr = await this.friendshipRepo.findRequestById(id);
+        const requestOid = new Types.ObjectId(id);
+        const fr = await this.friendshipRepo.findRequestById(requestOid);
         if (!fr) {
             throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
         }
@@ -340,8 +340,12 @@ export class FriendshipController {
             );
         }
 
-        const fromId = fr.fromId?.toString() || '';
-        const toId = fr.toId?.toString() || '';
+        const fromId = fr.fromId;
+        const toId = fr.toId;
+
+        if (!fromId || !toId) {
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
 
         const [fromUser, toUser] = await Promise.all([
             this.userRepo.findById(fromId),
@@ -360,18 +364,20 @@ export class FriendshipController {
 
         try {
             if (fromFriendPayload && toFriendPayload) {
+                const fromIdStr = fromId.toString();
+                const toIdStr = toId.toString();
                 // Notify sender (fromUser)
-                this.wsServer.broadcastToUser(fromId, {
+                this.wsServer.broadcastToUser(fromIdStr, {
                     type: 'friend_added',
                     payload: { friend: toFriendPayload },
                 });
 
                 // Notify recipient (toUser)
-                this.wsServer.broadcastToUser(toId, {
+                this.wsServer.broadcastToUser(toIdStr, {
                     type: 'friend_added',
                     payload: { friend: fromFriendPayload },
                 });
-                this.wsServer.broadcastToUser(toId, {
+                this.wsServer.broadcastToUser(toIdStr, {
                     type: 'incoming_request_removed',
                     payload: {
                         from: fromUser.username || '',
@@ -383,7 +389,7 @@ export class FriendshipController {
             this.logger.error('Failed to emit friend_added events:', err);
         }
 
-        await this.friendshipRepo.acceptRequest(id);
+        await this.friendshipRepo.acceptRequest(requestOid);
 
         return {
             message: 'friend request accepted',
@@ -403,7 +409,8 @@ export class FriendshipController {
         @Req() req: Request,
     ): Promise<FriendshipMessageResponseDTO> {
         const meId = (req as unknown as RequestWithUser).user.id;
-        const fr = await this.friendshipRepo.findRequestById(id);
+        const requestOid = new Types.ObjectId(id);
+        const fr = await this.friendshipRepo.findRequestById(requestOid);
 
         if (!fr) {
             throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
@@ -421,7 +428,7 @@ export class FriendshipController {
             );
         }
 
-        const success = await this.friendshipRepo.rejectRequest(id);
+        const success = await this.friendshipRepo.rejectRequest(requestOid);
         if (!success) {
             throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
         }
@@ -440,10 +447,12 @@ export class FriendshipController {
         @Req() req: Request,
     ): Promise<FriendshipMessageResponseDTO> {
         const meId = (req as unknown as RequestWithUser).user.id;
+        const meOid = new Types.ObjectId(meId);
+        const friendOid = new Types.ObjectId(friendId);
 
         const [friend, meUser] = await Promise.all([
-            this.userRepo.findById(friendId),
-            this.userRepo.findById(meId),
+            this.userRepo.findById(friendOid),
+            this.userRepo.findById(meOid),
         ]);
 
         if (!friend) {
@@ -453,7 +462,7 @@ export class FriendshipController {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
-        await this.friendshipRepo.remove(meId, friendId);
+        await this.friendshipRepo.remove(meOid, friendOid);
 
         try {
             this.wsServer.broadcastToUser(meId, {

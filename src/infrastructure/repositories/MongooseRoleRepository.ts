@@ -1,5 +1,6 @@
 import { injectable } from 'inversify';
 import { Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
 import {
     IRoleRepository,
     IRole,
@@ -13,11 +14,11 @@ import { Role } from '@/models/Server';
 @injectable()
 @Injectable()
 export class MongooseRoleRepository implements IRoleRepository {
-    async findById(id: string): Promise<IRole | null> {
+    async findById(id: Types.ObjectId): Promise<IRole | null> {
         return await Role.findById(id).lean();
     }
 
-    async findByServerId(serverId: string): Promise<IRole[]> {
+    async findByServerId(serverId: Types.ObjectId): Promise<IRole[]> {
         return await Role.find({ serverId }).sort({ position: -1 }).lean();
     }
 
@@ -25,7 +26,7 @@ export class MongooseRoleRepository implements IRoleRepository {
     //
     // Sets default color and empty permissions if not provided
     async create(data: {
-        serverId: string;
+        serverId: Types.ObjectId;
         name: string;
         color?: string;
         startColor?: string;
@@ -52,20 +53,20 @@ export class MongooseRoleRepository implements IRoleRepository {
         return await role.save();
     }
 
-    async update(id: string, data: Partial<IRole>): Promise<IRole | null> {
+    async update(id: Types.ObjectId, data: Partial<IRole>): Promise<IRole | null> {
         return await Role.findByIdAndUpdate(id, data, { new: true }).lean();
     }
 
-    async delete(id: string): Promise<boolean> {
+    async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Role.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
-    async findEveryoneRole(serverId: string): Promise<IRole | null> {
+    async findEveryoneRole(serverId: Types.ObjectId): Promise<IRole | null> {
         return await Role.findOne({ serverId, name: '@everyone' }).lean();
     }
 
-    async updatePosition(id: string, position: number): Promise<IRole | null> {
+    async updatePosition(id: Types.ObjectId, position: number): Promise<IRole | null> {
         return await Role.findByIdAndUpdate(
             id,
             { position },
@@ -73,19 +74,19 @@ export class MongooseRoleRepository implements IRoleRepository {
         ).lean();
     }
 
-    async deleteByServerId(serverId: string): Promise<number> {
+    async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
         const result = await Role.deleteMany({ serverId });
         return result.deletedCount || 0;
     }
 
     async findByServerIdAndName(
-        serverId: string,
+        serverId: Types.ObjectId,
         name: string,
     ): Promise<IRole | null> {
         return await Role.findOne({ serverId, name }).lean();
     }
 
-    async findMaxPositionByServerId(serverId: string): Promise<IRole | null> {
+    async findMaxPositionByServerId(serverId: Types.ObjectId): Promise<IRole | null> {
         return await Role.findOne({ serverId }).sort({ position: -1 }).lean();
     }
 }

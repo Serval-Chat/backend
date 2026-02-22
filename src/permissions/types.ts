@@ -1,3 +1,5 @@
+import type { Types } from 'mongoose';
+
 export const PERMISSION_KEYS = [
     'sendMessages',
     'manageMessages',
@@ -24,43 +26,43 @@ export function isPermissionKey(key: string): key is PermissionKey {
 }
 
 export interface ServerRole {
-    id: string;
-    serverId: string;
+    id: Types.ObjectId;
+    serverId: Types.ObjectId;
     name: string;
     position: number;
     permissions: Permissions;
 }
 
 export interface RoleOverride {
-    roleId: string;
+    roleId: Types.ObjectId;
     permissions: Permissions;
 }
 
 export interface Channel {
-    id: string;
-    serverId: string;
-    categoryId?: string | null;
+    id: Types.ObjectId;
+    serverId: Types.ObjectId;
+    categoryId?: Types.ObjectId | null;
     overrides?: Map<string, Permissions>;
 }
 
 export interface Category {
-    id: string;
-    serverId: string;
+    id: Types.ObjectId;
+    serverId: Types.ObjectId;
     overrides?: Map<string, Permissions>;
 }
 
 export interface ServerMember {
-    id: string;
-    serverId: string;
-    userId: string;
-    roleIds: string[];
+    id: Types.ObjectId;
+    serverId: Types.ObjectId;
+    userId: Types.ObjectId;
+    roleIds: Types.ObjectId[];
 }
 
 export interface ServerData {
-    serverId: string;
-    ownerId: string;
+    serverId: Types.ObjectId;
+    ownerId: Types.ObjectId;
     roles: ServerRole[];
-    everyoneRoleId?: string;
+    everyoneRoleId?: Types.ObjectId;
     channels: Channel[];
     categories: Category[];
     members: ServerMember[];

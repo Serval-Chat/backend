@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsMongoId } from 'class-validator';
 import { IsUserId, IsReason } from '@/validation/schemas/common';
 
 export class KickMemberRequestDTO {
@@ -11,6 +11,7 @@ export class KickMemberRequestDTO {
 
 export class BanMemberRequestDTO {
     @ApiProperty()
+    @IsMongoId()
     @IsUserId()
     userId!: string;
 
@@ -29,6 +30,7 @@ export class BanMemberRequestDTO {
 
 export class TransferOwnershipRequestDTO {
     @ApiProperty()
+    @IsMongoId()
     @IsUserId()
     newOwnerId!: string;
 }

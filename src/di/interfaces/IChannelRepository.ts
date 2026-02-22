@@ -4,13 +4,13 @@ import type { Types, ClientSession } from 'mongoose';
 //
 // Represents a text or voice communication channel within a server
 export interface IChannel {
-    _id: Types.ObjectId | string;
-    serverId: Types.ObjectId | string;
+    _id: Types.ObjectId;
+    serverId: Types.ObjectId;
     name: string;
     type: 'text' | 'voice';
     position: number;
     // Optionally parent category ID
-    categoryId?: string | null;
+    categoryId?: Types.ObjectId | null;
     // Role-based permission overrides specific to this channel
     permissions?: {
         [roleId: string]: {
@@ -29,11 +29,11 @@ export interface IChannel {
 
 // Channel creation DTO
 export interface CreateChannelDTO {
-    serverId: string;
+    serverId: Types.ObjectId;
     name: string;
     type: 'text' | 'voice';
     position: number;
-    categoryId?: string | null;
+    categoryId?: Types.ObjectId | null;
     permissions?: {
         [roleId: string]: {
             sendMessages?: boolean;
@@ -50,45 +50,48 @@ export interface CreateChannelDTO {
 // Encapsulates channel operations
 export interface IChannelRepository {
     // Find channel by ID
-    findById(id: string): Promise<IChannel | null>;
+    findById(id: Types.ObjectId): Promise<IChannel | null>;
 
     // Find channel by ID and Server ID
-    findByIdAndServer(id: string, serverId: string): Promise<IChannel | null>;
+    findByIdAndServer(
+        id: Types.ObjectId,
+        serverId: Types.ObjectId,
+    ): Promise<IChannel | null>;
 
     // Find all channels for a server
-    findByServerId(serverId: string): Promise<IChannel[]>;
+    findByServerId(serverId: Types.ObjectId): Promise<IChannel[]>;
 
     // Find all channels for multiple servers
-    findByServerIds(serverIds: string[]): Promise<IChannel[]>;
+    findByServerIds(serverIds: Types.ObjectId[]): Promise<IChannel[]>;
 
     // Find channel with maximum position for a server
-    findMaxPositionByServerId(serverId: string): Promise<IChannel | null>;
+    findMaxPositionByServerId(serverId: Types.ObjectId): Promise<IChannel | null>;
 
     // Create a new channel
     create(data: CreateChannelDTO): Promise<IChannel>;
 
     // Update channel by ID
-    update(id: string, data: Partial<IChannel>): Promise<IChannel | null>;
+    update(id: Types.ObjectId, data: Partial<IChannel>): Promise<IChannel | null>;
 
     // Delete channel by ID
-    delete(id: string): Promise<boolean>;
+    delete(id: Types.ObjectId): Promise<boolean>;
 
     // Update channel position
-    updatePosition(id: string, position: number): Promise<IChannel | null>;
+    updatePosition(id: Types.ObjectId, position: number): Promise<IChannel | null>;
 
     // Update last message timestamp
     updateLastMessageAt(
-        id: string,
+        id: Types.ObjectId,
         date?: Date,
         session?: ClientSession,
     ): Promise<IChannel | null>;
 
     // Delete all channels for a server (bulk delete)
-    deleteByServerId(serverId: string): Promise<number>;
+    deleteByServerId(serverId: Types.ObjectId): Promise<number>;
 
     // Update channels in a category (bulk update)
     updateChannelsInCategory(
-        categoryId: string,
+        categoryId: Types.ObjectId,
         updates: Partial<IChannel>,
     ): Promise<boolean>;
 }

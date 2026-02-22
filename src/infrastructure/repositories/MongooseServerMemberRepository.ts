@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
 import {
     IServerMemberRepository,
     IServerMember,
@@ -17,34 +18,34 @@ import { injectable } from 'inversify';
 export class MongooseServerMemberRepository implements IServerMemberRepository {
     private serverMemberModel = ServerMember;
     private userModel = User;
-    constructor() {}
+    constructor() { }
 
     async findByServerAndUser(
-        serverId: string,
-        userId: string,
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
     ): Promise<IServerMember | null> {
         return await this.serverMemberModel
             .findOne({ serverId, userId })
             .lean();
     }
 
-    async findByServerId(serverId: string): Promise<IServerMember[]> {
+    async findByServerId(serverId: Types.ObjectId): Promise<IServerMember[]> {
         return await this.serverMemberModel.find({ serverId }).lean();
     }
 
     async create(data: {
-        serverId: string;
-        userId: string;
-        roles: string[];
+        serverId: Types.ObjectId;
+        userId: Types.ObjectId;
+        roles: Types.ObjectId[];
     }): Promise<IServerMember> {
         const member = new this.serverMemberModel(data);
-        return await member.save();
+        return (await member.save()).toObject();
     }
 
     async updateRoles(
-        serverId: string,
-        userId: string,
-        roles: string[],
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        roles: Types.ObjectId[],
     ): Promise<IServerMember | null> {
         return await this.serverMemberModel
             .findOneAndUpdate({ serverId, userId }, { roles }, { new: true })
@@ -54,7 +55,10 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     // Remove a member from a server
     //
     // Operation for leaving or kicking a member
-    async remove(serverId: string, userId: string): Promise<boolean> {
+    async remove(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+    ): Promise<boolean> {
         const result = await this.serverMemberModel.deleteOne({
             serverId,
             userId,
@@ -62,7 +66,10 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
-    async isMember(serverId: string, userId: string): Promise<boolean> {
+    async isMember(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+    ): Promise<boolean> {
         const member = await this.serverMemberModel.findOne({
             serverId,
             userId,
@@ -70,49 +77,51 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return !!member;
     }
 
-    async findAllByUserId(userId: string): Promise<IServerMember[]> {
+    async findAllByUserId(userId: Types.ObjectId): Promise<IServerMember[]> {
         return await this.serverMemberModel.find({ userId }).lean();
     }
 
-    async findByUserId(userId: string): Promise<IServerMember[]> {
+    async findByUserId(userId: Types.ObjectId): Promise<IServerMember[]> {
         return await this.findAllByUserId(userId);
     }
 
-    async findServerIdsByUserId(userId: string): Promise<string[]> {
+    async findServerIdsByUserId(userId: Types.ObjectId): Promise<Types.ObjectId[]> {
         const members = await this.serverMemberModel
             .find({ userId })
             .select('serverId')
             .lean();
-        return members.map((m) => m.serverId.toString());
+        return members.map((m) => m.serverId as Types.ObjectId);
     }
 
-    async findUserIdsInServerIds(serverIds: string[]): Promise<string[]> {
+    async findUserIdsInServerIds(
+        serverIds: Types.ObjectId[],
+    ): Promise<Types.ObjectId[]> {
         if (serverIds.length === 0) return [];
         const userIds = await this.serverMemberModel
             .find({ serverId: { $in: serverIds } })
             .distinct('userId');
-        return userIds.map((id) => id.toString());
+        return userIds as unknown as Types.ObjectId[];
     }
 
-    async countByServerId(serverId: string): Promise<number> {
+    async countByServerId(serverId: Types.ObjectId): Promise<number> {
         return await this.serverMemberModel.countDocuments({ serverId });
     }
 
     // Delete a member record by its ID
     //
     // Low-level cleanup operation
-    async deleteById(id: string): Promise<boolean> {
+    async deleteById(id: Types.ObjectId): Promise<boolean> {
         const result = await this.serverMemberModel.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
-    async deleteByServerId(serverId: string): Promise<void> {
+    async deleteByServerId(serverId: Types.ObjectId): Promise<void> {
         await this.serverMemberModel.deleteMany({ serverId });
     }
 
     async removeRoleFromAllMembers(
-        serverId: string,
-        roleId: string,
+        serverId: Types.ObjectId,
+        roleId: Types.ObjectId,
     ): Promise<void> {
         await this.serverMemberModel.updateMany(
             { serverId },
@@ -121,8 +130,8 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     }
 
     async removeRoleFromMember(
-        memberId: string,
-        roleId: string,
+        memberId: Types.ObjectId,
+        roleId: Types.ObjectId,
     ): Promise<IServerMember | null> {
         return await this.serverMemberModel
             .findOneAndUpdate(
@@ -133,7 +142,9 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .lean();
     }
 
-    async deleteAllForUser(userId: string): Promise<{ deletedCount: number }> {
+    async deleteAllForUser(
+        userId: Types.ObjectId,
+    ): Promise<{ deletedCount: number }> {
         const result = await this.serverMemberModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }
@@ -142,27 +153,25 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     //
     // Performs manual population by fetching users in a separate query
     async findByServerIdWithUserInfo(
-        serverId: string,
+        serverId: Types.ObjectId,
     ): Promise<(IServerMember & { user: MappedUser | null })[]> {
         const members = await this.serverMemberModel.find({ serverId }).lean();
-        const userIds = members.map((m) => m.userId.toString());
+        const userIds = members.map((m) => m.userId);
         const users = await this.userModel
             .find({ _id: { $in: userIds } })
             .lean();
 
         return members.map((m) => {
-            const user = users.find(
-                (u) => u._id.toString() === m.userId.toString(),
-            );
+            const user = users.find((u) => u._id.equals(m.userId));
             return {
                 ...m,
                 user: user ? mapUser(user) : null,
-            };
+            } as IServerMember & { user: MappedUser | null };
         });
     }
 
     async searchMembers(
-        serverId: string,
+        serverId: Types.ObjectId,
         query: string,
     ): Promise<(IServerMember & { user: MappedUser | null })[]> {
         const users = await this.userModel
@@ -183,7 +192,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             })
             .lean();
 
-        const memberUserIds = members.map((m) => m.userId.toString());
+        const memberUserIds = members.map((m) => m.userId);
         const populatedUsers = await this.userModel
             .find({
                 _id: { $in: memberUserIds },
@@ -191,20 +200,18 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .lean();
 
         return members.map((m) => {
-            const user = populatedUsers.find(
-                (u) => u._id.toString() === m.userId.toString(),
-            );
+            const user = populatedUsers.find((u) => u._id.equals(m.userId));
             return {
                 ...m,
                 user: user ? mapUser(user) : null,
-            };
+            } as IServerMember & { user: MappedUser | null };
         });
     }
 
     async addRole(
-        serverId: string,
-        userId: string,
-        roleId: string,
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        roleId: Types.ObjectId,
     ): Promise<IServerMember> {
         const member = await this.serverMemberModel
             .findOneAndUpdate(
@@ -218,9 +225,9 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     }
 
     async removeRole(
-        serverId: string,
-        userId: string,
-        roleId: string,
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        roleId: Types.ObjectId,
     ): Promise<IServerMember> {
         const member = await this.serverMemberModel
             .findOneAndUpdate(
@@ -233,7 +240,10 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return member;
     }
 
-    async removeRoleFromAll(serverId: string, roleId: string): Promise<void> {
+    async removeRoleFromAll(
+        serverId: Types.ObjectId,
+        roleId: Types.ObjectId,
+    ): Promise<void> {
         await this.removeRoleFromAllMembers(serverId, roleId);
     }
 }

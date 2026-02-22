@@ -15,6 +15,7 @@ import {
     HttpStatus,
     HttpCode,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -23,7 +24,7 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import type {
     IInviteRepository,
     IInvite,
@@ -51,34 +52,25 @@ import { InviteDetailsResponseDTO } from './dto/server-invite.response.dto';
 @ApiTags('Server Invites')
 export class ServerInviteController {
     constructor(
-        @inject(TYPES.InviteRepository)
         @Inject(TYPES.InviteRepository)
         private inviteRepo: IInviteRepository,
-        @inject(TYPES.ServerRepository)
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-        @inject(TYPES.RoleRepository)
         @Inject(TYPES.RoleRepository)
         private roleRepo: IRoleRepository,
-        @inject(TYPES.ServerBanRepository)
         @Inject(TYPES.ServerBanRepository)
         private serverBanRepo: IServerBanRepository,
-        @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     // Retrieves all active invites for a server
     // Enforces 'manageInvites' permission
@@ -96,10 +88,12 @@ export class ServerInviteController {
         @Req() req: ExpressRequest,
     ): Promise<IInvite[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageInvites',
             ))
         ) {
@@ -108,7 +102,7 @@ export class ServerInviteController {
             );
         }
 
-        return await this.inviteRepo.findByServerId(serverId);
+        return await this.inviteRepo.findByServerId(serverOid);
     }
 
     // Creates a new invite for a server
@@ -133,11 +127,13 @@ export class ServerInviteController {
         @Body() body: CreateInviteRequestDTO,
     ): Promise<IInvite> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
 
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageInvites',
             ))
         ) {
@@ -151,8 +147,8 @@ export class ServerInviteController {
         let code = customPath;
         if (code) {
             // Restrict custom invite codes to the server owner to prevent squatting/abuse
-            const server = await this.serverRepo.findById(serverId);
-            if (server?.ownerId.toString() !== userId) {
+            const server = await this.serverRepo.findById(serverOid);
+            if (!server?.ownerId.equals(userOid)) {
                 throw new ForbiddenException(
                     ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
                 );
@@ -174,11 +170,11 @@ export class ServerInviteController {
             : undefined;
 
         return await this.inviteRepo.create({
-            serverId,
+            serverId: serverOid,
             code,
             maxUses: maxUses || 0,
             expiresAt,
-            createdByUserId: userId,
+            createdByUserId: userOid,
         });
     }
 
@@ -200,10 +196,13 @@ export class ServerInviteController {
         @Req() req: ExpressRequest,
     ): Promise<{ message: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const inviteOid = new Types.ObjectId(inviteId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageInvites',
             ))
         ) {
@@ -212,12 +211,12 @@ export class ServerInviteController {
             );
         }
 
-        const invite = await this.inviteRepo.findById(inviteId);
-        if (!invite || invite.serverId.toString() !== serverId) {
+        const invite = await this.inviteRepo.findById(inviteOid);
+        if (!invite || !invite.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        await this.inviteRepo.delete(inviteId);
+        await this.inviteRepo.delete(inviteOid);
 
         return { message: 'Invite deleted' };
     }
@@ -260,9 +259,7 @@ export class ServerInviteController {
             );
         }
 
-        const server = await this.serverRepo.findById(
-            invite.serverId.toString(),
-        );
+        const server = await this.serverRepo.findById(invite.serverId);
         if (!server) {
             this.logger.warn('getInviteDetails: Server not found for invite:', {
                 serverId: invite.serverId.toString(),
@@ -271,7 +268,7 @@ export class ServerInviteController {
         }
 
         const memberCount = await this.serverMemberRepo.countByServerId(
-            invite.serverId.toString(),
+            invite.serverId,
         );
 
         return {
@@ -280,7 +277,7 @@ export class ServerInviteController {
             maxUses: invite.maxUses,
             uses: invite.uses,
             server: {
-                id: server._id,
+                id: server._id.toString(),
                 name: server.name,
                 icon: server.icon,
                 banner: server.banner,
@@ -333,9 +330,11 @@ export class ServerInviteController {
         }
 
         const serverId = invite.serverId.toString();
+        const serverOid = invite.serverId;
+        const userOid = new Types.ObjectId(userId);
         const existingMember = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (existingMember) {
             throw new BadRequestException(ErrorMessages.SERVER.ALREADY_MEMBER);
@@ -343,38 +342,38 @@ export class ServerInviteController {
 
         // Prevent banned users from re-joining via invite
         const existingBan = await this.serverBanRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (existingBan) {
             throw new ForbiddenException(ErrorMessages.SERVER.BANNED);
         }
 
-        const server = await this.serverRepo.findById(serverId);
-        const roles: string[] = [];
+        const server = await this.serverRepo.findById(serverOid);
+        const roles: Types.ObjectId[] = [];
 
         // Automatically assign the mandatory '@everyone' role
         const everyoneRole = await this.roleRepo.findByServerIdAndName(
-            serverId,
+            serverOid,
             '@everyone',
         );
         if (everyoneRole) {
-            roles.push(everyoneRole._id.toString());
+            roles.push(everyoneRole._id);
         }
 
         // Assign the server's configured default role, if any
         if (server?.defaultRoleId) {
-            roles.push(server.defaultRoleId.toString());
+            roles.push(server.defaultRoleId);
         }
 
         await this.serverMemberRepo.create({
-            serverId,
-            userId,
+            serverId: serverOid,
+            userId: userOid,
             roles,
         });
 
         // Increment invite usage count after successful join
-        await this.inviteRepo.incrementUses(invite._id.toString());
+        await this.inviteRepo.incrementUses(invite._id);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_added',

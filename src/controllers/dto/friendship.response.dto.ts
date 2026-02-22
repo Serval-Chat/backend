@@ -1,8 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsString } from 'class-validator';
 import { type SerializedCustomStatus } from '@/utils/status';
 
 export class FriendResponseDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
 
     @ApiProperty()
@@ -26,12 +29,16 @@ export class FriendResponseDTO {
 
 export class IncomingFriendRequestResponseDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
 
     @ApiPropertyOptional()
     from?: string;
 
     @ApiPropertyOptional()
+    @IsMongoId()
+    @IsString()
     fromId?: string;
 
     @ApiProperty()

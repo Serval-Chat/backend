@@ -34,7 +34,7 @@ import {
     FileUploadResponseDTO,
     FileMetadataResponseDTO,
 } from './dto/file.response.dto';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { isText } from 'istextorbinary';
 
 // Controller for file uploads, metadata retrieval, and downloads
@@ -49,7 +49,6 @@ export class FileController {
     );
 
     constructor(
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
     ) {}

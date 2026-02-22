@@ -11,14 +11,14 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseWarningRepository implements IWarningRepository {
     private warningModel = Warning;
-    constructor() {}
+    constructor() { }
 
     async findByUserId(
-        userId: string,
+        userId: Types.ObjectId,
         acknowledged?: boolean,
     ): Promise<IWarning[]> {
         const filter: FilterQuery<IWarning> = {
-            userId: new Types.ObjectId(userId),
+            userId,
         };
         if (acknowledged !== undefined) {
             filter.acknowledged = acknowledged;
@@ -31,14 +31,14 @@ export class MongooseWarningRepository implements IWarningRepository {
             .lean()) as unknown as IWarning[];
     }
 
-    async findById(id: string): Promise<IWarning | null> {
+    async findById(id: Types.ObjectId): Promise<IWarning | null> {
         return (await this.warningModel
             .findById(id)
             .lean()) as unknown as IWarning | null;
     }
 
     // Mark a warning as acknowledged by the user */
-    async acknowledge(id: string): Promise<IWarning | null> {
+    async acknowledge(id: Types.ObjectId): Promise<IWarning | null> {
         return (await this.warningModel
             .findByIdAndUpdate(
                 id,
@@ -51,19 +51,19 @@ export class MongooseWarningRepository implements IWarningRepository {
             .lean()) as unknown as IWarning | null;
     }
 
-    async countByUserId(userId: string): Promise<number> {
+    async countByUserId(userId: Types.ObjectId): Promise<number> {
         return await this.warningModel.countDocuments({ userId });
     }
 
     async create(data: {
-        userId: string;
+        userId: Types.ObjectId;
         message: string;
-        issuedBy: string;
+        issuedBy: Types.ObjectId;
     }): Promise<IWarning> {
         const warning = new this.warningModel({
-            userId: new Types.ObjectId(data.userId),
+            userId: data.userId,
             message: data.message,
-            issuedBy: new Types.ObjectId(data.issuedBy),
+            issuedBy: data.issuedBy,
             acknowledged: false,
             timestamp: new Date(),
         });
@@ -71,7 +71,9 @@ export class MongooseWarningRepository implements IWarningRepository {
         return (await warning.save()) as unknown as IWarning;
     }
 
-    async deleteAllForUser(userId: string): Promise<{ deletedCount: number }> {
+    async deleteAllForUser(
+        userId: Types.ObjectId,
+    ): Promise<{ deletedCount: number }> {
         const result = await this.warningModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }

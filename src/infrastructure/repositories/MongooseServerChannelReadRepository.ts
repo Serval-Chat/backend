@@ -1,4 +1,5 @@
 import { injectable } from 'inversify';
+import { Types } from 'mongoose';
 import type { ClientSession } from 'mongoose';
 import {
     IServerChannelReadRepository,
@@ -12,11 +13,10 @@ import { ErrorMessages } from '@/constants/errorMessages';
 // Implements IServerChannelReadRepository using Mongoose ServerChannelRead model
 @injectable()
 export class MongooseServerChannelReadRepository
-    implements IServerChannelReadRepository
-{
+    implements IServerChannelReadRepository {
     async findByServerAndUser(
-        serverId: string,
-        userId: string,
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
     ): Promise<IServerChannelRead[]> {
         return (await ServerChannelRead.find({
             serverId,
@@ -24,7 +24,7 @@ export class MongooseServerChannelReadRepository
         }).lean()) as unknown as IServerChannelRead[];
     }
 
-    async findByUserId(userId: string): Promise<IServerChannelRead[]> {
+    async findByUserId(userId: Types.ObjectId): Promise<IServerChannelRead[]> {
         return (await ServerChannelRead.find({
             userId,
         }).lean()) as unknown as IServerChannelRead[];
@@ -32,9 +32,9 @@ export class MongooseServerChannelReadRepository
 
     // Update or create a read record for a channel
     async upsert(
-        serverId: string,
-        channelId: string,
-        userId: string,
+        serverId: Types.ObjectId,
+        channelId: Types.ObjectId,
+        userId: Types.ObjectId,
         session?: ClientSession,
     ): Promise<IServerChannelRead> {
         const result = (await ServerChannelRead.findOneAndUpdate(
@@ -51,7 +51,10 @@ export class MongooseServerChannelReadRepository
     }
 
     // Mark all channels in a server as read for a user
-    async markServerAsRead(serverId: string, userId: string): Promise<void> {
+    async markServerAsRead(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+    ): Promise<void> {
         await ServerChannelRead.updateMany(
             { serverId, userId },
             { $set: { lastReadAt: new Date() } },

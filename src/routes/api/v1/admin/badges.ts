@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { Router } from 'express';
 import logger from '@/utils/logger';
 import { container } from '@/di/container';
@@ -140,7 +141,7 @@ router.get(
                 return res.status(400).send({ error: 'User ID is required' });
             }
 
-            const user = await userRepo.findById(userId);
+            const user = await userRepo.findById(new mongoose.Types.ObjectId(userId));
             if (!user) {
                 return res.status(404).send({ error: 'User not found' });
             }
@@ -173,7 +174,7 @@ router.post(
                 return res.status(400).send({ error: 'badgeId is required' });
             }
 
-            const user = await userRepo.findById(userId);
+            const user = await userRepo.findById(new mongoose.Types.ObjectId(userId));
             if (!user) {
                 return res.status(404).send({ error: 'User not found' });
             }
@@ -191,7 +192,7 @@ router.post(
             }
 
             badges.push(badgeId);
-            await userRepo.update(user._id.toString(), { badges });
+            await userRepo.update(user._id, { badges });
 
             res.status(200).send({
                 message: 'Badge added successfully',
@@ -220,7 +221,7 @@ router.delete(
                 return res.status(400).send({ error: 'badgeId is required' });
             }
 
-            const user = await userRepo.findById(userId);
+            const user = await userRepo.findById(new mongoose.Types.ObjectId(userId));
             if (!user) {
                 return res.status(404).send({ error: 'User not found' });
             }
@@ -234,7 +235,7 @@ router.delete(
             }
 
             badges.splice(index, 1);
-            await userRepo.update(user._id.toString(), { badges });
+            await userRepo.update(user._id, { badges });
 
             res.status(200).send({
                 message: 'Badge removed successfully',

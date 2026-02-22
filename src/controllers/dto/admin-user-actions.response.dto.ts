@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsString } from 'class-validator';
 
 export class AdminResetProfileResponseDTO {
     @ApiProperty()
@@ -41,12 +42,18 @@ export class AdminUpdateUserPermissionsResponseDTO {
 
 export class AdminBanUserResponseDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     userId!: string;
     @ApiProperty()
     reason!: string;
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     issuedBy!: string;
     @ApiProperty()
     expirationTimestamp!: Date;
@@ -63,10 +70,16 @@ export class AdminUnbanUserResponseDTO {
 
 export class AdminWarnUserResponseDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     userId!: string;
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     issuedBy!: string;
     @ApiProperty()
     message!: string;

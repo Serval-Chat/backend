@@ -4,13 +4,13 @@ import type { Types } from 'mongoose';
 //
 // Represents a server invitation that can be used by new members to join
 export interface IInvite {
-    _id: Types.ObjectId | string;
-    serverId: Types.ObjectId | string;
+    _id: Types.ObjectId;
+    serverId: Types.ObjectId;
     // Unique random code for the invite
     code: string;
     // Custom invite code
     customPath?: string;
-    createdByUserId: Types.ObjectId | string;
+    createdByUserId: Types.ObjectId;
     maxUses?: number;
     uses: number;
     expiresAt?: Date;
@@ -19,10 +19,10 @@ export interface IInvite {
 
 // Invite creation DTO
 export interface CreateInviteDTO {
-    serverId: string;
+    serverId: Types.ObjectId;
     code: string;
     customPath?: string;
-    createdByUserId: string | Types.ObjectId;
+    createdByUserId: Types.ObjectId;
     maxUses?: number;
     expiresAt?: Date;
 }
@@ -35,10 +35,10 @@ export interface IInviteRepository {
     findByCode(code: string): Promise<IInvite | null>;
 
     // Find invite by ID
-    findById(id: string): Promise<IInvite | null>;
+    findById(id: Types.ObjectId): Promise<IInvite | null>;
 
     // Find all invites for a server
-    findByServerId(serverId: string): Promise<IInvite[]>;
+    findByServerId(serverId: Types.ObjectId): Promise<IInvite[]>;
 
     // Find invite by custom path
     findByCustomPath(customPath: string): Promise<IInvite | null>;
@@ -50,11 +50,11 @@ export interface IInviteRepository {
     create(data: CreateInviteDTO): Promise<IInvite>;
 
     // Increment uses count
-    incrementUses(id: string): Promise<IInvite | null>;
+    incrementUses(id: Types.ObjectId): Promise<IInvite | null>;
 
     // Delete invite by ID
-    delete(id: string): Promise<boolean>;
+    delete(id: Types.ObjectId): Promise<boolean>;
 
     // Delete all invites for a server (bulk delete)
-    deleteByServerId(serverId: string): Promise<number>;
+    deleteByServerId(serverId: Types.ObjectId): Promise<number>;
 }

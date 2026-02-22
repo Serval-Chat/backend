@@ -13,7 +13,7 @@ export interface CreateUserDTO {
 //
 // Represents a registered user in the system
 export interface IUser {
-    _id: Types.ObjectId | string;
+    _id: Types.ObjectId;
     login?: string;
     username?: string;
     displayName?: string;
@@ -73,10 +73,10 @@ export interface IUser {
 // Encapsulates all user-related database operations
 export interface IUserRepository {
     // Find user by ID (lean)
-    findById(id: string): Promise<IUser | null>;
+    findById(id: Types.ObjectId): Promise<IUser | null>;
 
     // Find multiple users by IDs
-    findByIds(ids: (string | Types.ObjectId)[]): Promise<IUser[]>;
+    findByIds(ids: Types.ObjectId[]): Promise<IUser[]>;
 
     // Find user by login (username or email)
     findByLogin(login: string): Promise<IUser | null>;
@@ -89,7 +89,7 @@ export interface IUserRepository {
 
     // Find users by username prefix from a list of user IDs
     findByUsernamePrefix(
-        userIds: (string | Types.ObjectId)[],
+        userIds: Types.ObjectId[],
         prefix: string,
         limit?: number,
     ): Promise<IUser[]>;
@@ -98,20 +98,20 @@ export interface IUserRepository {
     create(data: CreateUserDTO): Promise<IUser>;
 
     // Update user by ID
-    update(id: string, data: Partial<IUser>): Promise<IUser | null>;
+    update(id: Types.ObjectId, data: Partial<IUser>): Promise<IUser | null>;
 
     // Soft delete user (mark as deleted without removing)
-    softDelete(id: string, reason: string): Promise<boolean>;
+    softDelete(id: Types.ObjectId, reason: string): Promise<boolean>;
 
     // Hard delete user by ID
-    delete(id: string): Promise<boolean>;
+    delete(id: Types.ObjectId): Promise<boolean>;
 
     // Compare a password against the stored hash
-    comparePassword(id: string, password: string): Promise<boolean>;
+    comparePassword(id: Types.ObjectId, password: string): Promise<boolean>;
 
     // Update user's custom status
     updateCustomStatus(
-        id: string,
+        id: Types.ObjectId,
         status: {
             text: string;
             emoji?: string;
@@ -121,17 +121,17 @@ export interface IUserRepository {
     ): Promise<void>;
 
     // Update user's profile picture
-    updateProfilePicture(id: string, filename: string): Promise<void>;
+    updateProfilePicture(id: Types.ObjectId, filename: string): Promise<void>;
 
     // Update user's login
-    updateLogin(id: string, newLogin: string): Promise<void>;
+    updateLogin(id: Types.ObjectId, newLogin: string): Promise<void>;
 
     // Update user's password
-    updatePassword(id: string, newPassword: string): Promise<void>;
+    updatePassword(id: Types.ObjectId, newPassword: string): Promise<void>;
 
     // Update user's username style
     updateUsernameStyle(
-        id: string,
+        id: Types.ObjectId,
         style: {
             usernameFont?: string;
             usernameGradient?: {
@@ -148,19 +148,19 @@ export interface IUserRepository {
     ): Promise<void>;
 
     // Update user's username
-    updateUsername(id: string, newUsername: string): Promise<void>;
+    updateUsername(id: Types.ObjectId, newUsername: string): Promise<void>;
 
     // Update user's language preference
-    updateLanguage(id: string, language: string): Promise<void>;
+    updateLanguage(id: Types.ObjectId, language: string): Promise<void>;
 
     // Update user's bio
-    updateBio(id: string, bio: string | null): Promise<void>;
+    updateBio(id: Types.ObjectId, bio: string | null): Promise<void>;
 
     // Update user's pronouns
-    updatePronouns(id: string, pronouns: string | null): Promise<void>;
+    updatePronouns(id: Types.ObjectId, pronouns: string | null): Promise<void>;
 
     // Update user's display name
-    updateDisplayName(id: string, displayName: string | null): Promise<void>;
+    updateDisplayName(id: Types.ObjectId, displayName: string | null): Promise<void>;
 
     // Find users with pagination and filtering (for admin)
     findMany(options: {
@@ -172,20 +172,23 @@ export interface IUserRepository {
     }): Promise<IUser[]>;
 
     // Hard delete user by ID
-    hardDelete(id: string): Promise<boolean>;
+    hardDelete(id: Types.ObjectId): Promise<boolean>;
 
     // Update userPermissions
-    updatePermissions(id: string, permissions: AdminPermissions): Promise<void>;
+    updatePermissions(
+        id: Types.ObjectId,
+        permissions: AdminPermissions,
+    ): Promise<void>;
 
     // Increment token version
-    incrementTokenVersion(id: string): Promise<void>;
+    incrementTokenVersion(id: Types.ObjectId): Promise<void>;
 
     // Remove a specific badge from all users
     removeBadgeFromAllUsers(badgeId: string): Promise<void>;
 
     // Update user settings
     updateSettings(
-        id: string,
+        id: Types.ObjectId,
         settings: {
             muteNotifications?: boolean;
             useDiscordStyleMessages?: boolean;
@@ -204,8 +207,8 @@ export interface IUserRepository {
     countCreatedAfter(date: Date): Promise<number>;
 
     // Update user's banner
-    updateBanner(id: string, filename: string | null): Promise<void>;
+    updateBanner(id: Types.ObjectId, filename: string | null): Promise<void>;
 
     // Verify if user is currently banned
-    isBanned(userId: string): Promise<boolean>;
+    isBanned(userId: Types.ObjectId): Promise<boolean>;
 }

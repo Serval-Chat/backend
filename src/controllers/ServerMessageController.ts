@@ -21,7 +21,7 @@ import {
     ApiBearerAuth,
     ApiQuery,
 } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
     IServerMessageRepository,
@@ -59,28 +59,21 @@ import {
 @ApiBearerAuth()
 export class ServerMessageController {
     constructor(
-        @inject(TYPES.ServerMessageRepository)
         @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-        @inject(TYPES.ReactionRepository)
         @Inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
-        @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: IWsServer,
-    ) {}
+    ) { }
 
     // Retrieves messages for a specific channel with pagination
     // Enforces server membership
@@ -98,11 +91,12 @@ export class ServerMessageController {
         @Query('limit') limit: number = 50,
         @Query('before') before?: string,
         @Query('around') around?: string,
+        @Query('after') after?: string,
     ): Promise<IServerMessage[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
@@ -110,32 +104,30 @@ export class ServerMessageController {
 
         // Fetch messages using cursor-based pagination (before / around)
         const msgs = await this.serverMessageRepo.findByChannelId(
-            channelId,
+            new mongoose.Types.ObjectId(channelId),
             limit,
             before,
             around,
+            after,
         );
 
-        // Bulk fetch reactions for all retrieved messages
-        const messageIds = msgs.map((m) => m._id.toString());
+        // Bulk fetch reactions for all retrieved messages with userId context
+        const messageIds = msgs.map((m) => m._id);
         const reactionsMap = await this.reactionRepo.getReactionsForMessages(
             messageIds,
             'server',
-            userId,
+            new mongoose.Types.ObjectId(userId),
         );
 
         return msgs.map((msg) => {
-            const msgObj =
-                'toObject' in msg && typeof msg.toObject === 'function'
-                    ? msg.toObject()
-                    : msg;
+            const msgObj = msg as unknown as Record<string, unknown>;
             return {
                 ...msgObj,
                 reactions:
                     (reactionsMap as Record<string, unknown[]>)[
-                        msg._id.toString()
+                    msg._id.toString()
                     ] || [],
-            };
+            } as IServerMessage;
         });
     }
 
@@ -161,17 +153,17 @@ export class ServerMessageController {
     ): Promise<IServerMessage> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const canSend = await this.permissionService.hasChannelPermission(
-            serverId,
-            userId,
-            channelId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
             'sendMessages',
         );
         if (!canSend) {
@@ -180,7 +172,7 @@ export class ServerMessageController {
             );
         }
 
-        const channel = await this.channelRepo.findById(channelId);
+        const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
@@ -201,7 +193,7 @@ export class ServerMessageController {
         });
 
         // Update the channel's last activity timestamp for sorting and unread tracking
-        await this.channelRepo.updateLastMessageAt(channelId);
+        await this.channelRepo.updateLastMessageAt(new mongoose.Types.ObjectId(channelId));
 
         // Track message metrics
         messagesSentCounter.labels('server').inc();
@@ -266,14 +258,14 @@ export class ServerMessageController {
     }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
         if (!message || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -282,14 +274,14 @@ export class ServerMessageController {
         // Handle both legacy and new reply ID fields for backward compatibility
         if (message.replyToId) {
             const repliedMsg = await this.serverMessageRepo.findById(
-                message.replyToId.toString(),
+                message.replyToId,
             );
             if (repliedMsg && repliedMsg.channelId.toString() === channelId) {
                 repliedMessage = repliedMsg;
             }
         } else if (message.repliedToMessageId) {
             const repliedMsg = await this.serverMessageRepo.findById(
-                message.repliedToMessageId.toString(),
+                message.repliedToMessageId,
             );
             if (repliedMsg && repliedMsg.channelId.toString() === channelId) {
                 repliedMessage = repliedMsg;
@@ -297,15 +289,15 @@ export class ServerMessageController {
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
-            messageId,
+            new mongoose.Types.ObjectId(messageId),
             'server',
-            userId,
+            new mongoose.Types.ObjectId(userId),
         );
 
         return {
             message: {
                 ...('toObject' in message &&
-                typeof message.toObject === 'function'
+                    typeof message.toObject === 'function'
                     ? message.toObject()
                     : message),
                 reactions,
@@ -336,7 +328,7 @@ export class ServerMessageController {
         @Body() body: ServerEditMessageRequestDTO,
     ): Promise<IServerMessage> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
         if (!message || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -352,7 +344,7 @@ export class ServerMessageController {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
-        const updatedMessage = await this.serverMessageRepo.update(messageId, {
+        const updatedMessage = await this.serverMessageRepo.update(new mongoose.Types.ObjectId(messageId), {
             text: messageText,
             // Mark message as edited for client-side rendering
             isEdited: true,
@@ -394,22 +386,22 @@ export class ServerMessageController {
         @Req() req: ExpressRequest,
     ): Promise<{ message: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
         if (!message || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const canManage = await this.permissionService.hasChannelPermission(
-            serverId,
-            userId,
-            channelId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
             'manageMessages',
         );
         const canDeleteOthers =
             await this.permissionService.hasChannelPermission(
-                serverId,
-                userId,
-                channelId,
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
+                new mongoose.Types.ObjectId(channelId),
                 'deleteMessagesOfOthers',
             );
 
@@ -423,7 +415,7 @@ export class ServerMessageController {
             );
         }
 
-        await this.serverMessageRepo.delete(messageId);
+        await this.serverMessageRepo.delete(new mongoose.Types.ObjectId(messageId));
 
         const event: IMessageServerDeletedEvent = {
             type: 'message_server_deleted',

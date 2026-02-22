@@ -12,6 +12,7 @@ import {
     NotFoundException,
     ForbiddenException,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -19,7 +20,7 @@ import {
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { WsServer } from '@/ws/server';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
     IServerMemberRepository,
@@ -55,31 +56,23 @@ import {
 @UseGuards(JwtAuthGuard)
 export class ServerMemberController {
     constructor(
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.ServerRepository)
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
-        @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-        @inject(TYPES.RoleRepository)
         @Inject(TYPES.RoleRepository)
         private roleRepo: IRoleRepository,
-        @inject(TYPES.ServerBanRepository)
         @Inject(TYPES.ServerBanRepository)
         private serverBanRepo: IServerBanRepository,
-        @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     // Retrieves all members of a server
     // Enforces server membership
@@ -94,16 +87,18 @@ export class ServerMemberController {
         (IServerMember & { user: MappedUser | null; online: boolean })[]
     > {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const members =
-            await this.serverMemberRepo.findByServerIdWithUserInfo(serverId);
+            await this.serverMemberRepo.findByServerIdWithUserInfo(serverOid);
         return members.map((m) => ({
             ...m,
             online: this.wsServer.isUserOnline(m.userId.toString()),
@@ -124,15 +119,17 @@ export class ServerMemberController {
         (IServerMember & { user: MappedUser | null; online: boolean })[]
     > {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const members = await this.serverMemberRepo.searchMembers(serverId, q);
+        const members = await this.serverMemberRepo.searchMembers(serverOid, q);
         return members.map((m) => ({
             ...m,
             online: this.wsServer.isUserOnline(m.userId.toString()),
@@ -153,23 +150,26 @@ export class ServerMemberController {
     ): Promise<IServerMember & { user: MappedUser | null }> {
         const currentUserId = (req as ExpressRequest & { user: JWTPayload })
             .user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const currentOid = new Types.ObjectId(currentUserId);
+        const targetOid = new Types.ObjectId(userId);
         const currentMember = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            currentUserId,
+            serverOid,
+            currentOid,
         );
         if (!currentMember) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            targetOid,
         );
         if (!member) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(targetOid);
         return { ...member, user: user ? mapUser(user as IUser) : null };
     }
 
@@ -191,10 +191,13 @@ export class ServerMemberController {
     ): Promise<{ message: string }> {
         const currentUserId = (req as ExpressRequest & { user: JWTPayload })
             .user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const currentOid = new Types.ObjectId(currentUserId);
+        const targetOid = new Types.ObjectId(userId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                currentUserId,
+                serverOid,
+                currentOid,
                 'kickMembers',
             ))
         ) {
@@ -204,16 +207,16 @@ export class ServerMemberController {
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            targetOid,
         );
         if (!member) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         // Prevent kicking the server owner, even by users with administrative permissions
-        const server = await this.serverRepo.findById(serverId);
-        if (server?.ownerId.toString() === userId) {
+        const server = await this.serverRepo.findById(serverOid);
+        if (server?.ownerId.equals(targetOid)) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.CANNOT_KICK_OWNER,
             );
@@ -222,13 +225,13 @@ export class ServerMemberController {
         // Enforce role hierarchy: cannot kick someone with equal or higher role
         const currentUserHighest =
             await this.permissionService.getHighestRolePosition(
-                serverId,
-                currentUserId,
+                serverOid,
+                currentOid,
             );
         const targetHighest =
             await this.permissionService.getHighestRolePosition(
-                serverId,
-                userId,
+                serverOid,
+                targetOid,
             );
 
         if (currentUserHighest <= targetHighest) {
@@ -237,7 +240,7 @@ export class ServerMemberController {
             );
         }
 
-        await this.serverMemberRepo.remove(serverId, userId);
+        await this.serverMemberRepo.remove(serverOid, targetOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
@@ -263,10 +266,15 @@ export class ServerMemberController {
     ): Promise<{ message: string }> {
         const currentUserId = (req as ExpressRequest & { user: JWTPayload })
             .user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const currentOid = new Types.ObjectId(currentUserId);
+        const { userId, reason } = body;
+        const targetOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                currentUserId,
+                serverOid,
+                currentOid,
                 'banMembers',
             ))
         ) {
@@ -275,24 +283,22 @@ export class ServerMemberController {
             );
         }
 
-        const { userId, reason } = body;
-
         // Prevent banning the server owner, even by users with administrative permissions
-        const server = await this.serverRepo.findById(serverId);
-        if (server?.ownerId.toString() === userId) {
+        const server = await this.serverRepo.findById(serverOid);
+        if (server?.ownerId.equals(targetOid)) {
             throw new ForbiddenException(ErrorMessages.MEMBER.CANNOT_BAN_OWNER);
         }
 
         // Enforce role hierarchy: cannot ban someone with equal or higher role
         const currentUserHighest =
             await this.permissionService.getHighestRolePosition(
-                serverId,
-                currentUserId,
+                serverOid,
+                currentOid,
             );
         const targetHighest =
             await this.permissionService.getHighestRolePosition(
-                serverId,
-                userId,
+                serverOid,
+                targetOid,
             );
 
         if (currentUserHighest <= targetHighest) {
@@ -303,14 +309,14 @@ export class ServerMemberController {
 
         // Ban workflow: record ban, remove member, notify clients
         await this.serverBanRepo.create({
-            serverId,
-            userId,
+            serverId: serverOid,
+            userId: targetOid,
             reason: reason || 'No reason provided',
-            bannedBy: currentUserId,
+            bannedBy: currentOid,
         });
 
         // Automatically remove the member from the server upon banning
-        await this.serverMemberRepo.remove(serverId, userId);
+        await this.serverMemberRepo.remove(serverOid, targetOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
@@ -340,10 +346,13 @@ export class ServerMemberController {
     ): Promise<{ message: string }> {
         const currentUserId = (req as ExpressRequest & { user: JWTPayload })
             .user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const currentOid = new Types.ObjectId(currentUserId);
+        const targetOid = new Types.ObjectId(userId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                currentUserId,
+                serverOid,
+                currentOid,
                 'banMembers',
             ))
         ) {
@@ -352,7 +361,7 @@ export class ServerMemberController {
             );
         }
 
-        await this.serverBanRepo.unban(serverId, userId);
+        await this.serverBanRepo.unban(serverOid, targetOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_unbanned',
@@ -377,10 +386,12 @@ export class ServerMemberController {
     ): Promise<IServerBan[]> {
         const currentUserId = (req as ExpressRequest & { user: JWTPayload })
             .user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const currentOid = new Types.ObjectId(currentUserId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                currentUserId,
+                serverOid,
+                currentOid,
                 'banMembers',
             ))
         ) {
@@ -389,7 +400,7 @@ export class ServerMemberController {
             );
         }
 
-        return await this.serverBanRepo.findByServerIdWithUserInfo(serverId);
+        return await this.serverBanRepo.findByServerIdWithUserInfo(serverOid);
     }
 
     // Add a role to a member
@@ -409,10 +420,14 @@ export class ServerMemberController {
     ): Promise<IServerMember> {
         const currentUserId = (req as ExpressRequest & { user: JWTPayload })
             .user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const currentOid = new Types.ObjectId(currentUserId);
+        const targetOid = new Types.ObjectId(userId);
+        const roleOid = new Types.ObjectId(roleId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                currentUserId,
+                serverOid,
+                currentOid,
                 'manageRoles',
             ))
         ) {
@@ -422,26 +437,26 @@ export class ServerMemberController {
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            targetOid,
         );
         if (!member) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        const role = await this.roleRepo.findById(roleId);
-        if (!role || role.serverId.toString() !== serverId) {
+        const role = await this.roleRepo.findById(roleOid);
+        if (!role || !role.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
-        if (member.roles.includes(roleId)) {
+        if (member.roles.some(r => r.equals(roleOid))) {
             return member;
         }
 
         const updatedMember = await this.serverMemberRepo.addRole(
-            serverId,
-            userId,
-            roleId,
+            serverOid,
+            targetOid,
+            roleOid,
         );
 
         this.wsServer.broadcastToServer(serverId, {
@@ -473,10 +488,14 @@ export class ServerMemberController {
     ): Promise<IServerMember> {
         const currentUserId = (req as ExpressRequest & { user: JWTPayload })
             .user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const currentOid = new Types.ObjectId(currentUserId);
+        const targetOid = new Types.ObjectId(userId);
+        const roleOid = new Types.ObjectId(roleId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                currentUserId,
+                serverOid,
+                currentOid,
                 'manageRoles',
             ))
         ) {
@@ -486,17 +505,17 @@ export class ServerMemberController {
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            targetOid,
         );
         if (!member) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         const updatedMember = await this.serverMemberRepo.removeRole(
-            serverId,
-            userId,
-            roleId,
+            serverOid,
+            targetOid,
+            roleOid,
         );
 
         this.wsServer.broadcastToServer(serverId, {
@@ -525,14 +544,16 @@ export class ServerMemberController {
         @Req() req: ExpressRequest,
     ): Promise<{ message: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const server = await this.serverRepo.findById(serverId);
-        if (server?.ownerId.toString() === userId) {
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const server = await this.serverRepo.findById(serverOid);
+        if (server?.ownerId.equals(userOid)) {
             throw new ForbiddenException(
                 ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
             );
         }
 
-        await this.serverMemberRepo.remove(serverId, userId);
+        await this.serverMemberRepo.remove(serverOid, userOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
@@ -558,27 +579,31 @@ export class ServerMemberController {
         @Body() body: TransferOwnershipRequestDTO,
     ): Promise<{ message: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const server = await this.serverRepo.findById(serverId);
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const { newOwnerId } = body;
+        const newOwnerOid = new Types.ObjectId(newOwnerId);
+
+        const server = await this.serverRepo.findById(serverOid);
         if (!server) {
             throw new NotFoundException('Server not found');
         }
 
-        if (server.ownerId.toString() !== userId) {
+        if (!server.ownerId.equals(userOid)) {
             throw new ForbiddenException(
                 ErrorMessages.SERVER.TRANSFER_OWNERSHIP_ONLY_OWNER,
             );
         }
 
-        const { newOwnerId } = body;
         const newOwnerMember = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            newOwnerId,
+            serverOid,
+            newOwnerOid,
         );
         if (!newOwnerMember) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        await this.serverRepo.update(serverId, { ownerId: newOwnerId });
+        await this.serverRepo.update(serverOid, { ownerId: newOwnerOid });
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'ownership_transferred',

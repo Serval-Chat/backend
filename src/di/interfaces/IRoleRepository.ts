@@ -22,8 +22,8 @@ export interface IRolePermissions {
 //
 // Defines a set of permissions and visual styles (color/gradient) for a group of users
 export interface IRole {
-    _id: Types.ObjectId | string;
-    serverId: Types.ObjectId | string;
+    _id: Types.ObjectId;
+    serverId: Types.ObjectId;
     name: string;
     // Solid color for the role (hex string)
     // If null, the role uses gradient mode (startColor/endColor/colors)
@@ -48,14 +48,14 @@ export interface IRole {
 // Encapsulates role operations
 export interface IRoleRepository {
     // Find role by ID
-    findById(id: string): Promise<IRole | null>;
+    findById(id: Types.ObjectId): Promise<IRole | null>;
 
     // Find all roles for a server
-    findByServerId(serverId: string): Promise<IRole[]>;
+    findByServerId(serverId: Types.ObjectId): Promise<IRole[]>;
 
     // Create a new role
     create(data: {
-        serverId: string;
+        serverId: Types.ObjectId;
         name: string;
         color?: string;
         startColor?: string;
@@ -69,26 +69,31 @@ export interface IRoleRepository {
     }): Promise<IRole>;
 
     // Update role
-    update(id: string, data: Partial<IRole>): Promise<IRole | null>;
+    update(id: Types.ObjectId, data: Partial<IRole>): Promise<IRole | null>;
 
     // Delete role by ID
-    delete(id: string): Promise<boolean>;
+    delete(id: Types.ObjectId): Promise<boolean>;
 
     // Find @everyone role for a server
-    findEveryoneRole(serverId: string): Promise<IRole | null>;
+    findEveryoneRole(serverId: Types.ObjectId): Promise<IRole | null>;
 
     // Find role by server ID and name
     findByServerIdAndName(
-        serverId: string,
+        serverId: Types.ObjectId,
         name: string,
     ): Promise<IRole | null>;
 
     // Update role position
-    updatePosition(id: string, position: number): Promise<IRole | null>;
+    updatePosition(
+        id: Types.ObjectId,
+        position: number,
+    ): Promise<IRole | null>;
 
     // Delete all roles for a server (bulk delete)
-    deleteByServerId(serverId: string): Promise<number>;
+    deleteByServerId(serverId: Types.ObjectId): Promise<number>;
 
     // Find role with maximum position for a server
-    findMaxPositionByServerId(serverId: string): Promise<IRole | null>;
+    findMaxPositionByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<IRole | null>;
 }

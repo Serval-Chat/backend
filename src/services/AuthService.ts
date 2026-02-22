@@ -54,7 +54,7 @@ export class AuthService {
         @inject(TYPES.AuditLogRepository)
         @Inject(TYPES.AuditLogRepository)
         private auditLogRepo: IAuditLogRepository,
-    ) {}
+    ) { }
 
     // Authenticate a user with login credentials.
     //
@@ -89,7 +89,7 @@ export class AuthService {
 
         // Validate password via repository
         const valid = await this.userRepo.comparePassword(
-            user._id.toString(),
+            user._id,
             password,
         );
         if (!valid) {
@@ -101,9 +101,9 @@ export class AuthService {
         }
 
         // Check for bans
-        await this.banRepo.checkExpired(user._id.toString());
+        await this.banRepo.checkExpired(user._id);
         const activeBan = await this.banRepo.findActiveByUserId(
-            user._id.toString(),
+            user._id,
         );
 
         if (activeBan) {
@@ -158,7 +158,7 @@ export class AuthService {
         // Rate limit check and creation using transaction
         const resetRequest = await this.passwordResetRepo.createIfUnderLimit(
             {
-                userId: user._id.toString(),
+                userId: user._id,
                 hashedToken,
                 expiresAt,
                 ipParam: ip,
@@ -199,9 +199,9 @@ export class AuthService {
 
         // Audit log
         await this.auditLogRepo.create({
-            actorId: user._id.toString(),
+            actorId: user._id,
             actionType: 'PASSWORD_RESET_REQUESTED',
-            targetUserId: user._id.toString(),
+            targetUserId: user._id,
             additionalData: { ip, requestId },
         });
 
@@ -229,7 +229,7 @@ export class AuthService {
         }
 
         const user = await this.userRepo.findById(
-            resetRequest.userId.toString(),
+            resetRequest.userId,
         );
         if (!user) {
             this.logger.warn(
@@ -240,7 +240,7 @@ export class AuthService {
 
         // Prevent password reuse
         const isSamePassword = await this.userRepo.comparePassword(
-            user._id.toString(),
+            user._id,
             newPassword,
         );
         if (isSamePassword) {
@@ -261,18 +261,18 @@ export class AuthService {
 
         // Update password
         await this.userRepo.updatePassword(
-            resetRequest.userId.toString(),
+            resetRequest.userId,
             newPassword,
         );
 
         // Invalidate sessions
         await this.userRepo.incrementTokenVersion(
-            resetRequest.userId.toString(),
+            resetRequest.userId,
         );
 
         // Invalidate all other reset tokens for this user
         await this.passwordResetRepo.deleteByUser(
-            resetRequest.userId.toString(),
+            resetRequest.userId,
         );
 
         // Send confirmation email
@@ -291,9 +291,9 @@ export class AuthService {
 
         // Audit log (actorId represents the admin or regular user)
         await this.auditLogRepo.create({
-            actorId: resetRequest.userId.toString(),
+            actorId: resetRequest.userId,
             actionType: 'PASSWORD_RESET_COMPLETED',
-            targetUserId: resetRequest.userId.toString(),
+            targetUserId: resetRequest.userId,
         });
 
         return requestId;

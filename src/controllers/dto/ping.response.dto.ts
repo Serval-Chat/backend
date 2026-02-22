@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsOptional, IsString } from 'class-validator';
 
 export class PingNotificationDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     id!: string;
 
     @ApiProperty({ enum: ['mention'] })
@@ -11,12 +14,20 @@ export class PingNotificationDTO {
     sender!: string;
 
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     senderId!: string;
 
     @ApiPropertyOptional()
+    @IsOptional()
+    @IsMongoId()
+    @IsString()
     serverId?: string;
 
     @ApiPropertyOptional()
+    @IsOptional()
+    @IsMongoId()
+    @IsString()
     channelId?: string;
 
     @ApiProperty({ type: 'object', additionalProperties: true })

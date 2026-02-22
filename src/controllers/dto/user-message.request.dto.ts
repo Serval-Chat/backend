@@ -31,6 +31,11 @@ export class GetMessagesQueryDTO {
     @IsOptional()
     @IsMessageId()
     around?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsMessageId()
+    after?: string;
 }
 
 export class MessageIdParamDTO {

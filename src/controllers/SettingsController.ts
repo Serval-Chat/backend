@@ -8,13 +8,14 @@ import {
     Inject,
     NotFoundException,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
     ApiResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -43,13 +44,11 @@ interface UserSettings {
 @ApiBearerAuth()
 export class SettingsController {
     constructor(
-        @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     // Retrieves the current user's settings
     // Returns default values if no custom settings are configured
@@ -64,7 +63,8 @@ export class SettingsController {
         @Req() req: ExpressRequest,
     ): Promise<UserSettings> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const user = await this.userRepo.findById(userId);
+        const userOid = new Types.ObjectId(userId);
+        const user = await this.userRepo.findById(userOid);
 
         if (!user) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
@@ -98,16 +98,17 @@ export class SettingsController {
         @Body() body: UpdateSettingsRequestDTO,
     ): Promise<{ message: string; settings: UserSettings }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userOid = new Types.ObjectId(userId);
 
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         // Perform a partial settings update
-        await this.userRepo.updateSettings(userId, body);
+        await this.userRepo.updateSettings(userOid, body);
 
-        const updatedUser = await this.userRepo.findById(userId);
+        const updatedUser = await this.userRepo.findById(userOid);
         const updatedSettings = updatedUser?.settings || {};
 
         return {

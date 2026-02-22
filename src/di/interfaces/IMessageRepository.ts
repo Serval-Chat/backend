@@ -3,38 +3,20 @@ import type { Types, ClientSession } from 'mongoose';
 // Message interface (domain model)
 //
 // Represents a direct message between two users
-export interface IReferencedMessage {
-    _id: string | string;
-    text: string;
-    senderId: string | string;
-    receiverId: string | string;
-    createdAt?: Date;
-    isEdited?: boolean;
-    editedAt?: Date;
-    senderDeleted?: boolean;
-    receiverDeleted?: boolean;
-    anonymizedSender?: string;
-    anonymizedReceiver?: string;
-}
-
 export interface IMessage {
-    _id: string | string;
-    senderId: string | string;
-    receiverId: string | string;
+    _id: Types.ObjectId;
+    senderId: Types.ObjectId;
+    receiverId: Types.ObjectId;
     text: string;
     createdAt?: Date;
-    replyToId?: string;
-    repliedToMessageId?: string;
-    referenced_message?: IReferencedMessage;
+    replyToId?: Types.ObjectId;
+    repliedToMessageId?: Types.ObjectId;
+    referenced_message?: IMessage;
     editedAt?: Date;
     isEdited?: boolean;
-    // Flag indicating if the sender has "deleted" the message from their view
     senderDeleted?: boolean;
-    // Anonymized sender name used when the sender's account is hard-deleted
     anonymizedSender?: string;
-    // Flag indicating if the receiver has "deleted" the message from their view
     receiverDeleted?: boolean;
-    // Anonymized receiver name used when the receiver's account is hard-deleted
     anonymizedReceiver?: string;
 }
 
@@ -43,38 +25,39 @@ export interface IMessage {
 // Encapsulates all direct message-related database operations
 export interface IMessageRepository {
     // Find message by ID
-    findById(id: string): Promise<IMessage | null>;
+    findById(id: Types.ObjectId): Promise<IMessage | null>;
 
     // Find messages between two users
     findByConversation(
-        user1Id: string,
-        user2Id: string,
+        user1Id: Types.ObjectId,
+        user2Id: Types.ObjectId,
         limit?: number,
         before?: string,
         around?: string,
+        after?: string,
     ): Promise<IMessage[]>;
 
     // Create a new message
     create(
         data: {
-            senderId: string;
-            receiverId: string;
+            senderId: Types.ObjectId;
+            receiverId: Types.ObjectId;
             text: string;
-            replyToId?: string;
-            repliedToMessageId?: Types.ObjectId | string;
+            replyToId?: Types.ObjectId;
+            repliedToMessageId?: Types.ObjectId;
         },
         session?: ClientSession,
     ): Promise<IMessage>;
 
     // Update message (for editing)
-    update(id: string, text: string): Promise<IMessage | null>;
+    update(id: Types.ObjectId, text: string): Promise<IMessage | null>;
 
     // Delete message by ID
-    delete(id: string): Promise<boolean>;
+    delete(id: Types.ObjectId): Promise<boolean>;
 
     // Update many messages sent by a user (for hard delete - anonymize)
     updateManyBySenderId(
-        senderId: string,
+        senderId: Types.ObjectId,
         update: {
             senderDeleted?: boolean;
             anonymizedSender?: string;
@@ -83,7 +66,7 @@ export interface IMessageRepository {
 
     // Update many messages received by a user (for hard delete - anonymize)
     updateManyByReceiverId(
-        receiverId: string,
+        receiverId: Types.ObjectId,
         update: {
             receiverDeleted?: boolean;
             anonymizedReceiver?: string;

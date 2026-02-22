@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsString } from 'class-validator';
 
 export class EmojiResponseDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
 
     @ApiProperty()
@@ -11,9 +14,13 @@ export class EmojiResponseDTO {
     imageUrl!: string;
 
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     serverId!: string;
 
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     createdBy!: string;
 
     @ApiPropertyOptional()

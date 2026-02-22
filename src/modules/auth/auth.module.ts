@@ -7,6 +7,7 @@ import {
     ForbiddenException,
     Inject,
 } from '@nestjs/common';
+import mongoose from 'mongoose';
 import { Reflector } from '@nestjs/core';
 import { TYPES } from '@/di/types';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -23,7 +24,7 @@ export class JwtAuthGuard implements CanActivate {
         @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @Inject(TYPES.BanRepository) private banRepo: IBanRepository,
         private reflector: Reflector,
-    ) {}
+    ) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
@@ -46,7 +47,7 @@ export class JwtAuthGuard implements CanActivate {
             const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
             // Check if account is deleted and validate tokenVersion
-            const user = await this.userRepo.findById(decoded.id);
+            const user = await this.userRepo.findById(new mongoose.Types.ObjectId(decoded.id));
 
             if (!user || user.deletedAt) {
                 throw new UnauthorizedException('Invalid token');
@@ -58,8 +59,8 @@ export class JwtAuthGuard implements CanActivate {
             }
 
             // Check for bans
-            await this.banRepo.checkExpired(decoded.id);
-            const activeBan = await this.banRepo.findActiveByUserId(decoded.id);
+            await this.banRepo.checkExpired(new mongoose.Types.ObjectId(decoded.id));
+            const activeBan = await this.banRepo.findActiveByUserId(new mongoose.Types.ObjectId(decoded.id));
             if (activeBan) {
                 throw new ForbiddenException({
                     error: 'Account banned',
@@ -80,7 +81,7 @@ export class JwtAuthGuard implements CanActivate {
                 const hasAllPermissions = requiredPermissions.every(
                     (p) =>
                         (userPermissions as unknown as Record<string, boolean>)[
-                            p
+                        p
                         ] === true,
                 );
 
@@ -109,4 +110,4 @@ export class JwtAuthGuard implements CanActivate {
     providers: [JwtAuthGuard],
     exports: [JwtAuthGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

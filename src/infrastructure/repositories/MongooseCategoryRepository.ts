@@ -1,5 +1,6 @@
 import { injectable } from 'inversify';
 import { Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
 import {
     ICategoryRepository,
     ICategory,
@@ -8,17 +9,13 @@ import {
 import { Category } from '@/models/Server';
 
 // Transform MongoDB document to match ICategory interface
-//
-// Ensures that ObjectIds are converted to strings for the domain model
-const transformCategory = (doc: unknown): ICategory | null => {
+const transformCategory = (doc: Record<string, unknown> | null): ICategory | null => {
     if (!doc) return null;
 
-    const d = doc as { _id: unknown; serverId: unknown };
-
     return {
-        ...d,
-        _id: String(d._id),
-        serverId: String(d.serverId),
+        ...doc,
+        _id: doc._id,
+        serverId: doc.serverId,
     } as unknown as ICategory;
 };
 
@@ -28,20 +25,20 @@ const transformCategory = (doc: unknown): ICategory | null => {
 @injectable()
 @Injectable()
 export class MongooseCategoryRepository implements ICategoryRepository {
-    async findById(id: string): Promise<ICategory | null> {
+    async findById(id: Types.ObjectId): Promise<ICategory | null> {
         const result = await Category.findById(id).lean();
         return transformCategory(result);
     }
 
     async findByIdAndServer(
-        id: string,
-        serverId: string,
+        id: Types.ObjectId,
+        serverId: Types.ObjectId,
     ): Promise<ICategory | null> {
         const result = await Category.findOne({ _id: id, serverId }).lean();
         return transformCategory(result);
     }
 
-    async findByServerId(serverId: string): Promise<ICategory[]> {
+    async findByServerId(serverId: Types.ObjectId): Promise<ICategory[]> {
         const results = await Category.find({ serverId })
             .sort({ position: 1 })
             .lean();
@@ -49,7 +46,7 @@ export class MongooseCategoryRepository implements ICategoryRepository {
     }
 
     async findMaxPositionByServerId(
-        serverId: string,
+        serverId: Types.ObjectId,
     ): Promise<ICategory | null> {
         const result = await Category.findOne({ serverId })
             .sort({ position: -1 })
@@ -60,11 +57,11 @@ export class MongooseCategoryRepository implements ICategoryRepository {
     async create(data: CreateCategoryDTO): Promise<ICategory> {
         const category = new Category(data);
         const result = await category.save();
-        return transformCategory(result.toObject())!;
+        return transformCategory(result.toObject() as unknown as Record<string, unknown>)!;
     }
 
     async update(
-        id: string,
+        id: Types.ObjectId,
         data: Partial<ICategory>,
     ): Promise<ICategory | null> {
         const result = await Category.findByIdAndUpdate(id, data, {
@@ -73,13 +70,13 @@ export class MongooseCategoryRepository implements ICategoryRepository {
         return transformCategory(result);
     }
 
-    async delete(id: string): Promise<boolean> {
+    async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Category.deleteOne({ _id: id });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }
 
     async updatePosition(
-        id: string,
+        id: Types.ObjectId,
         position: number,
     ): Promise<ICategory | null> {
         const result = await Category.findByIdAndUpdate(
@@ -90,13 +87,13 @@ export class MongooseCategoryRepository implements ICategoryRepository {
         return transformCategory(result);
     }
 
-    async deleteByServerId(serverId: string): Promise<number> {
+    async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
         const result = await Category.deleteMany({ serverId });
         return result.deletedCount || 0;
     }
 
     async updatePositions(
-        updates: { id: string; position: number }[],
+        updates: { id: Types.ObjectId; position: number }[],
     ): Promise<boolean> {
         try {
             const updatePromises = updates.map(({ id, position }) =>

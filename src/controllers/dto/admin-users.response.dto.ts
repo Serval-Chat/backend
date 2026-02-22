@@ -1,8 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsString } from 'class-validator';
 import { AdminPermissions } from './common.request.dto';
 
 export class AdminUserListItemDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
     @ApiProperty()
     username!: string;
@@ -39,12 +42,16 @@ export class AdminUserDetailsDTO extends AdminUserListItemDTO {
 
 export class AdminUserServerInfoDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
     @ApiProperty()
     name!: string;
     @ApiProperty({ nullable: true })
     icon!: string | null;
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     ownerId!: string;
     @ApiPropertyOptional()
     joinedAt?: Date;
@@ -61,6 +68,8 @@ export class AdminExtendedUserDetailsDTO extends AdminUserDetailsDTO {
 
 export class AdminUserShortDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
     @ApiProperty()
     username!: string;

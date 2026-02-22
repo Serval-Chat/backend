@@ -17,6 +17,7 @@ import {
     InternalServerErrorException,
     HttpCode,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiTags,
@@ -28,7 +29,7 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -42,6 +43,7 @@ import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { storage } from '@/config/multer';
 import {
@@ -66,22 +68,16 @@ export class ServerEmojiController {
     );
 
     constructor(
-        @inject(TYPES.EmojiRepository)
         @Inject(TYPES.EmojiRepository)
         private emojiRepo: IEmojiRepository,
-        @inject(TYPES.ServerRepository)
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
     ) {
@@ -103,15 +99,17 @@ export class ServerEmojiController {
         @Req() req: ExpressRequest,
     ): Promise<IEmoji[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        return await this.emojiRepo.findByServerIdWithCreator(serverId);
+        return await this.emojiRepo.findByServerIdWithCreator(serverOid);
     }
 
     // Uploads a new emoji to a server
@@ -147,6 +145,8 @@ export class ServerEmojiController {
         @Body('name') name: string,
     ): Promise<IEmoji> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
 
         if (!emoji) {
             throw new BadRequestException(ErrorMessages.EMOJI.FILE_REQUIRED);
@@ -156,17 +156,17 @@ export class ServerEmojiController {
             throw new BadRequestException(ErrorMessages.EMOJI.INVALID_NAME);
         }
 
-        const server = await this.serverRepo.findById(serverId);
+        const server = await this.serverRepo.findById(serverOid);
         if (!server) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const isOwner = server.ownerId.toString() === userId;
+        const isOwner = server.ownerId.equals(userOid);
         if (
             !isOwner &&
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageServer',
             ))
         ) {
@@ -176,7 +176,7 @@ export class ServerEmojiController {
         }
 
         const existingEmoji = await this.emojiRepo.findByServerAndName(
-            serverId,
+            serverOid,
             name,
         );
         if (existingEmoji) {
@@ -191,14 +191,13 @@ export class ServerEmojiController {
             );
         }
 
-        let fileName: string;
         try {
             const isAnimated = await isAnimatedImage(input);
             const metadata = await getImageMetadata(input);
             const format =
                 metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'png';
 
-            fileName = `${emojiId}.${format}`;
+            const fileName = `${emojiId}.${format}`;
             const filePath = path.join(this.UPLOADS_DIR, fileName);
 
             await processAndSaveImage(
@@ -206,44 +205,44 @@ export class ServerEmojiController {
                 filePath,
                 ImagePresets.emoji(isAnimated, format),
             );
+
+            // Cleanup temporary Multer file if it was written to disk
+            if (emoji.path && fs.existsSync(emoji.path)) {
+                fs.unlinkSync(emoji.path);
+            }
+
+            const imageUrl = `/uploads/emojis/${fileName}`;
+
+            const newEmoji = await this.emojiRepo.create({
+                name,
+                imageUrl,
+                serverId: serverOid,
+                createdBy: userOid,
+            });
+
+            const populatedEmoji = await this.emojiRepo.findByIdWithCreator(
+                newEmoji._id,
+            );
+
+            if (!populatedEmoji) {
+                throw new InternalServerErrorException(
+                    ErrorMessages.EMOJI.NOT_FOUND,
+                );
+            }
+
+            this.wsServer.broadcastToServer(serverId, {
+                type: 'emoji_updated',
+                payload: { serverId },
+            });
+
+            return populatedEmoji;
         } catch (error) {
-            const errorMessage =
-                error instanceof Error ? error.message : 'Unknown error';
-            throw new BadRequestException(
-                'Invalid image data or format: ' + errorMessage,
-            );
-        }
-
-        // Cleanup temporary Multer file if it was written to disk
-        if (emoji.path && fs.existsSync(emoji.path)) {
-            fs.unlinkSync(emoji.path);
-        }
-
-        const imageUrl = `/uploads/emojis/${fileName}`;
-
-        const newEmoji = await this.emojiRepo.create({
-            name,
-            imageUrl,
-            serverId,
-            createdBy: userId,
-        });
-
-        const populatedEmoji = await this.emojiRepo.findByIdWithCreator(
-            newEmoji._id.toString(),
-        );
-
-        if (!populatedEmoji) {
+            this.logger.error('Error adding emoji:', error);
+            if (error instanceof ApiError) throw error;
             throw new InternalServerErrorException(
-                ErrorMessages.EMOJI.NOT_FOUND,
+                ErrorMessages.SYSTEM.INTERNAL_ERROR,
             );
         }
-
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'emoji_updated',
-            payload: { serverId },
-        });
-
-        return populatedEmoji;
     }
 
     // Retrieves a specific emoji by ID
@@ -259,16 +258,19 @@ export class ServerEmojiController {
         @Req() req: ExpressRequest,
     ): Promise<IEmoji> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const emojiOid = new Types.ObjectId(emojiId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const emoji = await this.emojiRepo.findById(emojiId);
-        if (!emoji || emoji.serverId.toString() !== serverId) {
+        const emoji = await this.emojiRepo.findById(emojiOid);
+        if (!emoji || !emoji.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
         }
 
@@ -292,17 +294,21 @@ export class ServerEmojiController {
         @Req() req: ExpressRequest,
     ): Promise<void> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const server = await this.serverRepo.findById(serverId);
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const emojiOid = new Types.ObjectId(emojiId);
+
+        const server = await this.serverRepo.findById(serverOid);
         if (!server) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        if (server.ownerId.toString() !== userId) {
+        if (!server.ownerId.equals(userOid)) {
             throw new ForbiddenException(ErrorMessages.SERVER.ONLY_OWNER);
         }
 
-        const emoji = await this.emojiRepo.findById(emojiId);
-        if (!emoji || emoji.serverId.toString() !== serverId) {
+        const emoji = await this.emojiRepo.findById(emojiOid);
+        if (!emoji || !emoji.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
         }
 
@@ -313,7 +319,7 @@ export class ServerEmojiController {
             fs.unlinkSync(filePath);
         }
 
-        await this.emojiRepo.delete(emojiId);
+        await this.emojiRepo.delete(emojiOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'emoji_updated',

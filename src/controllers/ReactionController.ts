@@ -16,9 +16,8 @@ import {
     ApiBearerAuth,
     ApiBody,
 } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type {
     IReactionRepository,
     ReactionData,
@@ -29,7 +28,6 @@ import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepos
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { PermissionService } from '@/permissions/PermissionService';
-import type { ILogger } from '@/di/interfaces/ILogger';
 
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -47,6 +45,7 @@ import type {
     IReactionAddedEvent,
     IReactionRemovedEvent,
 } from '@/ws/protocol/events/reactions';
+import { Types } from 'mongoose';
 
 @injectable()
 @Controller('api/v1')
@@ -55,37 +54,23 @@ import type {
 @UseGuards(JwtAuthGuard)
 export class ReactionController {
     constructor(
-        @inject(TYPES.ReactionRepository)
         @Inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
-        @inject(TYPES.MessageRepository)
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
-        @inject(TYPES.ServerMessageRepository)
         @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-        @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: IWsServer,
-        @inject(TYPES.UserRepository)
-        @Inject(TYPES.UserRepository)
-        private userRepo: IUserRepository,
-        @inject(TYPES.FriendshipRepository)
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-        @inject(TYPES.Logger)
-        @Inject(TYPES.Logger)
-        private logger: ILogger,
-    ) {}
+    ) { }
 
     @Get('messages/:messageId/reactions')
     @ApiOperation({ summary: 'Get DM reactions' })
@@ -101,7 +86,7 @@ export class ReactionController {
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
 
-        const message = await this.messageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
         if (!message) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -114,9 +99,9 @@ export class ReactionController {
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
-            messageId,
+            new Types.ObjectId(messageId),
             'dm',
-            userId,
+            new Types.ObjectId(userId),
         );
         return { reactions };
     }
@@ -148,7 +133,7 @@ export class ReactionController {
                 ? (body as AddCustomReactionRequestDTO).emojiId
                 : undefined;
 
-        const message = await this.messageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
         if (!message) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -162,9 +147,9 @@ export class ReactionController {
 
         try {
             await this.reactionRepo.addReaction(
-                messageId,
+                new Types.ObjectId(messageId),
                 'dm',
-                userId,
+                new Types.ObjectId(userId),
                 emoji,
                 emojiType,
                 emojiId,
@@ -181,15 +166,15 @@ export class ReactionController {
         }
 
         const areFriends = await this.friendshipRepo.areFriends(
-            message.senderId.toString(),
-            message.receiverId.toString(),
+            new Types.ObjectId(message.senderId.toString()),
+            new Types.ObjectId(message.receiverId.toString()),
         );
 
         if (!areFriends) {
             await this.reactionRepo.removeReaction(
-                messageId,
+                new Types.ObjectId(messageId),
                 'dm',
-                userId,
+                new Types.ObjectId(userId),
                 emoji,
                 emojiId,
             );
@@ -197,9 +182,9 @@ export class ReactionController {
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
-            messageId,
+            new Types.ObjectId(messageId),
             'dm',
-            userId,
+            new Types.ObjectId(userId),
         );
 
         const receiverId =
@@ -253,7 +238,7 @@ export class ReactionController {
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
 
-        const message = await this.messageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
         if (!message) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -266,9 +251,9 @@ export class ReactionController {
         }
 
         const removed = await this.reactionRepo.removeReaction(
-            messageId,
+            new Types.ObjectId(messageId),
             'dm',
-            userId,
+            new Types.ObjectId(userId),
             emoji,
             emojiId,
         );
@@ -277,9 +262,9 @@ export class ReactionController {
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
-            messageId,
+            new Types.ObjectId(messageId),
             'dm',
-            userId,
+            new Types.ObjectId(userId),
         );
 
         const receiverId =
@@ -337,23 +322,23 @@ export class ReactionController {
                 : undefined;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new Types.ObjectId(serverId),
+            new Types.ObjectId(userId),
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(channelId);
+        const channel = await this.channelRepo.findById(new Types.ObjectId(channelId));
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const canAddReactions =
             await this.permissionService.hasChannelPermission(
-                serverId,
-                userId,
-                channelId,
+                new Types.ObjectId(serverId),
+                new Types.ObjectId(userId),
+                new Types.ObjectId(channelId),
                 'addReactions',
             );
         if (!canAddReactions) {
@@ -363,16 +348,16 @@ export class ReactionController {
             );
         }
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.serverMessageRepo.findById(new Types.ObjectId(messageId));
         if (!message || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         try {
             await this.reactionRepo.addReaction(
-                messageId,
+                new Types.ObjectId(messageId),
                 'server',
-                userId,
+                new Types.ObjectId(userId),
                 emoji,
                 emojiType,
                 emojiId,
@@ -389,9 +374,9 @@ export class ReactionController {
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
-            messageId,
+            new Types.ObjectId(messageId),
             'server',
-            userId,
+            new Types.ObjectId(userId),
         );
 
         const event: IReactionAddedEvent = {
@@ -443,44 +428,44 @@ export class ReactionController {
         const scope = body.scope;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new Types.ObjectId(serverId),
+            new Types.ObjectId(userId),
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(channelId);
+        const channel = await this.channelRepo.findById(new Types.ObjectId(channelId));
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.serverMessageRepo.findById(new Types.ObjectId(messageId));
         if (!message || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const canManageReactions =
             await this.permissionService.hasChannelPermission(
-                serverId,
-                userId,
-                channelId,
+                new Types.ObjectId(serverId),
+                new Types.ObjectId(userId),
+                new Types.ObjectId(channelId),
                 'manageReactions',
             );
 
         let removed = false;
         if (scope === 'me') {
             removed = await this.reactionRepo.removeReaction(
-                messageId,
+                new Types.ObjectId(messageId),
                 'server',
-                userId,
+                new Types.ObjectId(userId),
                 emoji,
                 emojiId,
             );
         } else if (canManageReactions) {
             // Bulk removal of all reactions for a specific emoji (requires management permissions)
             const deletedCount = await this.reactionRepo.removeEmojiFromMessage(
-                messageId,
+                new Types.ObjectId(messageId),
                 'server',
                 emoji,
                 emojiId,
@@ -489,9 +474,9 @@ export class ReactionController {
         } else {
             // Default to removing only the user's own reaction if scope is not 'me' but they lack management permissions
             removed = await this.reactionRepo.removeReaction(
-                messageId,
+                new Types.ObjectId(messageId),
                 'server',
-                userId,
+                new Types.ObjectId(userId),
                 emoji,
                 emojiId,
             );
@@ -502,9 +487,9 @@ export class ReactionController {
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
-            messageId,
+            new Types.ObjectId(messageId),
             'server',
-            userId,
+            new Types.ObjectId(userId),
         );
 
         const event: IReactionRemovedEvent = {
@@ -541,27 +526,27 @@ export class ReactionController {
         const userId = (req as Request & { user: JWTPayload }).user.id;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new Types.ObjectId(serverId),
+            new Types.ObjectId(userId),
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(channelId);
+        const channel = await this.channelRepo.findById(new Types.ObjectId(channelId));
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.serverMessageRepo.findById(new Types.ObjectId(messageId));
         if (!message || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         const reactions = await this.reactionRepo.getReactionsByMessage(
-            messageId,
+            new Types.ObjectId(messageId),
             'server',
-            userId,
+            new Types.ObjectId(userId),
         );
         return { reactions };
     }

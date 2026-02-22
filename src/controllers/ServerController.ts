@@ -12,6 +12,7 @@ import {
     UploadedFile,
     Inject,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiTags,
@@ -21,7 +22,7 @@ import {
     ApiConsumes,
     ApiBody,
 } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
     IServerRepository,
@@ -76,40 +77,28 @@ export class ServerController {
     );
 
     constructor(
-        @inject(TYPES.ServerRepository)
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-        @inject(TYPES.RoleRepository)
         @Inject(TYPES.RoleRepository)
         private roleRepo: IRoleRepository,
-        @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-        @inject(TYPES.InviteRepository)
         @Inject(TYPES.InviteRepository)
         private inviteRepo: IInviteRepository,
-        @inject(TYPES.ServerMessageRepository)
         @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
-        @inject(TYPES.ServerBanRepository)
         @Inject(TYPES.ServerBanRepository)
         private serverBanRepo: IServerBanRepository,
-        @inject(TYPES.ServerChannelReadRepository)
         @Inject(TYPES.ServerChannelReadRepository)
         private serverChannelReadRepo: IServerChannelReadRepository,
-        @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
     ) {
@@ -123,14 +112,15 @@ export class ServerController {
     @ApiResponse({ status: 200, type: [ServerResponseDTO] })
     public async getServers(@Req() req: Request): Promise<IServer[]> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
-        const memberships = await this.serverMemberRepo.findByUserId(userId);
-        const serverIds = memberships.map((m) => m.serverId.toString());
+        const userOid = new Types.ObjectId(userId);
+        const memberships = await this.serverMemberRepo.findByUserId(userOid);
+        const serverIds = memberships.map((m) => m.serverId);
         const servers = await this.serverRepo.findByIds(serverIds);
 
         return await Promise.all(
             servers.map(async (server) => {
                 const memberCount = await this.serverMemberRepo.countByServerId(
-                    server._id.toString(),
+                    server._id,
                 );
                 return {
                     ...server,
@@ -149,16 +139,17 @@ export class ServerController {
         @Body() body: CreateServerRequestDTO,
     ): Promise<{ server: IServer; channel: IChannel }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const userOid = new Types.ObjectId(userId);
         const { name } = body;
 
         const server = await this.serverRepo.create({
             name: name.trim(),
-            ownerId: userId,
+            ownerId: userOid,
         });
 
         // Initialize default '@everyone' role with default permissions
         await this.roleRepo.create({
-            serverId: server._id.toString(),
+            serverId: server._id,
             name: '@everyone',
             color: '#99aab5',
             position: 0,
@@ -178,7 +169,7 @@ export class ServerController {
 
         // Create initial '#general' text channel
         const channel = await this.channelRepo.create({
-            serverId: server._id.toString(),
+            serverId: server._id,
             name: 'general',
             type: 'text',
             position: 0,
@@ -186,8 +177,8 @@ export class ServerController {
 
         // Automatically add the creator as the first member
         await this.serverMemberRepo.create({
-            serverId: server._id.toString(),
-            userId: userId,
+            serverId: server._id,
+            userId: userOid,
             roles: [],
         });
 
@@ -201,19 +192,20 @@ export class ServerController {
         @Req() req: Request,
     ): Promise<Record<string, boolean>> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
-        const memberships = await this.serverMemberRepo.findByUserId(userId);
-        const serverIds = memberships.map((m) => m.serverId.toString());
+        const userOid = new Types.ObjectId(userId);
+        const memberships = await this.serverMemberRepo.findByUserId(userOid);
+        const serverIds = memberships.map((m) => m.serverId);
 
         if (serverIds.length === 0) return {};
 
         const channels = await this.channelRepo.findByServerIds(serverIds);
-        const reads = await this.serverChannelReadRepo.findByUserId(userId);
+        const reads = await this.serverChannelReadRepo.findByUserId(userOid);
 
         const readMap = new Map<string, Date>();
-        reads.forEach((read) => readMap.set(read.channelId, read.lastReadAt));
+        reads.forEach((read) => readMap.set(read.channelId.toString(), read.lastReadAt));
 
         const unreadMap: Record<string, boolean> = {};
-        serverIds.forEach((id) => (unreadMap[id] = false));
+        serverIds.forEach((id) => (unreadMap[id.toString()] = false));
 
         // A server is unread if any of its channels have a message newer than the user's last read timestamp
         for (const channel of channels) {
@@ -242,21 +234,27 @@ export class ServerController {
         @Req() req: Request,
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const channels = await this.channelRepo.findByServerId(serverId);
+        const channels = await this.channelRepo.findByServerId(serverOid);
         if (channels.length > 0) {
             const ServerChannelReadModel = mongoose.model('ServerChannelRead');
             // Bulk update read timestamps for all channels in the server
             const operations = channels.map((channel) => ({
                 updateOne: {
-                    filter: { serverId, channelId: channel._id, userId },
+                    filter: {
+                        serverId: serverOid,
+                        channelId: channel._id,
+                        userId: userOid,
+                    },
                     update: { $set: { lastReadAt: new Date() } },
                     upsert: true,
                 },
@@ -277,21 +275,23 @@ export class ServerController {
         @Req() req: Request,
     ): Promise<IServer> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const server = await this.serverRepo.findById(serverId);
+        const server = await this.serverRepo.findById(serverOid);
         if (!server) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
         const memberCount =
-            await this.serverMemberRepo.countByServerId(serverId);
+            await this.serverMemberRepo.countByServerId(serverOid);
 
         return {
             ...server,
@@ -309,23 +309,25 @@ export class ServerController {
         @Req() req: Request,
     ): Promise<ServerStatsResponseDTO> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const server = await this.serverRepo.findById(serverId);
+        const server = await this.serverRepo.findById(serverOid);
         if (!server) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const members = await this.serverMemberRepo.findByServerId(serverId);
+        const members = await this.serverMemberRepo.findByServerId(serverOid);
         const totalCount = members.length;
 
-        const userIds = members.map((m) => m.userId.toString());
+        const userIds = members.map((m) => m.userId);
         const users = await this.userRepo.findByIds(userIds);
         const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
@@ -338,10 +340,10 @@ export class ServerController {
             }
         }
 
-        const bannedUsers = await this.serverBanRepo.findByServerId(serverId);
+        const bannedUsers = await this.serverBanRepo.findByServerId(serverOid);
         const bannedUserCount = bannedUsers.length;
 
-        const owner = await this.userRepo.findById(server.ownerId.toString());
+        const owner = await this.userRepo.findById(server.ownerId);
         const ownerName = owner?.displayName || owner?.username || 'Unknown';
 
         // Identify the most recent member by join date
@@ -359,17 +361,19 @@ export class ServerController {
             newestMemberUser?.username ||
             'Unknown';
 
-        const channels = await this.channelRepo.findByServerId(serverId);
+        const channels = await this.channelRepo.findByServerId(serverOid);
         const channelCount = channels.length;
 
         const EmojiModel = mongoose.model('Emoji');
-        const emojiCount = await EmojiModel.countDocuments({ serverId }).exec();
+        const emojiCount = await EmojiModel.countDocuments({
+            serverId: serverOid,
+        }).exec();
 
         // Update all-time high if current online count exceeds previous record
         let allTimeHigh = server.allTimeHigh || 0;
         if (onlineCount > allTimeHigh) {
             allTimeHigh = onlineCount;
-            await this.serverRepo.update(serverId, { allTimeHigh });
+            await this.serverRepo.update(serverOid, { allTimeHigh });
         }
 
         return {
@@ -400,10 +404,12 @@ export class ServerController {
         @Body() body: UpdateServerRequestDTO,
     ): Promise<IServer> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageServer',
             ))
         ) {
@@ -419,7 +425,9 @@ export class ServerController {
         if (body.defaultRoleId !== undefined) {
             const roleId = body.defaultRoleId;
             if (roleId) {
-                const role = await this.roleRepo.findById(roleId);
+                const role = await this.roleRepo.findById(
+                    new Types.ObjectId(roleId),
+                );
                 if (!role) {
                     throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
                 }
@@ -435,18 +443,18 @@ export class ServerController {
                         ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT,
                     );
                 }
-                updates.defaultRoleId = roleId;
+                updates.defaultRoleId = new Types.ObjectId(roleId);
             } else {
                 updates.defaultRoleId = null;
             }
         }
 
-        const server = await this.serverRepo.update(serverId, updates);
+        const server = await this.serverRepo.update(serverOid, updates);
         if (!server) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_updated',
             payload: {
                 serverId,
@@ -469,12 +477,14 @@ export class ServerController {
         @Body() body: SetDefaultRoleRequestDTO,
     ): Promise<{ defaultRoleId: string | null }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const { roleId } = body;
 
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageServer',
             ))
         ) {
@@ -482,7 +492,9 @@ export class ServerController {
         }
 
         if (roleId) {
-            const role = await this.roleRepo.findById(roleId);
+            const role = await this.roleRepo.findById(
+                new Types.ObjectId(roleId),
+            );
             if (!role) {
                 throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
             }
@@ -497,12 +509,12 @@ export class ServerController {
             }
         }
 
-        const server = await this.serverRepo.update(serverId, {
-            defaultRoleId: roleId || undefined,
+        const server = await this.serverRepo.update(serverOid, {
+            defaultRoleId: roleId ? new Types.ObjectId(roleId) : undefined,
         });
 
         if (server) {
-            this.wsServer.broadcastToServer(serverId, {
+            this.wsServer.broadcastToServer(serverId.toString(), {
                 type: 'server_updated',
                 payload: {
                     serverId,
@@ -524,7 +536,8 @@ export class ServerController {
         @Req() req: Request,
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
-        const server = await this.serverRepo.findById(serverId);
+        const serverOid = new Types.ObjectId(serverId);
+        const server = await this.serverRepo.findById(serverOid);
         if (!server) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -533,14 +546,14 @@ export class ServerController {
             throw new ApiError(403, ErrorMessages.SERVER.ONLY_OWNER_DELETE);
         }
 
-        await this.serverRepo.delete(serverId);
-        await this.channelRepo.deleteByServerId(serverId);
-        await this.serverMemberRepo.deleteByServerId(serverId);
-        await this.roleRepo.deleteByServerId(serverId);
-        await this.inviteRepo.deleteByServerId(serverId);
-        await this.serverMessageRepo.deleteByServerId(serverId);
+        await this.serverRepo.delete(serverOid);
+        await this.channelRepo.deleteByServerId(serverOid);
+        await this.serverMemberRepo.deleteByServerId(serverOid);
+        await this.roleRepo.deleteByServerId(serverOid);
+        await this.inviteRepo.deleteByServerId(serverOid);
+        await this.serverMessageRepo.deleteByServerId(serverOid);
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_deleted',
             payload: { serverId },
         });
@@ -572,10 +585,12 @@ export class ServerController {
         @UploadedFile() icon: Express.Multer.File,
     ): Promise<{ icon: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageServer',
             ))
         ) {
@@ -606,14 +621,14 @@ export class ServerController {
         }
 
         const iconUrl = `/api/v1/servers/icon/${filename}`;
-        const updatedServer = await this.serverRepo.update(serverId, {
+        const updatedServer = await this.serverRepo.update(serverOid, {
             icon: iconUrl,
         });
         if (!updatedServer) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_icon_updated',
             payload: {
                 serverId,
@@ -648,10 +663,12 @@ export class ServerController {
         @UploadedFile() banner: Express.Multer.File,
     ): Promise<{ banner: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageServer',
             ))
         ) {
@@ -683,14 +700,14 @@ export class ServerController {
         }
 
         const bannerUrl = `/api/v1/servers/banner/${filename}`;
-        const updatedServer = await this.serverRepo.update(serverId, {
+        const updatedServer = await this.serverRepo.update(serverOid, {
             banner: { type: 'image', value: bannerUrl },
         });
         if (!updatedServer) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_banner_updated',
             payload: {
                 serverId,
@@ -712,12 +729,14 @@ export class ServerController {
         @Body() body: UpdateDefaultRoleRequestDTO,
     ): Promise<{ defaultRoleId: string | null }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const { roleId } = body;
 
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageServer',
             ))
         ) {
@@ -725,7 +744,9 @@ export class ServerController {
         }
 
         if (roleId) {
-            const role = await this.roleRepo.findById(roleId);
+            const role = await this.roleRepo.findById(
+                new Types.ObjectId(roleId),
+            );
             if (!role) {
                 throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
             }
@@ -740,8 +761,8 @@ export class ServerController {
             }
         }
 
-        const server = await this.serverRepo.update(serverId, {
-            defaultRoleId: roleId || undefined,
+        const server = await this.serverRepo.update(serverOid, {
+            defaultRoleId: roleId ? new Types.ObjectId(roleId) : undefined,
         });
 
         if (server) {

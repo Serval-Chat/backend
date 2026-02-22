@@ -38,7 +38,7 @@ function applyOverridesForRoles(
     // Process low -> high, where higher position overrides lower.
     let value: boolean | undefined;
     for (const role of rolesByAscPosition) {
-        const roleOverride = overrides.get(role.id);
+        const roleOverride = overrides.get(role.id.toString());
         const v = getPermissionValue(roleOverride, permission);
         if (v !== undefined) value = v;
     }
@@ -58,23 +58,23 @@ export class PermissionResolver {
     constructor(data: ServerData) {
         this.data = data;
 
-        this.roleById = new Map(data.roles.map((r) => [r.id, r] as const));
+        this.roleById = new Map(data.roles.map((r) => [r.id.toString(), r] as const));
         this.channelById = new Map(
-            data.channels.map((c) => [c.id, c] as const),
+            data.channels.map((c) => [c.id.toString(), c] as const),
         );
         this.categoryById = new Map(
-            data.categories.map((c) => [c.id, c] as const),
+            data.categories.map((c) => [c.id.toString(), c] as const),
         );
         this.memberByUserId = new Map(
-            data.members.map((m) => [m.userId, m] as const),
+            data.members.map((m) => [m.userId.toString(), m] as const),
         );
 
-        this.everyoneRoleId = data.everyoneRoleId;
+        this.everyoneRoleId = data.everyoneRoleId?.toString();
     }
 
     hasServerPermission(userId: string, permission: PermissionKey): boolean {
         // 1) Owner
-        if (userId === this.data.ownerId) return true;
+        if (userId === this.data.ownerId.toString()) return true;
 
         const member = this.memberByUserId.get(userId);
         if (!member) return false;
@@ -106,7 +106,7 @@ export class PermissionResolver {
         if (!channel) return false;
 
         // 1) Owner
-        if (userId === this.data.ownerId) return true;
+        if (userId === this.data.ownerId.toString()) return true;
 
         const member = this.memberByUserId.get(userId);
         if (!member) return false;
@@ -130,7 +130,7 @@ export class PermissionResolver {
         if (channelValue !== undefined) return channelValue;
 
         // 4) Category overrides
-        const categoryId = channel.categoryId ?? undefined;
+        const categoryId = channel.categoryId?.toString();
         if (categoryId) {
             const category = this.categoryById.get(categoryId);
             const categoryValue = applyOverridesForRoles(
@@ -151,14 +151,14 @@ export class PermissionResolver {
     }
 
     getHighestRolePosition(userId: string): number {
-        if (userId === this.data.ownerId) return Number.MAX_SAFE_INTEGER;
+        if (userId === this.data.ownerId.toString()) return Number.MAX_SAFE_INTEGER;
 
         const member = this.memberByUserId.get(userId);
         if (!member) return -1;
 
         let highest = -1;
         for (const roleId of member.roleIds) {
-            const role = this.roleById.get(roleId);
+            const role = this.roleById.get(roleId.toString());
             if (role && role.position > highest) highest = role.position;
         }
         return highest;
@@ -167,7 +167,7 @@ export class PermissionResolver {
     private getMemberRolesByAscPosition(member: ServerMember): ServerRole[] {
         const roles: ServerRole[] = [];
         for (const roleId of member.roleIds) {
-            const role = this.roleById.get(roleId);
+            const role = this.roleById.get(roleId.toString());
             if (role) roles.push(role);
         }
         roles.sort((a, b) => a.position - b.position);
@@ -202,7 +202,7 @@ export class PermissionResolver {
         if (!everyone) return [...rolesByAscPosition];
 
         // Ensure it's included exactly once.
-        const already = rolesByAscPosition.some((r) => r.id === everyone.id);
+        const already = rolesByAscPosition.some((r) => r.id.toString() === everyone.id.toString());
         if (already) return [...rolesByAscPosition];
 
         const next = [...rolesByAscPosition, everyone];

@@ -9,7 +9,7 @@ import {
     StreamableFile,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import path from 'path';
@@ -29,7 +29,6 @@ export class ServerPublicController {
     );
 
     constructor(
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
     ) {}

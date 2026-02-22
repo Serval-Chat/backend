@@ -4,10 +4,10 @@ import type { Types } from 'mongoose';
 //
 // Represents a permanent, immutable record of actions
 export interface IAuditLog {
-    _id: Types.ObjectId | string;
-    actorId: Types.ObjectId | string;
+    _id: Types.ObjectId;
+    actorId: Types.ObjectId;
     actionType: string;
-    targetUserId?: Types.ObjectId | string;
+    targetUserId?: Types.ObjectId;
     additionalData?: Record<string, unknown>;
     timestamp: Date;
 }
@@ -18,9 +18,9 @@ export interface IAuditLog {
 export interface IAuditLogRepository {
     // Create a new audit log entry
     create(data: {
-        actorId: string;
+        actorId: Types.ObjectId;
         actionType: string;
-        targetUserId?: string;
+        targetUserId?: Types.ObjectId;
         additionalData?: Record<string, unknown>;
     }): Promise<IAuditLog>;
 
@@ -28,21 +28,21 @@ export interface IAuditLogRepository {
     find(options: {
         limit?: number;
         offset?: number;
-        actorId?: string;
+        actorId?: Types.ObjectId;
         actionType?: string;
-        targetUserId?: string;
+        targetUserId?: Types.ObjectId;
         startDate?: Date;
         endDate?: Date;
     }): Promise<IAuditLog[]>;
 
     // Find audit log by ID
-    findById(id: string): Promise<IAuditLog | null>;
+    findById(id: Types.ObjectId): Promise<IAuditLog | null>;
 
     // Count audit logs matching criteria
     count(options: {
-        actorId?: string;
+        actorId?: Types.ObjectId;
         actionType?: string;
-        targetUserId?: string;
+        targetUserId?: Types.ObjectId;
         startDate?: Date;
         endDate?: Date;
     }): Promise<number>;

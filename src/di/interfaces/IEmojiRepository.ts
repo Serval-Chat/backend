@@ -4,12 +4,12 @@ import type { Types } from 'mongoose';
 //
 // Represents a custom emoji uploaded to a server
 export interface IEmoji {
-    _id: Types.ObjectId | string;
+    _id: Types.ObjectId;
     name: string;
     imageUrl: string;
-    serverId: Types.ObjectId | string;
+    serverId: Types.ObjectId;
     // The user who uploaded the emoji (userId)
-    createdBy: Types.ObjectId | string;
+    createdBy: Types.ObjectId;
     createdAt?: Date;
 }
 
@@ -18,31 +18,34 @@ export interface IEmoji {
 // Encapsulates custom emoji operations
 export interface IEmojiRepository {
     // Find emoji by ID
-    findById(id: string): Promise<IEmoji | null>;
+    findById(id: Types.ObjectId): Promise<IEmoji | null>;
 
     // Find all emojis for a server
-    findByServerId(serverId: string): Promise<IEmoji[]>;
+    findByServerId(serverId: Types.ObjectId): Promise<IEmoji[]>;
 
     // Create a new emoji
     create(data: {
         name: string;
         imageUrl: string;
-        serverId: string;
-        createdBy: string;
+        serverId: Types.ObjectId;
+        createdBy: Types.ObjectId;
     }): Promise<IEmoji>;
 
     // Delete emoji by ID
-    delete(id: string): Promise<boolean>;
+    delete(id: Types.ObjectId): Promise<boolean>;
 
     // Find all emojis for a server with creator info populated
-    findByServerIdWithCreator(serverId: string): Promise<IEmoji[]>;
+    findByServerIdWithCreator(serverId: Types.ObjectId): Promise<IEmoji[]>;
 
     // Find emoji by ID with creator info populated
-    findByIdWithCreator(id: string): Promise<IEmoji | null>;
+    findByIdWithCreator(id: Types.ObjectId): Promise<IEmoji | null>;
 
     // Find emoji by server and name
-    findByServerAndName(serverId: string, name: string): Promise<IEmoji | null>;
+    findByServerAndName(
+        serverId: Types.ObjectId,
+        name: string,
+    ): Promise<IEmoji | null>;
 
     // Find emojis by multiple server IDs
-    findByServerIds(serverIds: string[]): Promise<IEmoji[]>;
+    findByServerIds(serverIds: Types.ObjectId[]): Promise<IEmoji[]>;
 }

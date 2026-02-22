@@ -20,9 +20,9 @@ export class MongooseReactionRepository implements IReactionRepository {
     private readonly MAX_REACTIONS_PER_MESSAGE = 20;
 
     async addReaction(
-        messageId: string,
+        messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
-        userId: string,
+        userId: Types.ObjectId,
         emoji: string,
         emojiType: 'unicode' | 'custom',
         emojiId?: string,
@@ -54,7 +54,7 @@ export class MongooseReactionRepository implements IReactionRepository {
 
         // Check if this emoji type already exists on the message
         const emojiExistsQuery: FilterQuery<IReaction> = {
-            messageId: new Types.ObjectId(messageId),
+            messageId,
             messageType,
         };
 
@@ -80,9 +80,9 @@ export class MongooseReactionRepository implements IReactionRepository {
 
         // Create the reaction
         const reaction = new Reaction({
-            messageId: new Types.ObjectId(messageId),
+            messageId,
             messageType,
-            userId: new Types.ObjectId(userId),
+            userId,
             emoji,
             emojiType,
             emojiId: emojiId ? new Types.ObjectId(emojiId) : undefined,
@@ -92,17 +92,17 @@ export class MongooseReactionRepository implements IReactionRepository {
     }
 
     async removeReaction(
-        messageId: string,
+        messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
-        userId: string,
+        userId: Types.ObjectId,
         emoji?: string,
         emojiId?: string,
     ): Promise<boolean> {
         // Build query
         const query: FilterQuery<IReaction> = {
-            messageId: new Types.ObjectId(messageId),
+            messageId,
             messageType,
-            userId: new Types.ObjectId(userId),
+            userId,
         };
 
         // Add emoji filter based on type
@@ -120,9 +120,9 @@ export class MongooseReactionRepository implements IReactionRepository {
     }
 
     async getReactionsByMessage(
-        messageId: string,
+        messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
-        _currentUserId?: string,
+        _currentUserId?: Types.ObjectId,
     ): Promise<ReactionData[]> {
         // Groups reactions by emoji
         // For each emoji (unicode or custom emojiId), counts how many times
@@ -130,7 +130,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         const pipeline: PipelineStage[] = [
             {
                 $match: {
-                    messageId: new Types.ObjectId(messageId),
+                    messageId,
                     messageType,
                 },
             },
@@ -201,18 +201,16 @@ export class MongooseReactionRepository implements IReactionRepository {
     }
 
     async getReactionsForMessages(
-        messageIds: string[],
+        messageIds: Types.ObjectId[],
         messageType: 'dm' | 'server',
-        _currentUserId?: string,
+        _currentUserId?: Types.ObjectId,
     ): Promise<Record<string, ReactionData[]>> {
         if (messageIds.length === 0) return {};
-
-        const objectIds = messageIds.map((id) => new Types.ObjectId(id));
 
         const pipeline: PipelineStage[] = [
             {
                 $match: {
-                    messageId: { $in: objectIds },
+                    messageId: { $in: messageIds },
                     messageType,
                 },
             },
@@ -293,7 +291,7 @@ export class MongooseReactionRepository implements IReactionRepository {
     }
 
     async getReactionCount(
-        messageId: string,
+        messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
     ): Promise<number> {
         // Count unique emoji types (not total reactions)
@@ -301,7 +299,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         const pipeline = [
             {
                 $match: {
-                    messageId: new Types.ObjectId(messageId),
+                    messageId,
                     messageType,
                 },
             },
@@ -323,16 +321,16 @@ export class MongooseReactionRepository implements IReactionRepository {
     }
 
     async hasUserReacted(
-        messageId: string,
+        messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
-        userId: string,
+        userId: Types.ObjectId,
         emoji?: string,
         emojiId?: string,
     ): Promise<boolean> {
         const query: FilterQuery<IReaction> = {
-            messageId: new Types.ObjectId(messageId),
+            messageId,
             messageType,
-            userId: new Types.ObjectId(userId),
+            userId,
         };
 
         if (emojiId) {
@@ -349,34 +347,34 @@ export class MongooseReactionRepository implements IReactionRepository {
     }
 
     async deleteAllForMessage(
-        messageId: string,
+        messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
     ): Promise<number> {
         const result = await Reaction.deleteMany({
-            messageId: new Types.ObjectId(messageId),
+            messageId,
             messageType,
         });
 
         return result.deletedCount || 0;
     }
 
-    async deleteAllByUser(userId: string): Promise<number> {
+    async deleteAllByUser(userId: Types.ObjectId): Promise<number> {
         const result = await Reaction.deleteMany({
-            userId: new Types.ObjectId(userId),
+            userId,
         });
 
         return result.deletedCount || 0;
     }
 
     async removeEmojiFromMessage(
-        messageId: string,
+        messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
         emoji?: string,
         emojiId?: string,
     ): Promise<number> {
         // Build query
         const query: FilterQuery<IReaction> = {
-            messageId: new Types.ObjectId(messageId),
+            messageId,
             messageType,
         };
 

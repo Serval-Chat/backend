@@ -8,7 +8,7 @@ import fs from 'fs';
 import { extractOriginalFilename } from '@/config/multer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 
 // Compatibility controller for file downloads
 // Provides the legacy /api/v1/download/:filename endpoint
@@ -17,7 +17,6 @@ import { injectable, inject } from 'inversify';
 @Controller('api/v1')
 export class FileCompatibilityController {
     constructor(
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
     ) {}

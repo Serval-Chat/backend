@@ -1,8 +1,9 @@
+import type { Types } from 'mongoose';
 import type { IPasswordReset } from '@/models/PasswordReset';
 
 export interface IPasswordResetRepository {
     create(data: {
-        userId: string;
+        userId: Types.ObjectId;
         hashedToken: string;
         expiresAt: Date;
         ipParam?: string;
@@ -12,17 +13,17 @@ export interface IPasswordResetRepository {
 
     markAsUsed(hashedToken: string): Promise<IPasswordReset | null>;
 
-    deleteByUser(userId: string): Promise<void>;
+    deleteByUser(userId: Types.ObjectId): Promise<void>;
 
     countActiveRequestsByUser(
-        userId: string,
+        userId: Types.ObjectId,
         windowStart: Date,
     ): Promise<number>;
 
     countActiveRequestsByIp(ip: string, windowStart: Date): Promise<number>;
     createIfUnderLimit(
         data: {
-            userId: string;
+            userId: Types.ObjectId;
             hashedToken: string;
             expiresAt: Date;
             ipParam: string;

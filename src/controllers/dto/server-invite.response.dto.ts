@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import mongoose from 'mongoose';
+import { IsMongoId, IsString } from 'class-validator';
 
 export class InviteServerBannerDTO {
     @ApiProperty({ enum: ['image', 'gradient', 'color', 'gif'] })
@@ -11,7 +11,9 @@ export class InviteServerBannerDTO {
 
 export class InviteServerDTO {
     @ApiProperty()
-    id!: string | mongoose.Types.ObjectId;
+    @IsMongoId()
+    @IsString()
+    id!: string;
 
     @ApiProperty()
     name!: string;

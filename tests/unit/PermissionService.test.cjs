@@ -81,6 +81,7 @@ test('PermissionService - administrator role has all permissions', async () => {
     mockServerRepo.findById = async () => testServer;
     mockMemberRepo.findByServerAndUser = async () => testMember;
     mockRoleRepo.findById = async () => adminRole;
+    mockRoleRepo.findEveryoneRole = async () => null;
 
     const permissionService = new PermissionService(
         mockServerRepo,
@@ -199,10 +200,12 @@ test('PermissionService - higher position role overrides lower position', async 
     mockServerRepo.findById = async () => testServer;
     mockMemberRepo.findByServerAndUser = async () => testMember;
     mockRoleRepo.findById = async (id) => {
-        if (id === role1Id.toString()) return lowRole;
-        if (id === role2Id.toString()) return highRole;
+        const idStr = id.toString();
+        if (idStr === role1Id.toString()) return lowRole;
+        if (idStr === role2Id.toString()) return highRole;
         return null;
     };
+    mockRoleRepo.findEveryoneRole = async () => null;
 
     const permissionService = new PermissionService(
         mockServerRepo,
@@ -267,8 +270,9 @@ test('PermissionService - get highest role position for member', async () => {
     mockServerRepo.findById = async () => testServer;
     mockMemberRepo.findByServerAndUser = async () => testMember;
     mockRoleRepo.findById = async (id) => {
-        if (id === role1Id.toString()) return role1;
-        if (id === role2Id.toString()) return role2;
+        const idStr = id.toString();
+        if (idStr === role1Id.toString()) return role1;
+        if (idStr === role2Id.toString()) return role2;
         return null;
     };
 

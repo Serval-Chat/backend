@@ -4,30 +4,26 @@ import type { Types } from 'mongoose';
 //
 // Represents a community or group workspace
 export interface IServer {
-    _id: Types.ObjectId | string;
+    _id: Types.ObjectId;
     name: string;
-    ownerId: Types.ObjectId | string;
+    ownerId: Types.ObjectId;
     icon?: string;
     banner?: {
         type: 'image' | 'gradient' | 'color' | 'gif';
         value: string;
     };
-    // Default role assigned to new members (e.g., @everyone)
-    defaultRoleId?: Types.ObjectId | string;
+    defaultRoleId?: Types.ObjectId;
     createdAt?: Date;
     updatedAt?: Date;
-    // Timestamp of when the server was soft-deleted
     deletedAt?: Date;
-    // Historical peak of concurrent members
     allTimeHigh?: number;
-    // Total number of members in the server
     memberCount?: number;
 }
 
 // Server creation DTO
 export interface CreateServerDTO {
     name: string;
-    ownerId: string;
+    ownerId: Types.ObjectId;
     icon?: string;
 }
 
@@ -39,27 +35,36 @@ export interface IServerRepository {
     //
     // @param id - Server ID
     // @param includeDeleted - Whether to include soft-deleted servers
-    findById(id: string, includeDeleted?: boolean): Promise<IServer | null>;
+    findById(
+        id: Types.ObjectId,
+        includeDeleted?: boolean,
+    ): Promise<IServer | null>;
 
     // Find multiple servers by IDs
-    findByIds(ids: string[]): Promise<IServer[]>;
+    findByIds(ids: Types.ObjectId[]): Promise<IServer[]>;
 
     // Find servers by owner ID
-    findByOwnerId(ownerId: string): Promise<IServer[]>;
+    findByOwnerId(ownerId: Types.ObjectId): Promise<IServer[]>;
 
     // Create a new server
     create(data: CreateServerDTO): Promise<IServer>;
 
     // Update server
-    update(id: string, data: Partial<IServer>): Promise<IServer | null>;
+    update(
+        id: Types.ObjectId,
+        data: Partial<IServer>,
+    ): Promise<IServer | null>;
 
     // Delete server (hard delete)
-    delete(id: string): Promise<boolean>;
+    delete(id: Types.ObjectId): Promise<boolean>;
 
     // Clear default role
     //
     // Used for cleanup when the default role is deleted
-    clearDefaultRole(serverId: string, roleId: string): Promise<boolean>;
+    clearDefaultRole(
+        serverId: Types.ObjectId,
+        roleId: Types.ObjectId,
+    ): Promise<boolean>;
 
     // Find many servers with pagination and search
     findMany(options: {
@@ -73,10 +78,10 @@ export interface IServerRepository {
     count(includeDeleted?: boolean): Promise<number>;
 
     // Soft delete server
-    softDelete(id: string): Promise<boolean>;
+    softDelete(id: Types.ObjectId): Promise<boolean>;
 
     // Restore soft-deleted server
-    restore(id: string): Promise<boolean>;
+    restore(id: Types.ObjectId): Promise<boolean>;
 
     // Count servers created after a certain date
     countCreatedAfter(date: Date): Promise<number>;

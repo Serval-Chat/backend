@@ -4,19 +4,19 @@ import mongoose, { Schema } from 'mongoose';
 // Direct Message interface
 //
 // Represents a private message between two users
-interface IMessage extends Document {
-    senderId: Types.ObjectId; // User ID reference for sender
-    receiverId: Types.ObjectId; // User ID reference for receiver
+export interface IMessage extends Document {
+    senderId: Types.ObjectId;
+    receiverId: Types.ObjectId;
     text: string;
     createdAt: Date;
-    replyToId?: string;
+    replyToId?: Types.ObjectId;
     repliedToMessageId?: Types.ObjectId;
     editedAt?: Date;
     isEdited?: boolean;
-    senderDeleted?: boolean; // Track if sender was hard deleted
-    anonymizedSender?: string; // "Deleted User" for hard deleted senders
-    receiverDeleted?: boolean; // Track if receiver was hard deleted
-    anonymizedReceiver?: string; // "Deleted User" for hard deleted receivers
+    senderDeleted?: boolean;
+    anonymizedSender?: string;
+    receiverDeleted?: boolean;
+    anonymizedReceiver?: string;
 }
 
 // Hard deletion fields preserved for backward compatibility

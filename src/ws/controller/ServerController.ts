@@ -1,4 +1,5 @@
 import { injectable, inject } from 'inversify';
+import mongoose from 'mongoose';
 import {
     WsController,
     Event,
@@ -51,7 +52,6 @@ import type { PingService } from '@/services/PingService';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 import type { WebSocket } from 'ws';
-import { Types } from 'mongoose';
 import logger from '@/utils/logger';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 
@@ -79,7 +79,7 @@ export class ServerController {
         @inject(TYPES.PingService) private pingService: PingService,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
-    ) {}
+    ) { }
 
     /**
      * Handles 'join_server' event.
@@ -102,8 +102,8 @@ export class ServerController {
 
         // Verify membership
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
         );
         if (!member) {
             throw new Error('FORBIDDEN: Not a member of this server');
@@ -162,8 +162,8 @@ export class ServerController {
 
         // Verify server membership
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
         );
         if (!member) {
             throw new Error('FORBIDDEN: Not a member of this server');
@@ -223,8 +223,8 @@ export class ServerController {
 
         // Verify membership
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
         );
         if (!member) {
             throw new Error('FORBIDDEN: Not a member of this server');
@@ -232,9 +232,9 @@ export class ServerController {
 
         // Check sendMessages permission
         const canSend = await this.permissionService.hasChannelPermission(
-            serverId,
-            userId,
-            channelId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
             'sendMessages',
         );
         if (!canSend) {
@@ -253,8 +253,8 @@ export class ServerController {
         // Check permission for @everyone
         if (mentionedEveryone) {
             const canPingEveryone = await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
                 'pingRolesAndEveryone',
             );
             if (!canPingEveryone) {
@@ -265,8 +265,8 @@ export class ServerController {
         // Check permission for @role
         if (mentionedRoleIds.length > 0) {
             const canPingRoles = await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
                 'pingRolesAndEveryone',
             );
             if (!canPingRoles) {
@@ -278,11 +278,13 @@ export class ServerController {
             async (session) => {
                 const msg = await this.serverMessageRepo.create(
                     {
-                        serverId,
-                        channelId,
-                        senderId: userId,
+                        serverId: new mongoose.Types.ObjectId(serverId),
+                        channelId: new mongoose.Types.ObjectId(channelId),
+                        senderId: new mongoose.Types.ObjectId(userId),
                         text,
-                        ...(replyToId ? { replyToId } : {}),
+                        ...(replyToId
+                            ? { replyToId: new mongoose.Types.ObjectId(replyToId) }
+                            : {}),
                     },
                     session,
                 );
@@ -292,14 +294,14 @@ export class ServerController {
                 );
 
                 await this.channelRepo.updateLastMessageAt(
-                    channelId,
+                    new mongoose.Types.ObjectId(channelId),
                     undefined,
                     session,
                 );
                 await this.serverChannelReadRepo.upsert(
-                    serverId,
-                    channelId,
-                    userId,
+                    new mongoose.Types.ObjectId(serverId),
+                    new mongoose.Types.ObjectId(channelId),
+                    new mongoose.Types.ObjectId(userId),
                     session,
                 );
 
@@ -362,9 +364,9 @@ export class ServerController {
             },
             async (targetUserId) => {
                 return this.permissionService.hasChannelPermission(
-                    serverId,
-                    targetUserId,
-                    channelId,
+                    new mongoose.Types.ObjectId(serverId),
+                    new mongoose.Types.ObjectId(targetUserId),
+                    new mongoose.Types.ObjectId(channelId),
                     'viewChannel',
                 );
             },
@@ -373,7 +375,7 @@ export class ServerController {
         );
 
         // Notify all server members with view permission
-        const members = await this.serverMemberRepo.findByServerId(serverId);
+        const members = await this.serverMemberRepo.findByServerId(new mongoose.Types.ObjectId(serverId));
         const serverUnreadEvent: IServerUnreadUpdatedEvent = {
             type: 'server_unread_updated',
             payload: { serverId, hasUnread: true },
@@ -384,9 +386,9 @@ export class ServerController {
             try {
                 const hasView =
                     await this.permissionService.hasChannelPermission(
-                        serverId,
-                        targetUserId,
-                        channelId,
+                        new mongoose.Types.ObjectId(serverId),
+                        new mongoose.Types.ObjectId(targetUserId),
+                        new mongoose.Types.ObjectId(channelId),
                         'viewChannel',
                     );
                 if (hasView) {
@@ -434,7 +436,7 @@ export class ServerController {
         const userId = authenticatedUser.userId;
 
         // Find message
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
         if (!message) {
             throw new Error('NOT_FOUND: Message not found');
         }
@@ -445,7 +447,7 @@ export class ServerController {
         }
 
         // Update message
-        const updated = await this.serverMessageRepo.update(messageId, {
+        const updated = await this.serverMessageRepo.update(new mongoose.Types.ObjectId(messageId), {
             text,
             editedAt: new Date(),
             isEdited: true,
@@ -502,7 +504,7 @@ export class ServerController {
         const userId = authenticatedUser.userId;
 
         // Find message
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
         if (!message) {
             throw new Error('NOT_FOUND: Message not found');
         }
@@ -510,8 +512,8 @@ export class ServerController {
         // Check if user can delete (author OR has manageMessages permission)
         const isAuthor = message.senderId.toString() === userId;
         const hasPermission = await this.permissionService.hasPermission(
-            serverId,
-            userId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
             'manageMessages',
         );
 
@@ -520,7 +522,7 @@ export class ServerController {
         }
 
         // Delete message
-        await this.serverMessageRepo.delete(messageId);
+        await this.serverMessageRepo.delete(new mongoose.Types.ObjectId(messageId));
 
         logger.info(
             `[ServerController] Server message ${messageId} deleted by ${userId}`,
@@ -563,8 +565,8 @@ export class ServerController {
 
         // Verify membership
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
         );
         if (!member) {
             throw new Error('FORBIDDEN: Not a member of this server');
@@ -572,9 +574,9 @@ export class ServerController {
 
         // Update read state
         const updatedRead = await this.serverChannelReadRepo.upsert(
-            serverId,
-            channelId,
-            userId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(channelId),
+            new mongoose.Types.ObjectId(userId),
         );
 
         logger.debug(
@@ -596,10 +598,10 @@ export class ServerController {
         });
 
         // Notify whether server still has unread channels for this user
-        const channels = await this.channelRepo.findByServerIds([serverId]);
-        const reads = await this.serverChannelReadRepo.findByUserId(userId);
+        const channels = await this.channelRepo.findByServerIds([new mongoose.Types.ObjectId(serverId)]);
+        const reads = await this.serverChannelReadRepo.findByUserId(new mongoose.Types.ObjectId(userId));
         const readMap = new Map(
-            reads.map((r) => [r.channelId, r.lastReadAt as Date]),
+            reads.map((r) => [r.channelId.toString(), r.lastReadAt as Date]),
         );
         const hasUnread = channels.some((ch) => {
             const lastMessageAt = ch.lastMessageAt;
@@ -638,9 +640,9 @@ export class ServerController {
 
         // Check sendMessages permission
         const canSend = await this.permissionService.hasChannelPermission(
-            serverId,
-            userId,
-            channelId,
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
             'sendMessages',
         );
         if (!canSend) {
@@ -685,7 +687,7 @@ export class ServerController {
         let match;
         while ((match = userMentionRegex.exec(text)) !== null) {
             if (match[1]) {
-                if (Types.ObjectId.isValid(match[1])) {
+                if (mongoose.Types.ObjectId.isValid(match[1])) {
                     userIds.push(match[1]);
                     if (userIds.length >= MAX_USER_MENTIONS) {
                         break;
@@ -698,7 +700,7 @@ export class ServerController {
         const roleMentionRegex = /<roleid:'([^']+)'>/g;
         while ((match = roleMentionRegex.exec(text)) !== null) {
             if (match[1]) {
-                if (Types.ObjectId.isValid(match[1])) {
+                if (mongoose.Types.ObjectId.isValid(match[1])) {
                     roleIds.push(match[1]);
                     if (roleIds.length >= MAX_ROLE_MENTIONS) {
                         break;
@@ -742,7 +744,7 @@ export class ServerController {
         // Resolve role members
         if (mentionedRoleIds.length > 0) {
             const allMembers =
-                await this.serverMemberRepo.findByServerId(serverId);
+                await this.serverMemberRepo.findByServerId(new mongoose.Types.ObjectId(serverId));
             for (const roleId of mentionedRoleIds) {
                 const membersWithRole = allMembers.filter((m) =>
                     m.roles.some((r) => r.toString() === roleId),
@@ -758,7 +760,7 @@ export class ServerController {
         // Resolve @everyone members
         if (mentionedEveryone) {
             const allMembers =
-                await this.serverMemberRepo.findByServerId(serverId);
+                await this.serverMemberRepo.findByServerId(new mongoose.Types.ObjectId(serverId));
             allMembers.forEach((m) => {
                 if (m.userId.toString() !== senderId) {
                     allMentionedUserIds.add(m.userId.toString());
@@ -768,14 +770,14 @@ export class ServerController {
 
         // Send ping notifications to mentioned users
         for (const mentionedUserId of allMentionedUserIds) {
-            const mentionedUser = await this.userRepo.findById(mentionedUserId);
+            const mentionedUser = await this.userRepo.findById(new mongoose.Types.ObjectId(mentionedUserId));
             if (!mentionedUser?.username) continue;
 
             // Check if mentioned user is a member
             const mentionedMember =
                 await this.serverMemberRepo.findByServerAndUser(
-                    serverId,
-                    mentionedUserId,
+                    new mongoose.Types.ObjectId(serverId),
+                    new mongoose.Types.ObjectId(mentionedUserId),
                 );
             if (!mentionedMember) continue;
 
@@ -795,7 +797,7 @@ export class ServerController {
                 },
             };
 
-            await this.pingService.addPing(mentionedUserId, pingData);
+            await this.pingService.addPing(new mongoose.Types.ObjectId(mentionedUserId), pingData);
 
             // Emit socket event only for online users
             if (this.wsServer.isUserOnline(mentionedUserId)) {

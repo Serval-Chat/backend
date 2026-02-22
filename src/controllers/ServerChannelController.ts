@@ -10,6 +10,7 @@ import {
     UseGuards,
     Inject,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -18,7 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
-import { injectable, inject } from 'inversify';
+import { injectable } from 'inversify';
 import type {
     IChannelRepository,
     IChannel,
@@ -61,31 +62,23 @@ import {
 @UseGuards(JwtAuthGuard)
 export class ServerChannelController {
     constructor(
-        @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-        @inject(TYPES.ServerMemberRepository)
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-        @inject(TYPES.ServerChannelReadRepository)
         @Inject(TYPES.ServerChannelReadRepository)
         private serverChannelReadRepo: IServerChannelReadRepository,
-        @inject(TYPES.CategoryRepository)
         @Inject(TYPES.CategoryRepository)
         private categoryRepo: ICategoryRepository,
-        @inject(TYPES.ServerMessageRepository)
         @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
-        @inject(TYPES.PermissionService)
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
-        @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
-        @inject(TYPES.WsServer)
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     @Get('channels')
     @ApiOperation({ summary: 'Get server channels' })
@@ -96,23 +89,26 @@ export class ServerChannelController {
         @Req() req: Request,
     ): Promise<ChannelWithReadResponseDTO[]> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const channels = await this.channelRepo.findByServerId(serverId);
+        const channels = await this.channelRepo.findByServerId(serverOid);
         const reads = await this.serverChannelReadRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         const readMap = new Map<string, Date>();
         reads.forEach((read) => {
             if (read.channelId) {
-                readMap.set(read.channelId, read.lastReadAt);
+                readMap.set(read.channelId.toString(), read.lastReadAt);
             }
         });
 
@@ -125,11 +121,14 @@ export class ServerChannelController {
 
             return {
                 ...channel,
+                _id: channel._id.toString(),
+                serverId: channel.serverId.toString(),
+                categoryId: channel.categoryId?.toString() ?? null,
                 lastMessageAt: lastMessageAt
                     ? lastMessageAt.toISOString()
                     : null,
                 lastReadAt: lastReadAt ? lastReadAt.toISOString() : null,
-            } as ChannelWithReadResponseDTO;
+            } as unknown as ChannelWithReadResponseDTO;
         });
     }
 
@@ -142,15 +141,18 @@ export class ServerChannelController {
         @Req() req: Request,
     ): Promise<ICategory[]> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        return await this.categoryRepo.findByServerId(serverId);
+        return await this.categoryRepo.findByServerId(serverOid);
     }
 
     @Post('channels')
@@ -163,10 +165,13 @@ export class ServerChannelController {
         @Body() body: CreateChannelRequestDTO,
     ): Promise<IChannel> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
@@ -174,20 +179,20 @@ export class ServerChannelController {
         }
 
         const maxPositionChannel =
-            await this.channelRepo.findMaxPositionByServerId(serverId);
+            await this.channelRepo.findMaxPositionByServerId(serverOid);
         const finalPosition =
             body.position !== undefined
                 ? body.position
                 : maxPositionChannel
-                  ? maxPositionChannel.position + 1
-                  : 0;
+                    ? maxPositionChannel.position + 1
+                    : 0;
 
         const channel = await this.channelRepo.create({
-            serverId,
+            serverId: serverOid,
             name: body.name,
             type: body.type || 'text',
             position: finalPosition,
-            categoryId: body.categoryId || null,
+            categoryId: body.categoryId ? new Types.ObjectId(body.categoryId) : null,
             permissions: {
                 everyone: { sendMessages: true },
             },
@@ -195,7 +200,7 @@ export class ServerChannelController {
             ...(body.icon && { icon: body.icon }),
         });
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channel_created',
             payload: { serverId, channel },
         });
@@ -213,10 +218,13 @@ export class ServerChannelController {
         @Body() body: ReorderChannelsRequestDTO,
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
@@ -224,10 +232,12 @@ export class ServerChannelController {
         }
 
         for (const { channelId, position } of body.channelPositions) {
-            await this.channelRepo.update(channelId, { position });
+            await this.channelRepo.update(new Types.ObjectId(channelId), {
+                position,
+            });
         }
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channels_reordered',
             payload: { serverId, channelPositions: body.channelPositions },
         });
@@ -247,15 +257,19 @@ export class ServerChannelController {
         @Req() req: Request,
     ): Promise<ChannelStatsResponseDTO> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const channelOid = new Types.ObjectId(channelId);
+        const userOid = new Types.ObjectId(userId);
+
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(channelId);
+        const channel = await this.channelRepo.findById(channelOid);
         if (!channel) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
@@ -265,7 +279,7 @@ export class ServerChannelController {
         }
 
         const messageCount =
-            await this.serverMessageRepo.countByChannelId(channelId);
+            await this.serverMessageRepo.countByChannelId(channelOid);
 
         return {
             channelId: channel._id.toString(),
@@ -288,10 +302,14 @@ export class ServerChannelController {
         @Body() body: UpdateChannelRequestDTO,
     ): Promise<IChannel> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const channelOid = new Types.ObjectId(channelId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
@@ -301,17 +319,18 @@ export class ServerChannelController {
         const updates: Partial<IChannel> = {};
         if (body.name) updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
-        if (body.categoryId !== undefined) updates.categoryId = body.categoryId;
+        if (body.categoryId !== undefined)
+            updates.categoryId = body.categoryId ? new Types.ObjectId(body.categoryId) : null;
         if (body.description !== undefined)
             updates.description = body.description;
         if (body.icon !== undefined) updates.icon = body.icon;
 
-        const channel = await this.channelRepo.update(channelId, updates);
+        const channel = await this.channelRepo.update(channelOid, updates);
         if (!channel) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channel_updated',
             payload: { serverId, channel },
         });
@@ -330,19 +349,23 @@ export class ServerChannelController {
         @Req() req: Request,
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const channelOid = new Types.ObjectId(channelId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        await this.channelRepo.delete(channelId);
+        await this.channelRepo.delete(channelOid);
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channel_deleted',
             payload: { serverId, channelId },
         });
@@ -360,10 +383,13 @@ export class ServerChannelController {
         @Body() body: CreateCategoryRequestDTO,
     ): Promise<ICategory> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
@@ -371,21 +397,21 @@ export class ServerChannelController {
         }
 
         const maxPositionCategory =
-            await this.categoryRepo.findMaxPositionByServerId(serverId);
+            await this.categoryRepo.findMaxPositionByServerId(serverOid);
         const finalPosition =
             body.position !== undefined
                 ? body.position
                 : maxPositionCategory
-                  ? maxPositionCategory.position + 1
-                  : 0;
+                    ? maxPositionCategory.position + 1
+                    : 0;
 
         const category = await this.categoryRepo.create({
-            serverId,
+            serverId: serverOid,
             name: body.name,
             position: finalPosition,
         });
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'category_created',
             payload: { serverId, category },
         });
@@ -403,10 +429,13 @@ export class ServerChannelController {
         @Body() body: ReorderCategoriesRequestDTO,
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
@@ -414,10 +443,12 @@ export class ServerChannelController {
         }
 
         for (const { categoryId, position } of body.categoryPositions) {
-            await this.categoryRepo.update(categoryId, { position });
+            await this.categoryRepo.update(new Types.ObjectId(categoryId), {
+                position,
+            });
         }
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'categories_reordered',
             payload: { serverId, categoryPositions: body.categoryPositions },
         });
@@ -437,10 +468,14 @@ export class ServerChannelController {
         @Body() body: UpdateCategoryRequestDTO,
     ): Promise<ICategory> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const categoryOid = new Types.ObjectId(categoryId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
@@ -451,12 +486,12 @@ export class ServerChannelController {
         if (body.name) updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
 
-        const category = await this.categoryRepo.update(categoryId, updates);
+        const category = await this.categoryRepo.update(categoryOid, updates);
         if (!category) {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'category_updated',
             payload: { serverId, category },
         });
@@ -475,29 +510,33 @@ export class ServerChannelController {
         @Req() req: Request,
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const categoryOid = new Types.ObjectId(categoryId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        await this.categoryRepo.delete(categoryId);
+        await this.categoryRepo.delete(categoryOid);
 
         // Orphan channels by moving them out of the deleted category
-        const channels = await this.channelRepo.findByServerId(serverId);
+        const channels = await this.channelRepo.findByServerId(serverOid);
         for (const channel of channels) {
             if (channel.categoryId?.toString() === categoryId) {
-                await this.channelRepo.update(channel._id.toString(), {
+                await this.channelRepo.update(channel._id, {
                     categoryId: null,
                 });
             }
         }
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'category_deleted',
             payload: { serverId, categoryId },
         });
@@ -516,9 +555,13 @@ export class ServerChannelController {
         @Req() req: Request,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const channelOid = new Types.ObjectId(channelId);
+        const userOid = new Types.ObjectId(userId);
+
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
@@ -526,15 +569,15 @@ export class ServerChannelController {
 
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        const channel = await this.channelRepo.findById(channelId);
+        const channel = await this.channelRepo.findById(channelOid);
         if (!channel) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
@@ -554,28 +597,32 @@ export class ServerChannelController {
         @Body() body: UpdatePermissionsRequestDTO,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const channelOid = new Types.ObjectId(channelId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        const channel = await this.channelRepo.findById(channelId);
+        const channel = await this.channelRepo.findById(channelOid);
         if (!channel) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        await this.channelRepo.update(channelId, {
+        await this.channelRepo.update(channelOid, {
             permissions: body.permissions || {},
         });
 
-        this.permissionService.invalidateCache(serverId);
+        this.permissionService.invalidateCache(serverOid);
 
-        this.wsServer.broadcastToServer(serverId, {
+        this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channel_permissions_updated',
             payload: {
                 serverId,
@@ -598,9 +645,13 @@ export class ServerChannelController {
         @Req() req: Request,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const categoryOid = new Types.ObjectId(categoryId);
+        const userOid = new Types.ObjectId(userId);
+
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverId,
-            userId,
+            serverOid,
+            userOid,
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
@@ -608,15 +659,15 @@ export class ServerChannelController {
 
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        const category = await this.categoryRepo.findById(categoryId);
+        const category = await this.categoryRepo.findById(categoryOid);
         if (!category) {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
@@ -636,26 +687,30 @@ export class ServerChannelController {
         @Body() body: UpdatePermissionsRequestDTO,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const categoryOid = new Types.ObjectId(categoryId);
+        const userOid = new Types.ObjectId(userId);
+
         if (
             !(await this.permissionService.hasPermission(
-                serverId,
-                userId,
+                serverOid,
+                userOid,
                 'manageChannels',
             ))
         ) {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        const category = await this.categoryRepo.findById(categoryId);
+        const category = await this.categoryRepo.findById(categoryOid);
         if (!category) {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
-        await this.categoryRepo.update(categoryId, {
+        await this.categoryRepo.update(categoryOid, {
             permissions: body.permissions || {},
         });
 
-        this.permissionService.invalidateCache(serverId);
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'category_permissions_updated',

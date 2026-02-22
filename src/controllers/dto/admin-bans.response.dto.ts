@@ -1,16 +1,25 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsMongoId, IsString } from 'class-validator';
 import type { IBan } from '@/di/interfaces/IBanRepository';
 
 export class AdminBanHistoryItemDTO {
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     _id!: string;
+
     @ApiProperty()
     reason!: string;
+
     @ApiProperty()
     timestamp!: Date;
+
     @ApiProperty()
     expirationTimestamp!: Date;
+
     @ApiProperty()
+    @IsMongoId()
+    @IsString()
     issuedBy!: string;
     @ApiProperty()
     active!: boolean;
