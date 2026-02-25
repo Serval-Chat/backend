@@ -13,6 +13,8 @@ export interface IServer {
         value: string;
     };
     defaultRoleId?: Types.ObjectId;
+    disableCustomFonts?: boolean;
+    disableUsernameGlowAndCustomColor?: boolean;
     createdAt?: Date;
     updatedAt?: Date;
     deletedAt?: Date;

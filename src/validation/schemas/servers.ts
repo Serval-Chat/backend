@@ -28,6 +28,7 @@ export const updateServerSchema = z.object({
         })
         .optional(),
     disableCustomFonts: z.boolean().optional(),
+    disableUsernameGlowAndCustomColor: z.boolean().optional(),
 });
 
 // Channel ID parameter validation

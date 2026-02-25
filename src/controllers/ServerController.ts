@@ -422,6 +422,9 @@ export class ServerController {
         if (body.banner) updates.banner = body.banner;
         if (body.disableCustomFonts !== undefined)
             updates.disableCustomFonts = body.disableCustomFonts;
+        if (body.disableUsernameGlowAndCustomColor !== undefined)
+            updates.disableUsernameGlowAndCustomColor =
+                body.disableUsernameGlowAndCustomColor;
 
         if (body.defaultRoleId !== undefined) {
             const roleId = body.defaultRoleId;

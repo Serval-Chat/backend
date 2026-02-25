@@ -743,6 +743,47 @@ export class ProfileController {
             bio: bio || '',
         });
 
+        const userOid = new Types.ObjectId(userId);
+        try {
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userOid);
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userOid);
+
+            const payload = {
+                userId,
+                bio: bio || '',
+            };
+
+            // Emit to servers
+            serverIds.forEach((serverId) => {
+                this.wsServer.broadcastToServer(serverId.toString(), {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            // Emit to friends
+            friendships.forEach((friendship) => {
+                const friendId =
+                    friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                this.wsServer.broadcastToUser(friendId, {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            // Emit to self
+            this.wsServer.broadcastToUser(userId, {
+                type: 'user_updated',
+                payload,
+            });
+        } catch (err) {
+            this.logger.error('Failed to emit bio update:', err);
+        }
+
         return {
             message: 'Bio updated successfully',
             bio: bio || '',
@@ -764,6 +805,47 @@ export class ProfileController {
         await this.userRepo.update(new Types.ObjectId(userId), {
             pronouns: pronouns || '',
         });
+
+        const userOid = new Types.ObjectId(userId);
+        try {
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userOid);
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userOid);
+
+            const payload = {
+                userId,
+                pronouns: pronouns || '',
+            };
+
+            // Emit to servers
+            serverIds.forEach((serverId) => {
+                this.wsServer.broadcastToServer(serverId.toString(), {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            // Emit to friends
+            friendships.forEach((friendship) => {
+                const friendId =
+                    friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                this.wsServer.broadcastToUser(friendId, {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            // Emit to self
+            this.wsServer.broadcastToUser(userId, {
+                type: 'user_updated',
+                payload,
+            });
+        } catch (err) {
+            this.logger.error('Failed to emit pronouns update:', err);
+        }
 
         return {
             message: 'Pronouns updated successfully',

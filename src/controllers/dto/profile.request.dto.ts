@@ -13,6 +13,7 @@ import {
     MaxLength,
     MinLength,
     ArrayMaxSize,
+    IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -24,6 +25,7 @@ import {
     IsEmoji,
     IsFilename,
 } from '@/validation/schemas/common';
+import { VALID_USERNAME_FONTS } from '@/validation/schemas/profile';
 
 export class UsernameGradientDTO {
     @ApiProperty()
@@ -94,10 +96,9 @@ export class BulkStatusRequestDTO {
 }
 
 export class UpdateStyleRequestDTO {
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ enum: VALID_USERNAME_FONTS })
     @IsOptional()
-    @IsString()
-    @MaxLength(50)
+    @IsIn(VALID_USERNAME_FONTS)
     usernameFont?: string;
 
     @ApiPropertyOptional({ type: UsernameGradientDTO })

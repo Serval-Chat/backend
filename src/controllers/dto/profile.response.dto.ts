@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMongoId, IsString } from 'class-validator';
 import { SerializedCustomStatus } from '@/utils/status';
 import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import { VALID_USERNAME_FONTS } from '@/validation/schemas/profile';
 import { UsernameGradientDTO, UsernameGlowDTO } from './profile.request.dto';
 
 export class BadgeResponseDTO {
@@ -53,7 +54,7 @@ export class UserProfileResponseDTO {
     @ApiProperty({ nullable: true })
     profilePicture!: string | null;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ enum: VALID_USERNAME_FONTS })
     usernameFont?: string;
 
     @ApiPropertyOptional({ type: UsernameGradientDTO })

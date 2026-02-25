@@ -15,6 +15,7 @@ export interface IServer extends Document {
     };
     defaultRoleId?: mongoose.Types.ObjectId;
     disableCustomFonts?: boolean;
+    disableUsernameGlowAndCustomColor?: boolean;
     createdAt: Date;
     deletedAt?: Date;
     allTimeHigh?: number;
@@ -184,6 +185,7 @@ const serverSchema = new Schema<IServer>({
         required: false,
     },
     disableCustomFonts: { type: Boolean, default: false },
+    disableUsernameGlowAndCustomColor: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     deletedAt: { type: Date },
     allTimeHigh: { type: Number, default: 0 },

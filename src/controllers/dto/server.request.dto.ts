@@ -49,6 +49,11 @@ export class UpdateServerRequestDTO {
     @IsBoolean()
     disableCustomFonts?: boolean;
 
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    disableUsernameGlowAndCustomColor?: boolean;
+
     @ApiPropertyOptional({ nullable: true, type: String })
     @IsOptional()
     @IsMongoId()

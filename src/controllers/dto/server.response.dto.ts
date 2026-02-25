@@ -79,6 +79,9 @@ export class ServerResponseDTO {
     disableCustomFonts?: boolean;
 
     @ApiProperty({ required: false })
+    disableUsernameGlowAndCustomColor?: boolean;
+
+    @ApiProperty({ required: false })
     createdAt?: Date;
 
     @ApiProperty({ required: false })

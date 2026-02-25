@@ -7,6 +7,22 @@ import {
     objectIdSchema,
 } from '@/validation/schemas/common';
 
+export const VALID_USERNAME_FONTS = [
+    'default',
+    'Audiowide',
+    'Bebas Neue',
+    'Betania Patmos',
+    'Google Sans Code',
+    'Noto Sans',
+    'Pacifico',
+    'Playpen Sans Deva',
+    'Rampart One',
+    'Roboto',
+    'Workbench',
+] as const;
+
+export type UsernameFont = typeof VALID_USERNAME_FONTS[number];
+
 // Update profile validation
 export const updateProfileSchema = z.object({
     bio: z.string().max(500).optional(),
@@ -63,7 +79,7 @@ export const filenameParamSchema = z.object({
 
 // Username style validation
 export const usernameStyleSchema = z.object({
-    usernameFont: z.string().max(50).optional(),
+    usernameFont: z.enum(VALID_USERNAME_FONTS).optional(),
     usernameGradient: z
         .object({
             enabled: z.boolean(),

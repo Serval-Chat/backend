@@ -13,7 +13,7 @@ export interface IUser extends Document {
     username: string;
     password: string;
     profilePicture?: string;
-    usernameFont?: string;
+    usernameFont?: string; // Stored as a string but typed by Mongoose enum
     usernameGradient?: {
         enabled: boolean;
         colors: string[];
@@ -61,7 +61,12 @@ const schema = new Schema<IUser>(
         displayName: { type: String, maxlength: 32, trim: true },
         password: { type: String, required: true },
         profilePicture: { type: String, required: false },
-        usernameFont: { type: String, required: false, default: 'default' },
+        usernameFont: {
+            type: String,
+            enum: ['default', 'Audiowide', 'Bebas Neue', 'Betania Patmos', 'Google Sans Code', 'Noto Sans', 'Pacifico', 'Playpen Sans Deva', 'Rampart One', 'Roboto', 'Workbench'],
+            required: false,
+            default: 'default'
+        },
         usernameGradient: {
             enabled: { type: Boolean, default: false },
             colors: { type: [String], default: ['#ffffff', '#ffffff'] },
