@@ -110,6 +110,16 @@ export class ServerMessageController {
             throw new ForbiddenException('Cannot read messages from a link channel');
         }
 
+        const canView = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
+            'viewChannel',
+        );
+        if (!canView) {
+            throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
+        }
+
         // Fetch messages using cursor-based pagination (before / around)
         const msgs = await this.serverMessageRepo.findByChannelId(
             new mongoose.Types.ObjectId(channelId),
@@ -282,6 +292,16 @@ export class ServerMessageController {
         }
         if (channel.type === 'link') {
             throw new ForbiddenException('Cannot read a message from a link channel');
+        }
+
+        const canView = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
+            'viewChannel',
+        );
+        if (!canView) {
+            throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));

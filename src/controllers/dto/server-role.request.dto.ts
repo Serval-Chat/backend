@@ -3,7 +3,6 @@ import {
     IsOptional,
     IsBoolean,
     IsArray,
-    IsObject,
     ValidateNested,
     IsInt,
     Min,
@@ -12,7 +11,7 @@ import {
     IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsName, IsColor, IsRoleId } from '@/validation/schemas/common';
+import { IsName, IsColor, IsRoleId, IsPermissions } from '@/validation/schemas/common';
 
 export class CreateRoleRequestDTO {
     @ApiProperty()
@@ -55,7 +54,7 @@ export class CreateRoleRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsObject()
+    @IsPermissions()
     permissions?: Record<string, boolean>;
 }
 
@@ -120,7 +119,7 @@ export class UpdateRoleRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsObject()
+    @IsPermissions()
     permissions?: Record<string, boolean>;
 
     @ApiPropertyOptional()

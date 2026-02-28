@@ -605,6 +605,8 @@ export class ServerMemberController {
 
         await this.serverRepo.update(serverOid, { ownerId: newOwnerOid });
 
+        this.permissionService.invalidateCache(serverOid);
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'ownership_transferred',
             payload: {

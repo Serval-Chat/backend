@@ -32,7 +32,9 @@ import { injectable } from 'inversify';
 import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/permissions/PermissionService';
+import { isPermissionKey } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
+
 
 import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -147,6 +149,15 @@ export class ServerRoleController {
                 ? null
                 : body.color || '#99aab5';
 
+        const filteredPermissions: Record<string, boolean> = {};
+        if (body.permissions) {
+            for (const key in body.permissions) {
+                if (isPermissionKey(key)) {
+                    filteredPermissions[key] = body.permissions[key] as boolean;
+                }
+            }
+        }
+
         const role = await this.roleRepo.create({
             serverId: serverOid,
             name: body.name.trim(),
@@ -157,8 +168,9 @@ export class ServerRoleController {
             gradientRepeat: body.gradientRepeat,
             separateFromOtherRoles: body.separateFromOtherRoles,
             position,
-            permissions: body.permissions || {},
+            permissions: filteredPermissions,
         });
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_created',
@@ -206,6 +218,7 @@ export class ServerRoleController {
                 position,
             });
         }
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'roles_reordered',
@@ -279,7 +292,17 @@ export class ServerRoleController {
             updates.gradientRepeat = body.gradientRepeat;
         if (body.separateFromOtherRoles !== undefined)
             updates.separateFromOtherRoles = body.separateFromOtherRoles;
-        if (body.permissions) updates.permissions = body.permissions;
+
+        if (body.permissions) {
+            const filteredPermissions: Record<string, boolean> = {};
+            for (const key in body.permissions) {
+                if (isPermissionKey(key)) {
+                    filteredPermissions[key] = body.permissions[key] as boolean;
+                }
+            }
+            updates.permissions = filteredPermissions;
+        }
+
         if (body.position !== undefined) updates.position = body.position;
 
         const updatedRole = await this.roleRepo.update(roleOid, updates);

@@ -6,13 +6,13 @@ import {
     IsInt,
     IsArray,
     ValidateNested,
-    IsObject,
     MaxLength,
     IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsName, IsChannelId, IsCategoryId, IsUrlField } from '@/validation/schemas/common';
+import { IsName, IsChannelId, IsCategoryId, IsUrlField, IsPermissionMap } from '@/validation/schemas/common';
 import { ChannelTypeDTO } from './common.request.dto';
+
 
 export class CreateChannelRequestDTO {
     @ApiProperty()
@@ -50,6 +50,14 @@ export class CreateChannelRequestDTO {
     @IsOptional()
     @IsUrlField()
     link?: string;
+
+    @ApiPropertyOptional({
+        description: 'Map of role/user IDs to permission overrides',
+        example: { everyone: { sendMessages: true } },
+    })
+    @IsOptional()
+    @IsPermissionMap()
+    permissions?: Record<string, Record<string, boolean>>;
 }
 
 export class UpdateChannelRequestDTO {
@@ -152,6 +160,7 @@ export class UpdatePermissionsRequestDTO {
         description: 'Map of role/user IDs to permission overrides',
         example: { role_id: { sendMessages: true } },
     })
-    @IsObject()
+    @IsPermissionMap()
     permissions!: Record<string, Record<string, boolean>>;
 }
+

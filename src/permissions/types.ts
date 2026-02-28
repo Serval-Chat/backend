@@ -15,6 +15,7 @@ export const PERMISSION_KEYS = [
     'pingRolesAndEveryone',
     'addReactions',
     'manageReactions',
+    'viewChannel',
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];

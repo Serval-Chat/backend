@@ -150,6 +150,83 @@ export class PermissionResolver {
         return everyone ?? false;
     }
 
+    canUserDoMultiple(
+        userId: string,
+        channelIds: string[],
+        permission: PermissionKey,
+    ): Map<string, boolean> {
+        const results = new Map<string, boolean>();
+        if (userId === this.data.ownerId.toString()) {
+            for (const id of channelIds) results.set(id, true);
+            return results;
+        }
+
+        const member = this.memberByUserId.get(userId);
+        if (!member) {
+            for (const id of channelIds) results.set(id, false);
+            return results;
+        }
+
+        const rolesAsc = this.getMemberRolesByAscPosition(member);
+        const rolesAscForOverrides = this.everyoneRoleId
+            ? this.appendEveryoneRole(rolesAsc)
+            : rolesAsc;
+
+        const isAdmin = this.hasAdministrator(rolesAscForOverrides);
+        const roleMerged = mergeHighestRolePermission(rolesAsc, permission);
+        const everyoneFallback = this.getEveryonePermission(permission) ?? false;
+
+        for (const channelId of channelIds) {
+            if (isAdmin) {
+                results.set(channelId, true);
+                continue;
+            }
+
+            const channel = this.channelById.get(channelId);
+            if (!channel) {
+                results.set(channelId, false);
+                continue;
+            }
+
+            // 3) Channel overrides
+            const channelValue = applyOverridesForRoles(
+                rolesAscForOverrides,
+                channel.overrides,
+                permission,
+            );
+            if (channelValue !== undefined) {
+                results.set(channelId, channelValue);
+                continue;
+            }
+
+            // 4) Category overrides
+            const categoryId = channel.categoryId?.toString();
+            if (categoryId) {
+                const category = this.categoryById.get(categoryId);
+                const categoryValue = applyOverridesForRoles(
+                    rolesAscForOverrides,
+                    category?.overrides,
+                    permission,
+                );
+                if (categoryValue !== undefined) {
+                    results.set(channelId, categoryValue);
+                    continue;
+                }
+            }
+
+            // 5) Role permissions (merged)
+            if (roleMerged !== undefined) {
+                results.set(channelId, roleMerged);
+                continue;
+            }
+
+            // 6) @everyone fallback
+            results.set(channelId, everyoneFallback);
+        }
+
+        return results;
+    }
+
     getHighestRolePosition(userId: string): number {
         if (userId === this.data.ownerId.toString()) return Number.MAX_SAFE_INTEGER;
 

@@ -32,7 +32,9 @@ import type {
 } from '@/di/interfaces/ICategoryRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import { PermissionService } from '@/permissions/PermissionService';
+import { isPermissionKey } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
+
 
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -101,6 +103,18 @@ export class ServerChannelController {
         }
 
         const channels = await this.channelRepo.findByServerId(serverOid);
+        const channelIds = channels.map((c) => c._id);
+        const permissionMap = await this.permissionService.hasChannelPermissions(
+            serverOid,
+            userOid,
+            channelIds as Types.ObjectId[],
+            'viewChannel',
+        );
+
+        const visibleChannels = channels.filter((c) =>
+            permissionMap.get(c._id.toString()),
+        );
+
         const reads = await this.serverChannelReadRepo.findByServerAndUser(
             serverOid,
             userOid,
@@ -112,7 +126,7 @@ export class ServerChannelController {
             }
         });
 
-        return channels.map((channel: IChannel) => {
+        return visibleChannels.map((channel: IChannel) => {
             const channelId = channel._id?.toString();
             const lastMessageAt: Date | null = channel.lastMessageAt ?? null;
             const lastReadAt: Date | undefined = channelId
@@ -187,15 +201,28 @@ export class ServerChannelController {
                     ? maxPositionChannel.position + 1
                     : 0;
 
+        const filteredPermissions: Record<string, Record<string, boolean>> = {};
+        if (body.permissions) {
+            for (const id in body.permissions) {
+                filteredPermissions[id] = {};
+                for (const key in body.permissions[id]) {
+                    if (isPermissionKey(key)) {
+                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                    }
+                }
+            }
+        } else {
+            // Default permission: allow @everyone to send messages
+            filteredPermissions['everyone'] = { sendMessages: true };
+        }
+
         const channel = await this.channelRepo.create({
             serverId: serverOid,
             name: body.name,
             type: body.type || 'text',
             position: finalPosition,
             categoryId: body.categoryId ? new Types.ObjectId(body.categoryId) : null,
-            permissions: {
-                everyone: { sendMessages: true },
-            },
+            permissions: filteredPermissions,
             ...(body.description && { description: body.description }),
             ...(body.icon && { icon: body.icon }),
             ...(body.link && { link: body.link }),
@@ -268,6 +295,17 @@ export class ServerChannelController {
         );
         if (!member) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
+        }
+
+        if (
+            !(await this.permissionService.hasChannelPermission(
+                serverOid,
+                userOid,
+                channelOid,
+                'viewChannel',
+            ))
+        ) {
+            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const channel = await this.channelRepo.findById(channelOid);
@@ -630,8 +668,20 @@ export class ServerChannelController {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
+        const filteredPermissions: Record<string, Record<string, boolean>> = {};
+        if (body.permissions) {
+            for (const id in body.permissions) {
+                filteredPermissions[id] = {};
+                for (const key in body.permissions[id]) {
+                    if (isPermissionKey(key)) {
+                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                    }
+                }
+            }
+        }
+
         await this.channelRepo.update(channelOid, {
-            permissions: body.permissions || {},
+            permissions: filteredPermissions,
         });
 
         this.permissionService.invalidateCache(serverOid);
@@ -641,11 +691,11 @@ export class ServerChannelController {
             payload: {
                 serverId,
                 channelId,
-                permissions: body.permissions || {},
+                permissions: filteredPermissions,
             },
         });
 
-        return { permissions: body.permissions || {} };
+        return { permissions: filteredPermissions };
     }
 
     @Get('categories/:categoryId/permissions')
@@ -720,8 +770,20 @@ export class ServerChannelController {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
+        const filteredPermissions: Record<string, Record<string, boolean>> = {};
+        if (body.permissions) {
+            for (const id in body.permissions) {
+                filteredPermissions[id] = {};
+                for (const key in body.permissions[id]) {
+                    if (isPermissionKey(key)) {
+                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                    }
+                }
+            }
+        }
+
         await this.categoryRepo.update(categoryOid, {
-            permissions: body.permissions || {},
+            permissions: filteredPermissions,
         });
 
         this.permissionService.invalidateCache(serverOid);
@@ -731,10 +793,10 @@ export class ServerChannelController {
             payload: {
                 serverId,
                 categoryId,
-                permissions: body.permissions || {},
+                permissions: filteredPermissions,
             },
         });
 
-        return { permissions: body.permissions || {} };
+        return { permissions: filteredPermissions };
     }
 }

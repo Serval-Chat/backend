@@ -15,6 +15,7 @@ import {
     IsISO8601,
     registerDecorator,
 } from 'class-validator';
+import { isPermissionKey } from '@/permissions/types';
 import type { ValidationOptions } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -435,3 +436,64 @@ export const booleanQuerySchema = z
     .string()
     .optional()
     .transform((val) => val === 'true' || val === '1');
+
+export function IsPermissionMap(validationOptions?: ValidationOptions) {
+    return (target: Object, propertyKey: string | symbol) => {
+        registerDecorator({
+            name: 'isPermissionMap',
+            target: target.constructor,
+            propertyName: propertyKey.toString(),
+            options: {
+                ...validationOptions,
+                message:
+                    validationOptions?.message || 'Invalid permission key(s)',
+            },
+            validator: {
+                validate(value: unknown) {
+                    if (typeof value !== 'object' || value === null)
+                        return false;
+                    const map = value as Record<string, Record<string, unknown>>;
+                    for (const roleId in map) {
+                        const perms = map[roleId];
+                        if (typeof perms !== 'object' || perms === null)
+                            return false;
+                        for (const key in perms) {
+                            if (!isPermissionKey(key)) return false;
+                            if (typeof perms[key] !== 'boolean') return false;
+                        }
+                    }
+                    return true;
+                },
+            },
+        });
+    };
+}
+
+export function IsPermissions(validationOptions?: ValidationOptions) {
+    return (target: Object, propertyKey: string | symbol) => {
+        registerDecorator({
+            name: 'isPermissions',
+            target: target.constructor,
+            propertyName: propertyKey.toString(),
+            options: {
+                ...validationOptions,
+                message:
+                    validationOptions?.message || 'Invalid permission key(s)',
+            },
+            validator: {
+                validate(value: unknown) {
+                    if (typeof value !== 'object' || value === null)
+                        return false;
+                    const perms = value as Record<string, unknown>;
+                    for (const key in perms) {
+                        if (!isPermissionKey(key)) return false;
+                        if (typeof perms[key] !== 'boolean') return false;
+                    }
+                    return true;
+                },
+            },
+        });
+    };
+}
+
+

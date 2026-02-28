@@ -161,6 +161,23 @@ export class PermissionService {
         return resolver.canUserDo(userId.toString(), channelId.toString(), permission);
     }
 
+    async hasChannelPermissions(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        channelIds: Types.ObjectId[],
+        permission: string,
+    ): Promise<Map<string, boolean>> {
+        const resolver = await this.getResolver(serverId);
+        if (!resolver || !isPermissionKey(permission)) {
+            return new Map(channelIds.map((id) => [id.toString(), false]));
+        }
+        return resolver.canUserDoMultiple(
+            userId.toString(),
+            channelIds.map((id) => id.toString()),
+            permission,
+        );
+    }
+
     private async getResolver(
         serverId: Types.ObjectId,
     ): Promise<PermissionResolver | null> {

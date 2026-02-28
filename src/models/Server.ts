@@ -44,6 +44,7 @@ export interface ICategory extends Document {
             administrator?: boolean;
             manageReactions?: boolean;
             addReactions?: boolean;
+            viewChannel?: boolean;
         };
     };
     createdAt: Date;
@@ -66,6 +67,7 @@ export interface IChannel extends Document {
             deleteMessagesOfOthers?: boolean;
             manageReactions?: boolean;
             addReactions?: boolean;
+            viewChannel?: boolean;
         };
     };
     createdAt: Date;
@@ -113,6 +115,7 @@ export interface IRole extends Document {
         pingRolesAndEveryone?: boolean;
         manageReactions: boolean;
         addReactions: boolean;
+        viewChannel: boolean;
     };
     separateFromOtherRoles?: boolean;
     icon?: string;
@@ -210,6 +213,7 @@ const categorySchema = new Schema<ICategory>({
             administrator: { type: Boolean },
             manageReactions: { type: Boolean },
             addReactions: { type: Boolean },
+            viewChannel: { type: Boolean },
         },
         default: {},
     },
@@ -235,6 +239,7 @@ const channelSchema = new Schema<IChannel>({
             deleteMessagesOfOthers: { type: Boolean },
             manageReactions: { type: Boolean },
             addReactions: { type: Boolean },
+            viewChannel: { type: Boolean },
         },
         default: {},
     },
@@ -278,6 +283,7 @@ const roleSchema = new Schema<IRole>({
         pingRolesAndEveryone: { type: Boolean, default: false },
         manageReactions: { type: Boolean, default: false },
         addReactions: { type: Boolean, default: true },
+        viewChannel: { type: Boolean, default: true },
     },
     separateFromOtherRoles: { type: Boolean, default: false },
     icon: { type: String, required: false },

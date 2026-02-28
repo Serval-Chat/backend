@@ -207,18 +207,41 @@ export class ServerController {
         const unreadMap: Record<string, boolean> = {};
         serverIds.forEach((id) => (unreadMap[id.toString()] = false));
 
+        const permissionMapsByServer = new Map<string, Map<string, boolean>>();
+
+        for (const serverId of serverIds) {
+            const serverIdStr = serverId.toString();
+            const serverChannels = channels.filter(
+                (c) => c.serverId.toString() === serverIdStr,
+            );
+            if (serverChannels.length === 0) continue;
+
+            const perms = await this.permissionService.hasChannelPermissions(
+                serverId as Types.ObjectId,
+                userOid,
+                serverChannels.map((c) => c._id as Types.ObjectId),
+                'viewChannel',
+            );
+            permissionMapsByServer.set(serverIdStr, perms);
+        }
+
         // A server is unread if any of its channels have a message newer than the user's last read timestamp
         for (const channel of channels) {
-            const serverId = channel.serverId.toString();
-            if (unreadMap[serverId]) continue;
+            const serverIdStr = channel.serverId.toString();
+            if (unreadMap[serverIdStr]) continue;
             if (channel.type === 'link') continue;
+
+            const hasPerm = permissionMapsByServer
+                .get(serverIdStr)
+                ?.get(channel._id.toString());
+            if (!hasPerm) continue;
 
             const lastMessageAt = channel.lastMessageAt;
             if (!lastMessageAt) continue;
 
             const lastReadAt = readMap.get(channel._id.toString());
             if (!lastReadAt || new Date(lastMessageAt) > new Date(lastReadAt)) {
-                unreadMap[serverId] = true;
+                unreadMap[serverIdStr] = true;
             }
         }
 
@@ -458,6 +481,8 @@ export class ServerController {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
+        this.permissionService.invalidateCache(serverOid);
+
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_updated',
             payload: {
@@ -518,6 +543,7 @@ export class ServerController {
         });
 
         if (server) {
+            this.permissionService.invalidateCache(serverOid);
             this.wsServer.broadcastToServer(serverId.toString(), {
                 type: 'server_updated',
                 payload: {
