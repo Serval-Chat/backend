@@ -114,7 +114,7 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
-            'viewChannel',
+            'viewChannels',
         );
         if (!canView) {
             throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
@@ -298,7 +298,7 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
-            'viewChannel',
+            'viewChannels',
         );
         if (!canView) {
             throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);

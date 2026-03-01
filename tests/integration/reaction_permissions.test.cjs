@@ -52,6 +52,7 @@ describe('Reaction Permissions Integration Tests', () => {
         roleWithPerms = await Role.create({
             serverId: server._id,
             name: 'With Perms',
+            position: 1,
             permissions: {
                 sendMessages: true,
                 addReactions: true,
@@ -63,6 +64,7 @@ describe('Reaction Permissions Integration Tests', () => {
         roleWithoutPerms = await Role.create({
             serverId: server._id,
             name: 'Without Perms',
+            position: 1,
             permissions: {
                 sendMessages: true,
                 addReactions: false,
@@ -135,12 +137,12 @@ describe('Reaction Permissions Integration Tests', () => {
 
             assert.strictEqual(responseAdd.status, 201);
 
-            // User with perms tries to remove it
             const response = await request
                 .delete(`/api/v1/servers/${server._id}/channels/${channel._id}/messages/${message._id}/reactions`)
                 .set('Authorization', `Bearer ${tokenWithPerms}`)
                 .send({
-                    emoji: '👍'
+                    emoji: '👍',
+                    scope: 'all'
                 });
 
             assert.strictEqual(response.status, 200);

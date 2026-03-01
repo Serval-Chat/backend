@@ -51,7 +51,7 @@ describe('Channel Visibility Integration Tests', () => {
             position: 1,
             permissions: {
                 sendMessages: true,
-                viewChannel: true // Server-wide allow
+                viewChannels: true // Server-wide allow
             }
         });
 
@@ -68,7 +68,7 @@ describe('Channel Visibility Integration Tests', () => {
             { _id: hiddenChannel._id },
             {
                 $set: {
-                    [`permissions.${hiddenRole._id}`]: { viewChannel: false }
+                    [`permissions.${hiddenRole._id}`]: { viewChannels: false }
                 }
             }
         );
@@ -139,10 +139,10 @@ describe('Channel Visibility Integration Tests', () => {
         const { Role } = require('../../src/models/Server');
         const everyoneRole = await Role.findOne({ serverId: server._id, name: '@everyone' });
 
-        // Deny viewChannel for @everyone at the server level
+        // Deny viewChannels for @everyone at the server level
         await Role.updateOne(
             { _id: everyoneRole._id },
-            { $set: { 'permissions.viewChannel': false } }
+            { $set: { 'permissions.viewChannels': false } }
         );
 
         // A member with no roles should now see nothing

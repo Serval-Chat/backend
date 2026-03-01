@@ -377,7 +377,7 @@ export class ServerController {
                     new mongoose.Types.ObjectId(serverId),
                     new mongoose.Types.ObjectId(targetUserId),
                     new mongoose.Types.ObjectId(channelId),
-                    'viewChannel',
+                    'viewChannels',
                 );
             },
             undefined,
@@ -399,7 +399,7 @@ export class ServerController {
                         new mongoose.Types.ObjectId(serverId),
                         new mongoose.Types.ObjectId(targetUserId),
                         new mongoose.Types.ObjectId(channelId),
-                        'viewChannel',
+                        'viewChannels',
                     );
                 if (hasView) {
                     this.wsServer.broadcastToUser(
@@ -519,15 +519,21 @@ export class ServerController {
             throw new Error('NOT_FOUND: Message not found');
         }
 
-        // Check if user can delete (author OR has manageMessages permission)
         const isAuthor = message.senderId.toString() === userId;
-        const hasPermission = await this.permissionService.hasPermission(
+        const canManage = await this.permissionService.hasChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
+            message.channelId,
             'manageMessages',
         );
+        const canDeleteOthers = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            message.channelId,
+            'deleteMessagesOfOthers',
+        );
 
-        if (!isAuthor && !hasPermission) {
+        if (!isAuthor && !canManage && !canDeleteOthers) {
             throw new Error('FORBIDDEN: No permission to delete this message');
         }
 

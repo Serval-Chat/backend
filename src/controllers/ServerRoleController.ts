@@ -86,7 +86,6 @@ export class ServerRoleController {
     @ApiOperation({ summary: 'Get server roles' })
     @ApiResponse({ status: 200, description: 'Roles retrieved' })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
-    @UseGuards(JwtAuthGuard)
     public async getServerRoles(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -116,7 +115,6 @@ export class ServerRoleController {
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
     })
-    @UseGuards(JwtAuthGuard)
     public async createRole(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -174,7 +172,7 @@ export class ServerRoleController {
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_created',
-            payload: { serverId, role },
+            payload: { serverId, role, senderId: userId },
         });
 
         return role;
@@ -191,7 +189,6 @@ export class ServerRoleController {
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
     })
-    @UseGuards(JwtAuthGuard)
     public async reorderRoles(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -225,6 +222,7 @@ export class ServerRoleController {
             payload: {
                 serverId,
                 rolePositions: body.rolePositions,
+                senderId: userId,
             },
         });
 
@@ -243,7 +241,6 @@ export class ServerRoleController {
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
     })
     @ApiResponse({ status: 404, description: ErrorMessages.ROLE.NOT_FOUND })
-    @UseGuards(JwtAuthGuard)
     public async updateRole(
         @Param('serverId') serverId: string,
         @Param('roleId') roleId: string,
@@ -317,6 +314,7 @@ export class ServerRoleController {
             payload: {
                 serverId,
                 role: updatedRole,
+                senderId: userId,
             },
         });
 
@@ -338,7 +336,6 @@ export class ServerRoleController {
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
     })
     @ApiResponse({ status: 404, description: ErrorMessages.ROLE.NOT_FOUND })
-    @UseGuards(JwtAuthGuard)
     public async deleteRole(
         @Param('serverId') serverId: string,
         @Param('roleId') roleId: string,
@@ -376,7 +373,7 @@ export class ServerRoleController {
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_deleted',
-            payload: { serverId, roleId },
+            payload: { serverId, roleId, senderId: userId },
         });
 
         return { message: 'Role deleted' };
@@ -406,7 +403,6 @@ export class ServerRoleController {
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
     })
-    @UseGuards(JwtAuthGuard)
     public async uploadRoleIcon(
         @Param('serverId') serverId: string,
         @Param('roleId') roleId: string,
@@ -500,6 +496,7 @@ export class ServerRoleController {
             payload: {
                 serverId,
                 role: updatedRole,
+                senderId: userId,
             },
         });
 

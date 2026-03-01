@@ -44,7 +44,7 @@ export interface ICategory extends Document {
             administrator?: boolean;
             manageReactions?: boolean;
             addReactions?: boolean;
-            viewChannel?: boolean;
+            viewChannels?: boolean;
         };
     };
     createdAt: Date;
@@ -67,7 +67,7 @@ export interface IChannel extends Document {
             deleteMessagesOfOthers?: boolean;
             manageReactions?: boolean;
             addReactions?: boolean;
-            viewChannel?: boolean;
+            viewChannels?: boolean;
         };
     };
     createdAt: Date;
@@ -112,10 +112,11 @@ export interface IRole extends Document {
         manageInvites: boolean;
         manageServer: boolean;
         administrator: boolean;
-        pingRolesAndEveryone?: boolean;
+        manageWebhooks: boolean;
+        pingRolesAndEveryone: boolean;
         manageReactions: boolean;
         addReactions: boolean;
-        viewChannel: boolean;
+        viewChannels: boolean;
     };
     separateFromOtherRoles?: boolean;
     icon?: string;
@@ -200,21 +201,26 @@ const categorySchema = new Schema<ICategory>({
     position: { type: Number, default: 0 },
     permissions: {
         type: Map,
-        of: {
-            sendMessages: { type: Boolean },
-            manageMessages: { type: Boolean },
-            deleteMessagesOfOthers: { type: Boolean },
-            manageChannels: { type: Boolean },
-            manageRoles: { type: Boolean },
-            banMembers: { type: Boolean },
-            kickMembers: { type: Boolean },
-            manageInvites: { type: Boolean },
-            manageServer: { type: Boolean },
-            administrator: { type: Boolean },
-            manageReactions: { type: Boolean },
-            addReactions: { type: Boolean },
-            viewChannel: { type: Boolean },
-        },
+        of: new Schema(
+            {
+                sendMessages: { type: Boolean },
+                manageMessages: { type: Boolean },
+                deleteMessagesOfOthers: { type: Boolean },
+                manageChannels: { type: Boolean },
+                manageRoles: { type: Boolean },
+                banMembers: { type: Boolean },
+                kickMembers: { type: Boolean },
+                manageInvites: { type: Boolean },
+                manageServer: { type: Boolean },
+                administrator: { type: Boolean },
+                manageWebhooks: { type: Boolean },
+                pingRolesAndEveryone: { type: Boolean },
+                manageReactions: { type: Boolean },
+                addReactions: { type: Boolean },
+                viewChannels: { type: Boolean },
+            },
+            { _id: false },
+        ),
         default: {},
     },
     createdAt: { type: Date, default: Date.now },
@@ -233,14 +239,26 @@ const channelSchema = new Schema<IChannel>({
     position: { type: Number, default: 0 },
     permissions: {
         type: Map,
-        of: {
-            sendMessages: { type: Boolean },
-            manageMessages: { type: Boolean },
-            deleteMessagesOfOthers: { type: Boolean },
-            manageReactions: { type: Boolean },
-            addReactions: { type: Boolean },
-            viewChannel: { type: Boolean },
-        },
+        of: new Schema(
+            {
+                sendMessages: { type: Boolean },
+                manageMessages: { type: Boolean },
+                deleteMessagesOfOthers: { type: Boolean },
+                manageChannels: { type: Boolean },
+                manageRoles: { type: Boolean },
+                banMembers: { type: Boolean },
+                kickMembers: { type: Boolean },
+                manageInvites: { type: Boolean },
+                manageServer: { type: Boolean },
+                administrator: { type: Boolean },
+                manageWebhooks: { type: Boolean },
+                pingRolesAndEveryone: { type: Boolean },
+                manageReactions: { type: Boolean },
+                addReactions: { type: Boolean },
+                viewChannels: { type: Boolean },
+            },
+            { _id: false },
+        ),
         default: {},
     },
     createdAt: { type: Date, default: Date.now },
@@ -280,10 +298,11 @@ const roleSchema = new Schema<IRole>({
         manageInvites: { type: Boolean, default: false },
         manageServer: { type: Boolean, default: false },
         administrator: { type: Boolean, default: false },
+        manageWebhooks: { type: Boolean, default: false },
         pingRolesAndEveryone: { type: Boolean, default: false },
         manageReactions: { type: Boolean, default: false },
         addReactions: { type: Boolean, default: true },
-        viewChannel: { type: Boolean, default: true },
+        viewChannels: { type: Boolean, default: true },
     },
     separateFromOtherRoles: { type: Boolean, default: false },
     icon: { type: String, required: false },

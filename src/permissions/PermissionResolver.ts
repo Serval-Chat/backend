@@ -15,6 +15,17 @@ function getPermissionValue(
     return permissions?.[permission];
 }
 
+function getPermissionDefault(permission: PermissionKey): boolean {
+    switch (permission) {
+        case 'viewChannels':
+        case 'sendMessages':
+        case 'addReactions':    
+            return true;
+        default:
+            return false;
+    }
+}
+
 function mergeHighestRolePermission(
     rolesByAscPosition: readonly ServerRole[],
     permission: PermissionKey,
@@ -94,7 +105,7 @@ export class PermissionResolver {
             rolesAscWithEveryone,
             permission,
         );
-        return merged ?? false;
+        return merged ?? getPermissionDefault(permission);
     }
 
     canUserDo(
@@ -142,12 +153,11 @@ export class PermissionResolver {
         }
 
         // 5) Role permissions (merged)
-        const merged = mergeHighestRolePermission(rolesAsc, permission);
-        if (merged !== undefined) return merged;
-
-        // 6) @everyone fallback
-        const everyone = this.getEveryonePermission(permission);
-        return everyone ?? false;
+        const merged = mergeHighestRolePermission(
+            rolesAscForOverrides,
+            permission,
+        );
+        return merged ?? getPermissionDefault(permission);
     }
 
     canUserDoMultiple(
@@ -173,8 +183,6 @@ export class PermissionResolver {
             : rolesAsc;
 
         const isAdmin = this.hasAdministrator(rolesAscForOverrides);
-        const roleMerged = mergeHighestRolePermission(rolesAsc, permission);
-        const everyoneFallback = this.getEveryonePermission(permission) ?? false;
 
         for (const channelId of channelIds) {
             if (isAdmin) {
@@ -215,13 +223,11 @@ export class PermissionResolver {
             }
 
             // 5) Role permissions (merged)
-            if (roleMerged !== undefined) {
-                results.set(channelId, roleMerged);
-                continue;
-            }
-
-            // 6) @everyone fallback
-            results.set(channelId, everyoneFallback);
+            const roleMerged = mergeHighestRolePermission(
+                rolesAscForOverrides,
+                permission,
+            );
+            results.set(channelId, roleMerged ?? getPermissionDefault(permission));
         }
 
         return results;

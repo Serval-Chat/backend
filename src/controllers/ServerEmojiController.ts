@@ -232,7 +232,7 @@ export class ServerEmojiController {
 
             this.wsServer.broadcastToServer(serverId, {
                 type: 'emoji_updated',
-                payload: { serverId },
+                payload: { serverId, senderId: userId },
             });
 
             return populatedEmoji;
@@ -323,7 +323,7 @@ export class ServerEmojiController {
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'emoji_updated',
-            payload: { serverId },
+            payload: { serverId, senderId: userId },
         });
     }
 }

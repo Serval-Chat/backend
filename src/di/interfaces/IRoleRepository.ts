@@ -12,10 +12,11 @@ export interface IRolePermissions {
     manageInvites: boolean;
     manageServer: boolean;
     administrator: boolean;
-    manageWebhooks?: boolean;
-    pingRolesAndEveryone?: boolean; // Permission to ping @everyone and roles
-    addReactions?: boolean;
-    manageReactions?: boolean;
+    manageWebhooks: boolean;
+    pingRolesAndEveryone: boolean; // Permission to ping @everyone and roles
+    addReactions: boolean;
+    manageReactions: boolean;
+    viewChannels: boolean;
 }
 
 // Role interface (domain model)

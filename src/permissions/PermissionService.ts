@@ -14,6 +14,7 @@ import type {
     IChannelRepository,
     IChannel,
 } from '@/di/interfaces/IChannelRepository';
+import { ILogger } from '@/di/interfaces/ILogger';
 import { PermissionResolver } from '@/permissions/PermissionResolver';
 import type {
     Permissions,
@@ -121,6 +122,9 @@ export class PermissionService {
         @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
+        @inject(TYPES.Logger)
+        @Inject(TYPES.Logger)
+        private logger: ILogger,
     ) {
         this.cacheTtlMs = 5 * 60 * 1000;
     }
@@ -136,6 +140,31 @@ export class PermissionService {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return -1;
         return resolver.getHighestRolePosition(userId.toString());
+    }
+
+    async normalizePermissionMap(
+        serverId: Types.ObjectId,
+        permissions: Record<string, Record<string, boolean>> | undefined,
+    ): Promise<Record<string, Record<string, boolean>>> {
+        if (!permissions) return {};
+
+        const everyoneRole = await this.roleRepo.findEveryoneRole(serverId);
+        if (!everyoneRole) return permissions;
+
+        const everyoneRoleId = everyoneRole._id.toString();
+        const normalized: Record<string, Record<string, boolean>> = {};
+
+        const everyoneOverride = permissions['everyone'];
+        if (everyoneOverride) {
+            normalized[everyoneRoleId] = { ...everyoneOverride };
+        }
+
+        for (const [id, perms] of Object.entries(permissions)) {
+            if (id === 'everyone') continue;
+            normalized[id] = { ...perms };
+        }
+
+        return normalized;
     }
 
     async hasPermission(
@@ -158,7 +187,8 @@ export class PermissionService {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return false;
         if (!isPermissionKey(permission)) return false;
-        return resolver.canUserDo(userId.toString(), channelId.toString(), permission);
+        const result = resolver.canUserDo(userId.toString(), channelId.toString(), permission);
+        return result;
     }
 
     async hasChannelPermissions(

@@ -32,7 +32,7 @@ import type {
 } from '@/di/interfaces/ICategoryRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import { PermissionService } from '@/permissions/PermissionService';
-import { isPermissionKey } from '@/permissions/types';
+import { isPermissionKey, Permissions } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
 
@@ -108,12 +108,16 @@ export class ServerChannelController {
             serverOid,
             userOid,
             channelIds as Types.ObjectId[],
-            'viewChannel',
+            'viewChannels',
         );
 
-        const visibleChannels = channels.filter((c) =>
-            permissionMap.get(c._id.toString()),
-        );
+        const visibleChannels: IChannel[] = [];
+        for (const c of channels) {
+            const canView = permissionMap.get(c._id.toString());
+            if (canView) {
+                visibleChannels.push(c);
+            }
+        }
 
         const reads = await this.serverChannelReadRepo.findByServerAndUser(
             serverOid,
@@ -126,7 +130,7 @@ export class ServerChannelController {
             }
         });
 
-        return visibleChannels.map((channel: IChannel) => {
+        const mappedChannels = visibleChannels.map(async (channel: IChannel) => {
             const channelId = channel._id?.toString();
             const lastMessageAt: Date | null = channel.lastMessageAt ?? null;
             const lastReadAt: Date | undefined = channelId
@@ -142,8 +146,14 @@ export class ServerChannelController {
                     ? lastMessageAt.toISOString()
                     : null,
                 lastReadAt: lastReadAt ? lastReadAt.toISOString() : null,
+                permissions: await this.permissionService.normalizePermissionMap(
+                    serverOid,
+                    channel.permissions as Record<string, Permissions>,
+                ),
             } as unknown as ChannelWithReadResponseDTO;
         });
+
+        return await Promise.all(mappedChannels);
     }
 
     @Get('categories')
@@ -213,7 +223,10 @@ export class ServerChannelController {
             }
         } else {
             // Default permission: allow @everyone to send messages
-            filteredPermissions['everyone'] = { sendMessages: true };
+            const everyoneRole = await this.permissionService.normalizePermissionMap(serverOid, {
+                everyone: { sendMessages: true }
+            });
+            Object.assign(filteredPermissions, everyoneRole);
         }
 
         const channel = await this.channelRepo.create({
@@ -230,7 +243,7 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channel_created',
-            payload: { serverId, channel },
+            payload: { serverId, channel, senderId: userId },
         });
 
         return channel;
@@ -267,7 +280,7 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channels_reordered',
-            payload: { serverId, channelPositions: body.channelPositions },
+            payload: { serverId, channelPositions: body.channelPositions, senderId: userId },
         });
 
         return { message: 'Channels reordered' };
@@ -302,7 +315,7 @@ export class ServerChannelController {
                 serverOid,
                 userOid,
                 channelOid,
-                'viewChannel',
+                'viewChannels',
             ))
         ) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
@@ -384,7 +397,7 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channel_updated',
-            payload: { serverId, channel },
+            payload: { serverId, channel, senderId: userId },
         });
 
         return channel;
@@ -419,7 +432,7 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channel_deleted',
-            payload: { serverId, channelId },
+            payload: { serverId, channelId, senderId: userId },
         });
 
         return { message: 'Channel deleted' };
@@ -465,7 +478,7 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'category_created',
-            payload: { serverId, category },
+            payload: { serverId, category, senderId: userId },
         });
 
         return category;
@@ -502,7 +515,7 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'categories_reordered',
-            payload: { serverId, categoryPositions: body.categoryPositions },
+            payload: { serverId, categoryPositions: body.categoryPositions, senderId: userId },
         });
 
         return { message: 'Categories reordered' };
@@ -545,7 +558,7 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'category_updated',
-            payload: { serverId, category },
+            payload: { serverId, category, senderId: userId },
         });
 
         return category;
@@ -590,7 +603,7 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'category_deleted',
-            payload: { serverId, categoryId },
+            payload: { serverId, categoryId, senderId: userId },
         });
 
         return { message: 'Category deleted' };
@@ -634,7 +647,12 @@ export class ServerChannelController {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        return { permissions: channel.permissions || {} };
+        const normalized = await this.permissionService.normalizePermissionMap(
+            serverOid,
+            channel.permissions as Record<string, Record<string, boolean>>,
+        );
+
+        return { permissions: normalized };
     }
 
     @Patch('channels/:channelId/permissions')
@@ -680,8 +698,13 @@ export class ServerChannelController {
             }
         }
 
+        const normalized = await this.permissionService.normalizePermissionMap(
+            serverOid,
+            filteredPermissions,
+        );
+
         await this.channelRepo.update(channelOid, {
-            permissions: filteredPermissions,
+            permissions: normalized,
         });
 
         this.permissionService.invalidateCache(serverOid);
@@ -691,11 +714,12 @@ export class ServerChannelController {
             payload: {
                 serverId,
                 channelId,
-                permissions: filteredPermissions,
+                permissions: normalized,
+                senderId: userId,
             },
         });
 
-        return { permissions: filteredPermissions };
+        return { permissions: normalized };
     }
 
     @Get('categories/:categoryId/permissions')
@@ -736,7 +760,12 @@ export class ServerChannelController {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
-        return { permissions: category.permissions || {} };
+        const normalized = await this.permissionService.normalizePermissionMap(
+            serverOid,
+            category.permissions as Record<string, Record<string, boolean>>,
+        );
+
+        return { permissions: normalized };
     }
 
     @Patch('categories/:categoryId/permissions')
@@ -782,8 +811,13 @@ export class ServerChannelController {
             }
         }
 
+        const normalized = await this.permissionService.normalizePermissionMap(
+            serverOid,
+            filteredPermissions,
+        );
+
         await this.categoryRepo.update(categoryOid, {
-            permissions: filteredPermissions,
+            permissions: normalized,
         });
 
         this.permissionService.invalidateCache(serverOid);
@@ -793,10 +827,10 @@ export class ServerChannelController {
             payload: {
                 serverId,
                 categoryId,
-                permissions: filteredPermissions,
+                permissions: normalized,
             },
         });
 
-        return { permissions: filteredPermissions };
+        return { permissions: normalized };
     }
 }

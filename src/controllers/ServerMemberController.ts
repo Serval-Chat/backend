@@ -459,6 +459,8 @@ export class ServerMemberController {
             roleOid,
         );
 
+        this.permissionService.invalidateCache(serverOid);
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_updated',
             payload: {
@@ -517,6 +519,8 @@ export class ServerMemberController {
             targetOid,
             roleOid,
         );
+
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_updated',

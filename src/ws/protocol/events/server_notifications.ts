@@ -15,8 +15,9 @@ export interface IServerUpdatedEvent
         {
             serverId: string;
             server: Partial<IServer>;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast)
@@ -27,8 +28,9 @@ export interface IServerDeletedEvent
         'server_deleted',
         {
             serverId: string;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast)
@@ -40,8 +42,9 @@ export interface IServerIconUpdatedEvent
         {
             serverId: string;
             icon: string;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast)
@@ -53,8 +56,9 @@ export interface IServerBannerUpdatedEvent
         {
             serverId: string;
             banner: { type: 'image'; value: string };
+            senderId?: string;
         }
-    > {}
+    > { }
 
 // ============================================================================
 // Member Events
@@ -67,7 +71,7 @@ export interface IMemberAddedEvent
             serverId: string;
             userId: string;
         }
-    > {}
+    > { }
 
 export interface IMemberRemovedEvent
     extends WsEvent<
@@ -76,7 +80,7 @@ export interface IMemberRemovedEvent
             serverId: string;
             userId: string;
         }
-    > {}
+    > { }
 
 export interface IMemberUpdatedEvent
     extends WsEvent<
@@ -86,7 +90,7 @@ export interface IMemberUpdatedEvent
             userId: string;
             member: IServerMember;
         }
-    > {}
+    > { }
 
 export interface IMemberBannedEvent
     extends WsEvent<
@@ -95,7 +99,7 @@ export interface IMemberBannedEvent
             serverId: string;
             userId: string;
         }
-    > {}
+    > { }
 
 export interface IMemberUnbannedEvent
     extends WsEvent<
@@ -104,7 +108,7 @@ export interface IMemberUnbannedEvent
             serverId: string;
             userId: string;
         }
-    > {}
+    > { }
 
 export interface IOwnershipTransferredEvent
     extends WsEvent<
@@ -113,8 +117,9 @@ export interface IOwnershipTransferredEvent
             serverId: string;
             oldOwnerId: string;
             newOwnerId: string;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 // ============================================================================
 // Channel & Category Events
@@ -126,8 +131,9 @@ export interface IChannelCreatedEvent
         {
             serverId: string;
             channel: IChannel;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface IChannelUpdatedEvent
     extends WsEvent<
@@ -135,8 +141,9 @@ export interface IChannelUpdatedEvent
         {
             serverId: string;
             channel: IChannel;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface IChannelDeletedEvent
     extends WsEvent<
@@ -144,8 +151,9 @@ export interface IChannelDeletedEvent
         {
             serverId: string;
             channelId: string;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface IChannelsReorderedEvent
     extends WsEvent<
@@ -153,8 +161,9 @@ export interface IChannelsReorderedEvent
         {
             serverId: string;
             channelPositions: { channelId: string; position: number }[];
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface ICategoryCreatedEvent
     extends WsEvent<
@@ -162,8 +171,9 @@ export interface ICategoryCreatedEvent
         {
             serverId: string;
             category: ICategory;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface ICategoryUpdatedEvent
     extends WsEvent<
@@ -171,8 +181,9 @@ export interface ICategoryUpdatedEvent
         {
             serverId: string;
             category: ICategory;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface ICategoryDeletedEvent
     extends WsEvent<
@@ -180,8 +191,9 @@ export interface ICategoryDeletedEvent
         {
             serverId: string;
             categoryId: string;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface ICategoriesReorderedEvent
     extends WsEvent<
@@ -189,8 +201,9 @@ export interface ICategoriesReorderedEvent
         {
             serverId: string;
             categoryPositions: { categoryId: string; position: number }[];
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface IChannelPermissionsUpdatedEvent
     extends WsEvent<
@@ -199,8 +212,9 @@ export interface IChannelPermissionsUpdatedEvent
             serverId: string;
             channelId: string;
             permissions: Record<string, Record<string, boolean>>;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface ICategoryPermissionsUpdatedEvent
     extends WsEvent<
@@ -209,8 +223,9 @@ export interface ICategoryPermissionsUpdatedEvent
             serverId: string;
             categoryId: string;
             permissions: Record<string, Record<string, boolean>>;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 // ============================================================================
 // Role Events
@@ -222,8 +237,9 @@ export interface IRoleCreatedEvent
         {
             serverId: string;
             role: IRole;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface IRoleUpdatedEvent
     extends WsEvent<
@@ -231,8 +247,9 @@ export interface IRoleUpdatedEvent
         {
             serverId: string;
             role: IRole;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface IRoleDeletedEvent
     extends WsEvent<
@@ -240,8 +257,9 @@ export interface IRoleDeletedEvent
         {
             serverId: string;
             roleId: string;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 export interface IRolesReorderedEvent
     extends WsEvent<
@@ -249,8 +267,9 @@ export interface IRolesReorderedEvent
         {
             serverId: string;
             rolePositions: { roleId: string; position: number }[];
+            senderId?: string;
         }
-    > {}
+    > { }
 
 // ============================================================================
 // Emoji Events
@@ -261,8 +280,9 @@ export interface IEmojiUpdatedEvent
         'emoji_updated',
         {
             serverId: string;
+            senderId?: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Direct)
@@ -280,4 +300,4 @@ export interface IWarningEvent
             acknowledged: boolean;
             acknowledgedAt?: Date;
         }
-    > {}
+    > { }

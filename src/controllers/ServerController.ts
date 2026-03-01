@@ -220,7 +220,7 @@ export class ServerController {
                 serverId as Types.ObjectId,
                 userOid,
                 serverChannels.map((c) => c._id as Types.ObjectId),
-                'viewChannel',
+                'viewChannels',
             );
             permissionMapsByServer.set(serverIdStr, perms);
         }
@@ -488,6 +488,7 @@ export class ServerController {
             payload: {
                 serverId,
                 server,
+                senderId: userId,
             },
         });
 
@@ -549,6 +550,7 @@ export class ServerController {
                 payload: {
                     serverId,
                     server,
+                    senderId: userId,
                 },
             });
         }
@@ -585,7 +587,7 @@ export class ServerController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_deleted',
-            payload: { serverId },
+            payload: { serverId, senderId: userId },
         });
 
         return { message: 'Server deleted' };
@@ -663,6 +665,7 @@ export class ServerController {
             payload: {
                 serverId,
                 icon: iconUrl,
+                senderId: userId,
             },
         });
 
@@ -742,6 +745,7 @@ export class ServerController {
             payload: {
                 serverId,
                 banner: { type: 'image', value: bannerUrl },
+                senderId: userId,
             },
         });
 

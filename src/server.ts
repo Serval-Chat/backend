@@ -8,7 +8,7 @@ import { getMetricsMiddleware } from '@/middleware/metrics';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
-import { PROJECT_LEVEL } from '@/config/env';
+import { PROJECT_LEVEL, FRONTEND_URL } from '@/config/env';
 import routes from '@/routes/index';
 
 interface ValidateError {
@@ -43,10 +43,10 @@ export function setupExpressApp(app: Application): Application {
             strictTransportSecurity:
                 PROJECT_LEVEL === 'production'
                     ? {
-                          maxAge: 31536000, // 1 year
-                          includeSubDomains: true,
-                          preload: true,
-                      }
+                        maxAge: 31536000, // 1 year
+                        includeSubDomains: true,
+                        preload: true,
+                    }
                     : false,
             contentSecurityPolicy: {
                 directives: {
@@ -86,11 +86,11 @@ export function setupExpressApp(app: Application): Application {
                         'https://rolling.catfla.re/',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
-                                  'http://localhost:8000',
-                                  'http://localhost:8001',
-                                  'http://127.0.0.1:8000',
-                                  'http://127.0.0.1:8001',
-                              ]
+                                'http://localhost:8000',
+                                'http://localhost:8001',
+                                'http://127.0.0.1:8000',
+                                'http://127.0.0.1:8001',
+                            ]
                             : []),
                     ],
                     connectSrc: [
@@ -104,15 +104,15 @@ export function setupExpressApp(app: Application): Application {
                         'https://cloudflareinsights.com',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
-                                  'http://localhost:8000',
-                                  'http://localhost:8001',
-                                  'http://127.0.0.1:8000',
-                                  'http://127.0.0.1:8001',
-                                  'ws://localhost:8000',
-                                  'ws://localhost:8001',
-                                  'ws://127.0.0.1:8000',
-                                  'ws://127.0.0.1:8001',
-                              ]
+                                'http://localhost:8000',
+                                'http://localhost:8001',
+                                'http://127.0.0.1:8000',
+                                'http://127.0.0.1:8001',
+                                'ws://localhost:8000',
+                                'ws://localhost:8001',
+                                'ws://127.0.0.1:8000',
+                                'ws://127.0.0.1:8001',
+                            ]
                             : []),
                     ],
                     fontSrc: [
@@ -179,6 +179,7 @@ export function setupExpressApp(app: Application): Application {
                     'https://rolling.catfla.re',
                     'http://localhost:5173',
                     'http://localhost:8001',
+                    FRONTEND_URL,
                 ];
 
                 if (!origin || allowedOrigins.includes(origin)) {
