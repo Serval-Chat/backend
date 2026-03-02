@@ -164,9 +164,12 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
 
         return members.map((m) => {
             const user = users.find((u) => u._id.equals(m.userId));
+            if (!user) return { ...m, user: null } as IServerMember & { user: null };
+
+            const { tokenVersion, permissions, password, settings, language, login, deletedReason, ...safeUser } = user;
             return {
                 ...m,
-                user: user ? mapUser(user) : null,
+                user: mapUser(safeUser),
             } as IServerMember & { user: MappedUser | null };
         });
     }
