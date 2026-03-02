@@ -82,7 +82,7 @@ export class AuthController {
 
         const authResult = await this.authService.login(login, password);
 
-        if (!authResult.success) {
+        if (!authResult.success || !authResult.user) {
             loginAttemptsCounter.labels('failure').inc();
 
             if (authResult.ban) {
@@ -114,7 +114,7 @@ export class AuthController {
         const token = generateJWT({
             id: user._id.toString(),
             login: login,
-            username: user.username,
+            username: user.username as string,
             tokenVersion: user.tokenVersion || 0,
             permissions: user.permissions,
         });

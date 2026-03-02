@@ -22,8 +22,6 @@ export interface MappedUser {
         intensity: number;
     };
     customStatus: SerializedCustomStatus | null;
-    permissions: AdminPermissions;
-    tokenVersion: number;
     createdAt: Date;
     bio: string;
     pronouns: string;
@@ -65,19 +63,6 @@ export function mapUser(user: any): MappedUser | null {
         customStatus: resolveSerializedCustomStatus(
             user.customStatus as Record<string, unknown> | null | undefined,
         ),
-        permissions: (user.permissions as AdminPermissions) || {
-            adminAccess: false,
-            viewUsers: false,
-            manageUsers: false,
-            manageBadges: false,
-            banUsers: false,
-            viewBans: false,
-            warnUsers: false,
-            viewLogs: false,
-            manageServer: false,
-            manageInvites: false,
-        },
-        tokenVersion: (user.tokenVersion as number) || 0,
         createdAt: (user.createdAt as Date) || new Date(),
         bio: (user.bio as string) || '',
         pronouns: (user.pronouns as string) || '',

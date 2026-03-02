@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
-import { IUserRepository } from '@/di/interfaces/IUserRepository';
+import { IUser, IUserRepository } from '@/di/interfaces/IUserRepository';
 import { IBanRepository } from '@/di/interfaces/IBanRepository';
 import { IPasswordResetRepository } from '@/di/interfaces/IPasswordResetRepository';
 import { IMailService } from '@/di/interfaces/IMailService';
@@ -17,7 +17,7 @@ import { ApiError } from '@/utils/ApiError';
 // Authentication result
 export interface AuthResult {
     success: boolean;
-    user?: MappedUser;
+    user?: IUser;
     error?: string;
     ban?: {
         reason: string;
@@ -123,7 +123,7 @@ export class AuthService {
         this.logger.info(`Login successful: ${login}`);
         return {
             success: true,
-            user: user as unknown as MappedUser,
+            user: user as unknown as IUser,
         };
     }
 
