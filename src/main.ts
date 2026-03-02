@@ -106,7 +106,7 @@ async function bootstrap() {
     startMetricsUpdater(60000);
 
     // Start the application
-    await app.listen(PORT);
+    await app.listen(PORT, '0.0.0.0');
     Logger.log(`Application is running on: ${await app.getUrl()}`, 'Bootstrap');
 
     // Enable graceful shutdown

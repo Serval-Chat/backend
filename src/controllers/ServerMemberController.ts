@@ -81,28 +81,28 @@ export class ServerMemberController {
     @ApiResponse({ status: 200, description: 'Server members retrieved' })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getServerMembers(
-        @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
-    ): Promise<
-        (IServerMember & { user: MappedUser | null; online: boolean })[]
-    > {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
-        );
-        if (!member) {
-            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
-        }
+    @Param('serverId') serverId: string,
+    @Req() req: ExpressRequest,
+    ): Promise<(IServerMember)[]> {
+    const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+    const serverOid = new Types.ObjectId(serverId);
+    const userOid = new Types.ObjectId(userId);
 
-        const members =
-            await this.serverMemberRepo.findByServerIdWithUserInfo(serverOid);
-        return members.map((m) => ({
-            ...m,
-            online: this.wsServer.isUserOnline(m.userId.toString()),
-        }));
+    const member = await this.serverMemberRepo.findByServerAndUser(serverOid, userOid);
+    if (!member) {
+        throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
+    }
+
+    const members = await this.serverMemberRepo.findByServerIdWithUserInfo(serverOid);
+    return members.map((m) => {
+        const { user, ...memberData } = m;
+        const { tokenVersion, permissions, ...cleanUser } = user ?? {};
+        return {
+        ...memberData,
+        user: user ? cleanUser : null,
+        online: this.wsServer.isUserOnline(m.userId.toString()),
+        };
+    });
     }
 
     // Searches for members in a server by username or display name
