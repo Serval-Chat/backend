@@ -99,8 +99,10 @@ export class ServerMemberController {
 
         const members =
             await this.serverMemberRepo.findByServerIdWithUserInfo(serverOid);
+        
         return members.map((m) => ({
             ...m,
+            user: mapUser(m.user),
             online: this.wsServer.isUserOnline(m.userId.toString()),
         }));
     }

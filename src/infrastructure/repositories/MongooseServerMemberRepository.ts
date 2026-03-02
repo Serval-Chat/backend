@@ -159,6 +159,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         const userIds = members.map((m) => m.userId);
         const users = await this.userModel
             .find({ _id: { $in: userIds } })
+            .select('-tokenVersion -permissions -password -settings -language -login -deletedReason')
             .lean();
 
         return members.map((m) => {
