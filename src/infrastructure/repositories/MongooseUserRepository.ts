@@ -30,7 +30,7 @@ export class MongooseUserRepository implements IUserRepository {
     async findById(id: Types.ObjectId): Promise<IUser | null> {
         return await this.userModel
             .findById(id)
-            .select('-password -tokenVersion -settings -language -login -deletedReason')
+            .select('-password -tokenVersion -permissions -settings -language -login -deletedReason')
             .lean();
     }
 

@@ -102,7 +102,6 @@ export class ServerMemberController {
         
         return members.map((m) => ({
             ...m,
-            user: mapUser(m.user),
             online: this.wsServer.isUserOnline(m.userId.toString()),
         }));
     }
