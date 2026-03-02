@@ -28,7 +28,10 @@ export class MongooseUserRepository implements IUserRepository {
     constructor() { }
 
     async findById(id: Types.ObjectId): Promise<IUser | null> {
-        return await this.userModel.findById(id).lean();
+        return await this.userModel
+            .findById(id)
+            .select('-password -tokenVersion -settings -language -login -deletedReason')
+            .lean();
     }
 
     async findByIds(ids: Types.ObjectId[]): Promise<IUser[]> {

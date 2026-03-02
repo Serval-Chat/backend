@@ -190,28 +190,27 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
 
         const userIds = users.map((u) => u._id);
         const members = await this.serverMemberModel
-            .find({
-                serverId,
-                userId: { $in: userIds },
-            })
+            .find({ serverId, userId: { $in: userIds } })
             .lean();
 
         const memberUserIds = members.map((m) => m.userId);
         const populatedUsers = await this.userModel
-            .find({
-                _id: { $in: memberUserIds },
-            })
+            .find({ _id: { $in: memberUserIds } })
+            .select('-tokenVersion -permissions -password -settings -language -login -deletedReason')
             .lean();
 
         return members.map((m) => {
             const user = populatedUsers.find((u) => u._id.equals(m.userId));
+            if (!user) return { ...m, user: null } as IServerMember & { user: null };
+
+            const { tokenVersion, permissions, password, settings, language, login, deletedReason, ...safeUser } = user;
             return {
                 ...m,
-                user: user ? mapUser(user) : null,
+                user: mapUser(safeUser),
             } as IServerMember & { user: MappedUser | null };
         });
     }
-
+    
     async addRole(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,

@@ -30,16 +30,15 @@ export class MongooseServerBanRepository implements IServerBanRepository {
     ): Promise<(IServerBan & { user: MappedUser | null })[]> {
         const bans = await ServerBan.find({ serverId }).lean();
         const userIds = bans.map((b) => b.userId);
-        const users = await User.find({ _id: { $in: userIds } }).lean();
+        const users = await User.find({ _id: { $in: userIds } })
+            .select('-tokenVersion -permissions -password -settings -language -login -deletedReason')
+            .lean();
 
         return bans.map((b) => {
-            const user = users.find(
-                (u) => u._id.equals(b.userId),
-            );
-            return {
-                ...b,
-                user: user ? mapUser(user) : null,
-            };
+            const user = users.find((u) => u._id.equals(b.userId));
+            if (!user) return { ...b, user: null };
+            const { tokenVersion, permissions, password, settings, language, login, deletedReason, ...safeUser } = user;
+            return { ...b, user: mapUser(safeUser) };
         });
     }
 
