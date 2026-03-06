@@ -9,7 +9,9 @@ import {
 import { Category } from '@/models/Server';
 
 // Transform MongoDB document to match ICategory interface
-const transformCategory = (doc: Record<string, unknown> | null): ICategory | null => {
+const transformCategory = (
+    doc: Record<string, unknown> | null,
+): ICategory | null => {
     if (!doc) return null;
 
     return {
@@ -57,7 +59,9 @@ export class MongooseCategoryRepository implements ICategoryRepository {
     async create(data: CreateCategoryDTO): Promise<ICategory> {
         const category = new Category(data);
         const result = await category.save();
-        return transformCategory(result.toObject() as unknown as Record<string, unknown>)!;
+        return transformCategory(
+            result.toObject() as unknown as Record<string, unknown>,
+        )!;
     }
 
     async update(

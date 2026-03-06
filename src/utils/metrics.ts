@@ -142,3 +142,35 @@ export const passwordResetRateLimitedCounter = new Counter({
     help: 'Total number of password reset rate limit exceeded events',
     registers: [register],
 });
+
+// Counter for WebSocket messages by type
+export const wsMsgTotalCounter = new Counter({
+    name: 'ws_messages_total',
+    help: 'Total WebSocket messages processed',
+    labelNames: ['type'] as const,
+    registers: [register],
+});
+
+// Histogram for WebSocket message payload size in bytes
+export const wsMsgSizeBytesHistogram = new Histogram({
+    name: 'ws_message_size_bytes',
+    help: 'WebSocket message payload size in bytes',
+    labelNames: ['type'] as const,
+    buckets: [64, 256, 1024, 4096, 16384],
+    registers: [register],
+});
+
+// Counter for WebSocket errors by reason
+export const wsErrorsTotalCounter = new Counter({
+    name: 'ws_errors_total',
+    help: 'Total WebSocket errors',
+    labelNames: ['reason'] as const,
+    registers: [register],
+});
+
+// Gauge for active chat rooms (server channels with live subscribers)
+export const chatRoomsActiveGauge = new Gauge({
+    name: 'chat_rooms_active',
+    help: 'Number of active chat rooms (channels with at least one subscriber)',
+    registers: [register],
+});

@@ -19,7 +19,7 @@ function getPermissionDefault(permission: PermissionKey): boolean {
     switch (permission) {
         case 'viewChannels':
         case 'sendMessages':
-        case 'addReactions':    
+        case 'addReactions':
             return true;
         default:
             return false;
@@ -69,7 +69,9 @@ export class PermissionResolver {
     constructor(data: ServerData) {
         this.data = data;
 
-        this.roleById = new Map(data.roles.map((r) => [r.id.toString(), r] as const));
+        this.roleById = new Map(
+            data.roles.map((r) => [r.id.toString(), r] as const),
+        );
         this.channelById = new Map(
             data.channels.map((c) => [c.id.toString(), c] as const),
         );
@@ -227,14 +229,18 @@ export class PermissionResolver {
                 rolesAscForOverrides,
                 permission,
             );
-            results.set(channelId, roleMerged ?? getPermissionDefault(permission));
+            results.set(
+                channelId,
+                roleMerged ?? getPermissionDefault(permission),
+            );
         }
 
         return results;
     }
 
     getHighestRolePosition(userId: string): number {
-        if (userId === this.data.ownerId.toString()) return Number.MAX_SAFE_INTEGER;
+        if (userId === this.data.ownerId.toString())
+            return Number.MAX_SAFE_INTEGER;
 
         const member = this.memberByUserId.get(userId);
         if (!member) return -1;
@@ -285,7 +291,9 @@ export class PermissionResolver {
         if (!everyone) return [...rolesByAscPosition];
 
         // Ensure it's included exactly once.
-        const already = rolesByAscPosition.some((r) => r.id.toString() === everyone.id.toString());
+        const already = rolesByAscPosition.some(
+            (r) => r.id.toString() === everyone.id.toString(),
+        );
         if (already) return [...rolesByAscPosition];
 
         const next = [...rolesByAscPosition, everyone];

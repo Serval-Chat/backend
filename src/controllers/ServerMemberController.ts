@@ -72,7 +72,7 @@ export class ServerMemberController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) { }
+    ) {}
 
     // Retrieves all members of a server
     // Enforces server membership
@@ -99,7 +99,7 @@ export class ServerMemberController {
 
         const members =
             await this.serverMemberRepo.findByServerIdWithUserInfo(serverOid);
-        
+
         return members.map((m) => ({
             ...m,
             online: this.wsServer.isUserOnline(m.userId.toString()),
@@ -450,7 +450,7 @@ export class ServerMemberController {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
-        if (member.roles.some(r => r.equals(roleOid))) {
+        if (member.roles.some((r) => r.equals(roleOid))) {
             return member;
         }
 

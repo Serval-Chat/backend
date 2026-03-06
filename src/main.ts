@@ -1,5 +1,7 @@
+import './tracing';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { PORT, USE_HTTPS, CERTS_PATH } from '@/config/env';
 import * as fs from 'fs';
@@ -59,7 +61,9 @@ async function bootstrap() {
     // Create NestJS Application
     const app = await NestFactory.create(AppModule, {
         httpsOptions,
+        bufferLogs: true,
     });
+    app.useLogger(app.get(PinoLogger));
 
     const server = app.getHttpServer();
     server.keepAliveTimeout = 30000;

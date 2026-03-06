@@ -29,7 +29,7 @@ export class AuthController {
 
     constructor(
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) { }
+    ) {}
 
     /**
      * Handles the 'authenticate' event.
@@ -59,7 +59,9 @@ export class AuthController {
         }
 
         // Validate user exists and is not deleted
-        const user = await this.userRepo.findById(new mongoose.Types.ObjectId(decoded.id));
+        const user = await this.userRepo.findById(
+            new mongoose.Types.ObjectId(decoded.id),
+        );
 
         if (!user) {
             throw new Error(
@@ -82,7 +84,11 @@ export class AuthController {
         }
 
         // Check for active ban
-        if (await this.userRepo.isBanned(new mongoose.Types.ObjectId(decoded.id))) {
+        if (
+            await this.userRepo.isBanned(
+                new mongoose.Types.ObjectId(decoded.id),
+            )
+        ) {
             throw new Error('AUTHENTICATION_FAILED: Account banned');
         }
 

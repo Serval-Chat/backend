@@ -40,7 +40,10 @@ export interface IFriendshipRepository {
     findByUserId(userId: Types.ObjectId): Promise<IFriendship[]>;
 
     // Create a new friendship
-    create(userId: Types.ObjectId, friendId: Types.ObjectId): Promise<IFriendship>;
+    create(
+        userId: Types.ObjectId,
+        friendId: Types.ObjectId,
+    ): Promise<IFriendship>;
 
     // Remove friendship
     remove(userId: Types.ObjectId, friendId: Types.ObjectId): Promise<boolean>;

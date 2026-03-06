@@ -35,7 +35,6 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { isPermissionKey, Permissions } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
-
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
@@ -80,7 +79,7 @@ export class ServerChannelController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) { }
+    ) {}
 
     @Get('channels')
     @ApiOperation({ summary: 'Get server channels' })
@@ -104,12 +103,13 @@ export class ServerChannelController {
 
         const channels = await this.channelRepo.findByServerId(serverOid);
         const channelIds = channels.map((c) => c._id);
-        const permissionMap = await this.permissionService.hasChannelPermissions(
-            serverOid,
-            userOid,
-            channelIds as Types.ObjectId[],
-            'viewChannels',
-        );
+        const permissionMap =
+            await this.permissionService.hasChannelPermissions(
+                serverOid,
+                userOid,
+                channelIds as Types.ObjectId[],
+                'viewChannels',
+            );
 
         const visibleChannels: IChannel[] = [];
         for (const c of channels) {
@@ -130,28 +130,32 @@ export class ServerChannelController {
             }
         });
 
-        const mappedChannels = visibleChannels.map(async (channel: IChannel) => {
-            const channelId = channel._id?.toString();
-            const lastMessageAt: Date | null = channel.lastMessageAt ?? null;
-            const lastReadAt: Date | undefined = channelId
-                ? readMap.get(channelId)
-                : undefined;
+        const mappedChannels = visibleChannels.map(
+            async (channel: IChannel) => {
+                const channelId = channel._id?.toString();
+                const lastMessageAt: Date | null =
+                    channel.lastMessageAt ?? null;
+                const lastReadAt: Date | undefined = channelId
+                    ? readMap.get(channelId)
+                    : undefined;
 
-            return {
-                ...channel,
-                _id: channel._id.toString(),
-                serverId: channel.serverId.toString(),
-                categoryId: channel.categoryId?.toString() ?? null,
-                lastMessageAt: lastMessageAt
-                    ? lastMessageAt.toISOString()
-                    : null,
-                lastReadAt: lastReadAt ? lastReadAt.toISOString() : null,
-                permissions: await this.permissionService.normalizePermissionMap(
-                    serverOid,
-                    channel.permissions as Record<string, Permissions>,
-                ),
-            } as unknown as ChannelWithReadResponseDTO;
-        });
+                return {
+                    ...channel,
+                    _id: channel._id.toString(),
+                    serverId: channel.serverId.toString(),
+                    categoryId: channel.categoryId?.toString() ?? null,
+                    lastMessageAt: lastMessageAt
+                        ? lastMessageAt.toISOString()
+                        : null,
+                    lastReadAt: lastReadAt ? lastReadAt.toISOString() : null,
+                    permissions:
+                        await this.permissionService.normalizePermissionMap(
+                            serverOid,
+                            channel.permissions as Record<string, Permissions>,
+                        ),
+                } as unknown as ChannelWithReadResponseDTO;
+            },
+        );
 
         return await Promise.all(mappedChannels);
     }
@@ -208,8 +212,8 @@ export class ServerChannelController {
             body.position !== undefined
                 ? body.position
                 : maxPositionChannel
-                    ? maxPositionChannel.position + 1
-                    : 0;
+                  ? maxPositionChannel.position + 1
+                  : 0;
 
         const filteredPermissions: Record<string, Record<string, boolean>> = {};
         if (body.permissions) {
@@ -217,15 +221,18 @@ export class ServerChannelController {
                 filteredPermissions[id] = {};
                 for (const key in body.permissions[id]) {
                     if (isPermissionKey(key)) {
-                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                        filteredPermissions[id][key] = body.permissions[id][
+                            key
+                        ] as boolean;
                     }
                 }
             }
         } else {
             // Default permission: allow @everyone to send messages
-            const everyoneRole = await this.permissionService.normalizePermissionMap(serverOid, {
-                everyone: { sendMessages: true }
-            });
+            const everyoneRole =
+                await this.permissionService.normalizePermissionMap(serverOid, {
+                    everyone: { sendMessages: true },
+                });
             Object.assign(filteredPermissions, everyoneRole);
         }
 
@@ -234,7 +241,9 @@ export class ServerChannelController {
             name: body.name,
             type: body.type || 'text',
             position: finalPosition,
-            categoryId: body.categoryId ? new Types.ObjectId(body.categoryId) : null,
+            categoryId: body.categoryId
+                ? new Types.ObjectId(body.categoryId)
+                : null,
             permissions: filteredPermissions,
             ...(body.description && { description: body.description }),
             ...(body.icon && { icon: body.icon }),
@@ -280,7 +289,11 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channels_reordered',
-            payload: { serverId, channelPositions: body.channelPositions, senderId: userId },
+            payload: {
+                serverId,
+                channelPositions: body.channelPositions,
+                senderId: userId,
+            },
         });
 
         return { message: 'Channels reordered' };
@@ -369,7 +382,10 @@ export class ServerChannelController {
         }
 
         const existingChannel = await this.channelRepo.findById(channelOid);
-        if (!existingChannel || existingChannel.serverId.toString() !== serverId) {
+        if (
+            !existingChannel ||
+            existingChannel.serverId.toString() !== serverId
+        ) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
@@ -377,13 +393,18 @@ export class ServerChannelController {
         if (body.name) updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
         if (body.categoryId !== undefined)
-            updates.categoryId = body.categoryId ? new Types.ObjectId(body.categoryId) : null;
+            updates.categoryId = body.categoryId
+                ? new Types.ObjectId(body.categoryId)
+                : null;
         if (body.description !== undefined)
             updates.description = body.description;
 
         if (body.icon !== undefined) {
             if (existingChannel.type === 'link') {
-                throw new ApiError(400, 'Cannot set a custom icon for a link channel');
+                throw new ApiError(
+                    400,
+                    'Cannot set a custom icon for a link channel',
+                );
             }
             updates.icon = body.icon;
         }
@@ -467,8 +488,8 @@ export class ServerChannelController {
             body.position !== undefined
                 ? body.position
                 : maxPositionCategory
-                    ? maxPositionCategory.position + 1
-                    : 0;
+                  ? maxPositionCategory.position + 1
+                  : 0;
 
         const category = await this.categoryRepo.create({
             serverId: serverOid,
@@ -515,7 +536,11 @@ export class ServerChannelController {
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'categories_reordered',
-            payload: { serverId, categoryPositions: body.categoryPositions, senderId: userId },
+            payload: {
+                serverId,
+                categoryPositions: body.categoryPositions,
+                senderId: userId,
+            },
         });
 
         return { message: 'Categories reordered' };
@@ -692,7 +717,9 @@ export class ServerChannelController {
                 filteredPermissions[id] = {};
                 for (const key in body.permissions[id]) {
                     if (isPermissionKey(key)) {
-                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                        filteredPermissions[id][key] = body.permissions[id][
+                            key
+                        ] as boolean;
                     }
                 }
             }
@@ -805,7 +832,9 @@ export class ServerChannelController {
                 filteredPermissions[id] = {};
                 for (const key in body.permissions[id]) {
                     if (isPermissionKey(key)) {
-                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                        filteredPermissions[id][key] = body.permissions[id][
+                            key
+                        ] as boolean;
                     }
                 }
             }

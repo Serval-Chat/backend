@@ -63,19 +63,27 @@ export interface IChannelRepository {
     findByServerIds(serverIds: Types.ObjectId[]): Promise<IChannel[]>;
 
     // Find channel with maximum position for a server
-    findMaxPositionByServerId(serverId: Types.ObjectId): Promise<IChannel | null>;
+    findMaxPositionByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<IChannel | null>;
 
     // Create a new channel
     create(data: CreateChannelDTO): Promise<IChannel>;
 
     // Update channel by ID
-    update(id: Types.ObjectId, data: Partial<IChannel>): Promise<IChannel | null>;
+    update(
+        id: Types.ObjectId,
+        data: Partial<IChannel>,
+    ): Promise<IChannel | null>;
 
     // Delete channel by ID
     delete(id: Types.ObjectId): Promise<boolean>;
 
     // Update channel position
-    updatePosition(id: Types.ObjectId, position: number): Promise<IChannel | null>;
+    updatePosition(
+        id: Types.ObjectId,
+        position: number,
+    ): Promise<IChannel | null>;
 
     // Update last message timestamp
     updateLastMessageAt(

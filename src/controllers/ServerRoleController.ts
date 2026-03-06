@@ -35,7 +35,6 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { isPermissionKey } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
-
 import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JWTPayload } from '@/utils/jwt';
@@ -76,7 +75,7 @@ export class ServerRoleController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) { }
+    ) {}
 
     // Retrieves all roles for a specific server
     // Enforces server membership
@@ -142,8 +141,8 @@ export class ServerRoleController {
 
         const roleColor =
             body.startColor ||
-                body.endColor ||
-                (body.colors && body.colors.length > 0)
+            body.endColor ||
+            (body.colors && body.colors.length > 0)
                 ? null
                 : body.color || '#99aab5';
 

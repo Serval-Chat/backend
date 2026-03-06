@@ -66,7 +66,7 @@ export class AuthController {
         private authService: AuthService,
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-    ) { }
+    ) {}
 
     // Authenticates a user and returns a JWT
     @Post('login')

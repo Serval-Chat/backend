@@ -32,7 +32,9 @@ export class MongooseEmojiRepository implements IEmojiRepository {
     }
 
     // Find all emojis for a server with creator info populated
-    async findByServerIdWithCreator(serverId: Types.ObjectId): Promise<IEmoji[]> {
+    async findByServerIdWithCreator(
+        serverId: Types.ObjectId,
+    ): Promise<IEmoji[]> {
         return await Emoji.find({ serverId })
             .populate('createdBy', 'username')
             .sort({ createdAt: 1 })

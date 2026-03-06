@@ -19,9 +19,12 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
     private friendshipModel = Friendship;
     private friendRequestModel = FriendRequest;
     private userModel = User;
-    constructor() { }
+    constructor() {}
 
-    async areFriends(user1: Types.ObjectId, user2: Types.ObjectId): Promise<boolean> {
+    async areFriends(
+        user1: Types.ObjectId,
+        user2: Types.ObjectId,
+    ): Promise<boolean> {
         if (!user1 || !user2) return false;
 
         // Do not allow users to message themselves

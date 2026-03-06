@@ -60,9 +60,7 @@ export interface IBanRepository {
     ): Promise<{ modifiedCount: number }>;
 
     // Delete all bans for a user (for hard delete)
-    deleteAllForUser(
-        userId: Types.ObjectId,
-    ): Promise<{ deletedCount: number }>;
+    deleteAllForUser(userId: Types.ObjectId): Promise<{ deletedCount: number }>;
 
     // Find all bans with pagination
     findAll(options: { limit?: number; offset?: number }): Promise<IBan[]>;

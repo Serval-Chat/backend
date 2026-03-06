@@ -10,9 +10,14 @@ import {
     IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsName, IsChannelId, IsCategoryId, IsUrlField, IsPermissionMap } from '@/validation/schemas/common';
+import {
+    IsName,
+    IsChannelId,
+    IsCategoryId,
+    IsUrlField,
+    IsPermissionMap,
+} from '@/validation/schemas/common';
 import { ChannelTypeDTO } from './common.request.dto';
-
 
 export class CreateChannelRequestDTO {
     @ApiProperty()
@@ -163,4 +168,3 @@ export class UpdatePermissionsRequestDTO {
     @IsPermissionMap()
     permissions!: Record<string, Record<string, boolean>>;
 }
-

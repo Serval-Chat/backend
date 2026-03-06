@@ -16,7 +16,7 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseServerRepository implements IServerRepository {
     private serverModel = Server;
-    constructor() { }
+    constructor() {}
 
     async findById(
         id: Types.ObjectId,
@@ -52,7 +52,10 @@ export class MongooseServerRepository implements IServerRepository {
         return await server.save();
     }
 
-    async update(id: Types.ObjectId, data: Partial<IServer>): Promise<IServer | null> {
+    async update(
+        id: Types.ObjectId,
+        data: Partial<IServer>,
+    ): Promise<IServer | null> {
         return await this.serverModel
             .findOneAndUpdate(
                 { _id: id, deletedAt: { $exists: false } },
@@ -87,7 +90,10 @@ export class MongooseServerRepository implements IServerRepository {
         return result.modifiedCount > 0;
     }
 
-    async clearDefaultRole(serverId: Types.ObjectId, roleId: Types.ObjectId): Promise<boolean> {
+    async clearDefaultRole(
+        serverId: Types.ObjectId,
+        roleId: Types.ObjectId,
+    ): Promise<boolean> {
         const result = await this.serverModel.updateOne(
             { _id: serverId, defaultRoleId: roleId },
             { $unset: { defaultRoleId: 1 } },

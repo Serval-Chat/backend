@@ -21,7 +21,7 @@ export const VALID_USERNAME_FONTS = [
     'Workbench',
 ] as const;
 
-export type UsernameFont = typeof VALID_USERNAME_FONTS[number];
+export type UsernameFont = (typeof VALID_USERNAME_FONTS)[number];
 
 // Update profile validation
 export const updateProfileSchema = z.object({

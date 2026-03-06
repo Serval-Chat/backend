@@ -42,9 +42,7 @@ export interface IWarningRepository {
     }): Promise<IWarning>;
 
     // Delete all warnings for a user (for hard delete)
-    deleteAllForUser(
-        userId: Types.ObjectId,
-    ): Promise<{ deletedCount: number }>;
+    deleteAllForUser(userId: Types.ObjectId): Promise<{ deletedCount: number }>;
 
     // Find all warnings with pagination
     findAll(options: { limit?: number; offset?: number }): Promise<IWarning[]>;

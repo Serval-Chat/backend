@@ -31,13 +31,24 @@ export class MongooseServerBanRepository implements IServerBanRepository {
         const bans = await ServerBan.find({ serverId }).lean();
         const userIds = bans.map((b) => b.userId);
         const users = await User.find({ _id: { $in: userIds } })
-            .select('-tokenVersion -permissions -password -settings -language -login -deletedReason')
+            .select(
+                '-tokenVersion -permissions -password -settings -language -login -deletedReason',
+            )
             .lean();
 
         return bans.map((b) => {
             const user = users.find((u) => u._id.equals(b.userId));
             if (!user) return { ...b, user: null };
-            const { tokenVersion, permissions, password, settings, language, login, deletedReason, ...safeUser } = user;
+            const {
+                tokenVersion,
+                permissions,
+                password,
+                settings,
+                language,
+                login,
+                deletedReason,
+                ...safeUser
+            } = user;
             return { ...b, user: mapUser(safeUser) };
         });
     }
@@ -59,7 +70,10 @@ export class MongooseServerBanRepository implements IServerBanRepository {
 
     // Unban user from server
     // Removes the ban record for the specified user and server
-    async unban(serverId: Types.ObjectId, userId: Types.ObjectId): Promise<boolean> {
+    async unban(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+    ): Promise<boolean> {
         const result = await ServerBan.deleteOne({ serverId, userId });
         return result.deletedCount ? result.deletedCount > 0 : false;
     }

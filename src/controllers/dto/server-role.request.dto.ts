@@ -11,7 +11,12 @@ import {
     IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsName, IsColor, IsRoleId, IsPermissions } from '@/validation/schemas/common';
+import {
+    IsName,
+    IsColor,
+    IsRoleId,
+    IsPermissions,
+} from '@/validation/schemas/common';
 
 export class CreateRoleRequestDTO {
     @ApiProperty()

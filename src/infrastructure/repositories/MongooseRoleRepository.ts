@@ -53,7 +53,10 @@ export class MongooseRoleRepository implements IRoleRepository {
         return await role.save();
     }
 
-    async update(id: Types.ObjectId, data: Partial<IRole>): Promise<IRole | null> {
+    async update(
+        id: Types.ObjectId,
+        data: Partial<IRole>,
+    ): Promise<IRole | null> {
         return await Role.findByIdAndUpdate(id, data, { new: true }).lean();
     }
 
@@ -66,7 +69,10 @@ export class MongooseRoleRepository implements IRoleRepository {
         return await Role.findOne({ serverId, name: '@everyone' }).lean();
     }
 
-    async updatePosition(id: Types.ObjectId, position: number): Promise<IRole | null> {
+    async updatePosition(
+        id: Types.ObjectId,
+        position: number,
+    ): Promise<IRole | null> {
         return await Role.findByIdAndUpdate(
             id,
             { position },
@@ -86,7 +92,9 @@ export class MongooseRoleRepository implements IRoleRepository {
         return await Role.findOne({ serverId, name }).lean();
     }
 
-    async findMaxPositionByServerId(serverId: Types.ObjectId): Promise<IRole | null> {
+    async findMaxPositionByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<IRole | null> {
         return await Role.findOne({ serverId }).sort({ position: -1 }).lean();
     }
 }

@@ -85,16 +85,11 @@ export interface IRoleRepository {
     ): Promise<IRole | null>;
 
     // Update role position
-    updatePosition(
-        id: Types.ObjectId,
-        position: number,
-    ): Promise<IRole | null>;
+    updatePosition(id: Types.ObjectId, position: number): Promise<IRole | null>;
 
     // Delete all roles for a server (bulk delete)
     deleteByServerId(serverId: Types.ObjectId): Promise<number>;
 
     // Find role with maximum position for a server
-    findMaxPositionByServerId(
-        serverId: Types.ObjectId,
-    ): Promise<IRole | null>;
+    findMaxPositionByServerId(serverId: Types.ObjectId): Promise<IRole | null>;
 }

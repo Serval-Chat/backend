@@ -160,7 +160,10 @@ export interface IUserRepository {
     updatePronouns(id: Types.ObjectId, pronouns: string | null): Promise<void>;
 
     // Update user's display name
-    updateDisplayName(id: Types.ObjectId, displayName: string | null): Promise<void>;
+    updateDisplayName(
+        id: Types.ObjectId,
+        displayName: string | null,
+    ): Promise<void>;
 
     // Find users with pagination and filtering (for admin)
     findMany(options: {

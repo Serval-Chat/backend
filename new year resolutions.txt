@@ -1,2 +1,0 @@
-1. Rewrite tests and cover 100% of them (HOPEFULLY)
-2. Write unit tests for services and shit.

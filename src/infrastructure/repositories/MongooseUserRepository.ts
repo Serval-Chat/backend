@@ -25,12 +25,14 @@ export class MongooseUserRepository implements IUserRepository {
     private friendRequestModel = FriendRequest;
     private banModel = Ban;
 
-    constructor() { }
+    constructor() {}
 
     async findById(id: Types.ObjectId): Promise<IUser | null> {
         return await this.userModel
             .findById(id)
-            .select('-password -tokenVersion -permissions -settings -language -login -deletedReason')
+            .select(
+                '-password -tokenVersion -permissions -settings -language -login -deletedReason',
+            )
             .lean();
     }
 
@@ -80,7 +82,10 @@ export class MongooseUserRepository implements IUserRepository {
         return await user.save();
     }
 
-    async update(id: Types.ObjectId, data: Partial<IUser>): Promise<IUser | null> {
+    async update(
+        id: Types.ObjectId,
+        data: Partial<IUser>,
+    ): Promise<IUser | null> {
         return await this.userModel
             .findByIdAndUpdate(id, data, { new: true })
             .lean();
@@ -107,7 +112,10 @@ export class MongooseUserRepository implements IUserRepository {
         return true;
     }
 
-    async comparePassword(id: Types.ObjectId, candidate: string): Promise<boolean> {
+    async comparePassword(
+        id: Types.ObjectId,
+        candidate: string,
+    ): Promise<boolean> {
         const user = await this.userModel.findById(id).select('password');
         if (!user) return false;
         return (user as unknown as IUserModel).comparePassword(candidate);
@@ -125,7 +133,10 @@ export class MongooseUserRepository implements IUserRepository {
         await this.userModel.findByIdAndUpdate(id, { customStatus: status });
     }
 
-    async updateProfilePicture(id: Types.ObjectId, filename: string): Promise<void> {
+    async updateProfilePicture(
+        id: Types.ObjectId,
+        filename: string,
+    ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, {
             profilePicture: filename,
         });
@@ -135,7 +146,10 @@ export class MongooseUserRepository implements IUserRepository {
         await this.userModel.findByIdAndUpdate(id, { login: newLogin });
     }
 
-    async updatePassword(id: Types.ObjectId, newPassword: string): Promise<void> {
+    async updatePassword(
+        id: Types.ObjectId,
+        newPassword: string,
+    ): Promise<void> {
         const user = await this.userModel.findById(id);
         if (!user) throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
         (user as unknown as IUserModel).password = newPassword;
@@ -165,7 +179,10 @@ export class MongooseUserRepository implements IUserRepository {
     //
     // Cascades the change to related collections (Friendships, FriendRequests)
     // To maintain data consistency for legacy fields
-    async updateUsername(id: Types.ObjectId, newUsername: string): Promise<void> {
+    async updateUsername(
+        id: Types.ObjectId,
+        newUsername: string,
+    ): Promise<void> {
         const user = await this.userModel.findById(id);
         if (!user) throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
 
@@ -200,7 +217,10 @@ export class MongooseUserRepository implements IUserRepository {
         await this.userModel.findByIdAndUpdate(id, { bio });
     }
 
-    async updatePronouns(id: Types.ObjectId, pronouns: string | null): Promise<void> {
+    async updatePronouns(
+        id: Types.ObjectId,
+        pronouns: string | null,
+    ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { pronouns });
     }
 
@@ -276,7 +296,10 @@ export class MongooseUserRepository implements IUserRepository {
 
     async removeBadgeFromAllUsers(badgeId: string): Promise<void> {
         const bid = new Types.ObjectId(badgeId);
-        await this.userModel.updateMany({ badges: bid }, { $pull: { badges: bid } });
+        await this.userModel.updateMany(
+            { badges: bid },
+            { $pull: { badges: bid } },
+        );
     }
 
     async updateSettings(
@@ -306,7 +329,10 @@ export class MongooseUserRepository implements IUserRepository {
         });
     }
 
-    async updateBanner(id: Types.ObjectId, filename: string | null): Promise<void> {
+    async updateBanner(
+        id: Types.ObjectId,
+        filename: string | null,
+    ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { banner: filename });
     }
 

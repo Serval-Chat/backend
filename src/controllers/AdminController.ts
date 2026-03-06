@@ -127,7 +127,7 @@ export class AdminController {
         private warningRepo: IWarningRepository,
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) { }
+    ) {}
 
     @Get('stats')
     @Permissions('viewLogs')
@@ -999,9 +999,13 @@ export class AdminController {
         const logs = await this.auditLogRepo.find({
             limit: Number(query.limit ?? 100),
             offset: Number(query.offset ?? 0),
-            actorId: query.actorId ? new Types.ObjectId(query.actorId) : undefined,
+            actorId: query.actorId
+                ? new Types.ObjectId(query.actorId)
+                : undefined,
             actionType: query.actionType,
-            targetUserId: query.targetUserId ? new Types.ObjectId(query.targetUserId) : undefined,
+            targetUserId: query.targetUserId
+                ? new Types.ObjectId(query.targetUserId)
+                : undefined,
             startDate: query.startDate ? new Date(query.startDate) : undefined,
             endDate: query.endDate ? new Date(query.endDate) : undefined,
         });
@@ -1156,8 +1160,8 @@ export class AdminController {
         const profilePictureUrl = user.deletedAt
             ? '/images/deleted-cat.jpg'
             : user.profilePicture
-                ? `/api/v1/profile/picture/${user.profilePicture}`
-                : null;
+              ? `/api/v1/profile/picture/${user.profilePicture}`
+              : null;
 
         const memberships = await this.serverMemberRepo.findByUserId(userOid);
         const serverIds = memberships.map((m) => m.serverId);

@@ -26,7 +26,7 @@ export class PingService {
         @inject(TYPES.PingRepository)
         @Inject(TYPES.PingRepository)
         private pingRepo: IPingRepository,
-    ) { }
+    ) {}
 
     // Store a ping for a user (both online and offline)
     async addPing(
@@ -80,10 +80,14 @@ export class PingService {
         };
 
         if (pingData.serverId) {
-            createData.serverId = new mongoose.Types.ObjectId(pingData.serverId);
+            createData.serverId = new mongoose.Types.ObjectId(
+                pingData.serverId,
+            );
         }
         if (pingData.channelId) {
-            createData.channelId = new mongoose.Types.ObjectId(pingData.channelId);
+            createData.channelId = new mongoose.Types.ObjectId(
+                pingData.channelId,
+            );
         }
 
         const created = await this.pingRepo.create(createData);
@@ -92,7 +96,9 @@ export class PingService {
     }
 
     // Get all pings for a user (with age filtering)
-    async getPingsForUser(userId: mongoose.Types.ObjectId): Promise<PingNotification[]> {
+    async getPingsForUser(
+        userId: mongoose.Types.ObjectId,
+    ): Promise<PingNotification[]> {
         const pings = await this.pingRepo.findByUserId(userId, this.maxAge);
         return pings.map((p) => this.mapToNotification(p));
     }

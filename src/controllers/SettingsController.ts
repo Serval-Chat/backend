@@ -48,7 +48,7 @@ export class SettingsController {
         private userRepo: IUserRepository,
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Retrieves the current user's settings
     // Returns default values if no custom settings are configured

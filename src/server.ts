@@ -5,6 +5,7 @@ import { container } from '@/di/container';
 import { TYPES } from '@/di/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { getMetricsMiddleware } from '@/middleware/metrics';
+import { register } from '@/utils/metrics';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
@@ -43,10 +44,10 @@ export function setupExpressApp(app: Application): Application {
             strictTransportSecurity:
                 PROJECT_LEVEL === 'production'
                     ? {
-                        maxAge: 31536000, // 1 year
-                        includeSubDomains: true,
-                        preload: true,
-                    }
+                          maxAge: 31536000, // 1 year
+                          includeSubDomains: true,
+                          preload: true,
+                      }
                     : false,
             contentSecurityPolicy: {
                 directives: {
@@ -86,11 +87,11 @@ export function setupExpressApp(app: Application): Application {
                         'https://rolling.catfla.re/',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
-                                'http://localhost:8000',
-                                'http://localhost:8001',
-                                'http://127.0.0.1:8000',
-                                'http://127.0.0.1:8001',
-                            ]
+                                  'http://localhost:8000',
+                                  'http://localhost:8001',
+                                  'http://127.0.0.1:8000',
+                                  'http://127.0.0.1:8001',
+                              ]
                             : []),
                     ],
                     connectSrc: [
@@ -104,15 +105,15 @@ export function setupExpressApp(app: Application): Application {
                         'https://cloudflareinsights.com',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
-                                'http://localhost:8000',
-                                'http://localhost:8001',
-                                'http://127.0.0.1:8000',
-                                'http://127.0.0.1:8001',
-                                'ws://localhost:8000',
-                                'ws://localhost:8001',
-                                'ws://127.0.0.1:8000',
-                                'ws://127.0.0.1:8001',
-                            ]
+                                  'http://localhost:8000',
+                                  'http://localhost:8001',
+                                  'http://127.0.0.1:8000',
+                                  'http://127.0.0.1:8001',
+                                  'ws://localhost:8000',
+                                  'ws://localhost:8001',
+                                  'ws://127.0.0.1:8000',
+                                  'ws://127.0.0.1:8001',
+                              ]
                             : []),
                     ],
                     fontSrc: [
@@ -204,7 +205,24 @@ export function setupExpressApp(app: Application): Application {
     // Metrics
     app.use(getMetricsMiddleware());
 
-    // Manual routes
+    // is loopback?
+    const METRICS_ALLOWED_RE =
+        /^(127\.|::1$|::ffff:127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/;
+
+    app.get('/metrics', async (req: Request, res: Response) => {
+        const ip = req.ip ?? '';
+        if (!METRICS_ALLOWED_RE.test(ip)) {
+            res.status(403).end('Forbidden');
+            return;
+        }
+        try {
+            res.set('Content-Type', register.contentType);
+            res.end(await register.metrics());
+        } catch (err) {
+            res.status(500).end(String(err));
+        }
+    });
+
     app.use('/', routes);
 
     // DI Binding

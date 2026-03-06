@@ -54,7 +54,7 @@ export class AuthService {
         @inject(TYPES.AuditLogRepository)
         @Inject(TYPES.AuditLogRepository)
         private auditLogRepo: IAuditLogRepository,
-    ) { }
+    ) {}
 
     // Authenticate a user with login credentials.
     //
@@ -88,10 +88,7 @@ export class AuthService {
         }
 
         // Validate password via repository
-        const valid = await this.userRepo.comparePassword(
-            user._id,
-            password,
-        );
+        const valid = await this.userRepo.comparePassword(user._id, password);
         if (!valid) {
             this.logger.warn(`Login failed: Invalid password - ${login}`);
             return {
@@ -102,9 +99,7 @@ export class AuthService {
 
         // Check for bans
         await this.banRepo.checkExpired(user._id);
-        const activeBan = await this.banRepo.findActiveByUserId(
-            user._id,
-        );
+        const activeBan = await this.banRepo.findActiveByUserId(user._id);
 
         if (activeBan) {
             this.logger.warn(`Login failed: Account banned - ${login}`);
@@ -228,9 +223,7 @@ export class AuthService {
             throw new ApiError(400, ErrorMessages.AUTH.INVALID_RESET_TOKEN);
         }
 
-        const user = await this.userRepo.findById(
-            resetRequest.userId,
-        );
+        const user = await this.userRepo.findById(resetRequest.userId);
         if (!user) {
             this.logger.warn(
                 `[${requestId}] Failed password reset: User not found`,
@@ -260,20 +253,13 @@ export class AuthService {
         );
 
         // Update password
-        await this.userRepo.updatePassword(
-            resetRequest.userId,
-            newPassword,
-        );
+        await this.userRepo.updatePassword(resetRequest.userId, newPassword);
 
         // Invalidate sessions
-        await this.userRepo.incrementTokenVersion(
-            resetRequest.userId,
-        );
+        await this.userRepo.incrementTokenVersion(resetRequest.userId);
 
         // Invalidate all other reset tokens for this user
-        await this.passwordResetRepo.deleteByUser(
-            resetRequest.userId,
-        );
+        await this.passwordResetRepo.deleteByUser(resetRequest.userId);
 
         // Send confirmation email
         if (user.login) {

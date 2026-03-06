@@ -35,7 +35,7 @@ export class EmojiController {
         private serverMemberRepo: IServerMemberRepository,
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     @Get()
     @ApiBearerAuth()
@@ -48,7 +48,8 @@ export class EmojiController {
         const userId = (req as unknown as RequestWithUser).user.id;
         const userOid = new Types.ObjectId(userId);
 
-        const memberships = await this.serverMemberRepo.findAllByUserId(userOid);
+        const memberships =
+            await this.serverMemberRepo.findAllByUserId(userOid);
         // Extract server IDs from membership objects
         const serverIds = memberships.map((m) => m.serverId);
 

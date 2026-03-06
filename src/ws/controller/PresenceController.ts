@@ -34,7 +34,7 @@ export class PresenceController {
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
-    ) { }
+    ) {}
 
     @postConstruct()
     public setupEventListeners() {
@@ -82,7 +82,9 @@ export class PresenceController {
         const { status } = payload;
         const userId = authenticatedUser.userId;
 
-        await this.userRepo.update(new mongoose.Types.ObjectId(userId), { status: status || '' });
+        await this.userRepo.update(new mongoose.Types.ObjectId(userId), {
+            status: status || '',
+        });
 
         logger.debug(
             `[PresenceController] User ${userId} set status: ${status}`,
@@ -115,8 +117,12 @@ export class PresenceController {
         const userId = authenticatedUser.userId;
 
         const [friendships, serverIds] = await Promise.all([
-            this.friendshipRepo.findByUserId(new mongoose.Types.ObjectId(userId)),
-            this.serverMemberRepo.findServerIdsByUserId(new mongoose.Types.ObjectId(userId)),
+            this.friendshipRepo.findByUserId(
+                new mongoose.Types.ObjectId(userId),
+            ),
+            this.serverMemberRepo.findServerIdsByUserId(
+                new mongoose.Types.ObjectId(userId),
+            ),
         ]);
 
         const friendIds = friendships.map((f) =>
@@ -142,8 +148,10 @@ export class PresenceController {
         const onlineUsers =
             onlineRelevantIds.length > 0
                 ? await this.userRepo.findByIds(
-                    onlineRelevantIds.map((id) => new mongoose.Types.ObjectId(id)),
-                )
+                      onlineRelevantIds.map(
+                          (id) => new mongoose.Types.ObjectId(id),
+                      ),
+                  )
                 : [];
 
         const online = onlineUsers.map((u) => ({
@@ -173,7 +181,9 @@ export class PresenceController {
         userId: string,
         username: string,
     ): Promise<void> {
-        const user = await this.userRepo.findById(new mongoose.Types.ObjectId(userId));
+        const user = await this.userRepo.findById(
+            new mongoose.Types.ObjectId(userId),
+        );
         const status = user?.status || undefined;
 
         const onlinePayload: IUserOnlineEvent['payload'] = {
@@ -218,7 +228,9 @@ export class PresenceController {
         event: AnyResponseWsEvent,
         excludeWs?: WebSocket,
     ): Promise<void> {
-        const friendships = await this.friendshipRepo.findByUserId(new mongoose.Types.ObjectId(userId));
+        const friendships = await this.friendshipRepo.findByUserId(
+            new mongoose.Types.ObjectId(userId),
+        );
         const friendIds = friendships.map((f) =>
             f.userId.toString() === userId
                 ? f.friendId.toString()
@@ -228,8 +240,9 @@ export class PresenceController {
         const onlineFriendIds = friendIds.filter((id) =>
             this.wsServer.isUserOnline(id),
         );
-        const serverIds =
-            await this.serverMemberRepo.findServerIdsByUserId(new mongoose.Types.ObjectId(userId));
+        const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
+            new mongoose.Types.ObjectId(userId),
+        );
 
         this.wsServer.broadcastToPresenceAudience(
             onlineFriendIds,

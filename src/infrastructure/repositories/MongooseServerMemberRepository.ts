@@ -18,7 +18,7 @@ import { injectable } from 'inversify';
 export class MongooseServerMemberRepository implements IServerMemberRepository {
     private serverMemberModel = ServerMember;
     private userModel = User;
-    constructor() { }
+    constructor() {}
 
     async findByServerAndUser(
         serverId: Types.ObjectId,
@@ -85,7 +85,9 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return await this.findAllByUserId(userId);
     }
 
-    async findServerIdsByUserId(userId: Types.ObjectId): Promise<Types.ObjectId[]> {
+    async findServerIdsByUserId(
+        userId: Types.ObjectId,
+    ): Promise<Types.ObjectId[]> {
         const members = await this.serverMemberModel
             .find({ userId })
             .select('serverId')
@@ -159,14 +161,26 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         const userIds = members.map((m) => m.userId);
         const users = await this.userModel
             .find({ _id: { $in: userIds } })
-            .select('-tokenVersion -permissions -password -settings -language -login -deletedReason')
+            .select(
+                '-tokenVersion -permissions -password -settings -language -login -deletedReason',
+            )
             .lean();
 
         return members.map((m) => {
             const user = users.find((u) => u._id.equals(m.userId));
-            if (!user) return { ...m, user: null } as IServerMember & { user: null };
+            if (!user)
+                return { ...m, user: null } as IServerMember & { user: null };
 
-            const { tokenVersion, permissions, password, settings, language, login, deletedReason, ...safeUser } = user;
+            const {
+                tokenVersion,
+                permissions,
+                password,
+                settings,
+                language,
+                login,
+                deletedReason,
+                ...safeUser
+            } = user;
             return {
                 ...m,
                 user: mapUser(safeUser),
@@ -196,21 +210,33 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         const memberUserIds = members.map((m) => m.userId);
         const populatedUsers = await this.userModel
             .find({ _id: { $in: memberUserIds } })
-            .select('-tokenVersion -permissions -password -settings -language -login -deletedReason')
+            .select(
+                '-tokenVersion -permissions -password -settings -language -login -deletedReason',
+            )
             .lean();
 
         return members.map((m) => {
             const user = populatedUsers.find((u) => u._id.equals(m.userId));
-            if (!user) return { ...m, user: null } as IServerMember & { user: null };
+            if (!user)
+                return { ...m, user: null } as IServerMember & { user: null };
 
-            const { tokenVersion, permissions, password, settings, language, login, deletedReason, ...safeUser } = user;
+            const {
+                tokenVersion,
+                permissions,
+                password,
+                settings,
+                language,
+                login,
+                deletedReason,
+                ...safeUser
+            } = user;
             return {
                 ...m,
                 user: mapUser(safeUser),
             } as IServerMember & { user: MappedUser | null };
         });
     }
-    
+
     async addRole(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,

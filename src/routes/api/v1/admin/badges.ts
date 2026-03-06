@@ -141,7 +141,9 @@ router.get(
                 return res.status(400).send({ error: 'User ID is required' });
             }
 
-            const user = await userRepo.findById(new mongoose.Types.ObjectId(userId));
+            const user = await userRepo.findById(
+                new mongoose.Types.ObjectId(userId),
+            );
             if (!user) {
                 return res.status(404).send({ error: 'User not found' });
             }
@@ -174,7 +176,9 @@ router.post(
                 return res.status(400).send({ error: 'badgeId is required' });
             }
 
-            const user = await userRepo.findById(new mongoose.Types.ObjectId(userId));
+            const user = await userRepo.findById(
+                new mongoose.Types.ObjectId(userId),
+            );
             if (!user) {
                 return res.status(404).send({ error: 'User not found' });
             }
@@ -221,7 +225,9 @@ router.delete(
                 return res.status(400).send({ error: 'badgeId is required' });
             }
 
-            const user = await userRepo.findById(new mongoose.Types.ObjectId(userId));
+            const user = await userRepo.findById(
+                new mongoose.Types.ObjectId(userId),
+            );
             if (!user) {
                 return res.status(404).send({ error: 'User not found' });
             }

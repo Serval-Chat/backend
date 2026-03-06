@@ -73,7 +73,7 @@ export class ServerMessageController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: IWsServer,
-    ) { }
+    ) {}
 
     // Retrieves messages for a specific channel with pagination
     // Enforces server membership
@@ -102,12 +102,16 @@ export class ServerMessageController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+        const channel = await this.channelRepo.findById(
+            new mongoose.Types.ObjectId(channelId),
+        );
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {
-            throw new ForbiddenException('Cannot read messages from a link channel');
+            throw new ForbiddenException(
+                'Cannot read messages from a link channel',
+            );
         }
 
         const canView = await this.permissionService.hasChannelPermission(
@@ -143,7 +147,7 @@ export class ServerMessageController {
                 ...msgObj,
                 reactions:
                     (reactionsMap as Record<string, unknown[]>)[
-                    msg._id.toString()
+                        msg._id.toString()
                     ] || [],
             } as IServerMessage;
         });
@@ -190,12 +194,16 @@ export class ServerMessageController {
             );
         }
 
-        const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+        const channel = await this.channelRepo.findById(
+            new mongoose.Types.ObjectId(channelId),
+        );
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {
-            throw new ForbiddenException('Cannot send messages to a link channel via API');
+            throw new ForbiddenException(
+                'Cannot send messages to a link channel via API',
+            );
         }
 
         const messageText = (body.content || body.text || '').trim();
@@ -214,7 +222,9 @@ export class ServerMessageController {
         });
 
         // Update the channel's last activity timestamp for sorting and unread tracking
-        await this.channelRepo.updateLastMessageAt(new mongoose.Types.ObjectId(channelId));
+        await this.channelRepo.updateLastMessageAt(
+            new mongoose.Types.ObjectId(channelId),
+        );
 
         // Track message metrics
         messagesSentCounter.labels('server').inc();
@@ -286,12 +296,16 @@ export class ServerMessageController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+        const channel = await this.channelRepo.findById(
+            new mongoose.Types.ObjectId(channelId),
+        );
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {
-            throw new ForbiddenException('Cannot read a message from a link channel');
+            throw new ForbiddenException(
+                'Cannot read a message from a link channel',
+            );
         }
 
         const canView = await this.permissionService.hasChannelPermission(
@@ -304,7 +318,9 @@ export class ServerMessageController {
             throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
+        const message = await this.serverMessageRepo.findById(
+            new mongoose.Types.ObjectId(messageId),
+        );
         if (!message || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -336,7 +352,7 @@ export class ServerMessageController {
         return {
             message: {
                 ...('toObject' in message &&
-                    typeof message.toObject === 'function'
+                typeof message.toObject === 'function'
                     ? message.toObject()
                     : message),
                 reactions,
@@ -367,7 +383,9 @@ export class ServerMessageController {
         @Body() body: ServerEditMessageRequestDTO,
     ): Promise<IServerMessage> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
+        const message = await this.serverMessageRepo.findById(
+            new mongoose.Types.ObjectId(messageId),
+        );
         if (!message || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -383,11 +401,14 @@ export class ServerMessageController {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
-        const updatedMessage = await this.serverMessageRepo.update(new mongoose.Types.ObjectId(messageId), {
-            text: messageText,
-            // Mark message as edited for client-side rendering
-            isEdited: true,
-        });
+        const updatedMessage = await this.serverMessageRepo.update(
+            new mongoose.Types.ObjectId(messageId),
+            {
+                text: messageText,
+                // Mark message as edited for client-side rendering
+                isEdited: true,
+            },
+        );
         if (!updatedMessage) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -425,7 +446,9 @@ export class ServerMessageController {
         @Req() req: ExpressRequest,
     ): Promise<{ message: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
+        const message = await this.serverMessageRepo.findById(
+            new mongoose.Types.ObjectId(messageId),
+        );
         if (!message || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -454,7 +477,9 @@ export class ServerMessageController {
             );
         }
 
-        await this.serverMessageRepo.delete(new mongoose.Types.ObjectId(messageId));
+        await this.serverMessageRepo.delete(
+            new mongoose.Types.ObjectId(messageId),
+        );
 
         const event: IMessageServerDeletedEvent = {
             type: 'message_server_deleted',

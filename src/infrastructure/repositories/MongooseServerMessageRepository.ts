@@ -16,7 +16,8 @@ type PopulatedServerMessageDoc = Omit<IServerMessage, 'repliedToMessageId'> & {
 // Implements IServerMessageRepository using Mongoose ServerMessage model
 @injectable()
 export class MongooseServerMessageRepository
-    implements IServerMessageRepository {
+    implements IServerMessageRepository
+{
     private transformMessage(msg: PopulatedServerMessageDoc): IServerMessage {
         const transformed = { ...msg } as unknown as IServerMessage;
 
@@ -88,7 +89,9 @@ export class MongooseServerMessageRepository
             serverId: new Types.ObjectId(data.serverId),
             channelId: new Types.ObjectId(data.channelId),
             senderId: new Types.ObjectId(data.senderId),
-            replyToId: data.replyToId ? new Types.ObjectId(data.replyToId) : undefined,
+            replyToId: data.replyToId
+                ? new Types.ObjectId(data.replyToId)
+                : undefined,
         };
         const message = new ServerMessage(createData);
         const savedMessage = await message.save({ session });
@@ -105,16 +108,12 @@ export class MongooseServerMessageRepository
         return result.deletedCount || 0;
     }
 
-    async deleteByChannelId(
-        channelId: Types.ObjectId,
-    ): Promise<number> {
+    async deleteByChannelId(channelId: Types.ObjectId): Promise<number> {
         const result = await ServerMessage.deleteMany({ channelId });
         return result.deletedCount || 0;
     }
 
-    async findById(
-        id: Types.ObjectId,
-    ): Promise<IServerMessage | null> {
+    async findById(id: Types.ObjectId): Promise<IServerMessage | null> {
         const message = (await ServerMessage.findById(id)
             .populate({
                 path: 'repliedToMessageId',
@@ -150,7 +149,7 @@ export class MongooseServerMessageRepository
 
             const targetDate = targetMessage.createdAt;
 
-            const beforeMessages = await ServerMessage.find({
+            const beforeMessages = (await ServerMessage.find({
                 channelId: new Types.ObjectId(channelId.toString()),
                 createdAt: { $lt: targetDate },
             })
@@ -160,9 +159,9 @@ export class MongooseServerMessageRepository
                     path: 'repliedToMessageId',
                     populate: { path: 'repliedToMessageId' },
                 })
-                .lean() as unknown as PopulatedServerMessageDoc[];
+                .lean()) as unknown as PopulatedServerMessageDoc[];
 
-            const afterMessages = await ServerMessage.find({
+            const afterMessages = (await ServerMessage.find({
                 channelId: new Types.ObjectId(channelId.toString()),
                 createdAt: { $gte: targetDate },
             })
@@ -172,7 +171,7 @@ export class MongooseServerMessageRepository
                     path: 'repliedToMessageId',
                     populate: { path: 'repliedToMessageId' },
                 })
-                .lean() as unknown as PopulatedServerMessageDoc[];
+                .lean()) as unknown as PopulatedServerMessageDoc[];
 
             // Sort chronologically
             messages = [...beforeMessages, ...afterMessages].sort(
@@ -199,14 +198,14 @@ export class MongooseServerMessageRepository
                 }
             }
 
-            const docs = await ServerMessage.find(query)
+            const docs = (await ServerMessage.find(query)
                 .sort({ createdAt: after ? 1 : -1 })
                 .limit(limit)
                 .populate({
                     path: 'repliedToMessageId',
                     populate: { path: 'repliedToMessageId' },
                 })
-                .lean() as unknown as PopulatedServerMessageDoc[];
+                .lean()) as unknown as PopulatedServerMessageDoc[];
 
             messages = docs;
             if (!after) {
@@ -297,9 +296,7 @@ export class MongooseServerMessageRepository
         return map;
     }
 
-    async countByChannelId(
-        channelId: Types.ObjectId,
-    ): Promise<number> {
+    async countByChannelId(channelId: Types.ObjectId): Promise<number> {
         return await ServerMessage.countDocuments({ channelId });
     }
 }

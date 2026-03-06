@@ -2,7 +2,10 @@ import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { LoggerModule } from 'nestjs-pino';
+import { trace } from '@opentelemetry/api';
 import { MONGO_URI } from '@/config/env';
+import { LOKI_HOST, LOG_LEVEL, PROJECT_LEVEL } from '@/config/env';
 import { TYPES } from '@/di/types';
 import { container } from '@/di/container';
 import { WsServer } from '@/ws/server';
@@ -42,6 +45,46 @@ import { SettingsController } from './controllers/SettingsController';
             isGlobal: true,
         }),
         MongooseModule.forRoot(MONGO_URI),
+
+        LoggerModule.forRoot({
+            pinoHttp: {
+                level: LOG_LEVEL,
+                customProps: () => {
+                    const span = trace.getActiveSpan();
+                    const ctx = span?.spanContext();
+                    return ctx
+                        ? { trace_id: ctx.traceId, span_id: ctx.spanId }
+                        : {};
+                },
+                transport:
+                    PROJECT_LEVEL !== 'production'
+                        ? { target: 'pino-pretty' }
+                        : {
+                              targets: [
+                                  {
+                                      target: 'pino-pretty',
+                                      options: { colorize: false },
+                                      level: LOG_LEVEL,
+                                  },
+                                  {
+                                      target: 'pino-loki',
+                                      options: {
+                                          host: LOKI_HOST,
+                                          labels: {
+                                              app: 'serval-backend',
+                                              env: 'production',
+                                          },
+                                          batching: true,
+                                          interval: 5,
+                                          silenceErrors: true,
+                                      },
+                                      level: 'info',
+                                  },
+                              ],
+                          },
+            },
+        }),
+
         DatabaseModule,
         RepositoryModule,
         InfrastructureModule,

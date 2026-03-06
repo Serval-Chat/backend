@@ -452,7 +452,10 @@ export function IsPermissionMap(validationOptions?: ValidationOptions) {
                 validate(value: unknown) {
                     if (typeof value !== 'object' || value === null)
                         return false;
-                    const map = value as Record<string, Record<string, unknown>>;
+                    const map = value as Record<
+                        string,
+                        Record<string, unknown>
+                    >;
                     for (const roleId in map) {
                         const perms = map[roleId];
                         if (typeof perms !== 'object' || perms === null)
@@ -495,5 +498,3 @@ export function IsPermissions(validationOptions?: ValidationOptions) {
         });
     };
 }
-
-

@@ -70,7 +70,7 @@ export class ServerInviteController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) { }
+    ) {}
 
     // Retrieves all active invites for a server
     // Enforces 'manageInvites' permission

@@ -63,9 +63,21 @@ const schema = new Schema<IUser>(
         profilePicture: { type: String, required: false },
         usernameFont: {
             type: String,
-            enum: ['default', 'Audiowide', 'Bebas Neue', 'Betania Patmos', 'Google Sans Code', 'Noto Sans', 'Pacifico', 'Playpen Sans Deva', 'Rampart One', 'Roboto', 'Workbench'],
+            enum: [
+                'default',
+                'Audiowide',
+                'Bebas Neue',
+                'Betania Patmos',
+                'Google Sans Code',
+                'Noto Sans',
+                'Pacifico',
+                'Playpen Sans Deva',
+                'Rampart One',
+                'Roboto',
+                'Workbench',
+            ],
             required: false,
-            default: 'default'
+            default: 'default',
         },
         usernameGradient: {
             enabled: { type: Boolean, default: false },

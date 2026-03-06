@@ -92,7 +92,7 @@ export class ProfileController {
         private friendshipRepo: IFriendshipRepository,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) { }
+    ) {}
 
     // Maps a user document to a public UserProfileResponseDTO payload
     private async mapToProfile(user: IUser): Promise<UserProfileResponseDTO> {
@@ -316,7 +316,9 @@ export class ProfileController {
                 );
             }
 
-            const user = await this.userRepo.findById(new Types.ObjectId(userId));
+            const user = await this.userRepo.findById(
+                new Types.ObjectId(userId),
+            );
             if (!user) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
@@ -386,8 +388,8 @@ export class ProfileController {
                 metadata.format === 'gif'
                     ? 'gif'
                     : isAnimated
-                        ? 'webp'
-                        : 'webp';
+                      ? 'webp'
+                      : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(profilesDir, filename);
@@ -426,9 +428,12 @@ export class ProfileController {
 
             try {
                 const serverIds =
-                    await this.serverMemberRepo.findServerIdsByUserId(new Types.ObjectId(userId));
-                const friendships =
-                    await this.friendshipRepo.findAllByUserId(new Types.ObjectId(userId));
+                    await this.serverMemberRepo.findServerIdsByUserId(
+                        new Types.ObjectId(userId),
+                    );
+                const friendships = await this.friendshipRepo.findAllByUserId(
+                    new Types.ObjectId(userId),
+                );
 
                 const updatePayload = {
                     userId,
@@ -520,7 +525,9 @@ export class ProfileController {
                 );
             }
 
-            const user = await this.userRepo.findById(new Types.ObjectId(userId));
+            const user = await this.userRepo.findById(
+                new Types.ObjectId(userId),
+            );
             if (!user) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
@@ -589,8 +596,8 @@ export class ProfileController {
                 metadata.format === 'gif'
                     ? 'gif'
                     : isAnimated
-                        ? 'webp'
-                        : 'webp';
+                      ? 'webp'
+                      : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(bannersDir, filename);
@@ -617,15 +624,21 @@ export class ProfileController {
                 throw new ApiError(500, 'Failed to process banner');
             }
 
-            await this.userRepo.updateBanner(new Types.ObjectId(userId), filename);
+            await this.userRepo.updateBanner(
+                new Types.ObjectId(userId),
+                filename,
+            );
 
             const bannerUrl = `/api/v1/profile/banner/${filename}`;
 
             try {
                 const serverIds =
-                    await this.serverMemberRepo.findServerIdsByUserId(new Types.ObjectId(userId));
-                const friendships =
-                    await this.friendshipRepo.findAllByUserId(new Types.ObjectId(userId));
+                    await this.serverMemberRepo.findServerIdsByUserId(
+                        new Types.ObjectId(userId),
+                    );
+                const friendships = await this.friendshipRepo.findAllByUserId(
+                    new Types.ObjectId(userId),
+                );
 
                 const updatePayload = {
                     username,
@@ -1202,10 +1215,12 @@ export class ProfileController {
         const updatedUser = await this.userRepo.findById(userOid);
 
         try {
-            const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(new Types.ObjectId(userId));
-            const friendships =
-                await this.friendshipRepo.findAllByUserId(new Types.ObjectId(userId));
+            const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
+                new Types.ObjectId(userId),
+            );
+            const friendships = await this.friendshipRepo.findAllByUserId(
+                new Types.ObjectId(userId),
+            );
 
             const payload = {
                 userId,

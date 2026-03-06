@@ -202,7 +202,9 @@ export class ServerController {
         const reads = await this.serverChannelReadRepo.findByUserId(userOid);
 
         const readMap = new Map<string, Date>();
-        reads.forEach((read) => readMap.set(read.channelId.toString(), read.lastReadAt));
+        reads.forEach((read) =>
+            readMap.set(read.channelId.toString(), read.lastReadAt),
+        );
 
         const unreadMap: Record<string, boolean> = {};
         serverIds.forEach((id) => (unreadMap[id.toString()] = false));

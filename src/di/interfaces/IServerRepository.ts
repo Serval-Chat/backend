@@ -52,10 +52,7 @@ export interface IServerRepository {
     create(data: CreateServerDTO): Promise<IServer>;
 
     // Update server
-    update(
-        id: Types.ObjectId,
-        data: Partial<IServer>,
-    ): Promise<IServer | null>;
+    update(id: Types.ObjectId, data: Partial<IServer>): Promise<IServer | null>;
 
     // Delete server (hard delete)
     delete(id: Types.ObjectId): Promise<boolean>;

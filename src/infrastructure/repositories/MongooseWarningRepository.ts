@@ -11,7 +11,7 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseWarningRepository implements IWarningRepository {
     private warningModel = Warning;
-    constructor() { }
+    constructor() {}
 
     async findByUserId(
         userId: Types.ObjectId,

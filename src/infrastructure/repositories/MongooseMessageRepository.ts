@@ -7,17 +7,20 @@ import {
 import { Message } from '@/models/Message';
 import { injectable } from 'inversify';
 
-type PopulatedMessageDoc = (Omit<IMessage, 'repliedToMessageId' | 'replyToId'> & {
+type PopulatedMessageDoc = Omit<
+    IMessage,
+    'repliedToMessageId' | 'replyToId'
+> & {
     repliedToMessageId?: Types.ObjectId | PopulatedMessageDoc;
     replyToId?: Types.ObjectId;
-});
+};
 
 // Mongoose Message repository
 @injectable()
 @Injectable()
 export class MongooseMessageRepository implements IMessageRepository {
     private messageModel = Message;
-    constructor() { }
+    constructor() {}
 
     private transformMessage(msg: PopulatedMessageDoc): IMessage {
         const transformed = { ...msg } as unknown as IMessage;
@@ -195,8 +198,12 @@ export class MongooseMessageRepository implements IMessageRepository {
             ...data,
             senderId: new Types.ObjectId(data.senderId),
             receiverId: new Types.ObjectId(data.receiverId),
-            replyToId: data.replyToId ? new Types.ObjectId(data.replyToId) : undefined,
-            repliedToMessageId: data.repliedToMessageId ? new Types.ObjectId(data.repliedToMessageId) : undefined,
+            replyToId: data.replyToId
+                ? new Types.ObjectId(data.replyToId)
+                : undefined,
+            repliedToMessageId: data.repliedToMessageId
+                ? new Types.ObjectId(data.repliedToMessageId)
+                : undefined,
         };
         const message = new this.messageModel(createData);
         const savedMessage = await message.save({ session });
@@ -204,10 +211,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         return this.transformMessage(msgObj);
     }
 
-    async update(
-        id: Types.ObjectId,
-        text: string,
-    ): Promise<IMessage | null> {
+    async update(id: Types.ObjectId, text: string): Promise<IMessage | null> {
         const msg = (await this.messageModel
             .findByIdAndUpdate(
                 id,

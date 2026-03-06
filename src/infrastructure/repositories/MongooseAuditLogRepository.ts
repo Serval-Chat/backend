@@ -12,7 +12,7 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseAuditLogRepository implements IAuditLogRepository {
     private auditLogModel = AuditLog;
-    constructor() { }
+    constructor() {}
 
     async create(data: {
         actorId: Types.ObjectId;

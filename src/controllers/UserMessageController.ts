@@ -80,7 +80,7 @@ export class UserMessageController {
         private reactionRepo: IReactionRepository,
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Retrieves unread DM counts for the current user, grouped by peer
     @Get('unread')
@@ -90,7 +90,9 @@ export class UserMessageController {
         @Req() req: ExpressRequest,
     ): Promise<UnreadCountsResponse> {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const docs = await this.dmUnreadRepo.findByUser(new Types.ObjectId(meId));
+        const docs = await this.dmUnreadRepo.findByUser(
+            new Types.ObjectId(meId),
+        );
 
         // Map unread count documents to a simple peerId -> count record
         const unreadCounts: Record<string, number> = {};
@@ -126,14 +128,21 @@ export class UserMessageController {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { userId, limit, before, around, after } = query;
 
-        const userDoc = await this.userRepo.findById(new Types.ObjectId(userId));
+        const userDoc = await this.userRepo.findById(
+            new Types.ObjectId(userId),
+        );
         if (!userDoc) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         const otherUserId = userDoc._id.toString();
 
         // Only allow message retrieval if a friendship exists
-        if (!(await this.friendshipRepo.areFriends(new Types.ObjectId(meId), new Types.ObjectId(otherUserId)))) {
+        if (
+            !(await this.friendshipRepo.areFriends(
+                new Types.ObjectId(meId),
+                new Types.ObjectId(otherUserId),
+            ))
+        ) {
             throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
@@ -164,7 +173,7 @@ export class UserMessageController {
                     ...msg,
                     reactions:
                         (reactionsMap as Record<string, unknown[]>)[
-                        msg._id.toString()
+                            msg._id.toString()
                         ] || [],
                 }) as MessageWithReactions,
         );
@@ -191,17 +200,26 @@ export class UserMessageController {
         const { id } = params;
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
-        const userDoc = await this.userRepo.findById(new Types.ObjectId(userId));
+        const userDoc = await this.userRepo.findById(
+            new Types.ObjectId(userId),
+        );
         if (!userDoc) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         const otherUserId = userDoc._id.toString();
 
-        if (!(await this.friendshipRepo.areFriends(new Types.ObjectId(meId), new Types.ObjectId(otherUserId)))) {
+        if (
+            !(await this.friendshipRepo.areFriends(
+                new Types.ObjectId(meId),
+                new Types.ObjectId(otherUserId),
+            ))
+        ) {
             throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
-        const targetMessage = await this.messageRepo.findById(new Types.ObjectId(id));
+        const targetMessage = await this.messageRepo.findById(
+            new Types.ObjectId(id),
+        );
         if (!targetMessage) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -247,7 +265,12 @@ export class UserMessageController {
         const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         // Ensure users are friends before allowing message access
-        if (!(await this.friendshipRepo.areFriends(new Types.ObjectId(meId), new Types.ObjectId(userId)))) {
+        if (
+            !(await this.friendshipRepo.areFriends(
+                new Types.ObjectId(meId),
+                new Types.ObjectId(userId),
+            ))
+        ) {
             if (meId !== userId) {
                 throw new ForbiddenException(
                     ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
@@ -255,7 +278,9 @@ export class UserMessageController {
             }
         }
 
-        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
+        const message = await this.messageRepo.findById(
+            new Types.ObjectId(messageId),
+        );
         if (!message) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -312,7 +337,10 @@ export class UserMessageController {
             throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
-        const updated = await this.messageRepo.update(new Types.ObjectId(id), content);
+        const updated = await this.messageRepo.update(
+            new Types.ObjectId(id),
+            content,
+        );
         // Mark message as edited for client-side rendering
         if (!updated) {
             throw new InternalServerErrorException(

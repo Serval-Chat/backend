@@ -45,7 +45,10 @@ export interface IServerMemberRepository {
     remove(serverId: Types.ObjectId, userId: Types.ObjectId): Promise<boolean>;
 
     // Check if user is member of server
-    isMember(serverId: Types.ObjectId, userId: Types.ObjectId): Promise<boolean>;
+    isMember(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+    ): Promise<boolean>;
 
     // Find all server memberships for a user
     findAllByUserId(userId: Types.ObjectId): Promise<IServerMember[]>;
@@ -57,7 +60,9 @@ export interface IServerMemberRepository {
     findServerIdsByUserId(userId: Types.ObjectId): Promise<Types.ObjectId[]>;
 
     // Find all user IDs that are members of any of the given servers
-    findUserIdsInServerIds(serverIds: Types.ObjectId[]): Promise<Types.ObjectId[]>;
+    findUserIdsInServerIds(
+        serverIds: Types.ObjectId[],
+    ): Promise<Types.ObjectId[]>;
 
     // Count members by server ID
     countByServerId(serverId: Types.ObjectId): Promise<number>;

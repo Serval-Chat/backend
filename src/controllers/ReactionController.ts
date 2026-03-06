@@ -70,7 +70,7 @@ export class ReactionController {
         private wsServer: IWsServer,
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
-    ) { }
+    ) {}
 
     @Get('messages/:messageId/reactions')
     @ApiOperation({ summary: 'Get DM reactions' })
@@ -86,7 +86,9 @@ export class ReactionController {
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
 
-        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
+        const message = await this.messageRepo.findById(
+            new Types.ObjectId(messageId),
+        );
         if (!message) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -133,7 +135,9 @@ export class ReactionController {
                 ? (body as AddCustomReactionRequestDTO).emojiId
                 : undefined;
 
-        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
+        const message = await this.messageRepo.findById(
+            new Types.ObjectId(messageId),
+        );
         if (!message) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -238,7 +242,9 @@ export class ReactionController {
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
 
-        const message = await this.messageRepo.findById(new Types.ObjectId(messageId));
+        const message = await this.messageRepo.findById(
+            new Types.ObjectId(messageId),
+        );
         if (!message) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -329,7 +335,9 @@ export class ReactionController {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(new Types.ObjectId(channelId));
+        const channel = await this.channelRepo.findById(
+            new Types.ObjectId(channelId),
+        );
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
@@ -348,7 +356,9 @@ export class ReactionController {
             );
         }
 
-        const message = await this.serverMessageRepo.findById(new Types.ObjectId(messageId));
+        const message = await this.serverMessageRepo.findById(
+            new Types.ObjectId(messageId),
+        );
         if (!message || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -435,12 +445,16 @@ export class ReactionController {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(new Types.ObjectId(channelId));
+        const channel = await this.channelRepo.findById(
+            new Types.ObjectId(channelId),
+        );
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(new Types.ObjectId(messageId));
+        const message = await this.serverMessageRepo.findById(
+            new Types.ObjectId(messageId),
+        );
         if (!message || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -533,12 +547,16 @@ export class ReactionController {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(new Types.ObjectId(channelId));
+        const channel = await this.channelRepo.findById(
+            new Types.ObjectId(channelId),
+        );
         if (!channel || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(new Types.ObjectId(messageId));
+        const message = await this.serverMessageRepo.findById(
+            new Types.ObjectId(messageId),
+        );
         if (!message || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }

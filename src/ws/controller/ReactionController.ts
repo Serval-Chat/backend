@@ -41,7 +41,7 @@ export class ReactionController {
         @inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-    ) { }
+    ) {}
 
     /**
      * Handles 'add_reaction' event.
@@ -63,7 +63,9 @@ export class ReactionController {
         const userId = authenticatedUser.userId;
 
         if (messageType === 'dm') {
-            const message = await this.messageRepo.findById(new mongoose.Types.ObjectId(messageId));
+            const message = await this.messageRepo.findById(
+                new mongoose.Types.ObjectId(messageId),
+            );
             if (!message) {
                 throw new Error('NOT_FOUND: Message not found');
             }
@@ -124,7 +126,9 @@ export class ReactionController {
             if (message.senderId.toString() !== userId) {
                 const authorId = message.senderId.toString();
                 const [author, receiver] = await Promise.all([
-                    this.userRepo.findById(new mongoose.Types.ObjectId(authorId)),
+                    this.userRepo.findById(
+                        new mongoose.Types.ObjectId(authorId),
+                    ),
                     this.userRepo.findById(message.receiverId),
                 ]);
 
@@ -145,7 +149,7 @@ export class ReactionController {
                                 message.createdAt instanceof Date
                                     ? message.createdAt.toISOString()
                                     : (message.createdAt as unknown as string) ||
-                                    new Date().toISOString(),
+                                      new Date().toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited || false,
                         },
@@ -158,7 +162,9 @@ export class ReactionController {
                 }
             }
         } else if (messageType === 'server') {
-            const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
+            const message = await this.serverMessageRepo.findById(
+                new mongoose.Types.ObjectId(messageId),
+            );
             if (!message) {
                 throw new Error('NOT_FOUND: Message not found');
             }
@@ -216,7 +222,9 @@ export class ReactionController {
             // Send notification to message author if they are not the reactor
             if (message.senderId.toString() !== userId) {
                 const authorId = message.senderId.toString();
-                const author = await this.userRepo.findById(new mongoose.Types.ObjectId(authorId));
+                const author = await this.userRepo.findById(
+                    new mongoose.Types.ObjectId(authorId),
+                );
                 if (author) {
                     const mentionPayload: IMentionEvent['payload'] = {
                         type: 'reaction',
@@ -235,7 +243,7 @@ export class ReactionController {
                                 message.createdAt instanceof Date
                                     ? message.createdAt.toISOString()
                                     : (message.createdAt as unknown as string) ||
-                                    new Date().toISOString(),
+                                      new Date().toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited || false,
                             isWebhook: message.isWebhook || false,
@@ -276,7 +284,9 @@ export class ReactionController {
 
         // Validate message exists and get context
         if (messageType === 'dm') {
-            const message = await this.messageRepo.findById(new mongoose.Types.ObjectId(messageId));
+            const message = await this.messageRepo.findById(
+                new mongoose.Types.ObjectId(messageId),
+            );
             if (!message) {
                 throw new Error('NOT_FOUND: Message not found');
             }
@@ -333,7 +343,9 @@ export class ReactionController {
                 ws,
             );
         } else if (messageType === 'server') {
-            const message = await this.serverMessageRepo.findById(new mongoose.Types.ObjectId(messageId));
+            const message = await this.serverMessageRepo.findById(
+                new mongoose.Types.ObjectId(messageId),
+            );
             if (!message) {
                 throw new Error('NOT_FOUND: Message not found');
             }

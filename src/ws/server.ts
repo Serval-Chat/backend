@@ -7,12 +7,21 @@ import type { IWsUser } from './types';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { WsDispatcher } from './dispatcher';
-import { websocketConnectionsGauge } from '@/utils/metrics';
+import {
+    websocketConnectionsGauge,
+    wsMsgTotalCounter,
+    wsMsgSizeBytesHistogram,
+    wsErrorsTotalCounter,
+    chatRoomsActiveGauge,
+} from '@/utils/metrics';
 import type { IWsEnvelope, AnyResponseWsEvent } from './protocol/envelope';
 import { send, sendToMany } from './utils/broadcast';
 import { EventEmitter } from 'node:events';
+import { trace, SpanStatusCode, context } from '@opentelemetry/api';
 
 import type { IWsServer } from './interfaces/IWsServer';
+
+const wsTracer = trace.getTracer('serval-ws-gateway');
 
 /**
  * Server for WS :O
@@ -90,13 +99,60 @@ export class WsServer extends EventEmitter implements IWsServer {
             this.authTimeouts.set(ws, timeout);
 
             ws.on('message', async (data) => {
-                try {
-                    const message: IWsEnvelope = JSON.parse(data.toString());
-                    const authUser = this.getAuthenticatedUser(ws);
-                    await this.dispatcher.dispatch(ws, message, authUser);
-                } catch (error) {
-                    logger.error('[WsServer] Failed to handle message:', error);
-                }
+                const span = wsTracer.startSpan('ws.message.handle', {
+                    attributes: {
+                        'messaging.system': 'websocket',
+                        'messaging.destination': 'chat',
+                        'message.size_bytes':
+                            data instanceof Buffer
+                                ? data.byteLength
+                                : Buffer.byteLength(data.toString()),
+                    },
+                });
+                await context.with(
+                    trace.setSpan(context.active(), span),
+                    async () => {
+                        try {
+                            const raw =
+                                data instanceof Buffer
+                                    ? data
+                                    : Buffer.from(data.toString());
+                            const sizeBytes = raw.byteLength;
+                            const message: IWsEnvelope = JSON.parse(
+                                raw.toString(),
+                            );
+                            const msgType =
+                                (message.event as { type?: string })?.type ??
+                                'unknown';
+
+                            wsMsgTotalCounter.inc({ type: msgType });
+                            wsMsgSizeBytesHistogram.observe(
+                                { type: msgType },
+                                sizeBytes,
+                            );
+
+                            const authUser = this.getAuthenticatedUser(ws);
+                            await this.dispatcher.dispatch(
+                                ws,
+                                message,
+                                authUser,
+                            );
+                            span.setStatus({ code: SpanStatusCode.OK });
+                        } catch (error) {
+                            span.recordException(error as Error);
+                            span.setStatus({ code: SpanStatusCode.ERROR });
+                            wsErrorsTotalCounter.inc({
+                                reason: 'handler_exception',
+                            });
+                            logger.error(
+                                '[WsServer] Failed to handle message:',
+                                error,
+                            );
+                        } finally {
+                            span.end();
+                        }
+                    },
+                );
             });
 
             ws.on('close', () => {
@@ -107,6 +163,7 @@ export class WsServer extends EventEmitter implements IWsServer {
 
             ws.on('error', (error) => {
                 logger.error('[WsServer] WebSocket error:', error);
+                wsErrorsTotalCounter.inc({ reason: 'ws_error_event' });
                 this.removeConnection(ws);
             });
         });
@@ -234,6 +291,7 @@ export class WsServer extends EventEmitter implements IWsServer {
             this.socketSubscriptions.set(ws, subs);
         }
         subs.channels.add(channelId);
+        chatRoomsActiveGauge.set(this.channelSubscriptions.size);
 
         logger.debug(`[WsServer] Socket subscribed to channel ${channelId}`);
     }
@@ -253,6 +311,7 @@ export class WsServer extends EventEmitter implements IWsServer {
             if (subs) {
                 subs.channels.delete(channelId);
             }
+            chatRoomsActiveGauge.set(this.channelSubscriptions.size);
         }
     }
 

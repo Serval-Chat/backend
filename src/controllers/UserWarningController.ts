@@ -46,7 +46,7 @@ export class UserWarningController {
         private warningRepo: IWarningRepository,
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Sanitizes warning data for the current user
     // Hides the specific issuer identity for privacy, labeling all warnings as issued by 'System'

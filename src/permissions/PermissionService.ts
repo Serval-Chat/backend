@@ -187,7 +187,11 @@ export class PermissionService {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return false;
         if (!isPermissionKey(permission)) return false;
-        const result = resolver.canUserDo(userId.toString(), channelId.toString(), permission);
+        const result = resolver.canUserDo(
+            userId.toString(),
+            channelId.toString(),
+            permission,
+        );
         return result;
     }
 
