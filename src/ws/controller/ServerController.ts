@@ -54,6 +54,7 @@ import type { IWsUser } from '@/ws/types';
 import type { WebSocket } from 'ws';
 import logger from '@/utils/logger';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
+import { notifyUser } from '@/services/pushService';
 
 /**
  * Controller for handling server/channel message events.
@@ -79,7 +80,7 @@ export class ServerController {
         @inject(TYPES.PingService) private pingService: PingService,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
-    ) {}
+    ) { }
 
     /**
      * Handles 'join_server' event.
@@ -300,10 +301,10 @@ export class ServerController {
                         text,
                         ...(replyToId
                             ? {
-                                  replyToId: new mongoose.Types.ObjectId(
-                                      replyToId,
-                                  ),
-                              }
+                                replyToId: new mongoose.Types.ObjectId(
+                                    replyToId,
+                                ),
+                            }
                             : {}),
                     },
                     session,
@@ -812,6 +813,11 @@ export class ServerController {
             });
         }
 
+        const channel = await this.channelRepo.findById(
+            new mongoose.Types.ObjectId(channelId),
+        );
+        const channelName = channel ? channel.name : 'Unknown';
+
         // Send ping notifications to mentioned users
         for (const mentionedUserId of allMentionedUserIds) {
             const mentionedUser = await this.userRepo.findById(
@@ -847,6 +853,12 @@ export class ServerController {
                 new mongoose.Types.ObjectId(mentionedUserId),
                 pingData,
             );
+
+            notifyUser(mentionedUserId, 'mention', {
+                senderName: senderUsername,
+                channelName,
+                preview: message.text,
+            }).catch(err => logger.error(`[ServerController] Failed to push notify: ${err}`));
 
             // Emit socket event only for online users
             if (this.wsServer.isUserOnline(mentionedUserId)) {

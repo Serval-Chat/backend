@@ -29,6 +29,7 @@ import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { notifyUser } from '@/services/pushService';
 
 import { SendFriendRequestDTO } from './dto/friendship.request.dto';
 import {
@@ -61,7 +62,7 @@ export class FriendshipController {
         private wsServer: WsServer,
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     // Maps a user document to a public friend payload
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
@@ -291,6 +292,12 @@ export class FriendshipController {
                     from: requestPayload.from || '',
                 },
             });
+
+            await notifyUser(friendIdStr, 'friend_request', {
+                title: 'New Friend Request',
+                body: `${meUser.username} sent you a friend request.`,
+                data: { senderId: meId }
+            }).catch((err) => this.logger.error('Failed to send push notification:', err));
         } catch (err) {
             this.logger.error(
                 'Failed to emit incoming_request_added event:',

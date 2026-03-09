@@ -38,6 +38,7 @@ import { ServerPublicController } from './controllers/ServerPublicController';
 import { SystemController } from './controllers/SystemController';
 import { UserMessageController } from './controllers/UserMessageController';
 import { SettingsController } from './controllers/SettingsController';
+import { PushController } from './controllers/PushController';
 
 @Module({
     imports: [
@@ -48,6 +49,7 @@ import { SettingsController } from './controllers/SettingsController';
 
         LoggerModule.forRoot({
             pinoHttp: {
+                autoLogging: false,
                 level: LOG_LEVEL,
                 customProps: () => {
                     const span = trace.getActiveSpan();
@@ -60,28 +62,28 @@ import { SettingsController } from './controllers/SettingsController';
                     PROJECT_LEVEL !== 'production'
                         ? { target: 'pino-pretty' }
                         : {
-                              targets: [
-                                  {
-                                      target: 'pino-pretty',
-                                      options: { colorize: false },
-                                      level: LOG_LEVEL,
-                                  },
-                                  {
-                                      target: 'pino-loki',
-                                      options: {
-                                          host: LOKI_HOST,
-                                          labels: {
-                                              app: 'serval-backend',
-                                              env: 'production',
-                                          },
-                                          batching: true,
-                                          interval: 5,
-                                          silenceErrors: true,
-                                      },
-                                      level: 'info',
-                                  },
-                              ],
-                          },
+                            targets: [
+                                {
+                                    target: 'pino-pretty',
+                                    options: { colorize: false },
+                                    level: LOG_LEVEL,
+                                },
+                                {
+                                    target: 'pino-loki',
+                                    options: {
+                                        host: LOKI_HOST,
+                                        labels: {
+                                            app: 'serval-backend',
+                                            env: 'production',
+                                        },
+                                        batching: true,
+                                        interval: 5,
+                                        silenceErrors: true,
+                                    },
+                                    level: 'info',
+                                },
+                            ],
+                        },
             },
         }),
 
@@ -115,6 +117,7 @@ import { SettingsController } from './controllers/SettingsController';
         SystemController,
         UserMessageController,
         SettingsController,
+        PushController,
     ],
     providers: [
         {
@@ -128,5 +131,5 @@ import { SettingsController } from './controllers/SettingsController';
     ],
 })
 export class AppModule {
-    configure(_consumer: MiddlewareConsumer) {}
+    configure(_consumer: MiddlewareConsumer) { }
 }

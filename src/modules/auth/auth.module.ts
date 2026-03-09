@@ -24,9 +24,18 @@ export class JwtAuthGuard implements CanActivate {
         @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @Inject(TYPES.BanRepository) private banRepo: IBanRepository,
         private reflector: Reflector,
-    ) {}
+    ) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
+        const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
+            context.getHandler(),
+            context.getClass(),
+        ]);
+
+        if (isPublic) {
+            return true;
+        }
+
         const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
             PERMISSIONS_KEY,
             [context.getHandler(), context.getClass()],
@@ -87,7 +96,7 @@ export class JwtAuthGuard implements CanActivate {
                 const hasAllPermissions = requiredPermissions.every(
                     (p) =>
                         (userPermissions as unknown as Record<string, boolean>)[
-                            p
+                        p
                         ] === true,
                 );
 
@@ -116,4 +125,4 @@ export class JwtAuthGuard implements CanActivate {
     providers: [JwtAuthGuard],
     exports: [JwtAuthGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

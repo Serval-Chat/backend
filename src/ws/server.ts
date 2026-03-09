@@ -18,6 +18,7 @@ import type { IWsEnvelope, AnyResponseWsEvent } from './protocol/envelope';
 import { send, sendToMany } from './utils/broadcast';
 import { EventEmitter } from 'node:events';
 import { trace, SpanStatusCode, context } from '@opentelemetry/api';
+import { connectUser, disconnectUser } from '@/services/pushService';
 
 import type { IWsServer } from './interfaces/IWsServer';
 
@@ -197,6 +198,7 @@ export class WsServer extends EventEmitter implements IWsServer {
             `[WsServer] User ${user.username} authenticated (total sessions: ${userSockets.size})`,
         );
 
+        connectUser(user.userId);
         this.emit('user:authenticated', user);
 
         if (userSockets.size === 1) {
@@ -512,9 +514,9 @@ export class WsServer extends EventEmitter implements IWsServer {
         const user = this.socketToUser.get(ws);
 
         if (user) {
-            // Remove from user's socket set
             const userSockets = this.connectionsByUserId.get(user.userId);
             if (userSockets) {
+                disconnectUser(user.userId);
                 userSockets.delete(ws);
                 if (userSockets.size === 0) {
                     this.connectionsByUserId.delete(user.userId);

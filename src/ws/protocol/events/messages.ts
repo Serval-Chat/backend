@@ -16,7 +16,7 @@ export interface ISendMessageDmEvent
             text: string; // Message content (max 2000 chars)
             replyToId?: string; // Optional: Message ID being replied to
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Response to send_message_dm)
@@ -38,7 +38,7 @@ export interface IMessageDmSentEvent
                 text: string;
             };
         }
-    > {}
+    > { }
 
 export interface IMessageDm {
     messageId: string;
@@ -62,7 +62,7 @@ export interface IMessageDm {
  * Server → Client (Broadcast)
  * New DM received or sent (broadcast to both sender and receiver sessions).
  */
-export interface IMessageDmEvent extends WsEvent<'message_dm', IMessageDm> {}
+export interface IMessageDmEvent extends WsEvent<'message_dm', IMessageDm> { }
 
 /**
  * Client → Server
@@ -75,7 +75,7 @@ export interface IEditMessageDmEvent
             messageId: string;
             text: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast)
@@ -90,7 +90,7 @@ export interface IMessageDmEditedEvent
             editedAt: string;
             isEdited: true;
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -102,7 +102,7 @@ export interface IDeleteMessageDmEvent
         {
             messageId: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast)
@@ -114,7 +114,7 @@ export interface IMessageDmDeletedEvent
         {
             messageId: string;
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -126,7 +126,7 @@ export interface IMarkDmReadEvent
         {
             peerId: string; // User ID of conversation partner
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast to user's sessions)
@@ -140,7 +140,7 @@ export interface IDmUnreadUpdatedEvent
             peerUsername: string;
             count: number; // New unread count
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -152,7 +152,7 @@ export interface ITypingDmEvent
         {
             receiverId: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast to receiver)
@@ -165,7 +165,7 @@ export interface ITypingDmBroadcastEvent
             senderId: string;
             senderUsername: string;
         }
-    > {}
+    > { }
 
 // ============================================================================
 // Server (Guild/Channel) Message Events
@@ -181,7 +181,7 @@ export interface IJoinServerEvent
         {
             serverId: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Response)
@@ -193,7 +193,7 @@ export interface IServerJoinedEvent
         {
             serverId: string;
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -205,7 +205,7 @@ export interface ILeaveServerEvent
         {
             serverId: string;
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -218,7 +218,7 @@ export interface IJoinChannelEvent
             serverId: string;
             channelId: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Response)
@@ -231,7 +231,7 @@ export interface IChannelJoinedEvent
             serverId: string;
             channelId: string;
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -243,7 +243,7 @@ export interface ILeaveChannelEvent
         {
             channelId: string;
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -258,7 +258,7 @@ export interface ISendMessageServerEvent
             text: string;
             replyToId?: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Response)
@@ -276,7 +276,7 @@ export interface IMessageServerSentEvent
             createdAt: string;
             replyToId?: string;
         }
-    > {}
+    > { }
 
 export interface IMessageServer {
     messageId: string;
@@ -304,7 +304,7 @@ export interface IMessageServer {
  * New server message.
  */
 export interface IMessageServerEvent
-    extends WsEvent<'message_server', IMessageServer> {}
+    extends WsEvent<'message_server', IMessageServer> { }
 
 /**
  * Client → Server
@@ -317,7 +317,7 @@ export interface IEditMessageServerEvent
             messageId: string;
             text: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast)
@@ -334,7 +334,7 @@ export interface IMessageServerEditedEvent
             editedAt: string;
             isEdited: true;
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -347,7 +347,7 @@ export interface IDeleteMessageServerEvent
             serverId: string;
             messageId: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast)
@@ -360,7 +360,7 @@ export interface IMessageServerDeletedEvent
             messageId: string;
             channelId: string;
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -373,7 +373,7 @@ export interface IMarkChannelReadEvent
             serverId: string;
             channelId: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast to user's sessions)
@@ -389,7 +389,7 @@ export interface IChannelUnreadUpdatedEvent
             senderId: string;
             lastReadAt?: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast to user's sessions)
@@ -402,7 +402,7 @@ export interface IServerUnreadUpdatedEvent
             serverId: string;
             hasUnread: boolean;
         }
-    > {}
+    > { }
 
 /**
  * Client → Server
@@ -415,7 +415,7 @@ export interface ITypingServerEvent
             serverId: string;
             channelId: string;
         }
-    > {}
+    > { }
 
 /**
  * Server → Client (Broadcast to channel)
@@ -429,4 +429,4 @@ export interface ITypingServerBroadcastEvent
             senderId: string;
             senderUsername: string;
         }
-    > {}
+    > { }

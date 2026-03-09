@@ -63,6 +63,7 @@ import {
     UploadBannerResponseDTO,
 } from './dto/server.response.dto';
 import { UpdateDefaultRoleRequestDTO } from './dto/server-default-role.request.dto';
+import { PingService } from '@/services/PingService';
 
 @injectable()
 @Controller('api/v1/servers')
@@ -99,6 +100,8 @@ export class ServerController {
         private permissionService: PermissionService,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
+        @Inject(TYPES.PingService)
+        private pingService: PingService,
         @Inject(TYPES.Logger)
         private logger: ILogger,
     ) {
@@ -190,7 +193,7 @@ export class ServerController {
     @ApiResponse({ status: 200, description: 'Unread status per server' })
     public async getUnreadStatus(
         @Req() req: Request,
-    ): Promise<Record<string, boolean>> {
+    ): Promise<Record<string, { hasUnread: boolean; pingCount: number }>> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const userOid = new Types.ObjectId(userId);
         const memberships = await this.serverMemberRepo.findByUserId(userOid);
@@ -200,11 +203,19 @@ export class ServerController {
 
         const channels = await this.channelRepo.findByServerIds(serverIds);
         const reads = await this.serverChannelReadRepo.findByUserId(userOid);
+        const pings = await this.pingService.getPingsForUser(userOid);
 
         const readMap = new Map<string, Date>();
         reads.forEach((read) =>
             readMap.set(read.channelId.toString(), read.lastReadAt),
         );
+
+        const pingCounts: Record<string, number> = {};
+        pings.forEach((p) => {
+            if (p.serverId) {
+                pingCounts[p.serverId] = (pingCounts[p.serverId] || 0) + 1;
+            }
+        });
 
         const unreadMap: Record<string, boolean> = {};
         serverIds.forEach((id) => (unreadMap[id.toString()] = false));
@@ -247,7 +258,19 @@ export class ServerController {
             }
         }
 
-        return unreadMap;
+        const result: Record<
+            string,
+            { hasUnread: boolean; pingCount: number }
+        > = {};
+        serverIds.forEach((id) => {
+            const serverIdStr = id.toString();
+            result[serverIdStr] = {
+                hasUnread: unreadMap[serverIdStr] || false,
+                pingCount: pingCounts[serverIdStr] || 0,
+            };
+        });
+
+        return result;
     }
 
     @Post(':serverId/ack')

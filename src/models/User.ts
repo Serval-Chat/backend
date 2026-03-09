@@ -41,6 +41,11 @@ export interface IUser extends Document {
     bio?: string;
     pronouns?: string;
     badges?: string[]; // Array of badge IDs
+    notificationPreferences?: {
+        mention: boolean;
+        friend_request: boolean;
+        custom: boolean;
+    };
     settings?: {
         muteNotifications?: boolean;
         useDiscordStyleMessages?: boolean;
@@ -138,6 +143,14 @@ const schema = new Schema<IUser>(
             showYouLabel: { type: Boolean, default: true },
             ownMessageColor: { type: String, default: '#5865f2' },
             otherMessageColor: { type: String, default: '#5865f2' },
+        },
+        notificationPreferences: {
+            type: {
+                mention: { type: Boolean, default: true },
+                friend_request: { type: Boolean, default: true },
+                custom: { type: Boolean, default: true },
+            },
+            default: () => ({ mention: true, friend_request: true, custom: true }),
         },
         banner: { type: String, required: false },
     },

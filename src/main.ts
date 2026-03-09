@@ -11,6 +11,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { setupExpressApp } from './server';
 import { connectDB } from '@/config/db';
 import { startMetricsUpdater } from '@/utils/metrics-updater';
+import { initWebPush } from '@/services/pushService';
 import { container } from '@/di/container';
 import type { WsServer } from '@/ws/server';
 import { TYPES } from '@/di/types';
@@ -108,12 +109,12 @@ async function bootstrap() {
     }
 
     startMetricsUpdater(60000);
+    initWebPush();
 
     // Start the application
     await app.listen(PORT, '0.0.0.0');
     Logger.log(`Application is running on: ${await app.getUrl()}`, 'Bootstrap');
 
-    // Enable graceful shutdown
     app.enableShutdownHooks();
 
     // Handle signals for WsServer shutdown
@@ -130,7 +131,6 @@ async function bootstrap() {
             'Bootstrap',
         );
 
-        // Set a timeout to force exit if graceful shutdown takes too long
         const forceExitTimeout = setTimeout(() => {
             Logger.error('Forced exit after timeout', 'Bootstrap');
             process.exit(1);
