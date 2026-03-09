@@ -23,14 +23,22 @@ const PushSubscriptionSchema = new Schema<IPushSubscription>({
 
 PushSubscriptionSchema.index(
     { userId: 1, 'endpointData.endpoint': 1 },
-    { unique: true, partialFilterExpression: { 'endpointData.endpoint': { $type: 'string' } } }
+    {
+        unique: true,
+        partialFilterExpression: {
+            'endpointData.endpoint': { $type: 'string' },
+        },
+    },
 );
 PushSubscriptionSchema.index(
     { userId: 1, fcmToken: 1 },
-    { unique: true, partialFilterExpression: { fcmToken: { $type: 'string' } } }
+    {
+        unique: true,
+        partialFilterExpression: { fcmToken: { $type: 'string' } },
+    },
 );
 
 export const PushSubscription = mongoose.model<IPushSubscription>(
     'PushSubscription',
-    PushSubscriptionSchema
+    PushSubscriptionSchema,
 );

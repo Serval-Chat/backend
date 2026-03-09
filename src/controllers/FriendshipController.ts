@@ -62,7 +62,7 @@ export class FriendshipController {
         private wsServer: WsServer,
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) { }
+    ) {}
 
     // Maps a user document to a public friend payload
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
@@ -296,8 +296,10 @@ export class FriendshipController {
             await notifyUser(friendIdStr, 'friend_request', {
                 type: 'friend_request',
                 senderName: meUser.username || '',
-                senderId: meId
-            }).catch((err) => this.logger.error('Failed to send push notification:', err));
+                senderId: meId,
+            }).catch((err) =>
+                this.logger.error('Failed to send push notification:', err),
+            );
         } catch (err) {
             this.logger.error(
                 'Failed to emit incoming_request_added event:',

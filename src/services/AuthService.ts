@@ -53,7 +53,7 @@ export class AuthService {
         @inject(TYPES.AuditLogRepository)
         @Inject(TYPES.AuditLogRepository)
         private auditLogRepo: IAuditLogRepository,
-    ) { }
+    ) {}
 
     // Authenticate a user with login credentials.
     //

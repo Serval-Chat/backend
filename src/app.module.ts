@@ -62,28 +62,28 @@ import { PushController } from './controllers/PushController';
                     PROJECT_LEVEL !== 'production'
                         ? { target: 'pino-pretty' }
                         : {
-                            targets: [
-                                {
-                                    target: 'pino-pretty',
-                                    options: { colorize: false },
-                                    level: LOG_LEVEL,
-                                },
-                                {
-                                    target: 'pino-loki',
-                                    options: {
-                                        host: LOKI_HOST,
-                                        labels: {
-                                            app: 'serval-backend',
-                                            env: 'production',
-                                        },
-                                        batching: true,
-                                        interval: 5,
-                                        silenceErrors: true,
-                                    },
-                                    level: 'info',
-                                },
-                            ],
-                        },
+                              targets: [
+                                  {
+                                      target: 'pino-pretty',
+                                      options: { colorize: false },
+                                      level: LOG_LEVEL,
+                                  },
+                                  {
+                                      target: 'pino-loki',
+                                      options: {
+                                          host: LOKI_HOST,
+                                          labels: {
+                                              app: 'serval-backend',
+                                              env: 'production',
+                                          },
+                                          batching: true,
+                                          interval: 5,
+                                          silenceErrors: true,
+                                      },
+                                      level: 'info',
+                                  },
+                              ],
+                          },
             },
         }),
 
@@ -131,5 +131,5 @@ import { PushController } from './controllers/PushController';
     ],
 })
 export class AppModule {
-    configure(_consumer: MiddlewareConsumer) { }
+    configure(_consumer: MiddlewareConsumer) {}
 }

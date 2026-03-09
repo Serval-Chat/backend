@@ -51,15 +51,17 @@ interface RawUser {
 }
 
 // Maps a raw user object from the database to a public user object
-export function mapUser(user: RawUser | null | undefined | unknown): MappedUser | null {
+export function mapUser(
+    user: RawUser | null | undefined | unknown,
+): MappedUser | null {
     if (!user || typeof user !== 'object') return null;
     const u = user as RawUser;
 
     const profilePictureUrl = u.deletedAt
         ? '/images/deleted-cat.jpg'
         : u.profilePicture
-            ? `/api/v1/profile/picture/${u.profilePicture}`
-            : null;
+          ? `/api/v1/profile/picture/${u.profilePicture}`
+          : null;
 
     return {
         _id: (u._id?.toString() || u.id) as string,

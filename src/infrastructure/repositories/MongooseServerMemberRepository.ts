@@ -18,7 +18,7 @@ import { injectable } from 'inversify';
 export class MongooseServerMemberRepository implements IServerMemberRepository {
     private serverMemberModel = ServerMember;
     private userModel = User;
-    constructor() { }
+    constructor() {}
 
     async findByServerAndUser(
         serverId: Types.ObjectId,
@@ -172,7 +172,16 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
                 return { ...m, user: null } as IServerMember & { user: null };
 
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { tokenVersion, permissions, password, settings, language, login, deletedReason, ...safeUser } = user;
+            const {
+                tokenVersion,
+                permissions,
+                password,
+                settings,
+                language,
+                login,
+                deletedReason,
+                ...safeUser
+            } = user;
             return {
                 ...m,
                 user: mapUser(safeUser),
@@ -213,7 +222,16 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
                 return { ...m, user: null } as IServerMember & { user: null };
 
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { tokenVersion, permissions, password, settings, language, login, deletedReason, ...safeUser } = user;
+            const {
+                tokenVersion,
+                permissions,
+                password,
+                settings,
+                language,
+                login,
+                deletedReason,
+                ...safeUser
+            } = user;
             return {
                 ...m,
                 user: mapUser(safeUser),

@@ -25,7 +25,7 @@ export class MongooseUserRepository implements IUserRepository {
     private friendRequestModel = FriendRequest;
     private banModel = Ban;
 
-    constructor() { }
+    constructor() {}
 
     async findById(id: Types.ObjectId): Promise<IUser | null> {
         return await this.userModel.findById(id).select('-password').lean();

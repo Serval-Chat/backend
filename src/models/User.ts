@@ -150,7 +150,11 @@ const schema = new Schema<IUser>(
                 friend_request: { type: Boolean, default: true },
                 custom: { type: Boolean, default: true },
             },
-            default: () => ({ mention: true, friend_request: true, custom: true }),
+            default: () => ({
+                mention: true,
+                friend_request: true,
+                custom: true,
+            }),
         },
         banner: { type: String, required: false },
     },

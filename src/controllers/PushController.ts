@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Req, UseGuards, SetMetadata } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    Post,
+    Patch,
+    Delete,
+    Body,
+    Req,
+    UseGuards,
+    SetMetadata,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { injectable } from 'inversify';
 import type { Request as ExpressRequest } from 'express';
@@ -6,7 +16,12 @@ import { JWTPayload } from '@/utils/jwt';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { PushSubscription } from '@/models/PushSubscription';
 import { User } from '@/models/User';
-import { WebPushDto, FcmDto, UpdatePreferencesDto, MigrateVapidDto } from './dto/push.request.dto';
+import {
+    WebPushDto,
+    FcmDto,
+    UpdatePreferencesDto,
+    MigrateVapidDto,
+} from './dto/push.request.dto';
 import { Types } from 'mongoose';
 import { VAPID_PUB } from '@/config/env';
 
@@ -16,7 +31,7 @@ import { VAPID_PUB } from '@/config/env';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class PushController {
-    constructor() { }
+    constructor() {}
 
     @Get('vapid-public-key')
     @SetMetadata('isPublic', true)
@@ -37,7 +52,10 @@ export class PushController {
 
     @Post('subscribe/web')
     @ApiOperation({ summary: 'Subscribe to web push' })
-    public async subscribeWeb(@Req() req: ExpressRequest, @Body() body: WebPushDto) {
+    public async subscribeWeb(
+        @Req() req: ExpressRequest,
+        @Body() body: WebPushDto,
+    ) {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         await PushSubscription.updateOne(
             { userId, 'endpointData.endpoint': body.subscription.endpoint },
@@ -50,14 +68,17 @@ export class PushController {
                     userAgent: req.headers['user-agent'],
                 },
             },
-            { upsert: true }
+            { upsert: true },
         );
         return { success: true };
     }
 
     @Post('subscribe/fcm')
     @ApiOperation({ summary: 'Subscribe to FCM' })
-    public async subscribeFcm(@Req() req: ExpressRequest, @Body() body: FcmDto) {
+    public async subscribeFcm(
+        @Req() req: ExpressRequest,
+        @Body() body: FcmDto,
+    ) {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         await PushSubscription.updateOne(
             { userId, fcmToken: body.token },
@@ -69,7 +90,7 @@ export class PushController {
                     userAgent: req.headers['user-agent'],
                 },
             },
-            { upsert: true }
+            { upsert: true },
         );
         return { success: true };
     }
@@ -86,13 +107,24 @@ export class PushController {
     @ApiOperation({ summary: 'Get notification preferences' })
     public async getPreferences(@Req() req: ExpressRequest) {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const user = await User.findById(new Types.ObjectId(userId)).select('notificationPreferences').lean();
-        return user?.notificationPreferences ?? { mention: true, friend_request: true, custom: true };
+        const user = await User.findById(new Types.ObjectId(userId))
+            .select('notificationPreferences')
+            .lean();
+        return (
+            user?.notificationPreferences ?? {
+                mention: true,
+                friend_request: true,
+                custom: true,
+            }
+        );
     }
 
     @Patch('preferences')
     @ApiOperation({ summary: 'Update notification preferences' })
-    public async updatePreferences(@Req() req: ExpressRequest, @Body() body: UpdatePreferencesDto) {
+    public async updatePreferences(
+        @Req() req: ExpressRequest,
+        @Body() body: UpdatePreferencesDto,
+    ) {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const updateObj: Record<string, unknown> = {};
@@ -100,13 +132,18 @@ export class PushController {
             updateObj[`notificationPreferences.${k}`] = v;
         }
 
-        await User.findByIdAndUpdate(new Types.ObjectId(userId), { $set: updateObj });
+        await User.findByIdAndUpdate(new Types.ObjectId(userId), {
+            $set: updateObj,
+        });
         return { success: true };
     }
 
     @Post('migrate-vapid')
     @ApiOperation({ summary: 'Migrate VAPID subscription' })
-    public async migrateVapid(@Req() req: ExpressRequest, @Body() body: MigrateVapidDto) {
+    public async migrateVapid(
+        @Req() req: ExpressRequest,
+        @Body() body: MigrateVapidDto,
+    ) {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         await PushSubscription.deleteOne({
             userId,
@@ -124,7 +161,7 @@ export class PushController {
                     userAgent: req.headers['user-agent'],
                 },
             },
-            { upsert: true }
+            { upsert: true },
         );
         return { success: true };
     }

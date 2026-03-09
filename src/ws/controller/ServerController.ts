@@ -80,7 +80,7 @@ export class ServerController {
         @inject(TYPES.PingService) private pingService: PingService,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
-    ) { }
+    ) {}
 
     /**
      * Handles 'join_server' event.
@@ -301,10 +301,10 @@ export class ServerController {
                         text,
                         ...(replyToId
                             ? {
-                                replyToId: new mongoose.Types.ObjectId(
-                                    replyToId,
-                                ),
-                            }
+                                  replyToId: new mongoose.Types.ObjectId(
+                                      replyToId,
+                                  ),
+                              }
                             : {}),
                     },
                     session,
@@ -859,7 +859,11 @@ export class ServerController {
                 senderName: senderUsername,
                 channelName,
                 preview: message.text,
-            }).catch(err => logger.error(`[ServerController] Failed to push notify: ${err}`));
+            }).catch((err) =>
+                logger.error(
+                    `[ServerController] Failed to push notify: ${err}`,
+                ),
+            );
 
             // Emit socket event only for online users
             if (this.wsServer.isUserOnline(mentionedUserId)) {

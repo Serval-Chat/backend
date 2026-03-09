@@ -1,12 +1,16 @@
 import webpush from 'web-push';
-import { PushSubscription, type IPushSubscription } from '../models/PushSubscription';
+import {
+    PushSubscription,
+    type IPushSubscription,
+} from '../models/PushSubscription';
 import { User } from '../models/User';
 import logger from '../utils/logger';
 import { VAPID_PUB, VAPID_PRI } from '../config/env';
 import { parseNotificationText } from '../utils/textParser';
 import type * as admin from 'firebase-admin';
 
-const vapidConfigs: Record<string, { publicKey: string; privateKey: string }> = {};
+const vapidConfigs: Record<string, { publicKey: string; privateKey: string }> =
+    {};
 
 export function initWebPush() {
     if (process.env.VAPID_KEY_VERSION && VAPID_PUB && VAPID_PRI) {
@@ -26,7 +30,7 @@ async function getFCM() {
     if (!admin.apps.length) {
         admin.initializeApp({
             credential: admin.credential.cert(
-                JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+                JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT),
             ),
         });
     }
@@ -46,13 +50,26 @@ interface NotificationPayload {
 }
 
 type NotificationTemplateData =
-    | { type: 'mention'; senderName: string; channelName?: string; preview: string }
+    | {
+          type: 'mention';
+          senderName: string;
+          channelName?: string;
+          preview: string;
+      }
     | { type: 'friend_request'; senderName: string; senderId: string }
     | { type: 'dm'; senderName: string; senderId: string; preview: string }
-    | { type: 'custom'; title: string; body: string; url?: string; tag?: string };
+    | {
+          type: 'custom';
+          title: string;
+          body: string;
+          url?: string;
+          tag?: string;
+      };
 
 const templates: {
-    [K in NotificationType]: (d: Extract<NotificationTemplateData, { type: K }>) => NotificationPayload;
+    [K in NotificationType]: (
+        d: Extract<NotificationTemplateData, { type: K }>,
+    ) => NotificationPayload;
 } = {
     mention: ({ senderName, channelName, preview }) => ({
         title: `${senderName} mentioned you`,
@@ -73,30 +90,41 @@ const templates: {
         data: { type: 'dm', senderId },
     }),
     custom: ({ title, body, url, tag }) => ({
-        title, body, tag: tag ?? 'custom',
+        title,
+        body,
+        tag: tag ?? 'custom',
         data: { type: 'custom', url: url ?? '/' },
     }),
 };
 
-async function sendToSubscription(sub: IPushSubscription, payload: NotificationPayload) {
+async function sendToSubscription(
+    sub: IPushSubscription,
+    payload: NotificationPayload,
+) {
     if (sub.type === 'webpush') {
         const version = sub.vapidKeyVersion ?? 'v1';
         const config = vapidConfigs[version];
 
         if (!config) {
-            logger.warn(`[PushService] Key version ${version} no longer loaded — removing subscription ${sub._id}`);
+            logger.warn(
+                `[PushService] Key version ${version} no longer loaded — removing subscription ${sub._id}`,
+            );
             await PushSubscription.deleteOne({ _id: sub._id });
             return;
         }
 
         if (!sub.endpointData) {
-            logger.warn(`[PushService] Webpush subscription missing endpoint data for sub ${sub._id}. Removing.`);
+            logger.warn(
+                `[PushService] Webpush subscription missing endpoint data for sub ${sub._id}. Removing.`,
+            );
             await PushSubscription.deleteOne({ _id: sub._id });
             return;
         }
 
         try {
-            logger.debug(`[PushService] Sending Web Push to ${sub.userId} (version ${version})`);
+            logger.debug(
+                `[PushService] Sending Web Push to ${sub.userId} (version ${version})`,
+            );
             await webpush.sendNotification(
                 sub.endpointData,
                 JSON.stringify(payload),
@@ -107,28 +135,39 @@ async function sendToSubscription(sub: IPushSubscription, payload: NotificationP
                         publicKey: config.publicKey,
                         privateKey: config.privateKey,
                     },
-                }
+                },
             );
         } catch (err: unknown) {
             const error = err as webpush.WebPushError;
             if (error.statusCode === 401) {
-                logger.warn(`[PushService] Webpush error 401 (Key mismatch) for sub ${sub._id}. Removing.`);
+                logger.warn(
+                    `[PushService] Webpush error 401 (Key mismatch) for sub ${sub._id}. Removing.`,
+                );
                 await PushSubscription.deleteOne({ _id: sub._id });
             } else if (error.statusCode === 410 || error.statusCode === 404) {
-                logger.info(`[PushService] Webpush error ${error.statusCode} (Expired/Unsubscribed) for sub ${sub._id}. Removing.`);
+                logger.info(
+                    `[PushService] Webpush error ${error.statusCode} (Expired/Unsubscribed) for sub ${sub._id}. Removing.`,
+                );
                 await PushSubscription.deleteOne({ _id: sub._id });
             } else {
-                logger.error(`[PushService] Unhandled Webpush error for ${sub.userId}:`, err);
+                logger.error(
+                    `[PushService] Unhandled Webpush error for ${sub.userId}:`,
+                    err,
+                );
             }
         }
     } else {
         const admin = await getFCM();
         if (!admin) {
-            logger.debug(`[PushService] FCM skipped (no credentials) for sub ${sub._id}`);
+            logger.debug(
+                `[PushService] FCM skipped (no credentials) for sub ${sub._id}`,
+            );
             return;
         }
         if (!sub.fcmToken) {
-            logger.warn(`[PushService] FCM subscription missing token for sub ${sub._id}. Removing.`);
+            logger.warn(
+                `[PushService] FCM subscription missing token for sub ${sub._id}. Removing.`,
+            );
             await PushSubscription.deleteOne({ _id: sub._id });
             return;
         }
@@ -138,7 +177,10 @@ async function sendToSubscription(sub: IPushSubscription, payload: NotificationP
                 token: sub.fcmToken,
                 notification: { title: payload.title, body: payload.body },
                 data: payload.data ?? {},
-                android: { priority: 'high', notification: { tag: payload.tag } },
+                android: {
+                    priority: 'high',
+                    notification: { tag: payload.tag },
+                },
             });
         } catch (err: unknown) {
             const error = err as { code?: string };
@@ -147,7 +189,9 @@ async function sendToSubscription(sub: IPushSubscription, payload: NotificationP
                 'messaging/invalid-registration-token',
             ];
             if (error.code && expired.includes(error.code)) {
-                logger.info(`[PushService] FCM token expired for sub ${sub._id}. Removing.`);
+                logger.info(
+                    `[PushService] FCM token expired for sub ${sub._id}. Removing.`,
+                );
                 await PushSubscription.deleteOne({ _id: sub._id });
             } else {
                 logger.error(`[PushService] FCM error for ${sub.userId}:`, err);
@@ -161,7 +205,9 @@ const _onlineUsers = new Map<string, number>();
 export function connectUser(userId: string) {
     const newCount = (_onlineUsers.get(userId) ?? 0) + 1;
     _onlineUsers.set(userId, newCount);
-    logger.debug(`[PushService] User ${userId} connected. Open sockets: ${newCount}`);
+    logger.debug(
+        `[PushService] User ${userId} connected. Open sockets: ${newCount}`,
+    );
 }
 
 export function disconnectUser(userId: string) {
@@ -171,7 +217,9 @@ export function disconnectUser(userId: string) {
         logger.debug(`[PushService] User ${userId} fully disconnected.`);
     } else {
         _onlineUsers.set(userId, count);
-        logger.debug(`[PushService] User ${userId} socket closed. Remaining sockets: ${count}`);
+        logger.debug(
+            `[PushService] User ${userId} socket closed. Remaining sockets: ${count}`,
+        );
     }
 }
 
@@ -182,9 +230,11 @@ function isUserOnline(userId: string): boolean {
 
 async function isAllowedByPreferences(
     userId: string,
-    type: NotificationType
+    type: NotificationType,
 ): Promise<boolean> {
-    const user = await User.findById(userId).select('notificationPreferences').lean();
+    const user = await User.findById(userId)
+        .select('notificationPreferences')
+        .lean();
     if (!user?.notificationPreferences) return true;
     const prefs = user.notificationPreferences as Record<string, boolean>;
     return prefs[type] !== false;
@@ -193,17 +243,23 @@ async function isAllowedByPreferences(
 export async function notifyUser(
     userId: string,
     type: NotificationType,
-    data: NotificationTemplateData
+    data: NotificationTemplateData,
 ) {
-    logger.info(`[PushService] Analyzing push triggers for user ${userId} (Type: ${type})`);
+    logger.info(
+        `[PushService] Analyzing push triggers for user ${userId} (Type: ${type})`,
+    );
 
     if (isUserOnline(userId)) {
-        logger.info(`[PushService] Skipped push: User ${userId} is currently online via WebSocket.`);
+        logger.info(
+            `[PushService] Skipped push: User ${userId} is currently online via WebSocket.`,
+        );
         return;
     }
 
     if (!(await isAllowedByPreferences(userId, type))) {
-        logger.info(`[PushService] Skipped push: User ${userId} disabled ${type} notifications.`);
+        logger.info(
+            `[PushService] Skipped push: User ${userId} disabled ${type} notifications.`,
+        );
         return;
     }
 
@@ -219,7 +275,9 @@ export async function notifyUser(
     const payload = (templates[type] as any)(data);
     const subs = await PushSubscription.find({ userId });
 
-    logger.info(`[PushService] Found ${subs.length} push subscriptions for user ${userId}`);
+    logger.info(
+        `[PushService] Found ${subs.length} push subscriptions for user ${userId}`,
+    );
 
     if (subs.length === 0) return;
 
@@ -229,7 +287,7 @@ export async function notifyUser(
 export async function notifyUsers(
     userIds: string[],
     type: NotificationType,
-    data: NotificationTemplateData
+    data: NotificationTemplateData,
 ) {
     await Promise.allSettled(userIds.map((id) => notifyUser(id, type, data)));
 }
