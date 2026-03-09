@@ -1,9 +1,10 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, type Document } from 'mongoose';
+import { type PushSubscription as WebPushSubscription } from 'web-push';
 
 export interface IPushSubscription extends Document {
     userId: string;
     type: 'webpush' | 'fcm';
-    endpointData?: any;
+    endpointData?: WebPushSubscription;
     fcmToken?: string;
     vapidKeyVersion?: string;
     userAgent?: string;

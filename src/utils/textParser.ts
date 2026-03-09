@@ -19,7 +19,7 @@ export async function parseNotificationText(text: string): Promise<string> {
                 const username = userMap.get(id);
                 return username ? `@${username}` : '@Unknown';
             });
-        } catch (e) {
+        } catch {
             parsedText = parsedText.replace(/<userid:'([^']+)'>/g, '@Unknown');
         }
     }
@@ -34,7 +34,7 @@ export async function parseNotificationText(text: string): Promise<string> {
                 const roleName = roleMap.get(id);
                 return roleName ? `@${roleName}` : '@UnknownRole';
             });
-        } catch (e) {
+        } catch {
             parsedText = parsedText.replace(/<roleid:'([^']+)'>/g, '@UnknownRole');
         }
     }

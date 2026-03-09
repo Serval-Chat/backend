@@ -294,9 +294,9 @@ export class FriendshipController {
             });
 
             await notifyUser(friendIdStr, 'friend_request', {
-                title: 'New Friend Request',
-                body: `${meUser.username} sent you a friend request.`,
-                data: { senderId: meId }
+                type: 'friend_request',
+                senderName: meUser.username || '',
+                senderId: meId
             }).catch((err) => this.logger.error('Failed to send push notification:', err));
         } catch (err) {
             this.logger.error(

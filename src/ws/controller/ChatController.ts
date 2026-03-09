@@ -174,6 +174,7 @@ export class ChatController {
         });
 
         notifyUser(receiverId, 'dm', {
+            type: 'dm',
             senderName: authenticatedUser.username,
             senderId,
             preview: text

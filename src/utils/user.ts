@@ -2,7 +2,6 @@ import {
     resolveSerializedCustomStatus,
     type SerializedCustomStatus,
 } from '@/utils/status';
-import { type AdminPermissions } from '@/routes/api/v1/admin/permissions';
 
 export interface MappedUser {
     _id: string;
@@ -31,44 +30,64 @@ export interface MappedUser {
     banner: string | null;
 }
 
-// Maps a raw user object from the database to a public user object
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapUser(user: any): MappedUser | null {
-    if (!user) return null;
+interface RawUser {
+    _id?: { toString(): string } | string;
+    id?: string;
+    username?: unknown;
+    displayName?: unknown;
+    profilePicture?: unknown;
+    usernameFont?: unknown;
+    usernameGradient?: unknown;
+    usernameGlow?: unknown;
+    customStatus?: unknown;
+    createdAt?: unknown;
+    bio?: unknown;
+    pronouns?: unknown;
+    badges?: unknown;
+    deletedAt?: unknown;
+    anonymizedUsername?: unknown;
+    banner?: unknown;
+    [key: string]: unknown;
+}
 
-    const profilePictureUrl = user.deletedAt
+// Maps a raw user object from the database to a public user object
+export function mapUser(user: RawUser | null | undefined | unknown): MappedUser | null {
+    if (!user || typeof user !== 'object') return null;
+    const u = user as RawUser;
+
+    const profilePictureUrl = u.deletedAt
         ? '/images/deleted-cat.jpg'
-        : user.profilePicture
-          ? `/api/v1/profile/picture/${user.profilePicture}`
-          : null;
+        : u.profilePicture
+            ? `/api/v1/profile/picture/${u.profilePicture}`
+            : null;
 
     return {
-        _id: (user._id?.toString() || user.id) as string,
-        id: (user._id?.toString() || user.id) as string,
-        username: user.username as string,
-        displayName: (user.displayName as string) || null,
+        _id: (u._id?.toString() || u.id) as string,
+        id: (u._id?.toString() || u.id) as string,
+        username: u.username as string,
+        displayName: (u.displayName as string) || null,
         profilePicture: profilePictureUrl,
-        usernameFont: (user.usernameFont as string) || 'default',
+        usernameFont: (u.usernameFont as string) || 'default',
         usernameGradient:
-            (user.usernameGradient as MappedUser['usernameGradient']) || {
+            (u.usernameGradient as MappedUser['usernameGradient']) || {
                 enabled: false,
                 colors: ['#ffffff', '#ffffff'],
                 angle: 90,
             },
-        usernameGlow: (user.usernameGlow as MappedUser['usernameGlow']) || {
+        usernameGlow: (u.usernameGlow as MappedUser['usernameGlow']) || {
             enabled: false,
             color: '#ffffff',
             intensity: 5,
         },
         customStatus: resolveSerializedCustomStatus(
-            user.customStatus as Record<string, unknown> | null | undefined,
+            u.customStatus as Record<string, unknown> | null | undefined,
         ),
-        createdAt: (user.createdAt as Date) || new Date(),
-        bio: (user.bio as string) || '',
-        pronouns: (user.pronouns as string) || '',
-        badges: (user.badges as string[]) || [],
-        deletedAt: (user.deletedAt as Date) || null,
-        anonymizedUsername: (user.anonymizedUsername as string) || null,
-        banner: user.banner ? `/api/v1/profile/picture/${user.banner}` : null,
+        createdAt: (u.createdAt as Date) || new Date(),
+        bio: (u.bio as string) || '',
+        pronouns: (u.pronouns as string) || '',
+        badges: (u.badges as string[]) || [],
+        deletedAt: (u.deletedAt as Date) || null,
+        anonymizedUsername: (u.anonymizedUsername as string) || null,
+        banner: u.banner ? `/api/v1/profile/picture/${u.banner}` : null,
     };
 }

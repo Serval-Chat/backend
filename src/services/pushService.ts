@@ -1,9 +1,10 @@
 import webpush from 'web-push';
-import { PushSubscription } from '../models/PushSubscription';
+import { PushSubscription, type IPushSubscription } from '../models/PushSubscription';
 import { User } from '../models/User';
 import logger from '../utils/logger';
 import { VAPID_PUB, VAPID_PRI } from '../config/env';
 import { parseNotificationText } from '../utils/textParser';
+import type * as admin from 'firebase-admin';
 
 const vapidConfigs: Record<string, { publicKey: string; privateKey: string }> = {};
 
@@ -16,7 +17,7 @@ export function initWebPush() {
     }
 }
 
-let _fcmAdmin: any = null;
+let _fcmAdmin: typeof admin | null = null;
 async function getFCM() {
     if (_fcmAdmin) return _fcmAdmin;
     if (!process.env.FIREBASE_SERVICE_ACCOUNT) return null;
@@ -44,7 +45,15 @@ interface NotificationPayload {
     data?: Record<string, string>;
 }
 
-const templates: Record<NotificationType, (d: any) => NotificationPayload> = {
+type NotificationTemplateData =
+    | { type: 'mention'; senderName: string; channelName?: string; preview: string }
+    | { type: 'friend_request'; senderName: string; senderId: string }
+    | { type: 'dm'; senderName: string; senderId: string; preview: string }
+    | { type: 'custom'; title: string; body: string; url?: string; tag?: string };
+
+const templates: {
+    [K in NotificationType]: (d: Extract<NotificationTemplateData, { type: K }>) => NotificationPayload;
+} = {
     mention: ({ senderName, channelName, preview }) => ({
         title: `${senderName} mentioned you`,
         body: channelName ? `#${channelName}: ${preview}` : preview,
@@ -53,7 +62,7 @@ const templates: Record<NotificationType, (d: any) => NotificationPayload> = {
     }),
     friend_request: ({ senderName, senderId }) => ({
         title: 'New friend request',
-        body: `${senderName} wants to connect`,
+        body: `${senderName} wants to become your friend`,
         tag: 'friend_request',
         data: { type: 'friend_request', senderId },
     }),
@@ -69,13 +78,19 @@ const templates: Record<NotificationType, (d: any) => NotificationPayload> = {
     }),
 };
 
-async function sendToSubscription(sub: any, payload: NotificationPayload) {
+async function sendToSubscription(sub: IPushSubscription, payload: NotificationPayload) {
     if (sub.type === 'webpush') {
         const version = sub.vapidKeyVersion ?? 'v1';
         const config = vapidConfigs[version];
 
         if (!config) {
             logger.warn(`[PushService] Key version ${version} no longer loaded — removing subscription ${sub._id}`);
+            await PushSubscription.deleteOne({ _id: sub._id });
+            return;
+        }
+
+        if (!sub.endpointData) {
+            logger.warn(`[PushService] Webpush subscription missing endpoint data for sub ${sub._id}. Removing.`);
             await PushSubscription.deleteOne({ _id: sub._id });
             return;
         }
@@ -94,12 +109,13 @@ async function sendToSubscription(sub: any, payload: NotificationPayload) {
                     },
                 }
             );
-        } catch (err: any) {
-            if (err.statusCode === 401) {
+        } catch (err: unknown) {
+            const error = err as webpush.WebPushError;
+            if (error.statusCode === 401) {
                 logger.warn(`[PushService] Webpush error 401 (Key mismatch) for sub ${sub._id}. Removing.`);
                 await PushSubscription.deleteOne({ _id: sub._id });
-            } else if (err.statusCode === 410 || err.statusCode === 404) {
-                logger.info(`[PushService] Webpush error ${err.statusCode} (Expired/Unsubscribed) for sub ${sub._id}. Removing.`);
+            } else if (error.statusCode === 410 || error.statusCode === 404) {
+                logger.info(`[PushService] Webpush error ${error.statusCode} (Expired/Unsubscribed) for sub ${sub._id}. Removing.`);
                 await PushSubscription.deleteOne({ _id: sub._id });
             } else {
                 logger.error(`[PushService] Unhandled Webpush error for ${sub.userId}:`, err);
@@ -111,6 +127,11 @@ async function sendToSubscription(sub: any, payload: NotificationPayload) {
             logger.debug(`[PushService] FCM skipped (no credentials) for sub ${sub._id}`);
             return;
         }
+        if (!sub.fcmToken) {
+            logger.warn(`[PushService] FCM subscription missing token for sub ${sub._id}. Removing.`);
+            await PushSubscription.deleteOne({ _id: sub._id });
+            return;
+        }
         try {
             logger.debug(`[PushService] Sending FCM to ${sub.userId}`);
             await admin.messaging().send({
@@ -119,12 +140,13 @@ async function sendToSubscription(sub: any, payload: NotificationPayload) {
                 data: payload.data ?? {},
                 android: { priority: 'high', notification: { tag: payload.tag } },
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as { code?: string };
             const expired = [
                 'messaging/registration-token-not-registered',
                 'messaging/invalid-registration-token',
             ];
-            if (expired.includes(err.code)) {
+            if (error.code && expired.includes(error.code)) {
                 logger.info(`[PushService] FCM token expired for sub ${sub._id}. Removing.`);
                 await PushSubscription.deleteOne({ _id: sub._id });
             } else {
@@ -171,7 +193,7 @@ async function isAllowedByPreferences(
 export async function notifyUser(
     userId: string,
     type: NotificationType,
-    data: object
+    data: NotificationTemplateData
 ) {
     logger.info(`[PushService] Analyzing push triggers for user ${userId} (Type: ${type})`);
 
@@ -192,7 +214,9 @@ export async function notifyUser(
         data.body = await parseNotificationText(data.body);
     }
 
-    const payload = templates[type](data);
+    // safely downcast templates index to apply the combined union
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload = (templates[type] as any)(data);
     const subs = await PushSubscription.find({ userId });
 
     logger.info(`[PushService] Found ${subs.length} push subscriptions for user ${userId}`);
@@ -205,7 +229,7 @@ export async function notifyUser(
 export async function notifyUsers(
     userIds: string[],
     type: NotificationType,
-    data: object
+    data: NotificationTemplateData
 ) {
     await Promise.allSettled(userIds.map((id) => notifyUser(id, type, data)));
 }

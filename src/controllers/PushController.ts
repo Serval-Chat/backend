@@ -95,7 +95,7 @@ export class PushController {
     public async updatePreferences(@Req() req: ExpressRequest, @Body() body: UpdatePreferencesDto) {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
-        const updateObj: Record<string, any> = {};
+        const updateObj: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(body)) {
             updateObj[`notificationPreferences.${k}`] = v;
         }

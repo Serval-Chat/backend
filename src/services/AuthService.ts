@@ -9,7 +9,6 @@ import { IMetricsService } from '@/di/interfaces/IMetricsService';
 import { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { AUTH_CONSTANTS } from '@/constants/auth';
-import { type MappedUser } from '@/utils/user';
 import crypto from 'crypto';
 import { FRONTEND_URL } from '@/config/env';
 import { ApiError } from '@/utils/ApiError';
@@ -54,7 +53,7 @@ export class AuthService {
         @inject(TYPES.AuditLogRepository)
         @Inject(TYPES.AuditLogRepository)
         private auditLogRepo: IAuditLogRepository,
-    ) {}
+    ) { }
 
     // Authenticate a user with login credentials.
     //
