@@ -12,6 +12,7 @@ import { setupExpressApp } from './server';
 import { connectDB } from '@/config/db';
 import { startMetricsUpdater } from '@/utils/metrics-updater';
 import { initWebPush } from '@/services/pushService';
+import { cleanupOrphanedPings, repairEveryoneRoles } from '@/utils/startup-tasks';
 import { container } from '@/di/container';
 import type { WsServer } from '@/ws/server';
 import { TYPES } from '@/di/types';
@@ -39,6 +40,9 @@ async function bootstrap() {
         Logger.error('Database initialization failed', err, 'Bootstrap');
         process.exit(1);
     }
+
+    await cleanupOrphanedPings();
+    await repairEveryoneRoles();
 
     // Configure HTTPS if enabl
     let httpsOptions: HttpsOptions | undefined;
