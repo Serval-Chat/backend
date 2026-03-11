@@ -119,6 +119,13 @@ export class PingService {
         return await this.pingRepo.deleteByChannelId(userId, channelId);
     }
 
+    async clearServerPings(
+        userId: mongoose.Types.ObjectId,
+        serverId: mongoose.Types.ObjectId,
+    ): Promise<number> {
+        return await this.pingRepo.deleteByServerId(userId, serverId);
+    }
+
     // Clear all pings for a user
     async clearAllPings(userId: mongoose.Types.ObjectId): Promise<void> {
         await this.pingRepo.deleteByUserId(userId);

@@ -311,6 +311,8 @@ export class ServerController {
             await ServerChannelReadModel.bulkWrite(operations);
         }
 
+        await this.pingService.clearServerPings(userOid, serverOid);
+
         return { message: 'Server marked as read' };
     }
 

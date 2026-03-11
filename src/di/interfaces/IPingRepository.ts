@@ -56,6 +56,11 @@ export interface IPingRepository {
         channelId: Types.ObjectId,
     ): Promise<number>;
 
+    deleteByServerId(
+        userId: Types.ObjectId,
+        serverId: Types.ObjectId,
+    ): Promise<number>;
+
     // Delete all pings for a user
     deleteByUserId(userId: Types.ObjectId): Promise<number>;
 
