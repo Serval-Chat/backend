@@ -374,6 +374,7 @@ export class ServerInviteController {
 
         // Increment invite usage count after successful join
         await this.inviteRepo.incrementUses(invite._id);
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_added',

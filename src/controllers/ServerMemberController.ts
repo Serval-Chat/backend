@@ -242,6 +242,7 @@ export class ServerMemberController {
         }
 
         await this.serverMemberRepo.remove(serverOid, targetOid);
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
@@ -318,6 +319,7 @@ export class ServerMemberController {
 
         // Automatically remove the member from the server upon banning
         await this.serverMemberRepo.remove(serverOid, targetOid);
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
@@ -559,6 +561,7 @@ export class ServerMemberController {
         }
 
         await this.serverMemberRepo.remove(serverOid, userOid);
+        this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',

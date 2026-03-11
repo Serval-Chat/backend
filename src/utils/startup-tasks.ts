@@ -1,5 +1,9 @@
 import { Ping as PingModel } from '@/models/Ping';
-import { Channel as ChannelModel, Role as RoleModel, ServerMember as ServerMemberModel } from '@/models/Server';
+import {
+    Channel as ChannelModel,
+    Role as RoleModel,
+    ServerMember as ServerMemberModel,
+} from '@/models/Server';
 import logger from '@/utils/logger';
 import type { Types } from 'mongoose';
 
@@ -9,15 +13,24 @@ interface PingModelLike {
 }
 
 interface ChannelModelLike {
-    find(query: object, projection: object): { lean(): Promise<{ _id: unknown }[]> };
+    find(
+        query: object,
+        projection: object,
+    ): { lean(): Promise<{ _id: unknown }[]> };
 }
 
 interface RoleModelLike {
-    find(query: object, projection: object): { lean(): Promise<{ _id: unknown; serverId: unknown }[]> };
+    find(
+        query: object,
+        projection: object,
+    ): { lean(): Promise<{ _id: unknown; serverId: unknown }[]> };
 }
 
 interface ServerMemberModelLike {
-    updateMany(filter: object, update: object): Promise<{ modifiedCount: number }>;
+    updateMany(
+        filter: object,
+        update: object,
+    ): Promise<{ modifiedCount: number }>;
 }
 
 export async function cleanupOrphanedPings(
@@ -30,7 +43,9 @@ export async function cleanupOrphanedPings(
         });
 
         if (referencedChannelIds.length === 0) {
-            logger.info('[PingCleanup] No channel pings found — nothing to clean up.');
+            logger.info(
+                '[PingCleanup] No channel pings found — nothing to clean up.',
+            );
             return;
         }
 
@@ -59,7 +74,10 @@ export async function cleanupOrphanedPings(
             `[PingCleanup] Deleted ${result.deletedCount} orphaned ping(s) referencing ${orphanedIds.length} deleted channel(s).`,
         );
     } catch (error) {
-        logger.error('[PingCleanup] Error while cleaning up orphaned pings:', error);
+        logger.error(
+            '[PingCleanup] Error while cleaning up orphaned pings:',
+            error,
+        );
     }
 }
 
@@ -73,7 +91,9 @@ export async function repairEveryoneRoles(
             .lean();
 
         if (everyoneRoles.length === 0) {
-            logger.info('[EveryoneRepair] No @everyone roles found — skipping.');
+            logger.info(
+                '[EveryoneRepair] No @everyone roles found — skipping.',
+            );
             return;
         }
 
@@ -97,11 +117,18 @@ export async function repairEveryoneRoles(
         }
 
         if (totalFixed === 0) {
-            logger.info('[EveryoneRepair] All members already have their @everyone role.');
+            logger.info(
+                '[EveryoneRepair] All members already have their @everyone role.',
+            );
         } else {
-            logger.info(`[EveryoneRepair] Done — assigned @everyone to ${totalFixed} member(s) total.`);
+            logger.info(
+                `[EveryoneRepair] Done — assigned @everyone to ${totalFixed} member(s) total.`,
+            );
         }
     } catch (error) {
-        logger.error('[EveryoneRepair] Error while repairing @everyone roles:', error);
+        logger.error(
+            '[EveryoneRepair] Error while repairing @everyone roles:',
+            error,
+        );
     }
 }
