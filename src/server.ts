@@ -44,10 +44,10 @@ export function setupExpressApp(app: Application): Application {
             strictTransportSecurity:
                 PROJECT_LEVEL === 'production'
                     ? {
-                          maxAge: 31536000, // 1 year
-                          includeSubDomains: true,
-                          preload: true,
-                      }
+                        maxAge: 31536000, // 1 year
+                        includeSubDomains: true,
+                        preload: true,
+                    }
                     : false,
             contentSecurityPolicy: {
                 directives: {
@@ -67,6 +67,7 @@ export function setupExpressApp(app: Application): Application {
                     ],
                     styleSrc: [
                         "'self'",
+                        "'unsafe-inline'",
                         'https://cdn.jsdelivr.net',
                         'https://cdnjs.cloudflare.com',
                         'https://unpkg.com',
@@ -87,11 +88,11 @@ export function setupExpressApp(app: Application): Application {
                         'https://rolling.catfla.re/',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
-                                  'http://localhost:8000',
-                                  'http://localhost:8001',
-                                  'http://127.0.0.1:8000',
-                                  'http://127.0.0.1:8001',
-                              ]
+                                'http://localhost:8000',
+                                'http://localhost:8001',
+                                'http://127.0.0.1:8000',
+                                'http://127.0.0.1:8001',
+                            ]
                             : []),
                     ],
                     connectSrc: [
@@ -105,15 +106,15 @@ export function setupExpressApp(app: Application): Application {
                         'https://cloudflareinsights.com',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
-                                  'http://localhost:8000',
-                                  'http://localhost:8001',
-                                  'http://127.0.0.1:8000',
-                                  'http://127.0.0.1:8001',
-                                  'ws://localhost:8000',
-                                  'ws://localhost:8001',
-                                  'ws://127.0.0.1:8000',
-                                  'ws://127.0.0.1:8001',
-                              ]
+                                'http://localhost:8000',
+                                'http://localhost:8001',
+                                'http://127.0.0.1:8000',
+                                'http://127.0.0.1:8001',
+                                'ws://localhost:8000',
+                                'ws://localhost:8001',
+                                'ws://127.0.0.1:8000',
+                                'ws://127.0.0.1:8001',
+                            ]
                             : []),
                     ],
                     fontSrc: [
