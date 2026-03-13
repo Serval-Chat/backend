@@ -67,6 +67,7 @@ export function setupExpressApp(app: Application): Application {
                     ],
                     styleSrc: [
                         "'self'",
+                        "'unsafe-inline'",
                         'https://cdn.jsdelivr.net',
                         'https://cdnjs.cloudflare.com',
                         'https://unpkg.com',
