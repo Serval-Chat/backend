@@ -7,7 +7,7 @@ import type { IPing } from '@/di/interfaces/IPingRepository';
 
 export interface PingNotification {
     id: string;
-    type: 'mention';
+    type: 'mention' | 'export_status';
     sender: string;
     senderId: string;
     serverId?: string;
@@ -41,6 +41,17 @@ export class PingService {
         const messageId = (msg?._id || msg?.messageId)?.toString() || 'unknown';
         const senderId = pingData.senderId?.toString() || 'unknown';
 
+        if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(messageId)) {
+            return {
+                id: 'temporary',
+                type: pingData.type,
+                sender: pingData.sender,
+                senderId: senderId,
+                message: pingData.message,
+                timestamp: Date.now()
+            };
+        }
+
         const exists = await this.pingRepo.exists(
             userId,
             new mongoose.Types.ObjectId(senderId),
@@ -62,7 +73,7 @@ export class PingService {
         // Create new ping
         const createData: {
             userId: mongoose.Types.ObjectId;
-            type: 'mention';
+            type: 'mention' | 'export_status';
             sender: string;
             senderId: mongoose.Types.ObjectId;
             serverId?: mongoose.Types.ObjectId;
@@ -72,7 +83,7 @@ export class PingService {
             timestamp?: Date;
         } = {
             userId,
-            type: 'mention',
+            type: pingData.type,
             sender: pingData.sender,
             senderId: new mongoose.Types.ObjectId(senderId),
             messageId: new mongoose.Types.ObjectId(messageId),

@@ -23,6 +23,7 @@ import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository'
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import type { IPingRepository } from '@/di/interfaces/IPingRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
+import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
 import type { IPasswordResetRepository } from '@/di/interfaces/IPasswordResetRepository';
 import type { IMailService } from '@/di/interfaces/IMailService';
 import type { IMetricsService } from '@/di/interfaces/IMetricsService';
@@ -55,6 +56,7 @@ import { MongooseServerBanRepository } from '@/infrastructure/repositories/Mongo
 import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
 import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePingRepository';
 import { MongooseReactionRepository } from '@/infrastructure/repositories/MongooseReactionRepository';
+import { MongooseExportJobRepository } from '@/infrastructure/repositories/MongooseExportJobRepository';
 import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
 import { MailService } from '@/services/MailService';
 import { MetricsService } from '@/services/MetricsService';
@@ -63,6 +65,7 @@ import { MetricsService } from '@/services/MetricsService';
 import { AuthService } from '@/services/AuthService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
+import { ExportService } from '@/services/ExportService';
 import { AdminController } from '@/controllers/AdminController';
 import { AuthController } from '@/controllers/AuthController';
 import { FileController } from '@/controllers/FileController';
@@ -86,6 +89,7 @@ import { FileProxyController } from '@/controllers/FileProxyController';
 import { ServerPublicController } from '@/controllers/ServerPublicController';
 import { UserWarningController } from '@/controllers/UserWarningController';
 import { UserPingController } from '@/controllers/UserPingController';
+import { ExportController } from '@/controllers/ExportController';
 import { FileCompatibilityController } from '@/controllers/FileCompatibilityController';
 
 import { WsServer } from '@/ws/server';
@@ -214,6 +218,11 @@ container
     .inTransientScope();
 
 container
+    .bind<IExportJobRepository>(TYPES.ExportJobRepository)
+    .to(MongooseExportJobRepository)
+    .inTransientScope();
+
+container
     .bind<IPasswordResetRepository>(TYPES.PasswordResetRepository)
     .to(MongoosePasswordResetRepository)
     .inTransientScope();
@@ -241,6 +250,11 @@ container
     .bind<IMailService>(TYPES.MailService)
     .to(MailService)
     .inTransientScope();
+
+container
+    .bind<ExportService>(TYPES.ExportService)
+    .to(ExportService)
+    .inSingletonScope();
 
 container.bind(TYPES.MailConfig).toConstantValue({
     skipSending: process.env.NODE_ENV === 'test',
@@ -352,6 +366,8 @@ container
     .bind<FileCompatibilityController>(FileCompatibilityController)
     .toSelf()
     .inTransientScope();
+
+container.bind<ExportController>(ExportController).toSelf().inTransientScope();
 
 // WebSocket
 container.bind<IWsServer>(TYPES.WsServer).to(WsServer).inSingletonScope();

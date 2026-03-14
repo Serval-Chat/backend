@@ -6,7 +6,7 @@ import type { Types } from 'mongoose';
 export interface IPing {
     _id: Types.ObjectId;
     userId: Types.ObjectId;
-    type: 'mention';
+    type: 'mention' | 'export_status';
     sender: string;
     senderId: Types.ObjectId;
     serverId?: Types.ObjectId;
@@ -30,7 +30,7 @@ export interface IPingRepository {
     // Create a new ping
     create(data: {
         userId: Types.ObjectId;
-        type: 'mention';
+        type: 'mention' | 'export_status';
         sender: string;
         senderId: Types.ObjectId;
         serverId?: Types.ObjectId;

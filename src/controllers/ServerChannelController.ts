@@ -24,6 +24,7 @@ import type {
     IChannelRepository,
     IChannel,
 } from '@/di/interfaces/IChannelRepository';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import type {
@@ -32,6 +33,7 @@ import type {
 } from '@/di/interfaces/ICategoryRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import { PermissionService } from '@/permissions/PermissionService';
+import { ExportService } from '@/services/ExportService';
 import { isPermissionKey, Permissions } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
@@ -79,6 +81,10 @@ export class ServerChannelController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
+        @Inject(TYPES.ExportService)
+        private exportService: ExportService,
+        @Inject(TYPES.ServerRepository)
+        private serverRepo: IServerRepository,
     ) {}
 
     @Get('channels')
@@ -447,6 +453,17 @@ export class ServerChannelController {
             ))
         ) {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
+        }
+
+        const channel = await this.channelRepo.findById(channelOid);
+        const server = await this.serverRepo.findById(serverOid);
+
+        if (channel && server) {
+            await this.exportService.handleChannelDeletion(
+                channelOid,
+                channel.name,
+                server.name,
+            );
         }
 
         await this.channelRepo.delete(channelOid);

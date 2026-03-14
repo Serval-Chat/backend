@@ -7,8 +7,8 @@ export class PingNotificationDTO {
     @IsString()
     id!: string;
 
-    @ApiProperty({ enum: ['mention'] })
-    type!: 'mention';
+    @ApiProperty({ enum: ['mention', 'export_status'] })
+    type!: 'mention' | 'export_status';
 
     @ApiProperty()
     sender!: string;

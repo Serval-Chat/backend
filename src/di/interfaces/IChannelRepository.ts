@@ -19,6 +19,7 @@ export interface IChannel {
     };
     createdAt: Date;
     lastMessageAt?: Date;
+    lastExportAt?: Date;
     icon?: string;
     description?: string;
     link?: string;

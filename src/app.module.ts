@@ -8,7 +8,6 @@ import { MONGO_URI } from '@/config/env';
 import { LOKI_HOST, LOG_LEVEL, PROJECT_LEVEL } from '@/config/env';
 import { TYPES } from '@/di/types';
 import { container } from '@/di/container';
-import { WsServer } from '@/ws/server';
 import { DatabaseModule } from './modules/database/database.module';
 import { RepositoryModule } from './modules/repository/repository.module';
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
@@ -17,6 +16,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { AuthController } from './controllers/AuthController';
 import { AdminController } from './controllers/AdminController';
 import { UserPingController } from './controllers/UserPingController';
+import { ExportController } from './controllers/ExportController';
 import { UserWarningController } from './controllers/UserWarningController';
 import { ApiErrorFilter } from './filters/ApiErrorFilter';
 import { EmojiController } from './controllers/EmojiController';
@@ -118,15 +118,12 @@ import { PushController } from './controllers/PushController';
         UserMessageController,
         SettingsController,
         PushController,
+        ExportController,
     ],
     providers: [
         {
             provide: APP_FILTER,
             useClass: ApiErrorFilter,
-        },
-        {
-            provide: TYPES.WsServer,
-            useFactory: () => container.get<WsServer>(TYPES.WsServer),
         },
     ],
 })

@@ -15,6 +15,7 @@ export const PERMISSION_KEYS = [
     'pingRolesAndEveryone',
     'addReactions',
     'manageReactions',
+    'export_channel_messages',
     'viewChannels',
 ] as const;
 

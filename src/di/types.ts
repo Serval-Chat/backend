@@ -27,6 +27,8 @@ export const TYPES = {
     ServerChannelReadRepository: Symbol.for('ServerChannelReadRepository'),
     PingRepository: Symbol.for('PingRepository'),
     ReactionRepository: Symbol.for('ReactionRepository'),
+    ExportJobRepository: Symbol.for('ExportJobRepository'),
+    ExportService: Symbol.for('ExportService'),
 
     // Services
     AuthService: Symbol.for('AuthService'),

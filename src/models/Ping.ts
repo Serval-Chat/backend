@@ -6,7 +6,7 @@ import mongoose, { Schema } from 'mongoose';
 // Represents a notification/mention for a user
 interface IPing extends Document {
     userId: Types.ObjectId; // User ID who received the ping
-    type: 'mention';
+    type: 'mention' | 'export_status';
     sender: string; // Username of the sender. TODO: Remove this dependency in favor of senderId
     senderId: Types.ObjectId; // User ID of the sender
     serverId?: Types.ObjectId; // Server ID if ping is from a server message
@@ -27,7 +27,7 @@ const pingSchema = new Schema<IPing>(
         },
         type: {
             type: String,
-            enum: ['mention'],
+            enum: ['mention', 'export_status'],
             required: true,
             default: 'mention',
         },

@@ -72,6 +72,7 @@ export interface IChannel extends Document {
     };
     createdAt: Date;
     lastMessageAt?: Date;
+    lastExportAt?: Date;
     icon?: string;
     description?: string;
     link?: string;
@@ -263,6 +264,7 @@ const channelSchema = new Schema<IChannel>({
     },
     createdAt: { type: Date, default: Date.now },
     lastMessageAt: { type: Date, default: Date.now },
+    lastExportAt: { type: Date },
     icon: { type: String },
     description: { type: String, maxlength: 200 },
     link: { type: String, required: false },

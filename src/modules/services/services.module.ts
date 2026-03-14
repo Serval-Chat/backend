@@ -4,6 +4,7 @@ import { AuthService } from '@/services/AuthService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
 import { MailService } from '@/services/MailService';
+import { ExportService } from '@/services/ExportService';
 import { MetricsService } from '@/services/MetricsService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
@@ -36,6 +37,10 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
             provide: TYPES.MetricsService,
             useClass: MetricsService,
         },
+        {
+            provide: TYPES.ExportService,
+            useClass: ExportService,
+        },
     ],
     exports: [
         TYPES.AuthService,
@@ -43,6 +48,7 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
         TYPES.PingService,
         TYPES.MailService,
         TYPES.MetricsService,
+        TYPES.ExportService,
     ],
 })
 export class ServicesModule {}

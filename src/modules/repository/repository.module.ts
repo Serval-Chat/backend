@@ -20,6 +20,7 @@ import { MongooseServerBanRepository } from '@/infrastructure/repositories/Mongo
 import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
 import { MongooseDmUnreadRepository } from '@/infrastructure/repositories/MongooseDmUnreadRepository';
 import { MongooseWebhookRepository } from '@/infrastructure/repositories/MongooseWebhookRepository';
+import { MongooseExportJobRepository } from '@/infrastructure/repositories/MongooseExportJobRepository';
 import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
 
 @Global()
@@ -109,6 +110,10 @@ import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/M
             provide: TYPES.PasswordResetRepository,
             useClass: MongoosePasswordResetRepository,
         },
+        {
+            provide: TYPES.ExportJobRepository,
+            useClass: MongooseExportJobRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -132,6 +137,7 @@ import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/M
         TYPES.DmUnreadRepository,
         TYPES.WebhookRepository,
         TYPES.PasswordResetRepository,
+        TYPES.ExportJobRepository,
     ],
 })
 export class RepositoryModule {}

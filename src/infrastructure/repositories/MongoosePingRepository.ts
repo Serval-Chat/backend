@@ -32,7 +32,7 @@ export class MongoosePingRepository implements IPingRepository {
 
     async create(data: {
         userId: Types.ObjectId;
-        type: 'mention';
+        type: 'mention' | 'export_status';
         sender: string;
         senderId: Types.ObjectId;
         serverId?: Types.ObjectId;
