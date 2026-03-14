@@ -2,6 +2,7 @@ import { injectable, inject } from 'inversify';
 import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
 import { Types } from 'mongoose';
 import fs from 'fs/promises';
+import { createWriteStream } from 'fs';
 import path from 'path';
 import { TYPES } from '@/di/types';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
@@ -34,7 +35,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         @inject(TYPES.MailService) @Inject(TYPES.MailService) private mailService: IMailService,
         @inject(TYPES.PingService) @Inject(TYPES.PingService) private pingService: PingService,
         @inject(TYPES.WsServer) @Inject(TYPES.WsServer) private wsServer: WsServer,
-    ) {}
+    ) { }
 
     async onModuleInit() {
         if (!(await fs.access(this.EXPORT_DIR).then(() => true).catch(() => false))) {
@@ -50,7 +51,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
     private startBackgroundTasks() {
         this.jobInterval = setInterval(() => this.processJobs(), 60 * 1000);
         this.cleanupInterval = setInterval(() => this.cleanupExpiredExports(), 3600 * 1000);
-        
+
         this.processJobs().catch(err => this.logger.error('[ExportService] Initial job processing failed', err));
         this.cleanupExpiredExports().catch(err => this.logger.error('[ExportService] Initial cleanup failed', err));
     }
@@ -65,7 +66,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         if (!channel) return 'unknown';
 
         const latestJob = await this.exportJobRepo.findLatestByChannel(channelId);
-        
+
         if (latestJob && (latestJob.status === 'queued' || latestJob.status === 'in_progress')) {
             return 'in_progress';
         }
@@ -118,24 +119,43 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
 
     private async runExport(job: IExportJob) {
         await this.exportJobRepo.update(job._id, { status: 'in_progress' });
-        
+
         const channel = await this.channelRepo.findById(job.channelId);
         if (!channel) {
             await this.handleJobFailure(job, 'Channel no longer exists');
             return;
         }
 
-        const messages = await this.serverMessageRepo.findByChannelId(job.channelId);
-        const exportData = messages.map(m => ({
-            content: m.text,
-            sender_user_id: m.senderId.toString(),
-            sent_at: m.createdAt.toISOString(),
-            edited_at: m.editedAt ? m.editedAt.toISOString() : null,
-        }));
-
         const fileName = `channel-${job.channelId.toString()}.json`;
         const filePath = path.join(this.EXPORT_DIR, `${job._id}-${fileName}`);
-        await fs.writeFile(filePath, JSON.stringify(exportData, null, 2));
+        
+        const writeStream = createWriteStream(filePath);
+        writeStream.write('[\n');
+
+        const cursor = this.serverMessageRepo.findCursorByChannelId(job.channelId);
+        let first = true;
+
+        for await (const m of cursor) {
+            if (!first) {
+                writeStream.write(',\n');
+            }
+            const data = {
+                content: m.text,
+                sender_user_id: m.senderId.toString(),
+                sent_at: m.createdAt.toISOString(),
+                edited_at: m.editedAt ? m.editedAt.toISOString() : null,
+            };
+            writeStream.write(JSON.stringify(data, null, 2));
+            first = false;
+        }
+
+        writeStream.write('\n]');
+        writeStream.end();
+
+        await new Promise<void>((resolve, reject) => {
+            writeStream.on('finish', () => resolve());
+            writeStream.on('error', reject);
+        });
 
         const token = randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + 48 * 3600 * 1000);
@@ -154,10 +174,10 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
     private async handleJobFailure(job: IExportJob, error: string) {
         const attempts = job.attempts + 1;
         if (attempts >= job.maxAttempts) {
-            await this.exportJobRepo.update(job._id, { 
-                status: 'failed', 
-                attempts, 
-                error 
+            await this.exportJobRepo.update(job._id, {
+                status: 'failed',
+                attempts,
+                error
             });
             await this.channelRepo.update(job.channelId, { lastExportAt: undefined });
             await this.sendFailureNotifications(job);
@@ -165,7 +185,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
             const delays = [5, 15, 30, 60];
             const delayInMinutes = delays[attempts - 1] || 60;
             const nextAttemptAt = new Date(Date.now() + delayInMinutes * 60 * 1000);
-            
+
             await this.exportJobRepo.update(job._id, {
                 status: 'queued',
                 attempts,
@@ -236,13 +256,13 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         const jobs = await ExportJob.find({ channelId, status: { $in: ['queued', 'in_progress'] } });
         for (const job of jobs) {
             await this.exportJobRepo.update(job._id, { status: 'cancelled', error: 'Channel deleted' });
-            
+
             const user = await this.userRepo.findById(job.requestedBy);
             if (user) {
                 if (user.login && this.isValidEmail(user.login)) {
                     await this.mailService.sendExportCancelledEmail(user.login, channelNameAtDeletion, serverNameAtDeletion);
                 }
-                
+
                 await this.pingService.addPing(user._id, {
                     type: 'export_status',
                     sender: 'System',

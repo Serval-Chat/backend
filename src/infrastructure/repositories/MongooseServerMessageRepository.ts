@@ -299,4 +299,8 @@ export class MongooseServerMessageRepository
     async countByChannelId(channelId: Types.ObjectId): Promise<number> {
         return await ServerMessage.countDocuments({ channelId });
     }
+
+    findCursorByChannelId(channelId: Types.ObjectId): AsyncIterable<IServerMessage> {
+        return ServerMessage.find({ channelId }).sort({ createdAt: 1 }).lean().cursor();
+    }
 }
