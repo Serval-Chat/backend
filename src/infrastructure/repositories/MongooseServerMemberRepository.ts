@@ -171,7 +171,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             if (!user)
                 return { ...m, user: null } as IServerMember & { user: null };
 
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+             
             const {
                 tokenVersion,
                 permissions,
@@ -221,7 +221,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             if (!user)
                 return { ...m, user: null } as IServerMember & { user: null };
 
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+             
             const {
                 tokenVersion,
                 permissions,

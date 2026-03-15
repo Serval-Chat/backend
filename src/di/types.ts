@@ -34,6 +34,7 @@ export const TYPES = {
     AuthService: Symbol.for('AuthService'),
     PermissionService: Symbol.for('PermissionService'),
     WebPushService: Symbol.for('WebPushService'),
+    KlipyService: Symbol.for('KlipyService'),
 
     PingService: Symbol.for('PingService'),
     MailService: Symbol.for('MailService'),

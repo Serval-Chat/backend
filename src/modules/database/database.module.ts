@@ -22,6 +22,8 @@ import { Reaction } from '@/models/Reaction';
 import { Warning } from '@/models/Warning';
 import { AuditLog } from '@/models/AuditLog';
 import { DmUnread } from '@/models/DmUnread';
+import { KlipyCache } from '@/models/KlipyCache';
+import { FavoriteGif } from '@/models/FavoriteGif';
 
 @Global()
 @Module({
@@ -47,6 +49,8 @@ import { DmUnread } from '@/models/DmUnread';
             { name: 'Warning', schema: Warning.schema },
             { name: 'AuditLog', schema: AuditLog.schema },
             { name: 'DmUnread', schema: DmUnread.schema },
+            { name: 'KlipyCache', schema: KlipyCache.schema },
+            { name: 'FavoriteGif', schema: FavoriteGif.schema },
         ]),
     ],
     exports: [MongooseModule],

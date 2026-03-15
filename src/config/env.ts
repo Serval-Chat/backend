@@ -30,6 +30,7 @@ const MAILGUN_BASE_URL =
     process.env.MAILGUN_BASE_URL || 'https://api.mailgun.net';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const METRICS_TOKEN = process.env.METRICS_TOKEN || '';
+const KLIPY_API_KEY = process.env.KLIPY_API_KEY || '';
 
 const OTEL_ENDPOINT =
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'grpc://otel-collector:4317';
@@ -118,4 +119,5 @@ export {
     LOKI_HOST,
     APP_VERSION,
     LOG_LEVEL,
+    KLIPY_API_KEY,
 };

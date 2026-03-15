@@ -66,6 +66,7 @@ import { AuthService } from '@/services/AuthService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
 import { ExportService } from '@/services/ExportService';
+import { KlipyService } from '@/services/KlipyService';
 import { AdminController } from '@/controllers/AdminController';
 import { AuthController } from '@/controllers/AuthController';
 import { FileController } from '@/controllers/FileController';
@@ -254,6 +255,11 @@ container
 container
     .bind<ExportService>(TYPES.ExportService)
     .to(ExportService)
+    .inSingletonScope();
+
+container
+    .bind<KlipyService>(TYPES.KlipyService)
+    .to(KlipyService)
     .inSingletonScope();
 
 container.bind(TYPES.MailConfig).toConstantValue({

@@ -39,6 +39,7 @@ import { SystemController } from './controllers/SystemController';
 import { UserMessageController } from './controllers/UserMessageController';
 import { SettingsController } from './controllers/SettingsController';
 import { PushController } from './controllers/PushController';
+import { KlipyController } from './controllers/KlipyController';
 
 @Module({
     imports: [
@@ -119,6 +120,7 @@ import { PushController } from './controllers/PushController';
         SettingsController,
         PushController,
         ExportController,
+        KlipyController,
     ],
     providers: [
         {
