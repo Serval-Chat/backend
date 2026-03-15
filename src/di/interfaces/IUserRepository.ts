@@ -66,6 +66,9 @@ export interface IUser {
         otherMessageColor?: string;
     };
     banner?: string;
+    serverSettings?: {
+        order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
+    };
 }
 
 // User Repository Interface

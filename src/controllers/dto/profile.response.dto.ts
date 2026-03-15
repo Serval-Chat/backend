@@ -83,6 +83,11 @@ export class UserProfileResponseDTO {
 
     @ApiProperty({ nullable: true })
     banner!: string | null;
+
+    @ApiPropertyOptional()
+    serverSettings?: {
+        order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
+    };
 }
 
 export class UpdateProfilePictureResponseDTO {

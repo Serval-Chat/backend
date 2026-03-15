@@ -7,6 +7,7 @@ import {
     UseGuards,
     Inject,
     NotFoundException,
+    Patch,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import {
@@ -24,6 +25,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { JWTPayload } from '@/utils/jwt';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { UpdateSettingsRequestDTO } from './dto/settings.request.dto';
+import { UpdateServerSettingsRequestDTO } from './dto/server-settings.request.dto';
 
 interface UserSettings {
     muteNotifications?: boolean;
@@ -70,18 +72,22 @@ export class SettingsController {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        // Fallback to system default UI preferences if the user has not customized settings
-        return (
-            user.settings || {
-                muteNotifications: false,
-                useDiscordStyleMessages: false,
-                ownMessagesAlign: 'right',
-                otherMessagesAlign: 'left',
-                showYouLabel: true,
-                ownMessageColor: '#5865f2',
-                otherMessageColor: '#2a2d31',
-            }
-        );
+        // @ts-ignore
+        const settings: any = user.settings || {
+            muteNotifications: false,
+            useDiscordStyleMessages: false,
+            ownMessagesAlign: 'right',
+            otherMessagesAlign: 'left',
+            showYouLabel: true,
+            ownMessageColor: '#5865f2',
+            otherMessageColor: '#2a2d31',
+        };
+
+        if (user.serverSettings) {
+            settings.serverSettings = user.serverSettings;
+        }
+
+        return settings;
     }
 
     // Updates the current user's settings
@@ -114,6 +120,26 @@ export class SettingsController {
         return {
             message: 'Settings updated successfully',
             settings: updatedSettings,
+        };
+    }
+
+    @Patch('server-settings')
+    @ApiOperation({ summary: 'Update server settings (order and folders)' })
+    @ApiResponse({ status: 200, description: 'Server settings updated' })
+    public async updateServerSettings(
+        @Req() req: ExpressRequest,
+        @Body() body: UpdateServerSettingsRequestDTO,
+    ): Promise<{ message: string; serverSettings: any }> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const userOid = new Types.ObjectId(userId);
+
+        await this.userRepo.update(userOid, {
+            serverSettings: { order: body.order },
+        });
+
+        return {
+            message: 'Server settings updated successfully',
+            serverSettings: { order: body.order },
         };
     }
 }

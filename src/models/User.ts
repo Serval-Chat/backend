@@ -56,6 +56,9 @@ export interface IUser extends Document {
         otherMessageColor?: string;
     };
     banner?: string;
+    serverSettings?: {
+        order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
+    };
     comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -157,6 +160,12 @@ const schema = new Schema<IUser>(
             }),
         },
         banner: { type: String, required: false },
+        serverSettings: {
+            order: {
+                type: [Schema.Types.Mixed],
+                default: [],
+            },
+        },
     },
     {
         toJSON: { virtuals: true },

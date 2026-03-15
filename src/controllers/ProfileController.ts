@@ -130,6 +130,9 @@ export class ProfileController {
             ? `/api/v1/profile/banner/${user.banner}`
             : null;
 
+        // @ts-ignore
+        mapped.serverSettings = user.serverSettings;
+
         return mapped as unknown as UserProfileResponseDTO;
     }
 
