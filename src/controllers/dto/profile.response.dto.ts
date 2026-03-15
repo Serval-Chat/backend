@@ -66,8 +66,8 @@ export class UserProfileResponseDTO {
     @ApiProperty({ nullable: true })
     customStatus!: SerializedCustomStatus | null;
 
-    @ApiProperty()
-    permissions!: AdminPermissions;
+    @ApiPropertyOptional()
+    permissions?: AdminPermissions;
 
     @ApiProperty()
     createdAt!: Date;

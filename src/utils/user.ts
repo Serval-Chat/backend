@@ -2,6 +2,10 @@ import {
     resolveSerializedCustomStatus,
     type SerializedCustomStatus,
 } from '@/utils/status';
+import {
+    type AdminPermissions,
+    DEFAULT_PERMISSIONS,
+} from '@/routes/api/v1/admin/permissions';
 
 export interface MappedUser {
     _id: string;
@@ -28,6 +32,11 @@ export interface MappedUser {
     deletedAt: Date | null;
     anonymizedUsername: string | null;
     banner: string | null;
+    permissions?: AdminPermissions;
+}
+
+export interface MapUserOptions {
+    includePermissions?: boolean;
 }
 
 interface RawUser {
@@ -53,6 +62,7 @@ interface RawUser {
 // Maps a raw user object from the database to a public user object
 export function mapUser(
     user: RawUser | null | undefined | unknown,
+    options: MapUserOptions = {},
 ): MappedUser | null {
     if (!user || typeof user !== 'object') return null;
     const u = user as RawUser;
@@ -91,5 +101,9 @@ export function mapUser(
         deletedAt: (u.deletedAt as Date) || null,
         anonymizedUsername: (u.anonymizedUsername as string) || null,
         banner: u.banner ? `/api/v1/profile/picture/${u.banner}` : null,
+        ...(options.includePermissions && {
+            permissions:
+                (u.permissions as AdminPermissions) || DEFAULT_PERMISSIONS,
+        }),
     };
 }
