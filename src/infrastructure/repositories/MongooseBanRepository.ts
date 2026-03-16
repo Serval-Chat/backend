@@ -14,7 +14,7 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseBanRepository implements IBanRepository {
     private banModel = Ban;
-    constructor() {}
+    constructor() { }
 
     async findActiveByUserId(userId: Types.ObjectId): Promise<IBan | null> {
         return await this.banModel.findOne({ userId, active: true }).lean();

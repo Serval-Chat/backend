@@ -1178,12 +1178,8 @@ export class AdminController {
                 return {
                     _id: server._id.toString(),
                     name: server.name,
-                    icon: server.icon
-                        ? `/api/v1/servers/icon/${server.icon}`
-                        : null,
-                    banner: server.banner
-                        ? `/api/v1/servers/banner/${server.banner}`
-                        : null,
+                    icon: server.icon || null,
+                    banner: server.banner?.value || null,
                     ownerId: server.ownerId.toString(),
                     memberCount,
                     joinedAt: membership?.joinedAt,
