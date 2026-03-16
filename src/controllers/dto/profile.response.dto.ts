@@ -88,6 +88,9 @@ export class UserProfileResponseDTO {
     serverSettings?: {
         order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
     };
+
+    @ApiPropertyOptional()
+    settings?: Record<string, unknown>;
 }
 
 export class UpdateProfilePictureResponseDTO {

@@ -38,4 +38,9 @@ export class UpdateSettingsRequestDTO {
     @IsOptional()
     @IsColor()
     otherMessageColor?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    disableCustomUsernameFonts?: boolean;
 }

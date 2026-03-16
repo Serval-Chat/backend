@@ -26,6 +26,8 @@ import { JWTPayload } from '@/utils/jwt';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { UpdateSettingsRequestDTO } from './dto/settings.request.dto';
 import { UpdateServerSettingsRequestDTO } from './dto/server-settings.request.dto';
+import type { WsServer } from '@/ws/server';
+
 
 interface UserSettings {
     muteNotifications?: boolean;
@@ -35,6 +37,10 @@ interface UserSettings {
     showYouLabel?: boolean;
     ownMessageColor?: string;
     otherMessageColor?: string;
+    disableCustomUsernameFonts?: boolean;
+    serverSettings?: {
+        order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
+    };
 }
 
 // Controller for managing user-specific application settings
@@ -50,6 +56,8 @@ export class SettingsController {
         private userRepo: IUserRepository,
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
     ) {}
 
     // Retrieves the current user's settings
@@ -73,7 +81,7 @@ export class SettingsController {
         }
 
         // @ts-ignore
-        const settings: any = user.settings || {
+        const settings: UserSettings = user.settings || {
             muteNotifications: false,
             useDiscordStyleMessages: false,
             ownMessagesAlign: 'right',
@@ -117,6 +125,15 @@ export class SettingsController {
         const updatedUser = await this.userRepo.findById(userOid);
         const updatedSettings = updatedUser?.settings || {};
 
+        try {
+            this.wsServer.broadcastToUser(userId, {
+                type: 'user_updated',
+                payload: { userId, settings: updatedSettings },
+            });
+        } catch (err) {
+            this.logger.error('Failed to broadcast settings update:', err);
+        }
+
         return {
             message: 'Settings updated successfully',
             settings: updatedSettings,
@@ -129,7 +146,7 @@ export class SettingsController {
     public async updateServerSettings(
         @Req() req: ExpressRequest,
         @Body() body: UpdateServerSettingsRequestDTO,
-    ): Promise<{ message: string; serverSettings: any }> {
+    ): Promise<{ message: string; serverSettings: { order: (string | { id: string; name: string; color: string; serverIds: string[] })[] } }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const userOid = new Types.ObjectId(userId);
 

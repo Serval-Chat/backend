@@ -54,6 +54,7 @@ export interface IUser extends Document {
         showYouLabel?: boolean;
         ownMessageColor?: string;
         otherMessageColor?: string;
+        disableCustomUsernameFonts?: boolean;
     };
     banner?: string;
     serverSettings?: {
@@ -146,6 +147,7 @@ const schema = new Schema<IUser>(
             showYouLabel: { type: Boolean, default: true },
             ownMessageColor: { type: String, default: '#5865f2' },
             otherMessageColor: { type: String, default: '#5865f2' },
+            disableCustomUsernameFonts: { type: Boolean, default: false },
         },
         notificationPreferences: {
             type: {

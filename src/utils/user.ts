@@ -33,6 +33,7 @@ export interface MappedUser {
     anonymizedUsername: string | null;
     banner: string | null;
     permissions?: AdminPermissions;
+    settings?: Record<string, unknown>;
 }
 
 export interface MapUserOptions {
@@ -56,6 +57,7 @@ interface RawUser {
     deletedAt?: unknown;
     anonymizedUsername?: unknown;
     banner?: unknown;
+    settings?: unknown;
     [key: string]: unknown;
 }
 
@@ -105,5 +107,6 @@ export function mapUser(
             permissions:
                 (u.permissions as AdminPermissions) || DEFAULT_PERMISSIONS,
         }),
+        settings: (u.settings as Record<string, unknown>) || {},
     };
 }

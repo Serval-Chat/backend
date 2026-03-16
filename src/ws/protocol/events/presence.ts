@@ -93,6 +93,16 @@ export interface IUserUpdatedEvent
                 color: string;
                 intensity: number;
             };
+            settings?: {
+                muteNotifications?: boolean;
+                useDiscordStyleMessages?: boolean;
+                ownMessagesAlign?: 'left' | 'right';
+                otherMessagesAlign?: 'left' | 'right';
+                showYouLabel?: boolean;
+                ownMessageColor?: string;
+                otherMessageColor?: string;
+                disableCustomUsernameFonts?: boolean;
+            };
         }
     > {}
 
