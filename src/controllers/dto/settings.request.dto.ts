@@ -43,4 +43,14 @@ export class UpdateSettingsRequestDTO {
     @IsOptional()
     @IsBoolean()
     disableCustomUsernameFonts?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    disableCustomUsernameColors?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    disableCustomUsernameGlow?: boolean;
 }

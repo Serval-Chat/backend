@@ -38,6 +38,8 @@ interface UserSettings {
     ownMessageColor?: string;
     otherMessageColor?: string;
     disableCustomUsernameFonts?: boolean;
+    disableCustomUsernameColors?: boolean;
+    disableCustomUsernameGlow?: boolean;
     serverSettings?: {
         order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
     };
@@ -58,7 +60,7 @@ export class SettingsController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) {}
+    ) { }
 
     // Retrieves the current user's settings
     // Returns default values if no custom settings are configured
