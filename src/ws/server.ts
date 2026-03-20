@@ -415,42 +415,69 @@ export class WsServer extends EventEmitter implements IWsServer {
         excludeWs?: WebSocket,
     ): Promise<void> {
         const subscribers = this.serverSubscriptions.get(serverId);
-        if (subscribers && subscribers.size > 0) {
-            const recipients: WebSocket[] = [];
+        if (!subscribers || subscribers.size === 0) {
+            logger.debug(
+                `[WsServer] No subscribers for server ${serverId}. Skipping broadcast of ${event.type}.`,
+            );
+            return;
+        }
 
-            const permissionCache = new Map<string, boolean>();
+        logger.debug(
+            `[WsServer] Broadcasting ${event.type} to server ${serverId}. Found ${subscribers.size} total subscribers.`,
+        );
 
-            for (const ws of subscribers) {
-                if (ws === excludeWs || ws.readyState !== 1) continue;
+        const recipients: WebSocket[] = [];
+        const permissionCache = new Map<string, boolean>();
 
-                const user = this.getAuthenticatedUser(ws);
-                if (!user) continue;
-
-                let hasPermission = permissionCache.get(user.userId);
-                if (hasPermission === undefined) {
-                    try {
-                        hasPermission = await checkFn(user.userId);
-                    } catch (err) {
-                        logger.error(
-                            `[WsServer] Permission check failed for user ${user.userId}`,
-                            err,
-                        );
-                        hasPermission = false;
-                    }
-                    permissionCache.set(user.userId, hasPermission);
+        for (const ws of subscribers) {
+            if (ws === excludeWs || ws.readyState !== 1) {
+                if (ws.readyState !== 1) {
+                    logger.debug(
+                        `[WsServer] Skip subscriber for server ${serverId}: readyState is ${ws.readyState}`,
+                    );
                 }
-
-                if (hasPermission) {
-                    recipients.push(ws);
-                }
+                continue;
             }
 
-            if (recipients.length > 0) {
-                sendToMany(recipients, event, replyTo);
+            const user = this.getAuthenticatedUser(ws);
+            if (!user) {
                 logger.debug(
-                    `[WsServer] Broadcast to server ${serverId} (${recipients.length} authorized subscribers)`,
+                    `[WsServer] Skip subscriber for server ${serverId}: unauthenticated socket`,
                 );
+                continue;
             }
+
+            let hasPermission = permissionCache.get(user.userId);
+            if (hasPermission === undefined) {
+                try {
+                    hasPermission = await checkFn(user.userId);
+                    logger.debug(
+                        `[WsServer] Permission check for user ${user.userId} on server ${serverId}: ${hasPermission}`,
+                    );
+                } catch (err) {
+                    logger.error(
+                        `[WsServer] Permission check failed for user ${user.userId}`,
+                        err,
+                    );
+                    hasPermission = false;
+                }
+                permissionCache.set(user.userId, hasPermission);
+            }
+
+            if (hasPermission) {
+                recipients.push(ws);
+            }
+        }
+
+        if (recipients.length > 0) {
+            sendToMany(recipients, event, replyTo);
+            logger.debug(
+                `[WsServer] Broadcast of ${event.type} to server ${serverId} completed. Sent to ${recipients.length} authorized subscribers.`,
+            );
+        } else {
+            logger.debug(
+                `[WsServer] Broadcast of ${event.type} to server ${serverId} skipped: 0 authorized subscribers found.`,
+            );
         }
     }
 

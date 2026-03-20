@@ -4,6 +4,7 @@ import type { IChannel } from '@/di/interfaces/IChannelRepository';
 import type { ICategory } from '@/di/interfaces/ICategoryRepository';
 import type { IServerMember } from '@/di/interfaces/IServerMemberRepository';
 import type { IRole } from '@/di/interfaces/IRoleRepository';
+import type { mapAuditLogEntry } from '@/utils/auditLog';
 
 /**
  * Server → Client (Broadcast)
@@ -299,5 +300,13 @@ export interface IWarningEvent
             timestamp: Date;
             acknowledged: boolean;
             acknowledgedAt?: Date;
+        }
+    > {}
+export interface IAuditLogEntryCreatedEvent
+    extends WsEvent<
+        'audit_log_entry_created',
+        {
+            serverId: string;
+            entry: ReturnType<typeof mapAuditLogEntry>;
         }
     > {}

@@ -35,6 +35,7 @@ import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -80,6 +81,8 @@ export class ServerEmojiController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
+        @Inject(TYPES.ServerAuditLogService)
+        private serverAuditLogService: IServerAuditLogService,
     ) {
         // Ensure emoji upload directory exists at startup to avoid runtime write failures
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -235,6 +238,15 @@ export class ServerEmojiController {
                 payload: { serverId, senderId: userId },
             });
 
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'emoji_create',
+                targetId: newEmoji._id as Types.ObjectId,
+                targetType: 'server',
+                metadata: { emojiName: name },
+            });
+
             return populatedEmoji;
         } catch (error) {
             this.logger.error('Error adding emoji:', error);
@@ -324,6 +336,15 @@ export class ServerEmojiController {
         this.wsServer.broadcastToServer(serverId, {
             type: 'emoji_updated',
             payload: { serverId, senderId: userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'emoji_delete',
+            targetId: emojiOid,
+            targetType: 'server',
+            metadata: { emojiName: emoji.name },
         });
     }
 }

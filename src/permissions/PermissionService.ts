@@ -252,7 +252,7 @@ export class PermissionService {
             members: members.map((m): ResolverMember => this.mapMember(m)),
         };
 
-        const resolver = new PermissionResolver(resolverData);
+        const resolver = new PermissionResolver(resolverData, this.logger);
         this.resolverCache.set(serverIdStr, {
             resolver,
             expiresAt: now + this.cacheTtlMs,

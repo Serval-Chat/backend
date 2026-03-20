@@ -30,6 +30,8 @@ import type {
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
+import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
@@ -73,6 +75,10 @@ export class ServerMessageController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: IWsServer,
+        @Inject(TYPES.AuditLogRepository)
+        private auditLogRepo: IAuditLogRepository,
+        @Inject(TYPES.ServerAuditLogService)
+        private serverAuditLogService: IServerAuditLogService,
     ) {}
 
     // Retrieves messages for a specific channel with pagination
@@ -426,6 +432,28 @@ export class ServerMessageController {
         };
         this.wsServer.broadcastToChannel(channelId, event);
 
+        const channelObj = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: new mongoose.Types.ObjectId(serverId),
+            actorId: new mongoose.Types.ObjectId(userId),
+            actionType: 'edit_message',
+            targetId: message._id,
+            targetType: 'message',
+            targetUserId: message.senderId,
+            changes: [
+                {
+                    field: 'text',
+                    before: message.text,
+                    after: messageText,
+                },
+            ],
+            metadata: {
+                channelId: message.channelId.toString(),
+                channelName: channelObj ? channelObj.name : 'Unknown Channel',
+            },
+        });
+
         return updatedMessage;
     }
 
@@ -451,6 +479,13 @@ export class ServerMessageController {
         );
         if (!message || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        const channel = await this.channelRepo.findById(
+            new mongoose.Types.ObjectId(channelId),
+        );
+        if (!channel) {
+            throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const canManage = await this.permissionService.hasChannelPermission(
@@ -489,6 +524,21 @@ export class ServerMessageController {
             },
         };
         this.wsServer.broadcastToChannel(channelId, event);
+        this.logger.debug(`[ServerMessageController] deleteMessage: Internal broadcast sent to channel ${channelId}`);
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: new mongoose.Types.ObjectId(serverId),
+            actorId: new mongoose.Types.ObjectId(userId),
+            actionType: 'delete_message',
+            targetId: message._id,
+            targetType: 'message',
+            targetUserId: message.senderId,
+            metadata: {
+                channelId: message.channelId.toString(),
+                channelName: channel.name,
+                messageText: message.text,
+            },
+        });
 
         return { message: 'Message deleted' };
     }

@@ -24,6 +24,7 @@ import type {
     IChannelRepository,
     IChannel,
 } from '@/di/interfaces/IChannelRepository';
+import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
@@ -41,6 +42,8 @@ import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import { ErrorMessages } from '@/constants/errorMessages';
 import {
     CreateChannelRequestDTO,
@@ -57,7 +60,6 @@ import {
     ChannelResponseDTO,
     CategoryResponseDTO,
 } from './dto/server-channel.response.dto';
-
 @injectable()
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Channels')
@@ -85,6 +87,12 @@ export class ServerChannelController {
         private exportService: ExportService,
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
+        @Inject(TYPES.AuditLogRepository)
+        private auditLogRepo: IAuditLogRepository,
+        @Inject(TYPES.ServerAuditLogService)
+        private serverAuditLogService: IServerAuditLogService,
+        @Inject(TYPES.RoleRepository)
+        private roleRepo: IRoleRepository,
     ) {}
 
     @Get('channels')
@@ -261,6 +269,15 @@ export class ServerChannelController {
             payload: { serverId, channel, senderId: userId },
         });
 
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'create_channel',
+            targetId: channel._id as Types.ObjectId,
+            targetType: 'channel',
+            metadata: { channelName: channel.name, channelType: channel.type },
+        });
+
         return channel;
     }
 
@@ -287,7 +304,19 @@ export class ServerChannelController {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
+        const existingChannels = await this.channelRepo.findByServerId(serverOid);
+        const channelMap = new Map(existingChannels.map((c) => [c._id.toString(), c]));
+
+        const changes = [];
         for (const { channelId, position } of body.channelPositions) {
+            const oldChannel = channelMap.get(channelId);
+            if (oldChannel && oldChannel.position !== position) {
+                changes.push({
+                    field: `Position: ${oldChannel.name}`,
+                    before: oldChannel.position,
+                    after: position,
+                });
+            }
             await this.channelRepo.update(new Types.ObjectId(channelId), {
                 position,
             });
@@ -301,6 +330,16 @@ export class ServerChannelController {
                 senderId: userId,
             },
         });
+
+        if (changes.length > 0) {
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'channels_reordered',
+                targetType: 'channel',
+                changes,
+            });
+        }
 
         return { message: 'Channels reordered' };
     }
@@ -427,6 +466,39 @@ export class ServerChannelController {
             payload: { serverId, channel, senderId: userId },
         });
 
+        const changes = [];
+        if (body.name && body.name !== existingChannel.name) {
+            changes.push({ field: 'name', before: existingChannel.name, after: body.name });
+        }
+        if (body.description !== undefined && body.description !== existingChannel.description) {
+            changes.push({ field: 'description', before: existingChannel.description, after: body.description });
+        }
+        if (body.categoryId !== undefined) {
+            const oldCatString = existingChannel.categoryId?.toString() ?? null;
+            const newCatString = body.categoryId ? body.categoryId : null;
+            if (oldCatString !== newCatString) {
+                changes.push({ field: 'categoryId', before: oldCatString, after: newCatString });
+            }
+        }
+        if (body.icon !== undefined && body.icon !== existingChannel.icon) {
+            changes.push({ field: 'icon', before: existingChannel.icon ?? null, after: body.icon ?? null });
+        }
+        if (body.link !== undefined && body.link !== existingChannel.link) {
+            changes.push({ field: 'link', before: existingChannel.link ?? null, after: body.link ?? null });
+        }
+
+        if (changes.length > 0) {
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'edit_channel',
+                targetId: channelOid,
+                targetType: 'channel',
+                changes,
+                metadata: { channelName: existingChannel.name },
+            });
+        }
+
         return channel;
     }
 
@@ -473,6 +545,15 @@ export class ServerChannelController {
             payload: { serverId, channelId, senderId: userId },
         });
 
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'delete_channel',
+            targetId: channelOid,
+            targetType: 'channel',
+            metadata: { channelName: channel?.name },
+        });
+
         return { message: 'Channel deleted' };
     }
 
@@ -517,6 +598,15 @@ export class ServerChannelController {
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'category_created',
             payload: { serverId, category, senderId: userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'create_category',
+            targetId: category._id as Types.ObjectId,
+            targetType: 'category',
+            metadata: { categoryName: category.name, targetName: category.name },
         });
 
         return category;
@@ -593,6 +683,11 @@ export class ServerChannelController {
         if (body.name) updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
 
+        const existingCategory = await this.categoryRepo.findById(categoryOid);
+        if (!existingCategory) {
+            throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
+        }
+
         const category = await this.categoryRepo.update(categoryOid, updates);
         if (!category) {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
@@ -602,6 +697,22 @@ export class ServerChannelController {
             type: 'category_updated',
             payload: { serverId, category, senderId: userId },
         });
+
+        const changes = [];
+        if (body.name && body.name !== existingCategory.name) {
+            changes.push({ field: 'name', before: existingCategory.name, after: body.name });
+        }
+        if (changes.length > 0) {
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'edit_category',
+                targetId: categoryOid,
+                targetType: 'category',
+                changes,
+                metadata: { categoryName: existingCategory.name, targetName: existingCategory.name },
+            });
+        }
 
         return category;
     }
@@ -631,6 +742,11 @@ export class ServerChannelController {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
+        const category = await this.categoryRepo.findById(categoryOid);
+        if (!category) {
+            throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
+        }
+
         await this.categoryRepo.delete(categoryOid);
 
         // Orphan channels by moving them out of the deleted category
@@ -646,6 +762,15 @@ export class ServerChannelController {
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'category_deleted',
             payload: { serverId, categoryId, senderId: userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'delete_category',
+            targetId: categoryOid,
+            targetType: 'category',
+            metadata: { categoryName: category.name, targetName: category.name },
         });
 
         return { message: 'Category deleted' };
@@ -729,14 +854,48 @@ export class ServerChannelController {
         }
 
         const filteredPermissions: Record<string, Record<string, boolean>> = {};
+        const changes = [];
+        
         if (body.permissions) {
             for (const id in body.permissions) {
                 filteredPermissions[id] = {};
                 for (const key in body.permissions[id]) {
                     if (isPermissionKey(key)) {
-                        filteredPermissions[id][key] = body.permissions[id][
-                            key
-                        ] as boolean;
+                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                    }
+                }
+            }
+        }
+
+        const oldPerms = (channel.permissions as Record<string, Record<string, boolean>>) || {};
+        const roles = await this.roleRepo.findByServerId(serverOid);
+        const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+
+        const allRoleIds = new Set([
+            ...Object.keys(oldPerms),
+            ...Object.keys(filteredPermissions),
+        ]);
+
+        for (const id of allRoleIds) {
+            const roleName = id === 'everyone' ? '@everyone' : (roleMap.get(id)?.name || `Role ${id}`);
+            const oldRolePerms = oldPerms[id] || {};
+            const newRolePerms = filteredPermissions[id] || {};
+
+            const allPermKeys = new Set([
+                ...Object.keys(oldRolePerms),
+                ...Object.keys(newRolePerms),
+            ]);
+
+            for (const key of allPermKeys) {
+                if (isPermissionKey(key)) {
+                    const oldVal = oldRolePerms[key];
+                    const newVal = newRolePerms[key];
+                    if (oldVal !== newVal) {
+                        changes.push({
+                            field: `${roleName} - ${key}`,
+                            before: oldVal ?? null,
+                            after: newVal ?? null,
+                        });
                     }
                 }
             }
@@ -761,6 +920,16 @@ export class ServerChannelController {
                 permissions: normalized,
                 senderId: userId,
             },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'channel_permissions_updated',
+            targetId: channelOid,
+            targetType: 'channel',
+            metadata: { channelName: channel.name },
+            ...(changes.length > 0 && { changes }),
         });
 
         return { permissions: normalized };
@@ -844,14 +1013,48 @@ export class ServerChannelController {
         }
 
         const filteredPermissions: Record<string, Record<string, boolean>> = {};
+        const changes = [];
+        
         if (body.permissions) {
             for (const id in body.permissions) {
                 filteredPermissions[id] = {};
                 for (const key in body.permissions[id]) {
                     if (isPermissionKey(key)) {
-                        filteredPermissions[id][key] = body.permissions[id][
-                            key
-                        ] as boolean;
+                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                    }
+                }
+            }
+        }
+
+        const oldPerms = (category.permissions as Record<string, Record<string, boolean>>) || {};
+        const roles = await this.roleRepo.findByServerId(serverOid);
+        const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+
+        const allRoleIds = new Set([
+            ...Object.keys(oldPerms),
+            ...Object.keys(filteredPermissions),
+        ]);
+
+        for (const id of allRoleIds) {
+            const roleName = id === 'everyone' ? '@everyone' : (roleMap.get(id)?.name || `Role ${id}`);
+            const oldRolePerms = oldPerms[id] || {};
+            const newRolePerms = filteredPermissions[id] || {};
+
+            const allPermKeys = new Set([
+                ...Object.keys(oldRolePerms),
+                ...Object.keys(newRolePerms),
+            ]);
+
+            for (const key of allPermKeys) {
+                if (isPermissionKey(key)) {
+                    const oldVal = oldRolePerms[key];
+                    const newVal = newRolePerms[key];
+                    if (oldVal !== newVal) {
+                        changes.push({
+                            field: `${roleName} - ${key}`,
+                            before: oldVal ?? null,
+                            after: newVal ?? null,
+                        });
                     }
                 }
             }
@@ -875,6 +1078,16 @@ export class ServerChannelController {
                 categoryId,
                 permissions: normalized,
             },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'category_permissions_updated',
+            targetId: categoryOid,
+            targetType: 'category',
+            metadata: { categoryName: category.name },
+            ...(changes.length > 0 && { changes }),
         });
 
         return { permissions: normalized };

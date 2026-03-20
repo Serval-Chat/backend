@@ -32,6 +32,7 @@ import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 
 import { mapUser } from '@/utils/user';
 import type { Request as ExpressRequest } from 'express';
@@ -72,6 +73,8 @@ export class ServerMemberController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
+        @Inject(TYPES.ServerAuditLogService)
+        private serverAuditLogService: IServerAuditLogService,
     ) {}
 
     // Retrieves all members of a server
@@ -174,6 +177,48 @@ export class ServerMemberController {
         return { ...member, user: user ? mapUser(user as IUser) : null };
     }
 
+    // Removes the current user from the server
+    @Delete('members/me')
+    @ApiOperation({ summary: 'Leave the server' })
+    @ApiResponse({ status: 200, description: 'Left server' })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
+    })
+    public async leaveServer(
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
+    ): Promise<{ message: string }> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const server = await this.serverRepo.findById(serverOid);
+        if (server?.ownerId.equals(userOid)) {
+            throw new ForbiddenException(
+                ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
+            );
+        }
+
+        await this.serverMemberRepo.remove(serverOid, userOid);
+        this.permissionService.invalidateCache(serverOid);
+
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_removed',
+            payload: { serverId, userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'user_leave',
+            targetId: userOid,
+            targetType: 'user',
+            targetUserId: userOid,
+        });
+
+        return { message: 'Left server' };
+    }
+
     // Kicks a member from the server
     // Enforces 'kickMembers' permission and prevents actions against server owner
     @Delete('members/:userId')
@@ -247,6 +292,16 @@ export class ServerMemberController {
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
             payload: { serverId, userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: currentOid,
+            actionType: 'user_kick',
+            targetId: targetOid,
+            targetType: 'user',
+            targetUserId: targetOid,
+            reason: _body.reason,
         });
 
         return { message: 'Member kicked' };
@@ -330,6 +385,16 @@ export class ServerMemberController {
             payload: { serverId, userId },
         });
 
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: currentOid,
+            actionType: 'user_ban',
+            targetId: targetOid,
+            targetType: 'user',
+            targetUserId: targetOid,
+            reason: reason,
+        });
+
         return { message: 'Member banned' };
     }
 
@@ -369,6 +434,15 @@ export class ServerMemberController {
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_unbanned',
             payload: { serverId, userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: currentOid,
+            actionType: 'user_unban',
+            targetId: targetOid,
+            targetType: 'user',
+            targetUserId: targetOid,
         });
 
         return { message: 'Member unbanned' };
@@ -473,6 +547,16 @@ export class ServerMemberController {
             },
         });
 
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: currentOid,
+            actionType: 'role_given',
+            targetId: roleOid,
+            targetType: 'role',
+            targetUserId: targetOid,
+            metadata: { roleName: role.name },
+        });
+
         return updatedMember;
     }
 
@@ -534,42 +618,21 @@ export class ServerMemberController {
             },
         });
 
+        const role = await this.roleRepo.findById(roleOid);
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: currentOid,
+            actionType: 'role_removed',
+            targetId: roleOid,
+            targetType: 'role',
+            targetUserId: targetOid,
+            metadata: { roleName: role?.name },
+        });
+
         return updatedMember;
     }
 
-    // Removes the current user from the server
-    // Enforces that the server owner cannot leave without transferring ownership
-    @Delete('members/me')
-    @ApiOperation({ summary: 'Leave the server' })
-    @ApiResponse({ status: 200, description: 'Left server' })
-    @ApiResponse({
-        status: 403,
-        description: ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
-    })
-    public async leaveServer(
-        @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
-    ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const server = await this.serverRepo.findById(serverOid);
-        if (server?.ownerId.equals(userOid)) {
-            throw new ForbiddenException(
-                ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
-            );
-        }
-
-        await this.serverMemberRepo.remove(serverOid, userOid);
-        this.permissionService.invalidateCache(serverOid);
-
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'member_removed',
-            payload: { serverId, userId },
-        });
-
-        return { message: 'Left server' };
-    }
 
     // Transfers server ownership to another member
     // Enforces that only the current owner can perform this action
@@ -622,6 +685,15 @@ export class ServerMemberController {
                 oldOwnerId: userId,
                 newOwnerId: newOwnerId,
             },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'owner_changed',
+            targetId: serverOid,
+            targetType: 'server',
+            targetUserId: newOwnerOid,
         });
 
         return { message: 'Ownership transferred' };

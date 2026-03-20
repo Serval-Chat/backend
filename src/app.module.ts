@@ -6,8 +6,6 @@ import { LoggerModule } from 'nestjs-pino';
 import { trace } from '@opentelemetry/api';
 import { MONGO_URI } from '@/config/env';
 import { LOKI_HOST, LOG_LEVEL, PROJECT_LEVEL } from '@/config/env';
-import { TYPES } from '@/di/types';
-import { container } from '@/di/container';
 import { DatabaseModule } from './modules/database/database.module';
 import { RepositoryModule } from './modules/repository/repository.module';
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
@@ -40,6 +38,7 @@ import { UserMessageController } from './controllers/UserMessageController';
 import { SettingsController } from './controllers/SettingsController';
 import { PushController } from './controllers/PushController';
 import { KlipyController } from './controllers/KlipyController';
+import { ServerAuditLogController } from './controllers/ServerAuditLogController';
 
 @Module({
     imports: [
@@ -121,6 +120,7 @@ import { KlipyController } from './controllers/KlipyController';
         PushController,
         ExportController,
         KlipyController,
+        ServerAuditLogController,
     ],
     providers: [
         {

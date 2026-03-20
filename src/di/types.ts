@@ -41,6 +41,7 @@ export const TYPES = {
     MailConfig: Symbol.for('MailConfig'),
     MetricsService: Symbol.for('MetricsService'),
     PasswordResetRepository: Symbol.for('PasswordResetRepository'),
+    ServerAuditLogService: Symbol.for('ServerAuditLogService'),
 
     // Application
     ExpressApp: Symbol.for('ExpressApp'),

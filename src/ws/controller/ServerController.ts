@@ -49,6 +49,7 @@ import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChanne
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { PermissionService } from '@/permissions/PermissionService';
 import type { PingService } from '@/services/PingService';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 import type { WebSocket } from 'ws';
@@ -65,6 +66,7 @@ export class ServerController {
     @inject(TYPES.WsServer) private wsServer!: IWsServer;
 
     constructor(
+        @inject(TYPES.ServerRepository) private serverRepo: IServerRepository,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
@@ -101,12 +103,18 @@ export class ServerController {
         const { serverId } = payload;
         const userId = authenticatedUser.userId;
 
-        // Verify membership
-        const member = await this.serverMemberRepo.findByServerAndUser(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
-        );
-        if (!member) {
+        // Verify membership or ownership
+        const serverOid = new mongoose.Types.ObjectId(serverId);
+        const userOid = new mongoose.Types.ObjectId(userId);
+
+        const [member, server] = await Promise.all([
+            this.serverMemberRepo.findByServerAndUser(serverOid, userOid),
+            this.serverRepo.findById(serverOid),
+        ]);
+
+        const isOwner = server?.ownerId && server.ownerId.toString() === userId;
+
+        if (!member && !isOwner) {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
 

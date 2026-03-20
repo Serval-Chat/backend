@@ -40,16 +40,14 @@ export class MongooseServerBanRepository implements IServerBanRepository {
             const user = users.find((u) => u._id.equals(b.userId));
             if (!user) return { ...b, user: null };
              
-            const {
-                tokenVersion,
-                permissions,
-                password,
-                settings,
-                language,
-                login,
-                deletedReason,
-                ...safeUser
-            } = user;
+            const safeUser: Record<string, unknown> = { ...user };
+            delete safeUser.tokenVersion;
+            delete safeUser.permissions;
+            delete safeUser.password;
+            delete safeUser.settings;
+            delete safeUser.language;
+            delete safeUser.login;
+            delete safeUser.deletedReason;
             return { ...b, user: mapUser(safeUser) };
         });
     }

@@ -27,6 +27,8 @@ import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRep
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
+import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import { PermissionService } from '@/permissions/PermissionService';
 
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
@@ -70,6 +72,10 @@ export class ReactionController {
         private wsServer: IWsServer,
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
+        @Inject(TYPES.AuditLogRepository)
+        private auditLogRepo: IAuditLogRepository,
+        @Inject(TYPES.ServerAuditLogService)
+        private serverAuditLogService: IServerAuditLogService,
     ) {}
 
     @Get('messages/:messageId/reactions')
@@ -468,6 +474,8 @@ export class ReactionController {
             );
 
         let removed = false;
+        let isModeratorAction = false;
+
         if (scope === 'me') {
             removed = await this.reactionRepo.removeReaction(
                 new Types.ObjectId(messageId),
@@ -485,6 +493,7 @@ export class ReactionController {
                 emojiId,
             );
             removed = deletedCount > 0;
+            isModeratorAction = removed;
         } else {
             // Default to removing only the user's own reaction if scope is not 'me' but they lack management permissions
             removed = await this.reactionRepo.removeReaction(
@@ -519,6 +528,23 @@ export class ReactionController {
         };
 
         this.wsServer.broadcastToServer(serverId, event);
+
+        if (isModeratorAction) {
+            const serverOid = new Types.ObjectId(serverId);
+            const userOid = new Types.ObjectId(userId);
+            const messageOid = message._id;
+
+            await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'reaction_clear',
+            targetId: messageOid,
+            targetType: 'message',
+            metadata: {
+                channelId: message.channelId?.toString(),
+            },
+        });
+        }
 
         return { reactions };
     }

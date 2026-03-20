@@ -1,5 +1,5 @@
 import type { Types } from 'mongoose';
-import type { IExportJob, ExportStatus } from '@/models/ExportJob';
+import type { IExportJob } from '@/models/ExportJob';
 
 export interface IExportJobRepository {
     findById(id: Types.ObjectId): Promise<IExportJob | null>;

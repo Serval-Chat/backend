@@ -36,6 +36,7 @@ import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { Request as ExpressRequest } from 'express';
@@ -70,6 +71,8 @@ export class ServerInviteController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
+        @Inject(TYPES.ServerAuditLogService)
+        private serverAuditLogService: IServerAuditLogService,
     ) {}
 
     // Retrieves all active invites for a server
@@ -169,13 +172,24 @@ export class ServerInviteController {
             ? new Date(Date.now() + expiresIn * 1000)
             : undefined;
 
-        return await this.inviteRepo.create({
+        const invite = await this.inviteRepo.create({
             serverId: serverOid,
             code,
             maxUses: maxUses || 0,
             expiresAt,
             createdByUserId: userOid,
         });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'invite_create',
+            targetId: invite._id as Types.ObjectId,
+            targetType: 'server',
+            metadata: { code: invite.code, maxUses: invite.maxUses, expiresAt: invite.expiresAt },
+        });
+
+        return invite;
     }
 
     // Deletes an invite
@@ -217,6 +231,20 @@ export class ServerInviteController {
         }
 
         await this.inviteRepo.delete(inviteOid);
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'invite_delete',
+            targetId: inviteOid,
+            targetType: 'server',
+            metadata: { 
+                code: invite.code, 
+                uses: invite.uses, 
+                maxUses: invite.maxUses, 
+                expiresAt: invite.expiresAt 
+            },
+        });
 
         return { message: 'Invite deleted' };
     }
@@ -379,6 +407,21 @@ export class ServerInviteController {
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_added',
             payload: { serverId, userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'member_join',
+            targetId: userOid,
+            targetType: 'user',
+            targetUserId: userOid,
+            metadata: { 
+                inviteCode: code,
+                inviteUses: invite.uses + 1,
+                inviteMaxUses: invite.maxUses,
+                inviteExpiresAt: invite.expiresAt
+            },
         });
 
         return { serverId };

@@ -172,16 +172,14 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
                 return { ...m, user: null } as IServerMember & { user: null };
 
              
-            const {
-                tokenVersion,
-                permissions,
-                password,
-                settings,
-                language,
-                login,
-                deletedReason,
-                ...safeUser
-            } = user;
+            const safeUser: Record<string, unknown> = { ...user };
+            delete safeUser.tokenVersion;
+            delete safeUser.permissions;
+            delete safeUser.password;
+            delete safeUser.settings;
+            delete safeUser.language;
+            delete safeUser.login;
+            delete safeUser.deletedReason;
             return {
                 ...m,
                 user: mapUser(safeUser),
@@ -222,16 +220,14 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
                 return { ...m, user: null } as IServerMember & { user: null };
 
              
-            const {
-                tokenVersion,
-                permissions,
-                password,
-                settings,
-                language,
-                login,
-                deletedReason,
-                ...safeUser
-            } = user;
+            const safeUser: Record<string, unknown> = { ...user };
+            delete safeUser.tokenVersion;
+            delete safeUser.permissions;
+            delete safeUser.password;
+            delete safeUser.settings;
+            delete safeUser.language;
+            delete safeUser.login;
+            delete safeUser.deletedReason;
             return {
                 ...m,
                 user: mapUser(safeUser),

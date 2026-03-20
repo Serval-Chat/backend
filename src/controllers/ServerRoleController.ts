@@ -31,6 +31,8 @@ import { WsServer } from '@/ws/server';
 import { injectable } from 'inversify';
 import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { isPermissionKey } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -56,7 +58,6 @@ import fs from 'fs';
 import { randomBytes } from 'crypto';
 import type { Response } from 'express';
 import { ApiError } from '@/utils/ApiError';
-
 // Controller for managing server roles and their permissions
 // Enforces 'manageRoles' permission checks and protects the mandatory '@everyone' role
 @injectable()
@@ -75,6 +76,10 @@ export class ServerRoleController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
+        @Inject(TYPES.AuditLogRepository)
+        private auditLogRepo: IAuditLogRepository,
+        @Inject(TYPES.ServerAuditLogService)
+        private serverAuditLogService: IServerAuditLogService,
     ) {}
 
     // Retrieves all roles for a specific server
@@ -178,6 +183,15 @@ export class ServerRoleController {
             payload: { serverId, role, senderId: userId },
         });
 
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'role_create',
+            targetId: role._id as Types.ObjectId,
+            targetType: 'role',
+            metadata: { roleName: role.name },
+        });
+
         return role;
     }
 
@@ -213,19 +227,52 @@ export class ServerRoleController {
         }
 
         // Bulk update role positions to reflect the new hierarchy
+        const everyoneRole = await this.roleRepo.findEveryoneRole(serverOid);
+        const everyoneId = everyoneRole?._id?.toString();
+
+        const oldAllRoles = await this.roleRepo.findByServerId(serverOid);
+        const roleMap = new Map(oldAllRoles.map((r) => [r._id.toString(), r.name]));
+        
+        const oldOrderedNames = oldAllRoles
+            .filter((r) => r._id.toString() !== everyoneId)
+            .sort((a, b) => b.position - a.position)
+            .map((r) => r.name);
+
         for (const { roleId, position } of body.rolePositions) {
+            if (everyoneId && roleId === everyoneId) continue;
             await this.roleRepo.update(new Types.ObjectId(roleId), {
                 position,
             });
         }
         this.permissionService.invalidateCache(serverOid);
 
+        const filteredPositions = body.rolePositions.filter(
+            (rp) => rp.roleId !== everyoneId
+        );
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'roles_reordered',
             payload: {
                 serverId,
-                rolePositions: body.rolePositions,
+                rolePositions: filteredPositions,
                 senderId: userId,
+            },
+        });
+
+        const orderedNames = [...body.rolePositions]
+            .filter(({ roleId }) => roleId !== everyoneId)
+            .sort((a, b) => b.position - a.position)
+            .map(({ roleId }) => roleMap.get(roleId) ?? 'Unknown');
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'roles_reordered',
+            targetId: serverOid,
+            targetType: 'server',
+            metadata: { 
+                roleOrder: orderedNames,
+                oldRoleOrder: oldOrderedNames,
             },
         });
 
@@ -328,6 +375,48 @@ export class ServerRoleController {
             },
         });
 
+        const changes = [];
+        if (updates.name && updates.name !== role.name)
+            changes.push({ field: 'name', before: role.name, after: updates.name });
+        
+        if (updates.color !== undefined && updates.color !== role.color)
+            changes.push({ field: 'color', before: role.color, after: updates.color });
+
+        if (updates.startColor !== undefined && updates.startColor !== role.startColor)
+            changes.push({ field: 'startColor', before: role.startColor, after: updates.startColor });
+        if (updates.endColor !== undefined && updates.endColor !== role.endColor)
+            changes.push({ field: 'endColor', before: role.endColor, after: updates.endColor });
+
+        if (
+            updates.colors !== undefined &&
+            JSON.stringify(updates.colors) !== JSON.stringify(role.colors)
+        ) {
+            changes.push({ field: 'colors', before: role.colors, after: updates.colors });
+        }
+
+        if (updates.gradientRepeat !== undefined && updates.gradientRepeat !== role.gradientRepeat)
+            changes.push({ field: 'gradientRepeat', before: role.gradientRepeat, after: updates.gradientRepeat });
+
+        if (
+            updates.permissions &&
+            JSON.stringify(updates.permissions) !== JSON.stringify(role.permissions)
+        )
+            changes.push({ field: 'permissions', before: role.permissions, after: updates.permissions });
+        if (updates.position !== undefined && updates.position !== role.position)
+            changes.push({ field: 'position', before: role.position, after: updates.position });
+
+        if (changes.length > 0) {
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'role_update',
+                targetId: roleOid,
+                targetType: 'role',
+                changes,
+                metadata: { roleName: role.name },
+            });
+        }
+
         return updatedRole;
     }
 
@@ -384,6 +473,15 @@ export class ServerRoleController {
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_deleted',
             payload: { serverId, roleId, senderId: userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'role_delete',
+            targetId: roleOid,
+            targetType: 'role',
+            metadata: { roleName: role.name },
         });
 
         return { message: 'Role deleted' };
@@ -508,6 +606,15 @@ export class ServerRoleController {
                 role: updatedRole,
                 senderId: userId,
             },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'role_icon_updated',
+            targetId: roleOid,
+            targetType: 'role',
+            metadata: { roleName: role.name },
         });
 
         return updatedRole;

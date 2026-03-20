@@ -7,6 +7,7 @@ import type {
     ServerMember,
     ServerRole,
 } from '@/permissions/types';
+import type { ILogger } from '@/di/interfaces/ILogger';
 
 function getPermissionValue(
     permissions: Permissions | undefined,
@@ -65,9 +66,11 @@ export class PermissionResolver {
     private readonly memberByUserId: Map<string, ServerMember>;
 
     private readonly everyoneRoleId?: string;
+    private readonly logger?: ILogger;
 
-    constructor(data: ServerData) {
+    constructor(data: ServerData, logger?: ILogger) {
         this.data = data;
+        this.logger = logger;
 
         this.roleById = new Map(
             data.roles.map((r) => [r.id.toString(), r] as const),
@@ -87,7 +90,10 @@ export class PermissionResolver {
 
     hasServerPermission(userId: string, permission: PermissionKey): boolean {
         // 1) Owner
-        if (userId === this.data.ownerId.toString()) return true;
+        if (this.data.ownerId && userId === this.data.ownerId.toString()) {
+            this.logger?.debug(`[PermissionResolver] User ${userId} is the OWNER of server ${this.data.serverId}. Bypassing server permission check for '${permission}'.`);
+            return true;
+        }
 
         const member = this.memberByUserId.get(userId);
         if (!member) return false;
@@ -119,7 +125,7 @@ export class PermissionResolver {
         if (!channel) return false;
 
         // 1) Owner
-        if (userId === this.data.ownerId.toString()) return true;
+        if (this.data.ownerId && userId === this.data.ownerId.toString()) return true;
 
         const member = this.memberByUserId.get(userId);
         if (!member) return false;
@@ -168,7 +174,7 @@ export class PermissionResolver {
         permission: PermissionKey,
     ): Map<string, boolean> {
         const results = new Map<string, boolean>();
-        if (userId === this.data.ownerId.toString()) {
+        if (this.data.ownerId && userId === this.data.ownerId.toString()) {
             for (const id of channelIds) results.set(id, true);
             return results;
         }
@@ -239,7 +245,7 @@ export class PermissionResolver {
     }
 
     getHighestRolePosition(userId: string): number {
-        if (userId === this.data.ownerId.toString())
+        if (this.data.ownerId && userId === this.data.ownerId.toString())
             return Number.MAX_SAFE_INTEGER;
 
         const member = this.memberByUserId.get(userId);

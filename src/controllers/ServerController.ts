@@ -55,6 +55,7 @@ import {
     UpdateServerRequestDTO,
     SetDefaultRoleRequestDTO,
 } from './dto/server.request.dto';
+import { UpdateDefaultRoleRequestDTO } from './dto/server-default-role.request.dto';
 import {
     ServerStatsResponseDTO,
     ServerResponseDTO,
@@ -62,9 +63,9 @@ import {
     UploadIconResponseDTO,
     UploadBannerResponseDTO,
 } from './dto/server.response.dto';
-import { UpdateDefaultRoleRequestDTO } from './dto/server-default-role.request.dto';
 import { PingService } from '@/services/PingService';
-
+import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 @injectable()
 @Controller('api/v1/servers')
 @ApiTags('Servers')
@@ -104,6 +105,10 @@ export class ServerController {
         private pingService: PingService,
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @Inject(TYPES.AuditLogRepository)
+        private auditLogRepo: IAuditLogRepository,
+        @Inject(TYPES.ServerAuditLogService)
+        private serverAuditLogService: IServerAuditLogService,
     ) {
         if (!fs.existsSync(this.UPLOADS_DIR)) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
@@ -503,6 +508,7 @@ export class ServerController {
             }
         }
 
+        const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, updates);
         if (!server) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
@@ -518,6 +524,24 @@ export class ServerController {
                 senderId: userId,
             },
         });
+
+        const changes = [];
+        if (existingServer) {
+            if (body.name && body.name !== existingServer.name) changes.push({ field: 'name', before: existingServer.name, after: body.name });
+            if (body.banner) changes.push({ field: 'banner', before: existingServer.banner, after: body.banner });
+            if (body.defaultRoleId !== undefined) changes.push({ field: 'defaultRoleId', before: existingServer.defaultRoleId?.toString() || null, after: body.defaultRoleId || null });
+        }
+
+        if (changes.length > 0) {
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'update_server',
+                targetId: serverOid,
+                targetType: 'server',
+                changes,
+            });
+        }
 
         return server;
     }
@@ -566,6 +590,7 @@ export class ServerController {
             }
         }
 
+        const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, {
             defaultRoleId: roleId ? new Types.ObjectId(roleId) : undefined,
         });
@@ -579,6 +604,15 @@ export class ServerController {
                     server,
                     senderId: userId,
                 },
+            });
+
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'update_server',
+                targetId: serverOid,
+                targetType: 'server',
+                changes: [{ field: 'defaultRoleId', before: existingServer?.defaultRoleId?.toString() || null, after: roleId || null }],
             });
         }
 
@@ -596,6 +630,7 @@ export class ServerController {
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
         const server = await this.serverRepo.findById(serverOid);
         if (!server) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
@@ -615,6 +650,15 @@ export class ServerController {
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_deleted',
             payload: { serverId, senderId: userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'delete_server',
+            targetId: serverOid,
+            targetType: 'server',
+            changes: [{ field: 'status', before: 'active', after: 'deleted' }],
         });
 
         return { message: 'Server deleted' };
@@ -680,6 +724,7 @@ export class ServerController {
         }
 
         const iconUrl = `/api/v1/servers/icon/${filename}`;
+        const existingServer = await this.serverRepo.findById(serverOid);
         const updatedServer = await this.serverRepo.update(serverOid, {
             icon: iconUrl,
         });
@@ -694,6 +739,15 @@ export class ServerController {
                 icon: iconUrl,
                 senderId: userId,
             },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'update_server',
+            targetId: serverOid,
+            targetType: 'server',
+            changes: [{ field: 'icon', before: existingServer?.icon || null, after: iconUrl }],
         });
 
         return { icon: iconUrl };
@@ -760,6 +814,7 @@ export class ServerController {
         }
 
         const bannerUrl = `/api/v1/servers/banner/${filename}`;
+        const existingServer = await this.serverRepo.findById(serverOid);
         const updatedServer = await this.serverRepo.update(serverOid, {
             banner: { type: 'image', value: bannerUrl },
         });
@@ -774,6 +829,15 @@ export class ServerController {
                 banner: { type: 'image', value: bannerUrl },
                 senderId: userId,
             },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'update_server',
+            targetId: serverOid,
+            targetType: 'server',
+            changes: [{ field: 'banner', before: existingServer?.banner || null, after: bannerUrl }],
         });
 
         return { banner: bannerUrl };
@@ -822,6 +886,7 @@ export class ServerController {
             }
         }
 
+        const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, {
             defaultRoleId: roleId ? new Types.ObjectId(roleId) : undefined,
         });
@@ -833,6 +898,15 @@ export class ServerController {
                     serverId,
                     server,
                 },
+            });
+
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'update_server',
+                targetId: serverOid,
+                targetType: 'server',
+                changes: [{ field: 'defaultRoleId', before: existingServer?.defaultRoleId?.toString() || null, after: roleId || null }],
             });
         }
 

@@ -7,6 +7,7 @@ import { MailService } from '@/services/MailService';
 import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
 import { MetricsService } from '@/services/MetricsService';
+import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 
@@ -46,6 +47,10 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
             provide: TYPES.KlipyService,
             useClass: KlipyService,
         },
+        {
+            provide: TYPES.ServerAuditLogService,
+            useClass: ServerAuditLogService,
+        },
     ],
     exports: [
         TYPES.AuthService,
@@ -55,6 +60,7 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
         TYPES.MetricsService,
         TYPES.ExportService,
         TYPES.KlipyService,
+        TYPES.ServerAuditLogService,
     ],
 })
 export class ServicesModule {}

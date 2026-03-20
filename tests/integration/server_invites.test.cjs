@@ -17,6 +17,7 @@ const request = require('supertest');
 const { setup, teardown, getApp } = require('./setup.cjs');
 const { clearDatabase, createTestUser, generateAuthToken, createTestServer } = require('./helpers.cjs');
 const { ServerMember } = require('../../src/models/Server');
+const { AuditLog } = require('../../src/models/AuditLog');
 
 describe('Server Invites Integration Tests', () => {
     let app;
@@ -56,6 +57,12 @@ describe('Server Invites Integration Tests', () => {
             assert.ok(res.body.code);
             assert.equal(res.body.code, 'testcustom');
             assert.equal(res.body.maxUses, 5);
+
+            // Verify audit log
+            const log = await AuditLog.findOne({ serverId: server._id, actionType: 'invite_create' });
+            assert.ok(log);
+            assert.equal(log.metadata.code, 'testcustom');
+            assert.equal(log.metadata.maxUses, 5);
         });
 
         test('should create invite with maxUses only', async () => {
@@ -284,6 +291,12 @@ describe('Server Invites Integration Tests', () => {
                 .set('Authorization', `Bearer ${token}`);
 
             assert.equal(listRes.body.length, 0);
+
+            // Verify audit log
+            const log = await AuditLog.findOne({ serverId: server._id, actionType: 'invite_delete' });
+            assert.ok(log);
+            assert.equal(log.metadata.code, createRes.body.code);
+            assert.equal(log.metadata.maxUses, 5);
         });
     });
 
@@ -379,6 +392,13 @@ describe('Server Invites Integration Tests', () => {
             const { Invite } = require('../../src/models/Server');
             const invite = await Invite.findOne({ code: 'limited123' });
             assert.equal(invite.uses, 1);
+
+            // Verify audit log
+            const log = await AuditLog.findOne({ serverId: server._id, actionType: 'member_join' });
+            assert.ok(log);
+            assert.equal(log.metadata.inviteCode, 'limited123');
+            assert.equal(log.metadata.inviteUses, 1);
+            assert.equal(log.metadata.inviteMaxUses, 2);
         });
 
         test('should fail if invite max uses exceeded', async () => {

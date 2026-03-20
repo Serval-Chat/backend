@@ -15,7 +15,7 @@ import type { IMailService } from '@/di/interfaces/IMailService';
 import { PingService } from '@/services/PingService';
 import { WsServer } from '@/ws/server';
 import { randomBytes } from 'crypto';
-import { type IExportJob, type ExportStatus, ExportJob } from '@/models/ExportJob';
+import { type IExportJob, ExportJob } from '@/models/ExportJob';
 import { SERVER_URL } from '@/config/env';
 
 @injectable()

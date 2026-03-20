@@ -27,6 +27,7 @@ import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository'
 import type { IPasswordResetRepository } from '@/di/interfaces/IPasswordResetRepository';
 import type { IMailService } from '@/di/interfaces/IMailService';
 import type { IMetricsService } from '@/di/interfaces/IMetricsService';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 
 // Infrastructure implementations
 import { WinstonLogger } from '@/infrastructure/WinstonLogger';
@@ -67,6 +68,7 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
 import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
+import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { AdminController } from '@/controllers/AdminController';
 import { AuthController } from '@/controllers/AuthController';
 import { FileController } from '@/controllers/FileController';
@@ -261,6 +263,11 @@ container
     .bind<KlipyService>(TYPES.KlipyService)
     .to(KlipyService)
     .inSingletonScope();
+
+container
+    .bind<IServerAuditLogService>(TYPES.ServerAuditLogService)
+    .to(ServerAuditLogService)
+    .inTransientScope();
 
 container.bind(TYPES.MailConfig).toConstantValue({
     skipSending: process.env.NODE_ENV === 'test',

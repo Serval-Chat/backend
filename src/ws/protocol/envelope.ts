@@ -86,6 +86,7 @@ import type {
     IRoleDeletedEvent,
     IRolesReorderedEvent,
     IEmojiUpdatedEvent,
+    IAuditLogEntryCreatedEvent,
     IWarningEvent,
 } from './events/server_notifications';
 import type {
@@ -168,6 +169,7 @@ export type AnyResponseWsEvent =
     | IRoleDeletedEvent
     | IRolesReorderedEvent
     | IEmojiUpdatedEvent
+    | IAuditLogEntryCreatedEvent
     | IWarningEvent
     // Friendship
     | IIncomingRequestAddedEvent
