@@ -432,7 +432,9 @@ export class ServerMessageController {
         };
         this.wsServer.broadcastToChannel(channelId, event);
 
-        const channelObj = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+        const channelObj = await this.channelRepo.findById(
+            new mongoose.Types.ObjectId(channelId),
+        );
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: new mongoose.Types.ObjectId(serverId),
@@ -524,7 +526,9 @@ export class ServerMessageController {
             },
         };
         this.wsServer.broadcastToChannel(channelId, event);
-        this.logger.debug(`[ServerMessageController] deleteMessage: Internal broadcast sent to channel ${channelId}`);
+        this.logger.debug(
+            `[ServerMessageController] deleteMessage: Internal broadcast sent to channel ${channelId}`,
+        );
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: new mongoose.Types.ObjectId(serverId),

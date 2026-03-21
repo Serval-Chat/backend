@@ -12,6 +12,20 @@ import { AUTH_CONSTANTS } from '@/constants/auth';
 import crypto from 'crypto';
 import { FRONTEND_URL } from '@/config/env';
 import { ApiError } from '@/utils/ApiError';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '@/config/env';
+import { TotpUsedCode } from '@/models/TotpUsedCode';
+import {
+    decryptSecret,
+    encryptSecret,
+    generateBackupCodes,
+    generateOtpAuthUri,
+    generateTotpSecret,
+    hashRecoveryCode,
+    normalizeBackupCode,
+    verifyTotp,
+} from '@/utils/totp';
+import { Types } from 'mongoose';
 
 // Authentication result
 export interface AuthResult {
@@ -24,6 +38,17 @@ export interface AuthResult {
     };
 }
 
+export interface TempTokenPayload {
+    type?: 'access' | '2fa_temp';
+    scope?: 'auth:2fa:verify';
+    id: string;
+    login: string;
+    username: string;
+    tokenVersion: number;
+    iat?: number;
+    exp?: number;
+}
+
 import { injectable, inject } from 'inversify';
 
 // Authentication Service
@@ -33,6 +58,8 @@ import { injectable, inject } from 'inversify';
 @injectable()
 @Injectable()
 export class AuthService {
+    private readonly issuer = 'Serchat';
+
     constructor(
         @inject(TYPES.Logger) @Inject(TYPES.Logger) private logger: ILogger,
         @inject(TYPES.UserRepository)
@@ -119,6 +146,215 @@ export class AuthService {
             success: true,
             user: user as unknown as IUser,
         };
+    }
+
+    async setupTotp(
+        userId: string,
+        username: string,
+    ): Promise<{ otpauthUri: string }> {
+        const oid = new Types.ObjectId(userId);
+        const user = await this.userRepo.findById(oid);
+        if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        if (user.totpEnabled) {
+            throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_ALREADY_ENABLED);
+        }
+
+        const secret = generateTotpSecret();
+        const encryptedSecret = encryptSecret(secret);
+        await this.userRepo.update(oid, {
+            totpSecret: encryptedSecret,
+            totpEnabled: false,
+            totpVerifiedAt: null,
+            backupCodes: [],
+        });
+
+        return {
+            otpauthUri: generateOtpAuthUri(
+                secret,
+                `${this.issuer}:${username}`,
+                this.issuer,
+            ),
+        };
+    }
+
+    async confirmTotpSetup(
+        userId: string,
+        code: string,
+    ): Promise<{ backupCodes: string[] }> {
+        const oid = new Types.ObjectId(userId);
+        const user = await this.userRepo.findById(oid);
+        if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        if (!user.totpSecret) {
+            throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_SETUP_REQUIRED);
+        }
+
+        const secret = decryptSecret(user.totpSecret);
+        const verification = verifyTotp(secret, code, 1);
+        if (!verification.valid) {
+            throw new ApiError(400, ErrorMessages.AUTH.INVALID_TOTP_CODE);
+        }
+
+        const backupCodes = generateBackupCodes(10);
+        await this.userRepo.update(oid, {
+            totpEnabled: true,
+            totpVerifiedAt: new Date(),
+            backupCodes: backupCodes.map(hashRecoveryCode),
+            totpVerifyFailures: 0,
+            totpLockedUntil: null,
+        });
+
+        return { backupCodes };
+    }
+
+    verifyTempToken(tempToken: string): TempTokenPayload {
+        try {
+            const decoded = jwt.verify(
+                tempToken,
+                JWT_SECRET,
+            ) as TempTokenPayload;
+            if (
+                decoded.type !== '2fa_temp' ||
+                decoded.scope !== 'auth:2fa:verify'
+            ) {
+                throw new ApiError(401, ErrorMessages.AUTH.INVALID_TEMP_TOKEN);
+            }
+            return decoded;
+        } catch {
+            throw new ApiError(401, ErrorMessages.AUTH.INVALID_TEMP_TOKEN);
+        }
+    }
+
+    async verifyTwoFactorCode(input: {
+        userId: string;
+        code?: string;
+        backupCode?: string;
+        requireEnabled?: boolean;
+    }): Promise<void> {
+        const oid = new Types.ObjectId(input.userId);
+        const user = await this.userRepo.findById(oid);
+        if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        if (input.requireEnabled && !user.totpEnabled) {
+            throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_NOT_ENABLED);
+        }
+
+        const now = new Date();
+        if (user.totpLockedUntil && user.totpLockedUntil > now) {
+            throw new ApiError(429, ErrorMessages.AUTH.TWO_FA_LOCKED);
+        }
+
+        let isValid = false;
+        let replayKey = '';
+        let replayExpiry = new Date(Date.now() + 120_000);
+        let consumeBackupCodeHash: string | null = null;
+
+        if (input.backupCode) {
+            const normalized = normalizeBackupCode(input.backupCode);
+            const hashed = hashRecoveryCode(normalized);
+            if ((user.backupCodes || []).includes(hashed)) {
+                isValid = true;
+                consumeBackupCodeHash = hashed;
+                replayKey = `backup:${hashed}`;
+                replayExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            }
+        } else if (input.code) {
+            if (!user.totpSecret) {
+                throw new ApiError(
+                    400,
+                    ErrorMessages.AUTH.TWO_FA_SETUP_REQUIRED,
+                );
+            }
+            const secret = decryptSecret(user.totpSecret);
+            const verification = verifyTotp(secret, input.code, 1);
+            if (
+                verification.valid &&
+                typeof verification.counter === 'number'
+            ) {
+                isValid = true;
+                replayKey = `totp:${verification.counter}`;
+                replayExpiry = new Date((verification.counter + 2) * 30 * 1000);
+            }
+        }
+
+        if (!isValid || !replayKey) {
+            const failures = (user.totpVerifyFailures || 0) + 1;
+            const lock =
+                failures >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+            await this.userRepo.update(oid, {
+                totpVerifyFailures: failures >= 5 ? 0 : failures,
+                totpLockedUntil: lock,
+            });
+            throw new ApiError(400, ErrorMessages.AUTH.INVALID_TOTP_CODE);
+        }
+
+        const replayHash = hashRecoveryCode(replayKey);
+        const existing = await TotpUsedCode.findOne({
+            userId: oid,
+            code: replayHash,
+            expiresAt: { $gt: now },
+        })
+            .lean()
+            .exec();
+        if (existing) {
+            throw new ApiError(400, ErrorMessages.AUTH.INVALID_TOTP_CODE);
+        }
+
+        try {
+            await TotpUsedCode.create({
+                userId: oid,
+                code: replayHash,
+                expiresAt: replayExpiry,
+            });
+        } catch {
+            throw new ApiError(400, ErrorMessages.AUTH.INVALID_TOTP_CODE);
+        }
+
+        const updateData: Record<string, unknown> = {
+            totpVerifyFailures: 0,
+            totpLockedUntil: null,
+        };
+        if (consumeBackupCodeHash) {
+            updateData.backupCodes = (user.backupCodes || []).filter(
+                (x) => x !== consumeBackupCodeHash,
+            );
+        }
+        await this.userRepo.update(oid, updateData);
+    }
+
+    async regenerateBackupCodes(
+        userId: string,
+        code?: string,
+    ): Promise<{ backupCodes: string[] }> {
+        await this.verifyTwoFactorCode({
+            userId,
+            code,
+            requireEnabled: true,
+        });
+        const backupCodes = generateBackupCodes(10);
+        await this.userRepo.update(new Types.ObjectId(userId), {
+            backupCodes: backupCodes.map(hashRecoveryCode),
+        });
+        return { backupCodes };
+    }
+
+    async disableTwoFactor(
+        userId: string,
+        code?: string,
+        backupCode?: string,
+    ): Promise<void> {
+        await this.verifyTwoFactorCode({
+            userId,
+            code,
+            backupCode,
+            requireEnabled: true,
+        });
+        await this.userRepo.update(new Types.ObjectId(userId), {
+            totpSecret: null,
+            totpEnabled: false,
+            totpVerifiedAt: null,
+            backupCodes: [],
+            totpVerifyFailures: 0,
+            totpLockedUntil: null,
+        });
     }
 
     // Request a password reset

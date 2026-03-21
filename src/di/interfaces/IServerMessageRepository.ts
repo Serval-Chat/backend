@@ -68,7 +68,9 @@ export interface IServerMessageRepository {
         after?: string,
     ): Promise<IServerMessage[]>;
 
-    findCursorByChannelId(channelId: Types.ObjectId): AsyncIterable<IServerMessage>;
+    findCursorByChannelId(
+        channelId: Types.ObjectId,
+    ): AsyncIterable<IServerMessage>;
 
     // Count messages in a channel
     countByChannelId(channelId: Types.ObjectId): Promise<number>;

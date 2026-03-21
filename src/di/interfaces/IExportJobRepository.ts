@@ -9,7 +9,10 @@ export interface IExportJobRepository {
     findPendingJobs(): Promise<IExportJob[]>;
     findExpiredJobs(): Promise<IExportJob[]>;
     create(data: Partial<IExportJob>): Promise<IExportJob>;
-    update(id: Types.ObjectId, data: Partial<IExportJob>): Promise<IExportJob | null>;
+    update(
+        id: Types.ObjectId,
+        data: Partial<IExportJob>,
+    ): Promise<IExportJob | null>;
     delete(id: Types.ObjectId): Promise<boolean>;
     deleteByChannelId(channelId: Types.ObjectId): Promise<number>;
 }

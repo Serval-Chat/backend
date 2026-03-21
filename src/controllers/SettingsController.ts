@@ -28,7 +28,6 @@ import { UpdateSettingsRequestDTO } from './dto/settings.request.dto';
 import { UpdateServerSettingsRequestDTO } from './dto/server-settings.request.dto';
 import type { WsServer } from '@/ws/server';
 
-
 interface UserSettings {
     muteNotifications?: boolean;
     useDiscordStyleMessages?: boolean;
@@ -41,7 +40,10 @@ interface UserSettings {
     disableCustomUsernameColors?: boolean;
     disableCustomUsernameGlow?: boolean;
     serverSettings?: {
-        order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
+        order: (
+            | string
+            | { id: string; name: string; color: string; serverIds: string[] }
+        )[];
     };
 }
 
@@ -60,7 +62,7 @@ export class SettingsController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
-    ) { }
+    ) {}
 
     // Retrieves the current user's settings
     // Returns default values if no custom settings are configured
@@ -148,7 +150,20 @@ export class SettingsController {
     public async updateServerSettings(
         @Req() req: ExpressRequest,
         @Body() body: UpdateServerSettingsRequestDTO,
-    ): Promise<{ message: string; serverSettings: { order: (string | { id: string; name: string; color: string; serverIds: string[] })[] } }> {
+    ): Promise<{
+        message: string;
+        serverSettings: {
+            order: (
+                | string
+                | {
+                      id: string;
+                      name: string;
+                      color: string;
+                      serverIds: string[];
+                  }
+            )[];
+        };
+    }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const userOid = new Types.ObjectId(userId);
 

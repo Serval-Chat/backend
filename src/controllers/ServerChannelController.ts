@@ -304,8 +304,11 @@ export class ServerChannelController {
             throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
         }
 
-        const existingChannels = await this.channelRepo.findByServerId(serverOid);
-        const channelMap = new Map(existingChannels.map((c) => [c._id.toString(), c]));
+        const existingChannels =
+            await this.channelRepo.findByServerId(serverOid);
+        const channelMap = new Map(
+            existingChannels.map((c) => [c._id.toString(), c]),
+        );
 
         const changes = [];
         for (const { channelId, position } of body.channelPositions) {
@@ -468,23 +471,46 @@ export class ServerChannelController {
 
         const changes = [];
         if (body.name && body.name !== existingChannel.name) {
-            changes.push({ field: 'name', before: existingChannel.name, after: body.name });
+            changes.push({
+                field: 'name',
+                before: existingChannel.name,
+                after: body.name,
+            });
         }
-        if (body.description !== undefined && body.description !== existingChannel.description) {
-            changes.push({ field: 'description', before: existingChannel.description, after: body.description });
+        if (
+            body.description !== undefined &&
+            body.description !== existingChannel.description
+        ) {
+            changes.push({
+                field: 'description',
+                before: existingChannel.description,
+                after: body.description,
+            });
         }
         if (body.categoryId !== undefined) {
             const oldCatString = existingChannel.categoryId?.toString() ?? null;
             const newCatString = body.categoryId ? body.categoryId : null;
             if (oldCatString !== newCatString) {
-                changes.push({ field: 'categoryId', before: oldCatString, after: newCatString });
+                changes.push({
+                    field: 'categoryId',
+                    before: oldCatString,
+                    after: newCatString,
+                });
             }
         }
         if (body.icon !== undefined && body.icon !== existingChannel.icon) {
-            changes.push({ field: 'icon', before: existingChannel.icon ?? null, after: body.icon ?? null });
+            changes.push({
+                field: 'icon',
+                before: existingChannel.icon ?? null,
+                after: body.icon ?? null,
+            });
         }
         if (body.link !== undefined && body.link !== existingChannel.link) {
-            changes.push({ field: 'link', before: existingChannel.link ?? null, after: body.link ?? null });
+            changes.push({
+                field: 'link',
+                before: existingChannel.link ?? null,
+                after: body.link ?? null,
+            });
         }
 
         if (changes.length > 0) {
@@ -606,7 +632,10 @@ export class ServerChannelController {
             actionType: 'create_category',
             targetId: category._id as Types.ObjectId,
             targetType: 'category',
-            metadata: { categoryName: category.name, targetName: category.name },
+            metadata: {
+                categoryName: category.name,
+                targetName: category.name,
+            },
         });
 
         return category;
@@ -700,7 +729,11 @@ export class ServerChannelController {
 
         const changes = [];
         if (body.name && body.name !== existingCategory.name) {
-            changes.push({ field: 'name', before: existingCategory.name, after: body.name });
+            changes.push({
+                field: 'name',
+                before: existingCategory.name,
+                after: body.name,
+            });
         }
         if (changes.length > 0) {
             await this.serverAuditLogService.createAndBroadcast({
@@ -710,7 +743,10 @@ export class ServerChannelController {
                 targetId: categoryOid,
                 targetType: 'category',
                 changes,
-                metadata: { categoryName: existingCategory.name, targetName: existingCategory.name },
+                metadata: {
+                    categoryName: existingCategory.name,
+                    targetName: existingCategory.name,
+                },
             });
         }
 
@@ -770,7 +806,10 @@ export class ServerChannelController {
             actionType: 'delete_category',
             targetId: categoryOid,
             targetType: 'category',
-            metadata: { categoryName: category.name, targetName: category.name },
+            metadata: {
+                categoryName: category.name,
+                targetName: category.name,
+            },
         });
 
         return { message: 'Category deleted' };
@@ -855,19 +894,23 @@ export class ServerChannelController {
 
         const filteredPermissions: Record<string, Record<string, boolean>> = {};
         const changes = [];
-        
+
         if (body.permissions) {
             for (const id in body.permissions) {
                 filteredPermissions[id] = {};
                 for (const key in body.permissions[id]) {
                     if (isPermissionKey(key)) {
-                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                        filteredPermissions[id][key] = body.permissions[id][
+                            key
+                        ] as boolean;
                     }
                 }
             }
         }
 
-        const oldPerms = (channel.permissions as Record<string, Record<string, boolean>>) || {};
+        const oldPerms =
+            (channel.permissions as Record<string, Record<string, boolean>>) ||
+            {};
         const roles = await this.roleRepo.findByServerId(serverOid);
         const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
 
@@ -877,7 +920,10 @@ export class ServerChannelController {
         ]);
 
         for (const id of allRoleIds) {
-            const roleName = id === 'everyone' ? '@everyone' : (roleMap.get(id)?.name || `Role ${id}`);
+            const roleName =
+                id === 'everyone'
+                    ? '@everyone'
+                    : roleMap.get(id)?.name || `Role ${id}`;
             const oldRolePerms = oldPerms[id] || {};
             const newRolePerms = filteredPermissions[id] || {};
 
@@ -1014,19 +1060,23 @@ export class ServerChannelController {
 
         const filteredPermissions: Record<string, Record<string, boolean>> = {};
         const changes = [];
-        
+
         if (body.permissions) {
             for (const id in body.permissions) {
                 filteredPermissions[id] = {};
                 for (const key in body.permissions[id]) {
                     if (isPermissionKey(key)) {
-                        filteredPermissions[id][key] = body.permissions[id][key] as boolean;
+                        filteredPermissions[id][key] = body.permissions[id][
+                            key
+                        ] as boolean;
                     }
                 }
             }
         }
 
-        const oldPerms = (category.permissions as Record<string, Record<string, boolean>>) || {};
+        const oldPerms =
+            (category.permissions as Record<string, Record<string, boolean>>) ||
+            {};
         const roles = await this.roleRepo.findByServerId(serverOid);
         const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
 
@@ -1036,7 +1086,10 @@ export class ServerChannelController {
         ]);
 
         for (const id of allRoleIds) {
-            const roleName = id === 'everyone' ? '@everyone' : (roleMap.get(id)?.name || `Role ${id}`);
+            const roleName =
+                id === 'everyone'
+                    ? '@everyone'
+                    : roleMap.get(id)?.name || `Role ${id}`;
             const oldRolePerms = oldPerms[id] || {};
             const newRolePerms = filteredPermissions[id] || {};
 

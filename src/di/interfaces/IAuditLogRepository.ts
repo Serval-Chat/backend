@@ -15,7 +15,13 @@ export interface IAuditLog {
     actorId: Types.ObjectId;
     actionType: string;
     targetId?: Types.ObjectId;
-    targetType?: 'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
+    targetType?:
+        | 'user'
+        | 'channel'
+        | 'category'
+        | 'role'
+        | 'message'
+        | 'server';
     targetUserId?: Types.ObjectId;
     changes?: IAuditLogChange[];
     reason?: string;
@@ -34,7 +40,13 @@ export interface IAuditLogRepository {
         actorId: Types.ObjectId;
         actionType: string;
         targetId?: Types.ObjectId;
-        targetType?: 'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
+        targetType?:
+            | 'user'
+            | 'channel'
+            | 'category'
+            | 'role'
+            | 'message'
+            | 'server';
         targetUserId?: Types.ObjectId;
         changes?: IAuditLogChange[];
         reason?: string;

@@ -42,6 +42,13 @@ export const ErrorMessages = {
             'New password must be different from the current password',
         INVALID_CURRENT_PASSWORD: 'Invalid current password',
         USER_ALREADY_DELETED: 'User is already deleted',
+        TWO_FA_NOT_ENABLED: 'Two-factor authentication is not enabled',
+        TWO_FA_ALREADY_ENABLED: 'Two-factor authentication is already enabled',
+        TWO_FA_SETUP_REQUIRED: 'Two-factor setup is required',
+        INVALID_TOTP_CODE: 'Invalid two-factor authentication code',
+        INVALID_TEMP_TOKEN: 'Invalid or expired temporary authentication token',
+        TWO_FA_LOCKED:
+            'Too many two-factor attempts. Try again after lock expires.',
     },
 
     SERVER: {

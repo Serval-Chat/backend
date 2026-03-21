@@ -41,14 +41,17 @@ export class PingService {
         const messageId = (msg?._id || msg?.messageId)?.toString() || 'unknown';
         const senderId = pingData.senderId?.toString() || 'unknown';
 
-        if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(messageId)) {
+        if (
+            !mongoose.Types.ObjectId.isValid(senderId) ||
+            !mongoose.Types.ObjectId.isValid(messageId)
+        ) {
             return {
                 id: 'temporary',
                 type: pingData.type,
                 sender: pingData.sender,
                 senderId: senderId,
                 message: pingData.message,
-                timestamp: Date.now()
+                timestamp: Date.now(),
             };
         }
 

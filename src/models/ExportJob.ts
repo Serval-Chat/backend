@@ -1,7 +1,12 @@
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
-export type ExportStatus = 'queued' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+export type ExportStatus =
+    | 'queued'
+    | 'in_progress'
+    | 'completed'
+    | 'failed'
+    | 'cancelled';
 
 export interface IExportJob extends Document {
     _id: Types.ObjectId;
@@ -23,9 +28,23 @@ export interface IExportJob extends Document {
 
 const exportJobSchema = new Schema<IExportJob>(
     {
-        channelId: { type: Schema.Types.ObjectId, ref: 'Channel', required: true, index: true },
-        serverId: { type: Schema.Types.ObjectId, ref: 'Server', required: true, index: true },
-        requestedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        channelId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Channel',
+            required: true,
+            index: true,
+        },
+        serverId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Server',
+            required: true,
+            index: true,
+        },
+        requestedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        },
         status: {
             type: String,
             enum: ['queued', 'in_progress', 'completed', 'failed', 'cancelled'],
@@ -48,4 +67,7 @@ const exportJobSchema = new Schema<IExportJob>(
 
 exportJobSchema.index({ status: 1, nextAttemptAt: 1 });
 
-export const ExportJob: Model<IExportJob> = mongoose.model('ExportJob', exportJobSchema);
+export const ExportJob: Model<IExportJob> = mongoose.model(
+    'ExportJob',
+    exportJobSchema,
+);

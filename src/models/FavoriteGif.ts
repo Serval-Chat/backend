@@ -12,7 +12,12 @@ export interface IFavoriteGif extends Document {
 
 const schema = new Schema<IFavoriteGif>(
     {
-        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+        userId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+            index: true,
+        },
         klipyId: { type: String, required: true },
         url: { type: String, required: true },
         previewUrl: { type: String, required: true },

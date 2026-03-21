@@ -86,7 +86,10 @@ export class UserProfileResponseDTO {
 
     @ApiPropertyOptional()
     serverSettings?: {
-        order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
+        order: (
+            | string
+            | { id: string; name: string; color: string; serverIds: string[] }
+        )[];
     };
 
     @ApiPropertyOptional()

@@ -231,8 +231,10 @@ export class ServerRoleController {
         const everyoneId = everyoneRole?._id?.toString();
 
         const oldAllRoles = await this.roleRepo.findByServerId(serverOid);
-        const roleMap = new Map(oldAllRoles.map((r) => [r._id.toString(), r.name]));
-        
+        const roleMap = new Map(
+            oldAllRoles.map((r) => [r._id.toString(), r.name]),
+        );
+
         const oldOrderedNames = oldAllRoles
             .filter((r) => r._id.toString() !== everyoneId)
             .sort((a, b) => b.position - a.position)
@@ -247,7 +249,7 @@ export class ServerRoleController {
         this.permissionService.invalidateCache(serverOid);
 
         const filteredPositions = body.rolePositions.filter(
-            (rp) => rp.roleId !== everyoneId
+            (rp) => rp.roleId !== everyoneId,
         );
 
         this.wsServer.broadcastToServer(serverId, {
@@ -270,7 +272,7 @@ export class ServerRoleController {
             actionType: 'roles_reordered',
             targetId: serverOid,
             targetType: 'server',
-            metadata: { 
+            metadata: {
                 roleOrder: orderedNames,
                 oldRoleOrder: oldOrderedNames,
             },
@@ -377,33 +379,78 @@ export class ServerRoleController {
 
         const changes = [];
         if (updates.name && updates.name !== role.name)
-            changes.push({ field: 'name', before: role.name, after: updates.name });
-        
-        if (updates.color !== undefined && updates.color !== role.color)
-            changes.push({ field: 'color', before: role.color, after: updates.color });
+            changes.push({
+                field: 'name',
+                before: role.name,
+                after: updates.name,
+            });
 
-        if (updates.startColor !== undefined && updates.startColor !== role.startColor)
-            changes.push({ field: 'startColor', before: role.startColor, after: updates.startColor });
-        if (updates.endColor !== undefined && updates.endColor !== role.endColor)
-            changes.push({ field: 'endColor', before: role.endColor, after: updates.endColor });
+        if (updates.color !== undefined && updates.color !== role.color)
+            changes.push({
+                field: 'color',
+                before: role.color,
+                after: updates.color,
+            });
+
+        if (
+            updates.startColor !== undefined &&
+            updates.startColor !== role.startColor
+        )
+            changes.push({
+                field: 'startColor',
+                before: role.startColor,
+                after: updates.startColor,
+            });
+        if (
+            updates.endColor !== undefined &&
+            updates.endColor !== role.endColor
+        )
+            changes.push({
+                field: 'endColor',
+                before: role.endColor,
+                after: updates.endColor,
+            });
 
         if (
             updates.colors !== undefined &&
             JSON.stringify(updates.colors) !== JSON.stringify(role.colors)
         ) {
-            changes.push({ field: 'colors', before: role.colors, after: updates.colors });
+            changes.push({
+                field: 'colors',
+                before: role.colors,
+                after: updates.colors,
+            });
         }
 
-        if (updates.gradientRepeat !== undefined && updates.gradientRepeat !== role.gradientRepeat)
-            changes.push({ field: 'gradientRepeat', before: role.gradientRepeat, after: updates.gradientRepeat });
+        if (
+            updates.gradientRepeat !== undefined &&
+            updates.gradientRepeat !== role.gradientRepeat
+        )
+            changes.push({
+                field: 'gradientRepeat',
+                before: role.gradientRepeat,
+                after: updates.gradientRepeat,
+            });
 
         if (
             updates.permissions &&
-            JSON.stringify(updates.permissions) !== JSON.stringify(role.permissions)
+            JSON.stringify(updates.permissions) !==
+                JSON.stringify(role.permissions)
         )
-            changes.push({ field: 'permissions', before: role.permissions, after: updates.permissions });
-        if (updates.position !== undefined && updates.position !== role.position)
-            changes.push({ field: 'position', before: role.position, after: updates.position });
+            changes.push({
+                field: 'permissions',
+                before: role.permissions,
+                after: updates.permissions,
+            });
+        if (
+            updates.position !== undefined &&
+            updates.position !== role.position
+        )
+            changes.push({
+                field: 'position',
+                before: role.position,
+                after: updates.position,
+            });
 
         if (changes.length > 0) {
             await this.serverAuditLogService.createAndBroadcast({

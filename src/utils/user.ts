@@ -34,6 +34,7 @@ export interface MappedUser {
     banner: string | null;
     permissions?: AdminPermissions;
     settings?: Record<string, unknown>;
+    totpEnabled?: boolean;
 }
 
 export interface MapUserOptions {
@@ -58,6 +59,7 @@ interface RawUser {
     anonymizedUsername?: unknown;
     banner?: unknown;
     settings?: unknown;
+    totpEnabled?: unknown;
     [key: string]: unknown;
 }
 
@@ -108,5 +110,6 @@ export function mapUser(
                 (u.permissions as AdminPermissions) || DEFAULT_PERMISSIONS,
         }),
         settings: (u.settings as Record<string, unknown>) || {},
+        totpEnabled: Boolean(u.totpEnabled),
     };
 }

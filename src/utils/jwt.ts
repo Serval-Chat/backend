@@ -4,6 +4,8 @@ import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 
 // JWT payload structure for user authentication
 export interface JWTPayload {
+    type?: 'access' | '2fa_temp';
+    scope?: 'auth:2fa:verify';
     id: string;
     login: string;
     username: string;
@@ -23,4 +25,20 @@ export function hasPermission(
 
 // Generate a JWT for authenticated users
 export const generateJWT = (payload: JWTPayload) =>
-    jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+    jwt.sign({ ...payload, type: 'access' }, JWT_SECRET, { expiresIn: '7d' });
+
+export const generateTwoFactorTempToken = (payload: {
+    id: string;
+    login: string;
+    username: string;
+    tokenVersion: number;
+}) =>
+    jwt.sign(
+        {
+            ...payload,
+            type: '2fa_temp',
+            scope: 'auth:2fa:verify',
+        } as JWTPayload,
+        JWT_SECRET,
+        { expiresIn: '5m' },
+    );

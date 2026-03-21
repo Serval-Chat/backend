@@ -171,7 +171,6 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             if (!user)
                 return { ...m, user: null } as IServerMember & { user: null };
 
-             
             const safeUser: Record<string, unknown> = { ...user };
             delete safeUser.tokenVersion;
             delete safeUser.permissions;
@@ -219,7 +218,6 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             if (!user)
                 return { ...m, user: null } as IServerMember & { user: null };
 
-             
             const safeUser: Record<string, unknown> = { ...user };
             delete safeUser.tokenVersion;
             delete safeUser.permissions;

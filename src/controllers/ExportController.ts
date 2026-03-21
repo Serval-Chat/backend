@@ -9,11 +9,7 @@ import {
     Inject,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
-import {
-    ApiTags,
-    ApiOperation,
-    ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { injectable } from 'inversify';
 import { ExportService } from '@/services/ExportService';
@@ -52,8 +48,17 @@ export class ExportController {
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
 
-        if (!(await this.permissionService.hasPermission(serverOid, userOid, 'export_channel_messages'))) {
-            throw new ApiError(403, 'You do not have permission to export messages');
+        if (
+            !(await this.permissionService.hasPermission(
+                serverOid,
+                userOid,
+                'export_channel_messages',
+            ))
+        ) {
+            throw new ApiError(
+                403,
+                'You do not have permission to export messages',
+            );
         }
 
         return await this.exportService.getExportState(channelOid);
@@ -73,15 +78,31 @@ export class ExportController {
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
 
-        if (!(await this.permissionService.hasPermission(serverOid, userOid, 'export_channel_messages'))) {
-            throw new ApiError(403, 'You do not have permission to export messages');
+        if (
+            !(await this.permissionService.hasPermission(
+                serverOid,
+                userOid,
+                'export_channel_messages',
+            ))
+        ) {
+            throw new ApiError(
+                403,
+                'You do not have permission to export messages',
+            );
         }
 
         try {
-            const job = await this.exportService.requestExport(serverOid, channelOid, userOid);
+            const job = await this.exportService.requestExport(
+                serverOid,
+                channelOid,
+                userOid,
+            );
             return { message: 'Export started', jobId: job._id };
         } catch (err) {
-            throw new ApiError(400, err instanceof Error ? err.message : 'Failed to request export');
+            throw new ApiError(
+                400,
+                err instanceof Error ? err.message : 'Failed to request export',
+            );
         }
     }
 
@@ -92,7 +113,7 @@ export class ExportController {
         @Res() res: Response,
     ) {
         const job = await this.exportJobRepo.findByDownloadToken(token);
-        
+
         if (!job || job.status !== 'completed' || !job.filePath) {
             return this.sendExpiredResponse(res, 404);
         }

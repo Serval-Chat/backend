@@ -14,7 +14,7 @@ export interface IPresenceSyncEvent
                 status?: string; // Custom status text
             }>;
         }
-    > { }
+    > {}
 
 /**
  * Server → Client (Broadcast)
@@ -28,7 +28,7 @@ export interface IUserOnlineEvent
             username: string;
             status?: string;
         }
-    > { }
+    > {}
 
 /**
  * Server → Client (Broadcast)
@@ -41,7 +41,7 @@ export interface IUserOfflineEvent
             userId: string;
             username: string;
         }
-    > { }
+    > {}
 
 /**
  * Client → Server
@@ -53,7 +53,7 @@ export interface ISetStatusEvent
         {
             status: string; // Empty string to clear
         }
-    > { }
+    > {}
 
 /**
  * Server → Client (Broadcast)
@@ -67,7 +67,7 @@ export interface IStatusUpdatedEvent
             username: string;
             status: string;
         }
-    > { }
+    > {}
 
 /**
  * Server → Client (Broadcast)
@@ -106,7 +106,7 @@ export interface IUserUpdatedEvent
                 disableCustomUsernameGlow?: boolean;
             };
         }
-    > { }
+    > {}
 
 /**
  * Server → Client (Broadcast)
@@ -119,7 +119,7 @@ export interface IUserBannerUpdatedEvent
             username: string;
             banner: string;
         }
-    > { }
+    > {}
 
 /**
  * Server → Client (Broadcast)
@@ -132,7 +132,7 @@ export interface IDisplayNameUpdatedEvent
             username: string;
             displayName: string | null;
         }
-    > { }
+    > {}
 
 /**
  * Server → Client (Broadcast)
@@ -145,4 +145,4 @@ export interface IStatusUpdateLegacyEvent
             username: string;
             status: unknown | null;
         }
-    > { }
+    > {}

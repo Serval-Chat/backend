@@ -54,6 +54,9 @@ export class JwtAuthGuard implements CanActivate {
 
         try {
             const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+            if (decoded.type && decoded.type !== 'access') {
+                throw new UnauthorizedException('Invalid token');
+            }
 
             // Check if account is deleted and validate tokenVersion
             const user = await this.userRepo.findById(

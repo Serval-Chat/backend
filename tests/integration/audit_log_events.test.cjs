@@ -899,7 +899,7 @@ describe('Audit Log Events', { timeout: 60000 }, function () {
             ws.close();
         });
 
-        it('does NOT create audit log for delete_message when user deletes their own message', async function () {
+        it('creates audit log for delete_message when user deletes their own message', async function () {
             const owner = await createTestUser({ username: 'owner_self_del_msg' });
             const token = generateAuthToken(owner);
             const server = await createTestServer(owner._id);
@@ -910,11 +910,12 @@ describe('Audit Log Events', { timeout: 60000 }, function () {
                 .delete(`/api/v1/servers/${server._id}/channels/${channel._id}/messages/${message._id}`)
                 .set('Authorization', `Bearer ${token}`);
 
-            assert.equal(res.status, 200);
+            assert.equal(res.status, 200, `Expected 200 got ${res.status}: ${JSON.stringify(res.body)}`);
 
             const { AuditLog } = require('../../src/models/AuditLog');
             const log = await AuditLog.findOne({ serverId: server._id, actionType: 'delete_message' });
-            assert.equal(log, null, 'audit log should NOT exist for self-deletion');
+            assert.ok(log, 'audit log should exist for self-deletion');
+            assert.equal(log.actorId.toString(), owner._id.toString());
         });
     });
 

@@ -41,6 +41,12 @@ export interface IUser extends Document {
     bio?: string;
     pronouns?: string;
     badges?: string[]; // Array of badge IDs
+    totpSecret?: string | null;
+    totpEnabled?: boolean;
+    totpVerifiedAt?: Date | null;
+    backupCodes?: string[];
+    totpVerifyFailures?: number;
+    totpLockedUntil?: Date | null;
     notificationPreferences?: {
         mention: boolean;
         friend_request: boolean;
@@ -60,7 +66,10 @@ export interface IUser extends Document {
     };
     banner?: string;
     serverSettings?: {
-        order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
+        order: (
+            | string
+            | { id: string; name: string; color: string; serverIds: string[] }
+        )[];
     };
     comparePassword(candidate: string): Promise<boolean>;
 }
@@ -133,6 +142,12 @@ const schema = new Schema<IUser>(
         bio: { type: String, maxlength: 500, trim: true },
         pronouns: { type: String, maxlength: 60, trim: true },
         badges: { type: [String], default: [] },
+        totpSecret: { type: String, default: null },
+        totpEnabled: { type: Boolean, default: false },
+        totpVerifiedAt: { type: Date, default: null },
+        backupCodes: { type: [String], default: [] },
+        totpVerifyFailures: { type: Number, default: 0 },
+        totpLockedUntil: { type: Date, default: null },
         settings: {
             muteNotifications: { type: Boolean, default: false },
             useDiscordStyleMessages: { type: Boolean, default: false },

@@ -22,7 +22,8 @@ export class KlipyService {
 
     constructor(
         @InjectModel('KlipyCache') private klipyCacheModel: Model<IKlipyCache>,
-        @InjectModel('FavoriteGif') private favoriteGifModel: Model<IFavoriteGif>,
+        @InjectModel('FavoriteGif')
+        private favoriteGifModel: Model<IFavoriteGif>,
         @Inject(TYPES.Logger) private logger: ILogger,
     ) {}
 
@@ -58,36 +59,51 @@ export class KlipyService {
             if (cached) return cached;
 
             this.logger.info(`Resolving Klipy GIF ${klipyId}`);
-            const response = await axios.get(this.getApiUrl(`/gifs/${klipyId}`));
+            const response = await axios.get(
+                this.getApiUrl(`/gifs/${klipyId}`),
+            );
             const data = response.data.data;
 
             if (!data || !data.file) {
-                this.logger.error(`Invalid Klipy response for ${klipyId}: ${JSON.stringify(response.data)}`);
+                this.logger.error(
+                    `Invalid Klipy response for ${klipyId}: ${JSON.stringify(response.data)}`,
+                );
                 throw new Error('Invalid GIF data received from Klipy');
             }
 
             const metadata = {
                 klipyId,
-                url: data.file.hd?.gif?.url || data.file.md?.gif?.url || data.file.sm?.gif?.url,
+                url:
+                    data.file.hd?.gif?.url ||
+                    data.file.md?.gif?.url ||
+                    data.file.sm?.gif?.url,
                 previewUrl: data.file.sm?.gif?.url || data.file.xs?.gif?.url,
-                width: data.file.hd?.gif?.width || data.file.md?.gif?.width || 0,
-                height: data.file.hd?.gif?.height || data.file.md?.gif?.height || 0,
+                width:
+                    data.file.hd?.gif?.width || data.file.md?.gif?.width || 0,
+                height:
+                    data.file.hd?.gif?.height || data.file.md?.gif?.height || 0,
                 expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
             };
 
             return await this.klipyCacheModel.findOneAndUpdate(
                 { klipyId },
                 { $set: metadata },
-                { upsert: true, new: true, setDefaultsOnInsert: true }
+                { upsert: true, new: true, setDefaultsOnInsert: true },
             );
         } catch (error) {
-            this.logger.error(`Failed to resolve Klipy GIF ${klipyId}: ${error}`);
+            this.logger.error(
+                `Failed to resolve Klipy GIF ${klipyId}: ${error}`,
+            );
             throw error;
         }
     }
 
-    public async getFavorites(userId: string): Promise<FavoriteGifResponseDTO[]> {
-        return this.favoriteGifModel.find({ userId: new Types.ObjectId(userId) }).lean();
+    public async getFavorites(
+        userId: string,
+    ): Promise<FavoriteGifResponseDTO[]> {
+        return this.favoriteGifModel
+            .find({ userId: new Types.ObjectId(userId) })
+            .lean();
     }
 
     public async toggleFavorite(
@@ -97,7 +113,10 @@ export class KlipyService {
         const userOid = new Types.ObjectId(userId);
         const { klipyId } = gifData;
 
-        const existing = await this.favoriteGifModel.findOne({ userId: userOid, klipyId });
+        const existing = await this.favoriteGifModel.findOne({
+            userId: userOid,
+            klipyId,
+        });
 
         if (existing) {
             await this.favoriteGifModel.deleteOne({ _id: existing._id });

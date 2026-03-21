@@ -53,14 +53,18 @@ export class KlipyController {
     @Get('resolve')
     @ApiOperation({ summary: 'Resolve Klipy GIF metadata' })
     @ApiResponse({ status: 200, type: GifMetadataResponseDTO })
-    public async resolve(@Query('id') id: string): Promise<GifMetadataResponseDTO> {
+    public async resolve(
+        @Query('id') id: string,
+    ): Promise<GifMetadataResponseDTO> {
         return this.klipyService.resolveGif(id);
     }
 
     @Get('favorites')
     @ApiOperation({ summary: 'Get user favorite GIFs' })
     @ApiResponse({ status: 200, type: [FavoriteGifResponseDTO] })
-    public async getFavorites(@Req() req: ExpressRequest): Promise<FavoriteGifResponseDTO[]> {
+    public async getFavorites(
+        @Req() req: ExpressRequest,
+    ): Promise<FavoriteGifResponseDTO[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         return this.klipyService.getFavorites(userId);
     }

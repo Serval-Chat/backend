@@ -15,6 +15,7 @@ import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { AuthService } from '@/services/AuthService';
 import { generateJWT } from '@/utils/jwt';
+import { generateTwoFactorTempToken } from '@/utils/jwt';
 import {
     loginAttemptsCounter,
     registrationAttemptsCounter,
@@ -42,6 +43,13 @@ import {
     ChangePasswordResponseDTO,
     PasswordResetResponseDTO,
 } from './dto/auth.response.dto';
+import {
+    TotpSetupConfirmRequestDTO,
+    TotpSetupConfirmResponseDTO,
+    TotpSetupResponseDTO,
+    TotpSensitiveActionRequestDTO,
+    TotpVerifyRequestDTO,
+} from './dto/totp.dto';
 
 import {
     LoginRequestDTO,
@@ -111,6 +119,22 @@ export class AuthController {
 
         loginAttemptsCounter.labels('success').inc();
 
+        if (user.totpEnabled) {
+            const temp_token = generateTwoFactorTempToken({
+                id: user._id.toString(),
+                login: login,
+                username: user.username as string,
+                tokenVersion: user.tokenVersion || 0,
+            });
+
+            res.status(HttpStatus.OK).json({
+                temp_token,
+                two_factor_required: true,
+                username: user.username,
+            });
+            return;
+        }
+
         const token = generateJWT({
             id: user._id.toString(),
             login: login,
@@ -123,6 +147,103 @@ export class AuthController {
             token,
             username: user.username,
         });
+    }
+
+    @Post('2fa/setup')
+    @UseGuards(JwtAuthGuard)
+    @ApiSecurity('jwt')
+    @ApiResponse({ status: 200, type: TotpSetupResponseDTO })
+    public async setupTwoFactor(
+        @Req() req: Request,
+    ): Promise<TotpSetupResponseDTO> {
+        const user = (req as unknown as RequestWithUser).user;
+        return await this.authService.setupTotp(user.id, user.username);
+    }
+
+    @Post('2fa/setup/confirm')
+    @UseGuards(JwtAuthGuard)
+    @ApiSecurity('jwt')
+    @ApiResponse({ status: 200, type: TotpSetupConfirmResponseDTO })
+    public async confirmTwoFactorSetup(
+        @Req() req: Request,
+        @Body() body: TotpSetupConfirmRequestDTO,
+    ): Promise<TotpSetupConfirmResponseDTO> {
+        const user = (req as unknown as RequestWithUser).user;
+        return await this.authService.confirmTotpSetup(user.id, body.code);
+    }
+
+    @Post('2fa/verify')
+    @HttpCode(HttpStatus.OK)
+    @ApiResponse({ status: 200, type: LoginResponseDTO })
+    public async verifyTwoFactor(
+        @Body() body: TotpVerifyRequestDTO,
+        @Res() res: Response,
+    ): Promise<void> {
+        if (!body.code && !body.backupCode) {
+            res.status(HttpStatus.BAD_REQUEST).json({
+                error: ErrorMessages.AUTH.INVALID_TOTP_CODE,
+            });
+            return;
+        }
+
+        const payload = this.authService.verifyTempToken(body.tempToken);
+        await this.authService.verifyTwoFactorCode({
+            userId: payload.id,
+            code: body.code,
+            backupCode: body.backupCode,
+            requireEnabled: true,
+        });
+
+        const user = await this.userRepo.findById(
+            new Types.ObjectId(payload.id),
+        );
+        if (!user || user.deletedAt) {
+            throw new ApiError(401, ErrorMessages.AUTH.INVALID_TEMP_TOKEN);
+        }
+        const token = generateJWT({
+            id: user._id.toString(),
+            login: user.login || payload.login,
+            username: user.username || payload.username,
+            tokenVersion: user.tokenVersion || 0,
+            permissions: user.permissions,
+        });
+
+        res.status(HttpStatus.OK).json({
+            token,
+            username: user.username || payload.username,
+        });
+    }
+
+    @Post('2fa/backup-codes/regenerate')
+    @UseGuards(JwtAuthGuard)
+    @ApiSecurity('jwt')
+    @ApiResponse({ status: 200, type: TotpSetupConfirmResponseDTO })
+    public async regenerateBackupCodes(
+        @Req() req: Request,
+        @Body() body: TotpSensitiveActionRequestDTO,
+    ): Promise<TotpSetupConfirmResponseDTO> {
+        if (!body.code) {
+            throw new ApiError(400, ErrorMessages.AUTH.INVALID_TOTP_CODE);
+        }
+        const user = (req as unknown as RequestWithUser).user;
+        return await this.authService.regenerateBackupCodes(user.id, body.code);
+    }
+
+    @Post('2fa/disable')
+    @UseGuards(JwtAuthGuard)
+    @ApiSecurity('jwt')
+    @ApiResponse({ status: 200 })
+    public async disableTwoFactor(
+        @Req() req: Request,
+        @Body() body: TotpSensitiveActionRequestDTO,
+    ): Promise<{ message: string }> {
+        const user = (req as unknown as RequestWithUser).user;
+        await this.authService.disableTwoFactor(
+            user.id,
+            body.code,
+            body.backupCode,
+        );
+        return { message: 'Two-factor authentication disabled successfully' };
     }
 
     // Registers a new user using an invite token

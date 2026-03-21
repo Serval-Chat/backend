@@ -1,5 +1,8 @@
 import type { Types } from 'mongoose';
-import type { IAuditLog, IAuditLogChange } from '@/di/interfaces/IAuditLogRepository';
+import type {
+    IAuditLog,
+    IAuditLogChange,
+} from '@/di/interfaces/IAuditLogRepository';
 
 export interface IServerAuditLogService {
     /**
@@ -10,7 +13,13 @@ export interface IServerAuditLogService {
         actorId: Types.ObjectId;
         actionType: string;
         targetId?: Types.ObjectId;
-        targetType?: 'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
+        targetType?:
+            | 'user'
+            | 'channel'
+            | 'category'
+            | 'role'
+            | 'message'
+            | 'server';
         targetUserId?: Types.ObjectId;
         changes?: IAuditLogChange[];
         reason?: string;

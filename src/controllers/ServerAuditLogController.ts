@@ -100,14 +100,15 @@ export class ServerAuditLogController {
         const pageEntries = hasMore ? entries.slice(0, limit) : entries;
         const lastEntry = pageEntries[pageEntries.length - 1];
         const nextCursor =
-            hasMore && lastEntry?._id
-                ? lastEntry._id.toString()
-                : null;
+            hasMore && lastEntry?._id ? lastEntry._id.toString() : null;
 
         return {
-            entries: pageEntries.map((entry) => mapAuditLogEntry(entry as Parameters<typeof mapAuditLogEntry>[0])),
+            entries: pageEntries.map((entry) =>
+                mapAuditLogEntry(
+                    entry as Parameters<typeof mapAuditLogEntry>[0],
+                ),
+            ),
             nextCursor,
         };
     }
 }
-

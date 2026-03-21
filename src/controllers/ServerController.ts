@@ -527,9 +527,24 @@ export class ServerController {
 
         const changes = [];
         if (existingServer) {
-            if (body.name && body.name !== existingServer.name) changes.push({ field: 'name', before: existingServer.name, after: body.name });
-            if (body.banner) changes.push({ field: 'banner', before: existingServer.banner, after: body.banner });
-            if (body.defaultRoleId !== undefined) changes.push({ field: 'defaultRoleId', before: existingServer.defaultRoleId?.toString() || null, after: body.defaultRoleId || null });
+            if (body.name && body.name !== existingServer.name)
+                changes.push({
+                    field: 'name',
+                    before: existingServer.name,
+                    after: body.name,
+                });
+            if (body.banner)
+                changes.push({
+                    field: 'banner',
+                    before: existingServer.banner,
+                    after: body.banner,
+                });
+            if (body.defaultRoleId !== undefined)
+                changes.push({
+                    field: 'defaultRoleId',
+                    before: existingServer.defaultRoleId?.toString() || null,
+                    after: body.defaultRoleId || null,
+                });
         }
 
         if (changes.length > 0) {
@@ -612,7 +627,14 @@ export class ServerController {
                 actionType: 'update_server',
                 targetId: serverOid,
                 targetType: 'server',
-                changes: [{ field: 'defaultRoleId', before: existingServer?.defaultRoleId?.toString() || null, after: roleId || null }],
+                changes: [
+                    {
+                        field: 'defaultRoleId',
+                        before:
+                            existingServer?.defaultRoleId?.toString() || null,
+                        after: roleId || null,
+                    },
+                ],
             });
         }
 
@@ -747,7 +769,13 @@ export class ServerController {
             actionType: 'update_server',
             targetId: serverOid,
             targetType: 'server',
-            changes: [{ field: 'icon', before: existingServer?.icon || null, after: iconUrl }],
+            changes: [
+                {
+                    field: 'icon',
+                    before: existingServer?.icon || null,
+                    after: iconUrl,
+                },
+            ],
         });
 
         return { icon: iconUrl };
@@ -837,7 +865,13 @@ export class ServerController {
             actionType: 'update_server',
             targetId: serverOid,
             targetType: 'server',
-            changes: [{ field: 'banner', before: existingServer?.banner || null, after: bannerUrl }],
+            changes: [
+                {
+                    field: 'banner',
+                    before: existingServer?.banner || null,
+                    after: bannerUrl,
+                },
+            ],
         });
 
         return { banner: bannerUrl };
@@ -906,7 +940,14 @@ export class ServerController {
                 actionType: 'update_server',
                 targetId: serverOid,
                 targetType: 'server',
-                changes: [{ field: 'defaultRoleId', before: existingServer?.defaultRoleId?.toString() || null, after: roleId || null }],
+                changes: [
+                    {
+                        field: 'defaultRoleId',
+                        before:
+                            existingServer?.defaultRoleId?.toString() || null,
+                        after: roleId || null,
+                    },
+                ],
             });
         }
 

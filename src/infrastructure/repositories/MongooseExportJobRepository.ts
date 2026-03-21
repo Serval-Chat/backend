@@ -11,11 +11,15 @@ export class MongooseExportJobRepository implements IExportJobRepository {
         return await ExportJob.findById(id);
     }
 
-    async findByChannelId(channelId: Types.ObjectId): Promise<IExportJob | null> {
+    async findByChannelId(
+        channelId: Types.ObjectId,
+    ): Promise<IExportJob | null> {
         return await ExportJob.findOne({ channelId });
     }
 
-    async findLatestByChannel(channelId: Types.ObjectId): Promise<IExportJob | null> {
+    async findLatestByChannel(
+        channelId: Types.ObjectId,
+    ): Promise<IExportJob | null> {
         return await ExportJob.findOne({ channelId }).sort({ createdAt: -1 });
     }
 
@@ -42,7 +46,10 @@ export class MongooseExportJobRepository implements IExportJobRepository {
         return await ExportJob.create(data);
     }
 
-    async update(id: Types.ObjectId, data: Partial<IExportJob>): Promise<IExportJob | null> {
+    async update(
+        id: Types.ObjectId,
+        data: Partial<IExportJob>,
+    ): Promise<IExportJob | null> {
         return await ExportJob.findByIdAndUpdate(id, data, { new: true });
     }
 

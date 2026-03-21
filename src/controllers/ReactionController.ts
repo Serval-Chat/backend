@@ -535,15 +535,15 @@ export class ReactionController {
             const messageOid = message._id;
 
             await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
-            actionType: 'reaction_clear',
-            targetId: messageOid,
-            targetType: 'message',
-            metadata: {
-                channelId: message.channelId?.toString(),
-            },
-        });
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'reaction_clear',
+                targetId: messageOid,
+                targetType: 'message',
+                metadata: {
+                    channelId: message.channelId?.toString(),
+                },
+            });
         }
 
         return { reactions };

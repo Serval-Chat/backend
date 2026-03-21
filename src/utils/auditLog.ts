@@ -17,7 +17,12 @@ export function mapAuditLogEntry(entry: IAuditLog) {
     const actorObj =
         actor instanceof Types.ObjectId
             ? null
-            : (actor as { _id: Types.ObjectId; username?: string; displayName?: string | null; profilePicture?: string });
+            : (actor as {
+                  _id: Types.ObjectId;
+                  username?: string;
+                  displayName?: string | null;
+                  profilePicture?: string;
+              });
 
     const targetUser = entry.targetUserId as unknown as
         | {
@@ -32,19 +37,22 @@ export function mapAuditLogEntry(entry: IAuditLog) {
     const targetUserObj =
         targetUser === null || targetUser instanceof Types.ObjectId
             ? null
-            : (targetUser as { _id: Types.ObjectId; username?: string; displayName?: string | null });
+            : (targetUser as {
+                  _id: Types.ObjectId;
+                  username?: string;
+                  displayName?: string | null;
+              });
 
     const metadata = entry.metadata ?? {};
-    const metadataObj = metadata instanceof Map ? Object.fromEntries(metadata) : metadata;
+    const metadataObj =
+        metadata instanceof Map ? Object.fromEntries(metadata) : metadata;
 
-    const resolvedName = (
-        metadataObj.targetName ||
+    const resolvedName = (metadataObj.targetName ||
         metadataObj.channelName ||
         metadataObj.roleName ||
         metadataObj.categoryName ||
         metadataObj.emojiName ||
-        metadataObj.code
-    ) as string | undefined;
+        metadataObj.code) as string | undefined;
 
     return {
         id: entry._id.toString(),
@@ -64,9 +72,9 @@ export function mapAuditLogEntry(entry: IAuditLog) {
                   name: targetUserObj.displayName ?? targetUserObj.username,
               }
             : resolvedName
-              ? { 
-                  id: entry.targetId?.toString(), 
-                  name: resolvedName 
+              ? {
+                    id: entry.targetId?.toString(),
+                    name: resolvedName,
                 }
               : undefined,
         changes: entry.changes,

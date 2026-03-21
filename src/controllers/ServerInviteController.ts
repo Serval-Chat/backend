@@ -186,7 +186,11 @@ export class ServerInviteController {
             actionType: 'invite_create',
             targetId: invite._id as Types.ObjectId,
             targetType: 'server',
-            metadata: { code: invite.code, maxUses: invite.maxUses, expiresAt: invite.expiresAt },
+            metadata: {
+                code: invite.code,
+                maxUses: invite.maxUses,
+                expiresAt: invite.expiresAt,
+            },
         });
 
         return invite;
@@ -238,11 +242,11 @@ export class ServerInviteController {
             actionType: 'invite_delete',
             targetId: inviteOid,
             targetType: 'server',
-            metadata: { 
-                code: invite.code, 
-                uses: invite.uses, 
-                maxUses: invite.maxUses, 
-                expiresAt: invite.expiresAt 
+            metadata: {
+                code: invite.code,
+                uses: invite.uses,
+                maxUses: invite.maxUses,
+                expiresAt: invite.expiresAt,
             },
         });
 
@@ -416,11 +420,11 @@ export class ServerInviteController {
             targetId: userOid,
             targetType: 'user',
             targetUserId: userOid,
-            metadata: { 
+            metadata: {
                 inviteCode: code,
                 inviteUses: invite.uses + 1,
                 inviteMaxUses: invite.maxUses,
-                inviteExpiresAt: invite.expiresAt
+                inviteExpiresAt: invite.expiresAt,
             },
         });
 

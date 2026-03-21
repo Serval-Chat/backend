@@ -166,7 +166,12 @@ export class MailService implements IMailService, OnModuleInit {
         }
     }
 
-    async sendExportSuccessEmail(to: string, channelName: string, serverName: string, downloadUrl: string): Promise<void> {
+    async sendExportSuccessEmail(
+        to: string,
+        channelName: string,
+        serverName: string,
+        downloadUrl: string,
+    ): Promise<void> {
         if (!this.client) return;
         try {
             await this.client.messages.create(MAILGUN_DOMAIN, {
@@ -175,13 +180,22 @@ export class MailService implements IMailService, OnModuleInit {
                 subject: `Your message export for #${channelName} is ready`,
                 text: `Your export for #${channelName} on ${serverName} is ready to download.\n\nDownload file: ${downloadUrl}\n\nThis link will expire in 48 hours.`,
             });
-            this.logger.info(`[MailService] Export success email sent to ${to}`);
+            this.logger.info(
+                `[MailService] Export success email sent to ${to}`,
+            );
         } catch (error) {
-            this.logger.error(`[MailService] Failed to send export success email to ${to}`, error);
+            this.logger.error(
+                `[MailService] Failed to send export success email to ${to}`,
+                error,
+            );
         }
     }
 
-    async sendExportFailureEmail(to: string, channelName: string, serverName: string): Promise<void> {
+    async sendExportFailureEmail(
+        to: string,
+        channelName: string,
+        serverName: string,
+    ): Promise<void> {
         if (!this.client) return;
         try {
             await this.client.messages.create(MAILGUN_DOMAIN, {
@@ -190,13 +204,22 @@ export class MailService implements IMailService, OnModuleInit {
                 subject: `Message export failed for #${channelName}`,
                 text: `We've failed to export messages for channel ${channelName} on server ${serverName}.\nPlease try again from channel settings, or contact support if the issue persists.`,
             });
-            this.logger.info(`[MailService] Export failure email sent to ${to}`);
+            this.logger.info(
+                `[MailService] Export failure email sent to ${to}`,
+            );
         } catch (error) {
-            this.logger.error(`[MailService] Failed to send export failure email to ${to}`, error);
+            this.logger.error(
+                `[MailService] Failed to send export failure email to ${to}`,
+                error,
+            );
         }
     }
 
-    async sendExportCancelledEmail(to: string, channelName: string, serverName: string): Promise<void> {
+    async sendExportCancelledEmail(
+        to: string,
+        channelName: string,
+        serverName: string,
+    ): Promise<void> {
         if (!this.client) return;
         try {
             await this.client.messages.create(MAILGUN_DOMAIN, {
@@ -205,9 +228,14 @@ export class MailService implements IMailService, OnModuleInit {
                 subject: `Message export cancelled for #${channelName}`,
                 text: `Your message export for ${channelName} on ${serverName} was cancelled because the channel was deleted before the export could complete.`,
             });
-            this.logger.info(`[MailService] Export cancelled email sent to ${to}`);
+            this.logger.info(
+                `[MailService] Export cancelled email sent to ${to}`,
+            );
         } catch (error) {
-            this.logger.error(`[MailService] Failed to send export cancelled email to ${to}`, error);
+            this.logger.error(
+                `[MailService] Failed to send export cancelled email to ${to}`,
+                error,
+            );
         }
     }
 }

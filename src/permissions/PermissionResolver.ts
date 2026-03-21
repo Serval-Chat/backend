@@ -91,7 +91,9 @@ export class PermissionResolver {
     hasServerPermission(userId: string, permission: PermissionKey): boolean {
         // 1) Owner
         if (this.data.ownerId && userId === this.data.ownerId.toString()) {
-            this.logger?.debug(`[PermissionResolver] User ${userId} is the OWNER of server ${this.data.serverId}. Bypassing server permission check for '${permission}'.`);
+            this.logger?.debug(
+                `[PermissionResolver] User ${userId} is the OWNER of server ${this.data.serverId}. Bypassing server permission check for '${permission}'.`,
+            );
             return true;
         }
 
@@ -125,7 +127,8 @@ export class PermissionResolver {
         if (!channel) return false;
 
         // 1) Owner
-        if (this.data.ownerId && userId === this.data.ownerId.toString()) return true;
+        if (this.data.ownerId && userId === this.data.ownerId.toString())
+            return true;
 
         const member = this.memberByUserId.get(userId);
         if (!member) return false;

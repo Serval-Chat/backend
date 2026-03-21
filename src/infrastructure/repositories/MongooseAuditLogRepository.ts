@@ -19,7 +19,13 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         actorId: Types.ObjectId;
         actionType: string;
         targetId?: Types.ObjectId;
-        targetType?: 'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
+        targetType?:
+            | 'user'
+            | 'channel'
+            | 'category'
+            | 'role'
+            | 'message'
+            | 'server';
         targetUserId?: Types.ObjectId;
         changes?: IAuditLogChange[];
         reason?: string;
@@ -96,8 +102,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         if (options.cursor) {
             try {
                 query._id = { $lt: new Types.ObjectId(options.cursor) };
-            } catch {
-            }
+            } catch {}
         }
 
         const results = await this.auditLogModel

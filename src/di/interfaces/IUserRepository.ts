@@ -56,6 +56,12 @@ export interface IUser {
     updatedAt?: Date;
     pronouns?: string;
     badges?: string[];
+    totpSecret?: string | null;
+    totpEnabled?: boolean;
+    totpVerifiedAt?: Date | null;
+    backupCodes?: string[];
+    totpVerifyFailures?: number;
+    totpLockedUntil?: Date | null;
     settings?: {
         muteNotifications?: boolean;
         useDiscordStyleMessages?: boolean;
@@ -67,7 +73,10 @@ export interface IUser {
     };
     banner?: string;
     serverSettings?: {
-        order: (string | { id: string; name: string; color: string; serverIds: string[] })[];
+        order: (
+            | string
+            | { id: string; name: string; color: string; serverIds: string[] }
+        )[];
     };
 }
 

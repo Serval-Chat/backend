@@ -1,8 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginResponseDTO {
-    @ApiProperty()
-    token!: string;
+    @ApiProperty({ required: false })
+    token?: string;
+    @ApiProperty({ required: false })
+    temp_token?: string;
+    @ApiProperty({ required: false })
+    two_factor_required?: boolean;
     @ApiProperty()
     username!: string;
 }

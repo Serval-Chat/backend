@@ -2,7 +2,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
-import { IAuditLogRepository, IAuditLog, IAuditLogChange } from '@/di/interfaces/IAuditLogRepository';
+import {
+    IAuditLogRepository,
+    IAuditLog,
+    IAuditLogChange,
+} from '@/di/interfaces/IAuditLogRepository';
 import { IWsServer } from '@/ws/interfaces/IWsServer';
 import { PermissionService } from '@/permissions/PermissionService';
 import { ILogger } from '@/di/interfaces/ILogger';
@@ -28,7 +32,13 @@ export class ServerAuditLogService implements IServerAuditLogService {
         actorId: Types.ObjectId;
         actionType: string;
         targetId?: Types.ObjectId;
-        targetType?: 'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
+        targetType?:
+            | 'user'
+            | 'channel'
+            | 'category'
+            | 'role'
+            | 'message'
+            | 'server';
         targetUserId?: Types.ObjectId;
         changes?: IAuditLogChange[];
         reason?: string;
@@ -37,13 +47,19 @@ export class ServerAuditLogService implements IServerAuditLogService {
     }): Promise<IAuditLog> {
         const serverIdStr = data.serverId.toString();
 
-        this.logger.debug(`[ServerAuditLogService] Creating audit log: ${data.actionType} on server ${serverIdStr}`);
+        this.logger.debug(
+            `[ServerAuditLogService] Creating audit log: ${data.actionType} on server ${serverIdStr}`,
+        );
 
         const auditLog = await this.auditLogRepo.create(data);
 
-        const populatedAuditLog = await this.auditLogRepo.findById(auditLog._id as Types.ObjectId);
+        const populatedAuditLog = await this.auditLogRepo.findById(
+            auditLog._id as Types.ObjectId,
+        );
         if (populatedAuditLog) {
-            this.logger.debug(`[ServerAuditLogService] Broadcasting audit_log_entry_created for ${data.actionType}`);
+            this.logger.debug(
+                `[ServerAuditLogService] Broadcasting audit_log_entry_created for ${data.actionType}`,
+            );
             this.wsServer.broadcastToServerWithPermission(
                 serverIdStr,
                 {
@@ -53,10 +69,17 @@ export class ServerAuditLogService implements IServerAuditLogService {
                         entry: mapAuditLogEntry(populatedAuditLog),
                     },
                 },
-                (uId) => this.permissionService.hasPermission(data.serverId, new Types.ObjectId(uId), 'manageServer'),
+                (uId) =>
+                    this.permissionService.hasPermission(
+                        data.serverId,
+                        new Types.ObjectId(uId),
+                        'manageServer',
+                    ),
             );
         } else {
-            this.logger.warn(`[ServerAuditLogService] Failed to find populated audit log for broadcast: ${auditLog._id}`);
+            this.logger.warn(
+                `[ServerAuditLogService] Failed to find populated audit log for broadcast: ${auditLog._id}`,
+            );
         }
 
         return auditLog;

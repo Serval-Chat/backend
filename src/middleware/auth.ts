@@ -40,6 +40,9 @@ export const authenticateToken = async (
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+        if (decoded.type && decoded.type !== 'access') {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
 
         // Check if account is deleted and validate tokenVersion
         const user = await User.findById(decoded.id)

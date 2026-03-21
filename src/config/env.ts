@@ -11,6 +11,7 @@ function ensureAbsolute(p: string): string {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || '';
+const APP_ENCRYPTION_KEY = process.env.APP_ENCRYPTION_KEY || JWT_SECRET;
 const PORT = Number(process.env.CHAT_PORT || -1);
 const MONGO_URI = process.env.MONGO_URI || '';
 const PROJECT_LEVEL = process.env.PROJ_LEVEL || '';
@@ -57,6 +58,7 @@ if (FRONTEND_URL) {
 
 if (PORT === -1) throw new Error('CHAT_PORT not set.');
 if (!JWT_SECRET) throw new Error('JWT_SECRET not set.');
+if (!APP_ENCRYPTION_KEY) throw new Error('APP_ENCRYPTION_KEY not set.');
 if (!MONGO_URI) throw new Error('MONGO_URI not set.');
 if (!PROJECT_LEVEL) throw new Error('PROJ_LEVEL not set.');
 if (!LOGS_PATH) throw new Error('LOGS_PATH not set.');
@@ -97,6 +99,7 @@ if (!fs.existsSync(PUBLIC_FOLDER_PATH)) {
 
 export {
     JWT_SECRET,
+    APP_ENCRYPTION_KEY,
     PORT,
     MONGO_URI,
     PROJECT_LEVEL,

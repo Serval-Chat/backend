@@ -633,7 +633,6 @@ export class ServerMemberController {
         return updatedMember;
     }
 
-
     // Transfers server ownership to another member
     // Enforces that only the current owner can perform this action
     @Post('transfer-ownership')
