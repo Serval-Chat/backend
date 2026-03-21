@@ -16,8 +16,8 @@ export class ChannelResponseDTO {
     @ApiProperty()
     name!: string;
 
-    @ApiProperty({ enum: ['text', 'voice'] })
-    type!: 'text' | 'voice';
+    @ApiProperty({ enum: ['text', 'voice', 'link'] })
+    type!: 'text' | 'voice' | 'link';
 
     @ApiProperty({ required: false })
     description?: string;
@@ -42,6 +42,12 @@ export class ChannelResponseDTO {
 
     @ApiProperty({ required: false })
     updatedAt?: Date;
+
+    @ApiProperty({ required: false })
+    slowMode?: number;
+
+    @ApiProperty({ required: false, nullable: true, type: String })
+    slowModeNextMessageAllowedAt?: string | null;
 }
 
 export class ChannelWithReadResponseDTO extends ChannelResponseDTO {

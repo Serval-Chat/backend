@@ -17,6 +17,7 @@ export const PERMISSION_KEYS = [
     'manageReactions',
     'export_channel_messages',
     'viewChannels',
+    'bypassSlowmode',
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];

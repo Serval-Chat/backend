@@ -275,6 +275,7 @@ export interface IMessageServerSentEvent
             text: string;
             createdAt: string;
             replyToId?: string;
+            slowModeNextMessageAllowedAt?: string | null;
         }
     > {}
 

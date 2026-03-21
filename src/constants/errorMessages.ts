@@ -103,6 +103,7 @@ export const ErrorMessages = {
         NO_PERMISSION_DELETE: 'No permission to delete message',
         CONTENT_REQUIRED: 'Content required',
         NOT_IN_CONVERSATION: 'Message not part of this conversation',
+        SLOW_MODE: 'You are sending messages too fast. Please wait %s before sending another message.',
     },
 
     INVITE: {

@@ -23,6 +23,7 @@ export interface IChannel {
     icon?: string;
     description?: string;
     link?: string;
+    slowMode?: number;
 }
 
 // Channel creation DTO
@@ -42,6 +43,7 @@ export interface CreateChannelDTO {
     description?: string;
     icon?: string;
     link?: string;
+    slowMode?: number;
 }
 
 // Channel Repository Interface

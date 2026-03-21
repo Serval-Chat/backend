@@ -56,6 +56,8 @@ import type { WebSocket } from 'ws';
 import logger from '@/utils/logger';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import { notifyUser } from '@/services/pushService';
+import { ApiError } from '@/utils/ApiError';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Controller for handling server/channel message events.
@@ -268,6 +270,41 @@ export class ServerController {
             );
         }
 
+        // Slow Mode Check
+        if (channel?.slowMode && channel.slowMode > 0) {
+            const hasBypass = 
+                await this.permissionService.hasChannelPermission(
+                    new mongoose.Types.ObjectId(serverId),
+                    new mongoose.Types.ObjectId(userId),
+                    new mongoose.Types.ObjectId(channelId),
+                    'bypassSlowmode',
+                );
+
+            if (!hasBypass) {
+                const lastMessage = await this.serverMessageRepo.findLastByChannelAndUser(
+                    new mongoose.Types.ObjectId(channelId),
+                    new mongoose.Types.ObjectId(userId),
+                );
+
+                if (lastMessage && lastMessage.createdAt) {
+                    const cooldownMs = channel.slowMode * 1000;
+                    const timeSinceLastMessage =
+                        Date.now() - lastMessage.createdAt.getTime();
+
+                    if (timeSinceLastMessage < cooldownMs) {
+                        const remainingSeconds = Math.ceil(
+                            (cooldownMs - timeSinceLastMessage) / 1000,
+                        );
+                        const message = ErrorMessages.MESSAGE.SLOW_MODE.replace(
+                            '%s',
+                            `${remainingSeconds}s`,
+                        );
+                        throw new ApiError(403, message);
+                    }
+                }
+            }
+        }
+
         // Parse mentions
         const {
             userIds: mentionedUserIds,
@@ -435,6 +472,17 @@ export class ServerController {
             }
         }
 
+        let slowModeNextMessageAllowedAt: string | null = null;
+        if (channel?.slowMode && channel.slowMode > 0) {
+            const lastSentAt =
+                created.createdAt instanceof Date
+                    ? created.createdAt
+                    : new Date(created.createdAt);
+            slowModeNextMessageAllowedAt = new Date(
+                lastSentAt.getTime() + channel.slowMode * 1000,
+            ).toISOString();
+        }
+
         return {
             messageId: created._id.toString(),
             serverId,
@@ -444,6 +492,7 @@ export class ServerController {
             createdAt:
                 created.createdAt?.toISOString() || new Date().toISOString(),
             replyToId: created.replyToId?.toString(),
+            slowModeNextMessageAllowedAt,
         };
     }
 

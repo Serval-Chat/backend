@@ -308,4 +308,14 @@ export class MongooseServerMessageRepository
             .lean()
             .cursor();
     }
+
+    async findLastByChannelAndUser(
+        channelId: Types.ObjectId,
+        userId: Types.ObjectId,
+    ): Promise<IServerMessage | null> {
+        const doc = await ServerMessage.findOne({ channelId, senderId: userId })
+            .sort({ createdAt: -1 })
+            .lean();
+        return doc ? this.transformMessage(doc as unknown as PopulatedServerMessageDoc) : null;
+    }
 }

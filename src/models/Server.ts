@@ -76,6 +76,7 @@ export interface IChannel extends Document {
     icon?: string;
     description?: string;
     link?: string;
+    slowMode?: number;
 }
 
 // Server member interface
@@ -268,6 +269,7 @@ const channelSchema = new Schema<IChannel>({
     icon: { type: String },
     description: { type: String, maxlength: 200 },
     link: { type: String, required: false },
+    slowMode: { type: Number, default: 0 },
 });
 channelSchema.index({ serverId: 1, categoryId: 1, position: 1 });
 channelSchema.index({ serverId: 1, lastMessageAt: -1 });

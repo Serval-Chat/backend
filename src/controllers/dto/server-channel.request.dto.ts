@@ -8,6 +8,8 @@ import {
     ValidateNested,
     MaxLength,
     IsMongoId,
+    Min,
+    Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -55,6 +57,16 @@ export class CreateChannelRequestDTO {
     @IsOptional()
     @IsUrlField()
     link?: string;
+    @ApiPropertyOptional({
+        description: 'Cooldown between messages in seconds',
+        minimum: 0,
+        maximum: 21600,
+    })
+    @IsOptional()
+    @IsInt()
+    @Min(0)
+    @Max(21600)
+    slowMode?: number;
 
     @ApiPropertyOptional({
         description: 'Map of role/user IDs to permission overrides',
@@ -97,6 +109,16 @@ export class UpdateChannelRequestDTO {
     @IsOptional()
     @IsUrlField()
     link?: string;
+    @ApiPropertyOptional({
+        description: 'Cooldown between messages in seconds',
+        minimum: 0,
+        maximum: 21600,
+    })
+    @IsOptional()
+    @IsInt()
+    @Min(0)
+    @Max(21600)
+    slowMode?: number;
 }
 
 export class ChannelPositionDTO {

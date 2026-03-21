@@ -153,6 +153,28 @@ export class ServerChannelController {
                     ? readMap.get(channelId)
                     : undefined;
 
+                let slowModeNextMessageAllowedAt: string | null = null;
+                if (channel.slowMode && channel.slowMode > 0) {
+                    const lastMessage =
+                        await this.serverMessageRepo.findLastByChannelAndUser(
+                            new Types.ObjectId(channelId),
+                            userOid,
+                        );
+                    if (lastMessage) {
+                        const lastSentAt =
+                            lastMessage.createdAt instanceof Date
+                                ? lastMessage.createdAt
+                                : new Date(lastMessage.createdAt);
+                        const nextAllowedAt = new Date(
+                            lastSentAt.getTime() + channel.slowMode * 1000,
+                        );
+                        if (nextAllowedAt > new Date()) {
+                            slowModeNextMessageAllowedAt =
+                                nextAllowedAt.toISOString();
+                        }
+                    }
+                }
+
                 return {
                     ...channel,
                     _id: channel._id.toString(),
@@ -162,6 +184,8 @@ export class ServerChannelController {
                         ? lastMessageAt.toISOString()
                         : null,
                     lastReadAt: lastReadAt ? lastReadAt.toISOString() : null,
+                    slowMode: channel.slowMode,
+                    slowModeNextMessageAllowedAt,
                     permissions:
                         await this.permissionService.normalizePermissionMap(
                             serverOid,
@@ -262,6 +286,7 @@ export class ServerChannelController {
             ...(body.description && { description: body.description }),
             ...(body.icon && { icon: body.icon }),
             ...(body.link && { link: body.link }),
+            ...(body.slowMode !== undefined && { slowMode: body.slowMode }),
         });
 
         this.wsServer.broadcastToServer(serverId.toString(), {
@@ -456,6 +481,7 @@ export class ServerChannelController {
             }
             updates.icon = body.icon;
         }
+        if (body.slowMode !== undefined) updates.slowMode = body.slowMode;
 
         if (body.link !== undefined) updates.link = body.link;
 
@@ -510,6 +536,16 @@ export class ServerChannelController {
                 field: 'link',
                 before: existingChannel.link ?? null,
                 after: body.link ?? null,
+            });
+        }
+        if (
+            body.slowMode !== undefined &&
+            body.slowMode !== existingChannel.slowMode
+        ) {
+            changes.push({
+                field: 'slowMode',
+                before: existingChannel.slowMode ?? 0,
+                after: body.slowMode,
             });
         }
 
