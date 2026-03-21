@@ -39,6 +39,7 @@ export interface MappedUser {
 
 export interface MapUserOptions {
     includePermissions?: boolean;
+    includeTotp?: boolean;
 }
 
 interface RawUser {
@@ -110,6 +111,6 @@ export function mapUser(
                 (u.permissions as AdminPermissions) || DEFAULT_PERMISSIONS,
         }),
         settings: (u.settings as Record<string, unknown>) || {},
-        totpEnabled: Boolean(u.totpEnabled),
+        ...(options.includeTotp && { totpEnabled: Boolean(u.totpEnabled) }),
     };
 }

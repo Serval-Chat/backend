@@ -97,7 +97,7 @@ export class ProfileController {
     // Maps a user document to a public UserProfileResponseDTO payload
     private async mapToProfile(
         user: IUser,
-        options: { includePermissions?: boolean } = {},
+        options: { includePermissions?: boolean; includeTotp?: boolean } = {},
     ): Promise<UserProfileResponseDTO> {
         const mapped = mapUser(user, options);
         if (!mapped) {
@@ -153,7 +153,10 @@ export class ProfileController {
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
-        return this.mapToProfile(user, { includePermissions: true });
+        return this.mapToProfile(user, {
+            includePermissions: true,
+            includeTotp: true,
+        });
     }
 
     @Get(':userId')
