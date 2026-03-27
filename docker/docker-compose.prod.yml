@@ -212,4 +212,5 @@ volumes:
 
 networks:
   app_network:
-    driver: bridge
+    external: true
+    name: ${COMPOSE_PROJECT_NAME:-backend}_app_network

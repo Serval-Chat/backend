@@ -5,7 +5,8 @@ cd "$(dirname "$0")"
 
 echo "Starting production cluster in background..."
 
-NETWORK_NAME="${COMPOSE_PROJECT_NAME:-backend}_app_network"
+export COMPOSE_PROJECT_NAME=backend
+NETWORK_NAME="${COMPOSE_PROJECT_NAME}_app_network"
 if ! docker network ls | grep -q "$NETWORK_NAME"; then
     echo "Creating network $NETWORK_NAME..."
     docker network create "$NETWORK_NAME"
