@@ -69,6 +69,7 @@ import { PingService } from '@/services/PingService';
 import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
+import { RedisService } from '@/services/RedisService';
 import { AdminController } from '@/controllers/AdminController';
 import { AuthController } from '@/controllers/AuthController';
 import { FileController } from '@/controllers/FileController';
@@ -268,6 +269,11 @@ container
     .bind<IServerAuditLogService>(TYPES.ServerAuditLogService)
     .to(ServerAuditLogService)
     .inTransientScope();
+
+container
+    .bind<import('@/di/interfaces/IRedisService').IRedisService>(TYPES.RedisService)
+    .to(RedisService)
+    .inSingletonScope();
 
 container.bind(TYPES.MailConfig).toConstantValue({
     skipSending: process.env.NODE_ENV === 'test',

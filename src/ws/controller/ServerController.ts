@@ -428,13 +428,10 @@ export class ServerController {
                     senderId: userId,
                 },
             },
-            async (targetUserId) => {
-                return this.permissionService.hasChannelPermission(
-                    new mongoose.Types.ObjectId(serverId),
-                    new mongoose.Types.ObjectId(targetUserId),
-                    new mongoose.Types.ObjectId(channelId),
-                    'viewChannels',
-                );
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'viewChannels'
             },
             undefined,
             ws,
@@ -923,7 +920,7 @@ export class ServerController {
             );
 
             // Emit socket event only for online users
-            if (this.wsServer.isUserOnline(mentionedUserId)) {
+            if (await this.wsServer.isUserOnline(mentionedUserId)) {
                 const mentionPayload: IMentionEvent['payload'] = {
                     type: 'mention',
                     sender: senderUsername,

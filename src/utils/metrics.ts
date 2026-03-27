@@ -174,3 +174,10 @@ export const chatRoomsActiveGauge = new Gauge({
     help: 'Number of active chat rooms (channels with at least one subscriber)',
     registers: [register],
 });
+
+// Counter for WebSocket rate-limit Redis failures (fail-open events)
+export const wsRateLimitRedisFailuresCounter = new Counter({
+    name: 'ws_rate_limit_redis_failures_total',
+    help: 'Times WebSocket rate limiting failed open due to a Redis error. A sustained non-zero rate means rate limiting is effectively disabled.',
+    registers: [register],
+});

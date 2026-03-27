@@ -6,7 +6,6 @@ import { Request, Response } from 'express';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import {
     getCacheKey,
-    pruneCache,
     sanitizeHeaders,
     validateUrl,
     fetchWithRedirects,
@@ -38,17 +37,17 @@ interface MetaCacheEntry {
 
 import { FileProxyMetaResponseDTO } from './dto/file-proxy.response.dto';
 import { injectable } from 'inversify';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 
 @ApiTags('File Proxy')
 @injectable()
 @Controller('api/v1/file-proxy')
 export class FileProxyController {
-    private static downloadCache = new Map<string, CacheEntry>();
-    private static metadataCache = new Map<string, MetaCacheEntry>();
-
     constructor(
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @Inject(TYPES.RedisService)
+        private redisService: IRedisService,
     ) {}
 
     // Rewrite the old URL to new URL so old messages that use the old URL are still valid
@@ -76,11 +75,23 @@ export class FileProxyController {
             let targetUrl = validateUrl(url);
             const cacheKey = getCacheKey(targetUrl.toString());
             const now = Date.now();
-            const cached = FileProxyController.downloadCache.get(cacheKey);
+            const cacheStr = await this.redisService.getClient().get(`proxy:dl:${cacheKey}`);
+            let cached: CacheEntry | null = null;
+            if (cacheStr) {
+                try {
+                    const parsed = JSON.parse(cacheStr);
+                    cached = {
+                        ...parsed,
+                        buffer: Buffer.from(parsed.buffer, 'base64'),
+                    };
+                } catch (e) {
+                    this.logger.error('Failed to parse cached file', e);
+                }
+            }
 
             targetUrl = this.rewriteKbityUrl(targetUrl);
 
-            if (cached && cached.expiresAt > now) {
+            if (cached) {
                 for (const [header, value] of Object.entries(cached.headers)) {
                     res.setHeader(header, value);
                 }
@@ -91,10 +102,6 @@ export class FileProxyController {
                 );
                 res.status(cached.status).send(cached.buffer);
                 return;
-            }
-
-            if (cached) {
-                FileProxyController.downloadCache.delete(cacheKey);
             }
 
             try {
@@ -152,17 +159,19 @@ export class FileProxyController {
                 const size = buffer.length;
 
                 // Maintain cache size limits
-                pruneCache(
-                    FileProxyController.downloadCache,
-                    MAX_CACHE_ENTRIES,
-                );
-                FileProxyController.downloadCache.set(cacheKey, {
-                    buffer,
+                const entryToSave = {
+                    buffer: buffer.toString('base64'),
                     status: response.status,
                     headers: headerRecord,
                     size,
                     expiresAt: now + CACHE_TTL_MS,
-                });
+                };
+                await this.redisService.getClient().set(
+                    `proxy:dl:${cacheKey}`,
+                    JSON.stringify(entryToSave),
+                    'PX',
+                    CACHE_TTL_MS,
+                );
 
                 for (const [header, value] of Object.entries(headerRecord)) {
                     res.setHeader(header, value);
@@ -228,18 +237,22 @@ export class FileProxyController {
             const targetUrl = validateUrl(url);
             const cacheKey = getCacheKey(targetUrl.toString());
             const now = Date.now();
-            const cached = FileProxyController.metadataCache.get(cacheKey);
+            const cacheStr = await this.redisService.getClient().get(`proxy:meta:${cacheKey}`);
+            let cached: MetaCacheEntry | null = null;
+            if (cacheStr) {
+                try {
+                    cached = JSON.parse(cacheStr);
+                } catch (e) {
+                    this.logger.error('Failed to parse cached meta', e);
+                }
+            }
 
-            if (cached && cached.expiresAt > now) {
+            if (cached) {
                 return {
                     status: cached.status,
                     headers: cached.headers,
                     size: cached.size,
                 };
-            }
-
-            if (cached) {
-                FileProxyController.metadataCache.delete(cacheKey);
             }
 
             const response = await fetchWithRedirects(targetUrl, {
@@ -264,8 +277,12 @@ export class FileProxyController {
                 entry.size = parsedLength;
             }
 
-            pruneCache(FileProxyController.metadataCache, MAX_CACHE_ENTRIES);
-            FileProxyController.metadataCache.set(cacheKey, entry);
+            await this.redisService.getClient().set(
+                `proxy:meta:${cacheKey}`,
+                JSON.stringify(entry),
+                'PX',
+                CACHE_TTL_MS,
+            );
 
             return {
                 status: response.status,

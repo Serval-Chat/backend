@@ -19,6 +19,7 @@ import {
 import { container } from '@/di/container';
 import type { WsServer } from '@/ws/server';
 import { TYPES } from '@/di/types';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 import * as YAML from 'yaml';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
@@ -70,6 +71,7 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
         httpsOptions,
         bufferLogs: true,
+        logger: ['error', 'warn'],
     });
     app.useLogger(app.get(PinoLogger));
 
@@ -145,6 +147,10 @@ async function bootstrap() {
 
         try {
             await wsServer.shutdown();
+            
+            const redisService = container.get<IRedisService>(TYPES.RedisService);
+            await redisService.quit();
+            
             await app.close();
             clearTimeout(forceExitTimeout);
             Logger.log('Application shut down successfully', 'Bootstrap');

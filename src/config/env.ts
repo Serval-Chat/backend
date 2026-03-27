@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -38,6 +39,8 @@ const OTEL_ENDPOINT =
 const LOKI_HOST = process.env.LOKI_HOST ?? 'http://loki:3100';
 const APP_VERSION = process.env.APP_VERSION ?? '0.0.0';
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const INSTANCE_NAME = process.env.INSTANCE_NAME || `node-${crypto.randomUUID().split('-')[0]}`;
 
 if (!MAILGUN_API_KEY)
     console.warn('MAILGUN_API_KEY not set. Password reset will fail.');
@@ -123,4 +126,6 @@ export {
     APP_VERSION,
     LOG_LEVEL,
     KLIPY_API_KEY,
+    REDIS_URL,
+    INSTANCE_NAME,
 };

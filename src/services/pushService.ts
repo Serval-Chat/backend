@@ -8,6 +8,9 @@ import logger from '../utils/logger';
 import { VAPID_PUB, VAPID_PRI } from '../config/env';
 import { parseNotificationText } from '../utils/textParser';
 import type * as admin from 'firebase-admin';
+import { container } from '../di/container';
+import { TYPES } from '../di/types';
+import type { IRedisService } from '../di/interfaces/IRedisService';
 
 const vapidConfigs: Record<string, { publicKey: string; privateKey: string }> =
     {};
@@ -200,32 +203,19 @@ async function sendToSubscription(
     }
 }
 
-const _onlineUsers = new Map<string, number>();
-
-export function connectUser(userId: string) {
-    const newCount = (_onlineUsers.get(userId) ?? 0) + 1;
-    _onlineUsers.set(userId, newCount);
-    logger.debug(
-        `[PushService] User ${userId} connected. Open sockets: ${newCount}`,
-    );
+function getRedisClient() {
+    return container.get<IRedisService>(TYPES.RedisService).getClient();
 }
 
-export function disconnectUser(userId: string) {
-    const count = (_onlineUsers.get(userId) ?? 1) - 1;
-    if (count <= 0) {
-        _onlineUsers.delete(userId);
-        logger.debug(`[PushService] User ${userId} fully disconnected.`);
-    } else {
-        _onlineUsers.set(userId, count);
-        logger.debug(
-            `[PushService] User ${userId} socket closed. Remaining sockets: ${count}`,
-        );
+async function isUserOnline(userId: string): Promise<boolean> {
+    try {
+        const client = getRedisClient();
+        const count = await client.scard(`presence:user:${userId}`);
+        return count > 0;
+    } catch (err) {
+        logger.error(`[PushService] failed to check isUserOnline for ${userId}:`, err);
+        return false;
     }
-}
-
-function isUserOnline(userId: string): boolean {
-    const isOnline = (_onlineUsers.get(userId) ?? 0) > 0;
-    return isOnline;
 }
 
 async function isAllowedByPreferences(
@@ -249,7 +239,7 @@ export async function notifyUser(
         `[PushService] Analyzing push triggers for user ${userId} (Type: ${type})`,
     );
 
-    if (isUserOnline(userId)) {
+    if (await isUserOnline(userId)) {
         logger.info(
             `[PushService] Skipped push: User ${userId} is currently online via WebSocket.`,
         );

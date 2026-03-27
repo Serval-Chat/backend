@@ -27,5 +27,6 @@ export interface IWsAuthenticatedEvent
                 profilePicture: string | null;
                 status?: string; // Custom status text
             };
+            instanceId: string;
         }
     > {}

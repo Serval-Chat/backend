@@ -391,7 +391,7 @@ export class ServerController {
         let onlineCount = 0;
         for (const m of members) {
             const userIdStr = m.userId.toString();
-            if (this.wsServer.isUserOnline(userIdStr)) {
+            if (await this.wsServer.isUserOnline(userIdStr)) {
                 onlineCount++;
             }
         }

@@ -18,10 +18,11 @@ export interface WsServerEvents {
 }
 
 export interface IWsServer {
-    authenticateConnection(ws: WebSocket, user: IWsUser): void;
+    readonly instanceId: string;
+    authenticateConnection(ws: WebSocket, user: IWsUser): Promise<void>;
     getAuthenticatedUser(ws: WebSocket): IWsUser | undefined;
     getUserSockets(userId: string): WebSocket[];
-    isUserOnline(userId: string): boolean;
+    isUserOnline(userId: string): Promise<boolean>;
     getAllOnlineUsers(): string[];
     broadcastToUser(
         userId: string,
@@ -49,7 +50,7 @@ export interface IWsServer {
     broadcastToServerWithPermission(
         serverId: string,
         event: AnyResponseWsEvent,
-        checkFn: (userId: string) => Promise<boolean> | boolean,
+        permissionCheck: { type: 'server' | 'channel', targetId?: string, permission: string },
         replyTo?: string,
         excludeWs?: WebSocket,
     ): Promise<void>;
@@ -74,6 +75,9 @@ export interface IWsServer {
     getMetrics(): IWsServerMetrics;
     initialize(server: HttpServer): void;
     shutdown(): Promise<void>;
+
+    /** Refreshes the presence TTL for a connected socket. Call on each client ping. */
+    refreshPresence(ws: WebSocket): Promise<void>;
 
     // Event methods for decoupling
     on<K extends keyof WsServerEvents>(

@@ -2,7 +2,7 @@ import type { Server as HttpServer } from 'http';
 import type { WebSocket } from 'ws';
 import { WebSocketServer } from 'ws';
 import logger from '@/utils/logger';
-import { WS_AUTH_TIMEOUT } from '@/config/env';
+import { WS_AUTH_TIMEOUT, INSTANCE_NAME } from '@/config/env';
 import type { IWsUser } from './types';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '@/di/types';
@@ -18,7 +18,9 @@ import type { IWsEnvelope, AnyResponseWsEvent } from './protocol/envelope';
 import { send, sendToMany } from './utils/broadcast';
 import { EventEmitter } from 'node:events';
 import { trace, SpanStatusCode, context } from '@opentelemetry/api';
-import { connectUser, disconnectUser } from '@/services/pushService';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
+import type { PermissionService } from '@/permissions/PermissionService';
+import mongoose from 'mongoose';
 
 import type { IWsServer } from './interfaces/IWsServer';
 
@@ -48,17 +50,124 @@ export class WsServer extends EventEmitter implements IWsServer {
 
     private authTimeouts = new WeakMap<WebSocket, NodeJS.Timeout>();
     private readonly AUTH_TIMEOUT_MS = WS_AUTH_TIMEOUT;
+    public readonly instanceId = INSTANCE_NAME;
 
-    constructor(@inject(TYPES.WsDispatcher) private dispatcher: WsDispatcher) {
+    /**
+     * Per-socket UUID map. We maintain this ourselves rather than casting ws.id
+     * because the `ws` library does not set an `id` property on its WebSocket objects.
+     */
+    private socketIds = new WeakMap<WebSocket, string>();
+
+    /**
+     * Lua script for atomic presence first-join detection.
+     *
+     * KEYS[1] = presence key   ARGV[1] = member   ARGV[2] = TTL (seconds)
+     * Returns the SCARD *before* the SADD so the caller can detect the first join.
+     * Because this runs inside a Lua script, it is atomic across all Redis clients.
+     */
+    private static readonly PRESENCE_FIRST_JOIN_SCRIPT = `
+        local before = redis.call('SCARD', KEYS[1])
+        redis.call('SADD', KEYS[1], ARGV[1])
+        redis.call('EXPIRE', KEYS[1], ARGV[2])
+        return before
+    `;
+
+    /** Presence TTL in seconds. Must be comfortably longer than the client ping interval. */
+    private static readonly PRESENCE_TTL_S = 90;
+
+    constructor(
+        @inject(TYPES.WsDispatcher) private dispatcher: WsDispatcher,
+        @inject(TYPES.RedisService) private redisService: IRedisService,
+        @inject(TYPES.PermissionService) private permissionService: PermissionService,
+    ) {
         super();
     }
 
     private getSocketId(ws: WebSocket): string | undefined {
-        return (ws as WebSocket & { id?: string }).id;
+        return this.socketIds.get(ws);
+    }
+
+    private assignSocketId(ws: WebSocket): string {
+        const id = crypto.randomUUID();
+        this.socketIds.set(ws, id);
+        return id;
+    }
+
+    private publishToRedis(action: string, payload: any) {
+        const publisher = this.redisService.getPublisher();
+        publisher.publish('SERCHAT_WS_BROADCAST', JSON.stringify({
+            instanceId: this.instanceId,
+            action,
+            payload
+        })).catch(err => logger.error('[WsServer] Redis publish error:', err));
+    }
+
+    /**
+     * Handles messages received from Redis Pub/Sub.
+     *
+     * NOTE: messages originating from THIS instance are filtered out before this
+     * method is called (see the subscriber 'message' handler in `initialize`).
+     * This method only runs for messages published by OTHER instances.
+     */
+    private async handleRedisMessage(data: any) {
+        try {
+            switch (data.action) {
+                case 'broadcastToUser':
+                    this._localBroadcastToUser(data.payload.userId, data.payload.event, data.payload.replyTo);
+                    break;
+                case 'broadcastToAll':
+                    this._localBroadcastToAll(data.payload.event);
+                    break;
+                case 'broadcastToChannel':
+                    this._localBroadcastToChannel(data.payload.channelId, data.payload.event, data.payload.replyTo);
+                    break;
+                case 'broadcastToServer':
+                    this._localBroadcastToServer(data.payload.serverId, data.payload.event, data.payload.replyTo);
+                    break;
+                case 'broadcastToServerWithPermission':
+                    await this._localBroadcastToServerWithPermission(
+                        data.payload.serverId,
+                        data.payload.event,
+                        data.payload.permissionCheck,
+                        data.payload.replyTo
+                    );
+                    break;
+                case 'sendToSocketById':
+                    this._localSendToSocketById(data.payload.socketId, data.payload.event, data.payload.replyTo);
+                    break;
+                case 'broadcastToPresenceAudience':
+                    this._localBroadcastToPresenceAudience(data.payload.friendIds, data.payload.serverIds, data.payload.event);
+                    break;
+            }
+        } catch (err) {
+            logger.error('[WsServer] Redis message handle error', err);
+        }
     }
 
     public initialize(server: HttpServer) {
         this.dispatcher.registerControllers();
+        
+        const subscriber = this.redisService.getSubscriber();
+        subscriber.subscribe('SERCHAT_WS_BROADCAST', (err, count) => {
+            if (err) {
+                logger.error('[WsServer] Failed to subscribe to Redis channel', err);
+            } else {
+                logger.info(`[WsServer] Subscribed to Redis channel SERCHAT_WS_BROADCAST (${count})`);
+            }
+        });
+
+        subscriber.on('message', async (channel, message) => {
+            if (channel === 'SERCHAT_WS_BROADCAST') {
+                try {
+                    const data = JSON.parse(message);
+                    if (data.instanceId === this.instanceId) return; // Ignore our own messages
+                    await this.handleRedisMessage(data);
+                } catch (err) {
+                    logger.error('[WsServer] Failed to process Redis broadcast', err);
+                }
+            }
+        });
+
         this.wss = new WebSocketServer({
             noServer: true,
             path: '/ws',
@@ -85,10 +194,8 @@ export class WsServer extends EventEmitter implements IWsServer {
 
             // Register connection with dispatcher for unique ID assignment
             this.dispatcher.registerConnection(ws);
-            const socketId = this.getSocketId(ws);
-            if (socketId) {
-                this.socketsById.set(socketId, ws);
-            }
+            const socketId = this.assignSocketId(ws);
+            this.socketsById.set(socketId, ws);
 
             // Set authentication timeout
             const timeout = setTimeout(() => {
@@ -176,7 +283,7 @@ export class WsServer extends EventEmitter implements IWsServer {
      * Authenticates a WebSocket connection.
      * Moves connection from unauthenticated to authenticated tracking.
      */
-    public authenticateConnection(ws: WebSocket, user: IWsUser): void {
+    public async authenticateConnection(ws: WebSocket, user: IWsUser): Promise<void> {
         // Clear authentication timeout
         const timeout = this.authTimeouts.get(ws);
         if (timeout) {
@@ -198,10 +305,26 @@ export class WsServer extends EventEmitter implements IWsServer {
             `[WsServer] User ${user.username} authenticated (total sessions: ${userSockets.size})`,
         );
 
-        connectUser(user.userId);
         this.emit('user:authenticated', user);
 
-        if (userSockets.size === 1) {
+        const presenceKey = `presence:user:${user.userId}`;
+        const socketId = this.getSocketId(ws);
+        if (!socketId) {
+            logger.error(`[WsServer] authenticateConnection: socket has no ID for user ${user.userId}`);
+            return;
+        }
+        const presenceMember = `${this.instanceId}:${socketId}`;
+        const redis = this.redisService.getClient();
+
+        const countBefore = await redis.eval(
+            WsServer.PRESENCE_FIRST_JOIN_SCRIPT,
+            1,
+            presenceKey,
+            presenceMember,
+            String(WsServer.PRESENCE_TTL_S),
+        ) as number;
+
+        if (countBefore === 0) {
             this.emit('user:online', user.userId, user.username);
         }
     }
@@ -222,11 +345,22 @@ export class WsServer extends EventEmitter implements IWsServer {
     }
 
     /**
-     * Checks if a user has any active connections.
+     * Checks if a user has any active connections globally.
+     *
+     * NOTE: The local `connectionsByUserId` fast-path can transiently return `true`
+     * for a user whose last socket just closed but whose cleanup hasn't completed yet
+     * (the 'close' event is async). This window is very short in practice.
      */
-    public isUserOnline(userId: string): boolean {
-        const sockets = this.connectionsByUserId.get(userId);
-        return sockets !== undefined && sockets.size > 0;
+    public async isUserOnline(userId: string): Promise<boolean> {
+        if (this.connectionsByUserId.has(userId)) return true;
+        
+        try {
+            const count = await this.redisService.getClient().scard(`presence:user:${userId}`);
+            return count > 0;
+        } catch (err) {
+            logger.error(`[WsServer] Failed to check global presence for ${userId}:`, err);
+            return false;
+        }
     }
 
     /**
@@ -237,9 +371,21 @@ export class WsServer extends EventEmitter implements IWsServer {
     }
 
     /**
-     * Broadcasts an event to all sessions of a specific user.
+     * Broadcasts an event to all sessions of a specific user across all instances.
+     * This instance handles its local sockets directly; other instances receive the
+     * message via Redis Pub/Sub (see publishToRedis contract).
      */
     public broadcastToUser(
+        userId: string,
+        event: AnyResponseWsEvent,
+        replyTo?: string,
+        excludeWs?: WebSocket,
+    ): void {
+        this.publishToRedis('broadcastToUser', { userId, event, replyTo });
+        this._localBroadcastToUser(userId, event, replyTo, excludeWs);
+    }
+
+    private _localBroadcastToUser(
         userId: string,
         event: AnyResponseWsEvent,
         replyTo?: string,
@@ -258,9 +404,35 @@ export class WsServer extends EventEmitter implements IWsServer {
     }
 
     /**
-     * Broadcasts an event to all authenticated users.
+     * Refreshes the presence TTL for a connected socket.
+     * Call this on every client ping so a short TTL does not expire live connections.
+     */
+    public async refreshPresence(ws: WebSocket): Promise<void> {
+        const user = this.socketToUser.get(ws);
+        const socketId = this.getSocketId(ws);
+        if (!user || !socketId) return;
+
+        const presenceKey = `presence:user:${user.userId}`;
+        const presenceMember = `${this.instanceId}:${socketId}`;
+        try {
+            await this.redisService.getClient().expire(presenceKey, WsServer.PRESENCE_TTL_S);
+            logger.debug(`[WsServer] Refreshed presence TTL for ${user.username} (${presenceMember})`);
+        } catch (err) {
+            logger.error(`[WsServer] Failed to refresh presence for ${user.userId}:`, err);
+        }
+    }
+
+    /**
+     * Broadcasts an event to all authenticated users across all instances.
+     * This instance handles its local sockets directly; other instances receive the
+     * message via Redis Pub/Sub (see publishToRedis contract).
      */
     public broadcastToAll(event: AnyResponseWsEvent): void {
+        this.publishToRedis('broadcastToAll', { event });
+        this._localBroadcastToAll(event);
+    }
+
+    private _localBroadcastToAll(event: AnyResponseWsEvent): void {
         const recipients: WebSocket[] = [];
         this.wss.clients.forEach((client) => {
             if (client.readyState === 1 && this.socketToUser.has(client)) {
@@ -321,6 +493,16 @@ export class WsServer extends EventEmitter implements IWsServer {
      * Broadcasts an event to all subscribers of a channel.
      */
     public broadcastToChannel(
+        channelId: string,
+        event: AnyResponseWsEvent,
+        replyTo?: string,
+        excludeWs?: WebSocket,
+    ): void {
+        this.publishToRedis('broadcastToChannel', { channelId, event, replyTo });
+        this._localBroadcastToChannel(channelId, event, replyTo, excludeWs);
+    }
+
+    private _localBroadcastToChannel(
         channelId: string,
         event: AnyResponseWsEvent,
         replyTo?: string,
@@ -389,6 +571,16 @@ export class WsServer extends EventEmitter implements IWsServer {
         replyTo?: string,
         excludeWs?: WebSocket,
     ): void {
+        this.publishToRedis('broadcastToServer', { serverId, event, replyTo });
+        this._localBroadcastToServer(serverId, event, replyTo, excludeWs);
+    }
+
+    private _localBroadcastToServer(
+        serverId: string,
+        event: AnyResponseWsEvent,
+        replyTo?: string,
+        excludeWs?: WebSocket,
+    ): void {
         const subscribers = this.serverSubscriptions.get(serverId);
         if (subscribers && subscribers.size > 0) {
             let recipients = Array.from(subscribers);
@@ -410,7 +602,36 @@ export class WsServer extends EventEmitter implements IWsServer {
     public async broadcastToServerWithPermission(
         serverId: string,
         event: AnyResponseWsEvent,
-        checkFn: (userId: string) => Promise<boolean> | boolean,
+        permissionCheck: { type: 'server' | 'channel', targetId?: string, permission: string },
+        replyTo?: string,
+        excludeWs?: WebSocket,
+    ): Promise<void> {
+        this.publishToRedis('broadcastToServerWithPermission', { serverId, event, permissionCheck, replyTo });
+        await this._localBroadcastToServerWithPermission(serverId, event, permissionCheck, replyTo, excludeWs);
+    }
+
+    private async _checkPermission(userId: string, permissionCheck: { type: 'server' | 'channel', targetId?: string, permission: string }, serverId: string): Promise<boolean> {
+        if (permissionCheck.type === 'server') {
+            return this.permissionService.hasPermission(
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
+                permissionCheck.permission,
+            );
+        } else if (permissionCheck.type === 'channel' && permissionCheck.targetId) {
+            return this.permissionService.hasChannelPermission(
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
+                new mongoose.Types.ObjectId(permissionCheck.targetId),
+                permissionCheck.permission,
+            );
+        }
+        return false;
+    }
+
+    private async _localBroadcastToServerWithPermission(
+        serverId: string,
+        event: AnyResponseWsEvent,
+        permissionCheck: { type: 'server' | 'channel', targetId?: string, permission: string },
         replyTo?: string,
         excludeWs?: WebSocket,
     ): Promise<void> {
@@ -450,7 +671,7 @@ export class WsServer extends EventEmitter implements IWsServer {
             let hasPermission = permissionCache.get(user.userId);
             if (hasPermission === undefined) {
                 try {
-                    hasPermission = await checkFn(user.userId);
+                    hasPermission = await this._checkPermission(user.userId, permissionCheck, serverId);
                     logger.debug(
                         `[WsServer] Permission check for user ${user.userId} on server ${serverId}: ${hasPermission}`,
                     );
@@ -489,6 +710,15 @@ export class WsServer extends EventEmitter implements IWsServer {
         event: AnyResponseWsEvent,
         replyTo?: string,
     ): void {
+        this.publishToRedis('sendToSocketById', { socketId, event, replyTo });
+        this._localSendToSocketById(socketId, event, replyTo);
+    }
+
+    private _localSendToSocketById(
+        socketId: string,
+        event: AnyResponseWsEvent,
+        replyTo?: string,
+    ): void {
         const ws = this.socketsById.get(socketId);
         if (ws && ws.readyState === 1) {
             send(ws, event, replyTo);
@@ -517,7 +747,7 @@ export class WsServer extends EventEmitter implements IWsServer {
     /**
      * Removes a connection from all internal tracking structures.
      */
-    private removeConnection(ws: WebSocket) {
+    private async removeConnection(ws: WebSocket) {
         // Clear auth timeout if exists
         const timeout = this.authTimeouts.get(ws);
         if (timeout) {
@@ -543,16 +773,32 @@ export class WsServer extends EventEmitter implements IWsServer {
         if (user) {
             const userSockets = this.connectionsByUserId.get(user.userId);
             if (userSockets) {
-                disconnectUser(user.userId);
                 userSockets.delete(ws);
                 if (userSockets.size === 0) {
                     this.connectionsByUserId.delete(user.userId);
                     logger.info(
-                        `[WsServer] User ${user.username} went offline (all sessions disconnected)`,
+                        `[WsServer] User ${user.username} session disconnected (all local sessions closed)`,
                     );
 
-                    // Notify presence
-                    this.emit('user:offline', user.userId, user.username);
+                    const socketId = this.getSocketId(ws);
+                    if (socketId) {
+                        const presenceMember = `${this.instanceId}:${socketId}`;
+                        const presenceKey = `presence:user:${user.userId}`;
+                        const redis = this.redisService.getClient();
+
+                        await redis.multi()
+                            .srem(presenceKey, presenceMember)
+                            .scard(presenceKey)
+                            .exec()
+                            .then(results => {
+                                const countAfter = (results?.[1]?.[1] as number) || 0;
+                                if (countAfter === 0) {
+                                    logger.info(`[WsServer] User ${user.username} went offline globally`);
+                                    this.emit('user:offline', user.userId, user.username);
+                                }
+                            })
+                            .catch(err => logger.error(`[WsServer] Global presence update failed for ${user.userId}:`, err));
+                    }
                 } else {
                     logger.debug(
                         `[WsServer] User ${user.username} session disconnected (${userSockets.size} remaining)`,
@@ -606,6 +852,16 @@ export class WsServer extends EventEmitter implements IWsServer {
      * Deduplicates sockets to prevent double-sending.
      */
     public broadcastToPresenceAudience(
+        friendIds: string[],
+        serverIds: string[],
+        event: AnyResponseWsEvent,
+        excludeWs?: WebSocket,
+    ): void {
+        this.publishToRedis('broadcastToPresenceAudience', { friendIds, serverIds, event });
+        this._localBroadcastToPresenceAudience(friendIds, serverIds, event, excludeWs);
+    }
+
+    private _localBroadcastToPresenceAudience(
         friendIds: string[],
         serverIds: string[],
         event: AnyResponseWsEvent,

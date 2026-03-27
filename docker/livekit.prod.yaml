@@ -1,0 +1,21 @@
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: true
+
+redis:
+  address: chat-redis:6379
+  password: ${REDIS_PASSWORD}
+
+keys_file: ""
+
+logging:
+  level: info
+
+room:
+  auto_create: true
+  empty_timeout: 300
+
+turn:
+  enabled: false

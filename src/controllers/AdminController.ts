@@ -511,7 +511,7 @@ export class AdminController {
             );
             if (friendUser) {
                 const friendUserId = friendUser._id.toString();
-                if (this.wsServer.isUserOnline(friendUserId)) {
+                if (await this.wsServer.isUserOnline(friendUserId)) {
                     this.wsServer.broadcastToUser(friendUserId, event);
                 } else {
                     offlineFriends.push(friendUserId);
@@ -641,7 +641,7 @@ export class AdminController {
                 );
                 if (friendUser) {
                     const friendUserId = friendUser._id.toString();
-                    if (this.wsServer.isUserOnline(friendUserId)) {
+                    if (await this.wsServer.isUserOnline(friendUserId)) {
                         this.wsServer.broadcastToUser(friendUserId, event);
                     } else {
                         offlineFriends.push(friendUserId);
@@ -914,7 +914,7 @@ export class AdminController {
         });
 
         const user = await this.userRepo.findById(userOid);
-        if (user && this.wsServer.isUserOnline(userOid.toString())) {
+        if (user && await this.wsServer.isUserOnline(userOid.toString())) {
             const event: IWarningEvent = {
                 type: 'warning',
                 payload: {

@@ -7,12 +7,11 @@ const mongoose = require('mongoose');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 require('ts-node/register');
-require('tsconfig-paths/register'); // Register ts-node for importing TS files
+require('tsconfig-paths/register');
 
-// Set environment variables for testing
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-jwt-secret';
-process.env.PORT = '0'; // Ephemeral port
+process.env.PORT = '0';
 
 let mongoServer;
 let server;
@@ -102,6 +101,11 @@ async function teardown() {
     const wsServer = container.get(TYPES.WsServer);
     if (wsServer) {
         await wsServer.shutdown();
+    }
+
+    const redisService = container.get(TYPES.RedisService);
+    if (redisService) {
+        await redisService.quit();
     }
 
     // 2. Close HTTP Server

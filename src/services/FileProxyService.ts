@@ -45,44 +45,6 @@ function normalizeHostname(hostname: string): string {
 export function getCacheKey(url: string): string {
     return crypto.createHash('sha256').update(url).digest('hex');
 }
-
-// Prune expired entries from cache and enforce size limits.
-// Eviction strategy:
-// 1. Remove expired entries
-// 2. If still over limit, remove the entries with the smallest expiresAt values until <= maxEntries
-export function pruneCache<T extends { expiresAt: number }>(
-    map: Map<string, T>,
-    maxEntries: number,
-): void {
-    const now = Date.now();
-
-    // Remove expired
-    for (const [key, entry] of map) {
-        if (entry.expiresAt <= now) {
-            map.delete(key);
-        }
-    }
-
-    if (map.size <= maxEntries) return;
-
-    // Build an array of [key, expiresAt] sorted ascending by expiresAt
-    const items = Array.from(map.entries()).map(([k, v]) => ({
-        k,
-        expiresAt: v.expiresAt,
-    }));
-    items.sort((a, b) => a.expiresAt - b.expiresAt);
-
-    // Remove oldest-by-expiry until within limit
-    let i = 0;
-    while (map.size > maxEntries && i < items.length) {
-        const item = items[i];
-        if (item) {
-            map.delete(item.k);
-        }
-        i += 1;
-    }
-}
-
 // Sanitize HTTP headers to allowed list. Preserves the first seen value for each header.
 export function sanitizeHeaders(headers: Headers): HeaderRecord {
     const result: HeaderRecord = {};

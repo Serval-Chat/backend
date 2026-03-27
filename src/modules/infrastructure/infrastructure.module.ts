@@ -15,7 +15,11 @@ import { container } from '@/di/container';
             provide: TYPES.WsServer,
             useFactory: () => container.get<WsServer>(TYPES.WsServer),
         },
+        {
+            provide: TYPES.RedisService,
+            useFactory: () => container.get(TYPES.RedisService),
+        },
     ],
-    exports: [TYPES.Logger, TYPES.WsServer],
+    exports: [TYPES.Logger, TYPES.WsServer, TYPES.RedisService],
 })
 export class InfrastructureModule {}

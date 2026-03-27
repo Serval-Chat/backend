@@ -142,9 +142,15 @@ export class PresenceController {
         ]);
         relevantUserIds.delete(userId);
 
-        const onlineRelevantIds = [...relevantUserIds].filter((id) =>
-            this.wsServer.isUserOnline(id),
+        const onlineStatusResults = await Promise.all(
+            [...relevantUserIds].map(async (id) => ({
+                id,
+                isOnline: await this.wsServer.isUserOnline(id),
+            })),
         );
+        const onlineRelevantIds = onlineStatusResults
+            .filter((r) => r.isOnline)
+            .map((r) => r.id);
         const onlineUsers =
             onlineRelevantIds.length > 0
                 ? await this.userRepo.findByIds(
@@ -237,9 +243,15 @@ export class PresenceController {
                 : f.userId.toString(),
         );
 
-        const onlineFriendIds = friendIds.filter((id) =>
-            this.wsServer.isUserOnline(id),
+        const onlineFriendStatusResults = await Promise.all(
+            friendIds.map(async (id) => ({
+                id,
+                isOnline: await this.wsServer.isUserOnline(id),
+            })),
         );
+        const onlineFriendIds = onlineFriendStatusResults
+            .filter((r) => r.isOnline)
+            .map((r) => r.id);
         const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
             new mongoose.Types.ObjectId(userId),
         );

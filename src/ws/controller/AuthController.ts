@@ -100,7 +100,7 @@ export class AuthController {
             authenticatedAt: new Date(),
         };
 
-        this.wsServer.authenticateConnection(ws, wsUser);
+        await this.wsServer.authenticateConnection(ws, wsUser);
 
         // Return user profile
         return {
@@ -111,6 +111,7 @@ export class AuthController {
                 profilePicture: user.profilePicture ?? null,
                 status: user.status || undefined,
             },
+            instanceId: this.wsServer.instanceId,
         };
     }
 }

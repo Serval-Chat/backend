@@ -1,0 +1,25 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: chat-nginx
+    ports:
+      - "443:443"
+    environment:
+      - NGINX_SERVER_NAME=${NGINX_SERVER_NAME}
+    command: /bin/sh -c "envsubst '\\$NGINX_SERVER_NAME' < /etc/nginx/nginx.prod.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
+    volumes:
+      - ./nginx.prod.conf.template:/etc/nginx/nginx.prod.conf.template:ro
+      - ../cert:/etc/nginx/certs:ro
+    restart: unless-stopped
+    networks:
+      - app_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+networks:
+  app_network:
+    external: true
+    name: ${COMPOSE_PROJECT_NAME:-backend}_app_network
+

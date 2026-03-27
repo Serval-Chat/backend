@@ -69,12 +69,10 @@ export class ServerAuditLogService implements IServerAuditLogService {
                         entry: mapAuditLogEntry(populatedAuditLog),
                     },
                 },
-                (uId) =>
-                    this.permissionService.hasPermission(
-                        data.serverId,
-                        new Types.ObjectId(uId),
-                        'manageServer',
-                    ),
+                {
+                    type: 'server',
+                    permission: 'manageServer'
+                }
             );
         } else {
             this.logger.warn(

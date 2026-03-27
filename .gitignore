@@ -6,6 +6,9 @@ src/routes/tsoa/routes.ts
 # Swagger/OpenAPI auto-generated files
 openapi.yaml
 
+# Auto-generated nginx config (built from nginx.dev.conf.template)
+docker/nginx.dev.conf
+
 # Unironically we also host public files from here.
 public/
 

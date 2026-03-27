@@ -20,9 +20,10 @@ import {
 import type { IWsUser } from '@/ws/types';
 import { container } from '@/di/container';
 import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { WsErrorCode } from '@/ws/protocol/error';
 import { ApiError } from '@/utils/ApiError';
-import { websocketMessagesCounter } from '@/utils/metrics';
+import { websocketMessagesCounter, wsRateLimitRedisFailuresCounter } from '@/utils/metrics';
 
 interface IEventHandlerInfo {
     instance: object;
@@ -76,7 +77,6 @@ export class WsDispatcher {
     // Use WeakMap to automatically clean up when connections are garbage collected
     private dedupCache = new WeakMap<WebSocket, Map<string, number>>();
     private connectionMetadata = new WeakMap<WebSocket, IConnectionMetadata>();
-    private socketRateLimitKeys = new WeakMap<WebSocket, Set<string>>();
 
     private rateLimitCache = new Map<string, IRateLimitEntry>();
     private responseCache = new Map<string, ICacheEntry>();
@@ -93,7 +93,10 @@ export class WsDispatcher {
 
     private cleanupInterval?: NodeJS.Timeout;
 
-    constructor(@inject(TYPES.Logger) private logger: ILogger) {
+    constructor(
+        @inject(TYPES.Logger) private logger: ILogger,
+        @inject(TYPES.RedisService) private redisService: IRedisService,
+    ) {
         this.startCleanupInterval();
     }
 
@@ -141,13 +144,6 @@ export class WsDispatcher {
      */
     private cleanupExpiredCaches() {
         const now = Date.now();
-
-        // Cleanup rate limit cache
-        for (const [key, entry] of this.rateLimitCache.entries()) {
-            if (now > entry.resetAt) {
-                this.rateLimitCache.delete(key);
-            }
-        }
 
         // Cleanup response cache
         for (const [key, entry] of this.responseCache.entries()) {
@@ -259,7 +255,8 @@ export class WsDispatcher {
                     authenticatedUser?.userId || `anon:${connectionId}`;
                 const rateLimitKey = `${userId}:${envelope.event.type}`;
 
-                if (!this.checkRateLimit(rateLimitKey, points, duration)) {
+                const isAllowed = await this.checkRateLimit(rateLimitKey, points, duration);
+                if (!isAllowed) {
                     this.metrics.rateLimitHits++;
                     this.sendError(
                         ws,
@@ -269,14 +266,6 @@ export class WsDispatcher {
                     );
                     return;
                 }
-
-                // Track key for cleanup
-                let keys = this.socketRateLimitKeys.get(ws);
-                if (!keys) {
-                    keys = new Set();
-                    this.socketRateLimitKeys.set(ws, keys);
-                }
-                keys.add(rateLimitKey);
             }
 
             // 4. Payload validation
@@ -539,31 +528,26 @@ export class WsDispatcher {
      * @param durationMs - Time window in milliseconds
      * @returns true if request is allowed, false if rate limit exceeded
      */
-    private checkRateLimit(
+    private async checkRateLimit(
         key: string,
         maxPoints: number,
         durationMs: number,
-    ): boolean {
-        const now = Date.now();
-        const entry = this.rateLimitCache.get(key);
-
-        if (!entry || now > entry.resetAt) {
-            // No entry or expired, create new
-            this.rateLimitCache.set(key, {
-                points: maxPoints - 1,
-                resetAt: now + durationMs,
-            });
+    ): Promise<boolean> {
+        const client = this.redisService.getClient();
+        const redisKey = `ws:rl:${key}`;
+        
+        try {
+            const count = await client.incr(redisKey);
+            if (count === 1) {
+                await client.pexpire(redisKey, durationMs);
+            }
+            return count <= maxPoints;
+        } catch (err) {
+            this.logger.error('[WsDispatcher] checkRateLimit failed:', err);
+            // Fail open if Redis is down, but track the event Redis outage
+            wsRateLimitRedisFailuresCounter.inc();
             return true;
         }
-
-        if (entry.points > 0) {
-            // Decrement points
-            entry.points--;
-            return true;
-        }
-
-        // Rate limit exceeded
-        return false;
     }
 
     /**
@@ -734,15 +718,8 @@ export class WsDispatcher {
      * Cleans up resources associated with a disconnected WebSocket.
      */
     public cleanup(ws: WebSocket): void {
-        const keys = this.socketRateLimitKeys.get(ws);
-        if (keys) {
-            for (const key of keys) {
-                this.rateLimitCache.delete(key);
-            }
-        }
         this.dedupCache.delete(ws);
         this.connectionMetadata.delete(ws);
-        this.socketRateLimitKeys.delete(ws);
         this.logger.debug('[WsDispatcher] Cleaned up connection resources');
     }
 

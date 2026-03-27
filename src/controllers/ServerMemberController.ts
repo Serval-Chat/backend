@@ -103,10 +103,12 @@ export class ServerMemberController {
         const members =
             await this.serverMemberRepo.findByServerIdWithUserInfo(serverOid);
 
-        return members.map((m) => ({
-            ...m,
-            online: this.wsServer.isUserOnline(m.userId.toString()),
-        }));
+        return Promise.all(
+            members.map(async (m) => ({
+                ...m,
+                online: await this.wsServer.isUserOnline(m.userId.toString()),
+            })),
+        );
     }
 
     // Searches for members in a server by username or display name
@@ -134,10 +136,12 @@ export class ServerMemberController {
         }
 
         const members = await this.serverMemberRepo.searchMembers(serverOid, q);
-        return members.map((m) => ({
-            ...m,
-            online: this.wsServer.isUserOnline(m.userId.toString()),
-        }));
+        return Promise.all(
+            members.map(async (m) => ({
+                ...m,
+                online: await this.wsServer.isUserOnline(m.userId.toString()),
+            })),
+        );
     }
 
     // Retrieves details for a specific server member
