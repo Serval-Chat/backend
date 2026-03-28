@@ -3,14 +3,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-source .env
+env_val() { grep -E "^${1}=" .env | head -1 | cut -d= -f2-; }
+REDIS_PASSWORD=$(env_val REDIS_PASSWORD)
+PROJECT=$(env_val COMPOSE_PROJECT_NAME); PROJECT=${PROJECT:-backend}
 
 echo "Starting chat-redis..."
 
 docker run -d \
   --name chat-redis \
   --restart unless-stopped \
-  --network "${COMPOSE_PROJECT_NAME:-backend}_app_network" \
+  --network "${PROJECT}_app_network" \
   --memory 256m --cpus 0.2 \
   -v chat-redis_data:/data \
   redis:7-alpine@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065 \

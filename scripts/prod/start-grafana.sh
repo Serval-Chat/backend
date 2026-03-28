@@ -3,14 +3,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-source .env
+env_val() { grep -E "^${1}=" .env | head -1 | cut -d= -f2-; }
+GRAFANA_ROOT_URL=$(env_val GRAFANA_ROOT_URL)
+PROJECT=$(env_val COMPOSE_PROJECT_NAME); PROJECT=${PROJECT:-backend}
 
 echo "Starting chat-grafana..."
 
 docker run -d \
   --name chat-grafana \
   --restart unless-stopped \
-  --network "${COMPOSE_PROJECT_NAME:-backend}_app_network" \
+  --network "${PROJECT}_app_network" \
   --memory 256m --cpus 0.5 \
   -p 127.0.0.1:3001:3000 \
   -v chat-grafana_data:/var/lib/grafana \

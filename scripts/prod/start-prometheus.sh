@@ -3,12 +3,15 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
+env_val() { grep -E "^${1}=" .env | head -1 | cut -d= -f2-; }
+PROJECT=$(env_val COMPOSE_PROJECT_NAME); PROJECT=${PROJECT:-backend}
+
 echo "Starting chat-prometheus..."
 
 docker run -d \
   --name chat-prometheus \
   --restart unless-stopped \
-  --network "${COMPOSE_PROJECT_NAME:-backend}_app_network" \
+  --network "${PROJECT}_app_network" \
   --memory 512m --cpus 0.5 \
   -p 127.0.0.1:9090:9090 \
   -v "$(pwd)/docker/prometheus.production.yml:/etc/prometheus/prometheus.yml:ro" \
