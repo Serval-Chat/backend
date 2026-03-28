@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-env_val() { grep -E "^${1}=" .env | head -1 | cut -d= -f2-; }
+env_val() { grep -E "^${1}=" .env | head -1 | cut -d= -f2- || true; }
 GRAFANA_ROOT_URL=$(env_val GRAFANA_ROOT_URL)
 PROJECT=$(env_val COMPOSE_PROJECT_NAME); PROJECT=${PROJECT:-backend}
 
