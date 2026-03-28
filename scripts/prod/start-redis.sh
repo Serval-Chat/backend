@@ -14,6 +14,7 @@ docker run -d \
   --restart unless-stopped \
   --network "${PROJECT}_app_network" \
   --memory 256m --cpus 0.2 \
+  -p 127.0.0.1:6379:6379 \
   -v chat-redis_data:/data \
   redis:7-alpine@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065 \
   redis-server --requirepass "${REDIS_PASSWORD}" --appendonly yes
