@@ -8,6 +8,7 @@ import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
 import { MetricsService } from '@/services/MetricsService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
+import { LiveKitService } from '@/services/LiveKitService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 
@@ -48,6 +49,10 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
             useClass: KlipyService,
         },
         {
+            provide: TYPES.LiveKitService,
+            useClass: LiveKitService,
+        },
+        {
             provide: TYPES.ServerAuditLogService,
             useClass: ServerAuditLogService,
         },
@@ -60,6 +65,7 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
         TYPES.MetricsService,
         TYPES.ExportService,
         TYPES.KlipyService,
+        TYPES.LiveKitService,
         TYPES.ServerAuditLogService,
     ],
 })

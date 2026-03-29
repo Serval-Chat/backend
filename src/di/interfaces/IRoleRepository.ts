@@ -17,6 +17,7 @@ export interface IRolePermissions {
     addReactions: boolean;
     manageReactions: boolean;
     viewChannels: boolean;
+    connect: boolean;
 }
 
 // Role interface (domain model)

@@ -18,7 +18,7 @@ export class RedisService implements IRedisService {
                 return delay;
             },
         });
-        
+
         this.publisher = this.client.duplicate();
         this.subscriber = new Redis(REDIS_URL, {
             maxRetriesPerRequest: null,
@@ -79,9 +79,14 @@ export class RedisService implements IRedisService {
                 this.publisher.quit(),
                 this.subscriber.quit(),
             ]);
-            this.logger.info('[RedisService] All Redis connections closed gracefully');
+            this.logger.info(
+                '[RedisService] All Redis connections closed gracefully',
+            );
         } catch (error) {
-            this.logger.error('[RedisService] Error closing Redis connections:', error);
+            this.logger.error(
+                '[RedisService] Error closing Redis connections:',
+                error,
+            );
         }
     }
 }

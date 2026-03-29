@@ -54,6 +54,23 @@ export const LeaveChannelSchema = z.object({
     channelId: z.string().min(1, 'Channel ID is required'),
 });
 
+export const JoinVoiceSchema = z.object({
+    serverId: z.string().min(1, 'Server ID is required'),
+    channelId: z.string().min(1, 'Channel ID is required'),
+});
+
+export const LeaveVoiceSchema = z.object({
+    serverId: z.string().min(1, 'Server ID is required'),
+    channelId: z.string().min(1, 'Channel ID is required'),
+});
+
+export const UpdateVoiceStateSchema = z.object({
+    serverId: z.string().min(1, 'Server ID is required'),
+    channelId: z.string().min(1, 'Channel ID is required'),
+    isMuted: z.boolean(),
+    isDeafened: z.boolean(),
+});
+
 export const SendMessageServerSchema = z.object({
     serverId: z.string().min(1, 'Server ID is required'),
     channelId: z.string().min(1, 'Channel ID is required'),

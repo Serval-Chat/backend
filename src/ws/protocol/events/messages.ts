@@ -192,6 +192,7 @@ export interface IServerJoinedEvent
         'server_joined',
         {
             serverId: string;
+            voiceStates?: Record<string, string[]>;
         }
     > {}
 
@@ -429,5 +430,74 @@ export interface ITypingServerBroadcastEvent
             channelId: string;
             senderId: string;
             senderUsername: string;
+        }
+    > {}
+
+export interface IJoinVoiceEvent
+    extends WsEvent<
+        'join_voice',
+        {
+            serverId: string;
+            channelId: string;
+        }
+    > {
+    response: {
+        success: boolean;
+        serverId: string;
+        channelId: string;
+        participants?: string[];
+        voiceStates?: Record<string, { isMuted: boolean; isDeafened: boolean }>;
+    };
+}
+
+export interface ILeaveVoiceEvent
+    extends WsEvent<
+        'leave_voice',
+        {
+            serverId: string;
+            channelId: string;
+        }
+    > {}
+
+export interface IUserJoinedVoiceEvent
+    extends WsEvent<
+        'user_joined_voice',
+        {
+            serverId: string;
+            channelId: string;
+            userId: string;
+        }
+    > {}
+
+export interface IUserLeftVoiceEvent
+    extends WsEvent<
+        'user_left_voice',
+        {
+            serverId: string;
+            channelId: string;
+            userId: string;
+        }
+    > {}
+
+export interface IUpdateVoiceStateEvent
+    extends WsEvent<
+        'update_voice_state',
+        {
+            serverId: string;
+            channelId: string;
+            isMuted: boolean;
+            isDeafened: boolean;
+        }
+    > {}
+
+export interface IVoiceStateUpdatedEvent
+    extends WsEvent<
+        'voice_state_updated',
+        {
+            serverId: string;
+            channelId: string;
+            userId: string;
+            isMuted: boolean;
+            isDeafened: boolean;
         }
     > {}

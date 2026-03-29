@@ -3,12 +3,12 @@ services:
     image: livekit/livekit-server:latest
     container_name: chat-livekit-dev
     ports:
-      - "17880:7880"
-      - "17881:7881"
-      - "17882:7882/udp"
-    command: --dev
+      - "127.0.0.1:17880:7880"
+      - "127.0.0.1:17881:7881"
+      - "127.0.0.1:17882:7882/udp"
+    command: --dev --bind 0.0.0.0
     environment:
-      - LIVEKIT_KEYS=devkey:devsecret
+      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:-change_me_livekit_key}: ${LIVEKIT_API_SECRET:-change_me_livekit_secret}"
     depends_on:
       - redis
     restart: unless-stopped

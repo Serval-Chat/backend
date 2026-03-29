@@ -45,6 +45,7 @@ export interface ICategory extends Document {
             manageReactions?: boolean;
             addReactions?: boolean;
             viewChannels?: boolean;
+            connect?: boolean;
         };
     };
     createdAt: Date;
@@ -68,6 +69,7 @@ export interface IChannel extends Document {
             manageReactions?: boolean;
             addReactions?: boolean;
             viewChannels?: boolean;
+            connect?: boolean;
         };
     };
     createdAt: Date;
@@ -119,6 +121,7 @@ export interface IRole extends Document {
         manageReactions: boolean;
         addReactions: boolean;
         viewChannels: boolean;
+        connect: boolean;
     };
     separateFromOtherRoles?: boolean;
     icon?: string;
@@ -220,6 +223,7 @@ const categorySchema = new Schema<ICategory>({
                 manageReactions: { type: Boolean },
                 addReactions: { type: Boolean },
                 viewChannels: { type: Boolean },
+                connect: { type: Boolean },
             },
             { _id: false },
         ),
@@ -258,6 +262,7 @@ const channelSchema = new Schema<IChannel>({
                 manageReactions: { type: Boolean },
                 addReactions: { type: Boolean },
                 viewChannels: { type: Boolean },
+                connect: { type: Boolean },
             },
             { _id: false },
         ),
@@ -307,6 +312,7 @@ const roleSchema = new Schema<IRole>({
         manageReactions: { type: Boolean, default: false },
         addReactions: { type: Boolean, default: true },
         viewChannels: { type: Boolean, default: true },
+        connect: { type: Boolean, default: true },
     },
     separateFromOtherRoles: { type: Boolean, default: false },
     icon: { type: String, required: false },

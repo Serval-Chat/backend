@@ -213,7 +213,10 @@ async function isUserOnline(userId: string): Promise<boolean> {
         const count = await client.scard(`presence:user:${userId}`);
         return count > 0;
     } catch (err) {
-        logger.error(`[PushService] failed to check isUserOnline for ${userId}:`, err);
+        logger.error(
+            `[PushService] failed to check isUserOnline for ${userId}:`,
+            err,
+        );
         return false;
     }
 }

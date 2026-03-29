@@ -1,4 +1,4 @@
-import { injectable, inject } from 'inversify';
+import { injectable, inject, postConstruct } from 'inversify';
 import mongoose from 'mongoose';
 import {
     WsController,
@@ -18,6 +18,9 @@ import {
     DeleteMessageServerSchema,
     MarkChannelReadSchema,
     TypingServerSchema,
+    JoinVoiceSchema,
+    LeaveVoiceSchema,
+    UpdateVoiceStateSchema,
 } from '@/validation/schemas/ws/messages.schema';
 import type {
     IJoinServerEvent,
@@ -38,6 +41,12 @@ import type {
     ITypingServerEvent,
     ITypingServerBroadcastEvent,
     IMessageServer,
+    IJoinVoiceEvent,
+    ILeaveVoiceEvent,
+    IUserJoinedVoiceEvent,
+    IUserLeftVoiceEvent,
+    IUpdateVoiceStateEvent,
+    IVoiceStateUpdatedEvent,
 } from '@/ws/protocol/events/messages';
 import type { IMentionEvent } from '@/ws/protocol/events/mentions';
 import { TYPES } from '@/di/types';
@@ -51,13 +60,15 @@ import type { PermissionService } from '@/permissions/PermissionService';
 import type { PingService } from '@/services/PingService';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
+import { ApiError } from '@/utils/ApiError';
+import { ErrorMessages } from '@/constants/errorMessages';
+import type { IWsEnvelope } from '@/ws/protocol/envelope';
 import type { IWsUser } from '@/ws/types';
 import type { WebSocket } from 'ws';
 import logger from '@/utils/logger';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { notifyUser } from '@/services/pushService';
-import { ApiError } from '@/utils/ApiError';
-import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Controller for handling server/channel message events.
@@ -84,7 +95,95 @@ export class ServerController {
         @inject(TYPES.PingService) private pingService: PingService,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
+        @inject(TYPES.RedisService) private redisService: IRedisService,
     ) {}
+
+    @postConstruct()
+    public setupEventListeners() {
+        this.wsServer.on('user:offline', (userId: string) => {
+            this.cleanupVoicePresence(userId).catch((err) =>
+                logger.error(
+                    `[ServerController] Failed to clean up voice presence for ${userId}: ${err}`,
+                ),
+            );
+        });
+    }
+
+    private async cleanupVoicePresence(userId: string) {
+        const redis = this.redisService.getClient();
+        const voiceRoom = await redis.get(`user_voice:${userId}`);
+        if (voiceRoom) {
+            const parts = voiceRoom.split(':');
+            if (parts.length === 2) {
+                const [sId, cId] = parts as [string, string];
+                if (sId && cId) {
+                    await this._internalLeaveVoice(userId, sId, cId);
+                }
+            } else if (parts.length === 1) {
+                const channelId = parts[0] as string;
+                try {
+                    const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+                    if (channel) {
+                        await this._internalLeaveVoice(userId, channel.serverId.toString(), channelId);
+                    } else {
+                        await redis.del(`user_voice:${userId}`);
+                        await redis.srem(`voice_channel:${channelId}`, userId);
+                    }
+                } catch (err) {
+                    await redis.del(`user_voice:${userId}`);
+                }
+            }
+        }
+    }
+
+    private async _internalLeaveVoice(
+        userId: string,
+        serverId: string,
+        channelId: string,
+    ) {
+        const redis = this.redisService.getClient();
+        
+        // Use both scoped and legacy keys for robust cleanup during transition
+        const scopedVoiceKey = `voice_channel:${serverId}:${channelId}`;
+        const legacyVoiceKey = `voice_channel:${channelId}`;
+        const scopedHkey = `voice_states:${serverId}:${channelId}`;
+        const legacyHkey = `voice_states:${channelId}`;
+
+        await Promise.all([
+            redis.srem(scopedVoiceKey, userId),
+            redis.srem(legacyVoiceKey, userId),
+            redis.hdel(scopedHkey, userId),
+            redis.hdel(legacyHkey, userId),
+            redis.del(`user_voice:${userId}`),
+        ]);
+
+        // Broadcast to server
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'user_left_voice',
+            payload: { serverId, channelId, userId },
+        });
+
+        // Cleanup empty keys
+        const [remScoped, remLegacy] = await Promise.all([
+            redis.scard(scopedVoiceKey),
+            redis.scard(legacyVoiceKey),
+        ]);
+
+        if (remScoped === 0) await redis.del(scopedVoiceKey);
+        if (remLegacy === 0) await redis.del(legacyVoiceKey);
+
+        const [remHScoped, remHLegacy] = await Promise.all([
+            redis.hlen(scopedHkey),
+            redis.hlen(legacyHkey),
+        ]);
+
+        if (remHScoped === 0) await redis.del(scopedHkey);
+        if (remHLegacy === 0) await redis.del(legacyHkey);
+
+        logger.debug(
+            `[ServerController] User ${userId} left voice channel ${channelId} (Server: ${serverId})`,
+        );
+    }
 
     /**
      * Handles 'join_server' event.
@@ -126,7 +225,39 @@ export class ServerController {
             `[ServerController] User ${userId} joined server ${serverId}`,
         );
 
-        return { serverId };
+        const redisClient = this.redisService.getClient();
+        let cursor = '0';
+        const scanMatch = `voice_channel:${serverId}:*`;
+        const voiceStates: Record<string, string[]> = {};
+
+        try {
+            do {
+                const [nextCursor, keys] = await redisClient.scan(
+                    cursor,
+                    'MATCH',
+                    scanMatch,
+                    'COUNT',
+                    100,
+                );
+                cursor = nextCursor;
+
+                for (const key of keys) {
+                    const parts = key.split(':');
+                    if (parts.length === 3) {
+                        const [, , channelId] = parts;
+                        const members = await redisClient.smembers(key);
+                        if (members.length > 0 && channelId) {
+                            voiceStates[channelId] = members;
+                        }
+                    }
+                }
+            } while (cursor !== '0');
+        } catch (error) {
+            logger.error('[ServerController] Failed to fetch voice states for join_server:', error);
+        }
+
+        return { serverId, voiceStates };
+
     }
 
     /**
@@ -219,6 +350,180 @@ export class ServerController {
         );
     }
 
+    @Event('join_voice')
+    @NeedAuth()
+    @Validate(JoinVoiceSchema)
+    public async onJoinVoice(
+        payload: IJoinVoiceEvent['payload'],
+        authenticatedUser?: IWsUser,
+    ): Promise<IJoinVoiceEvent['response']> {
+        if (!authenticatedUser) {
+            throw new Error('UNAUTHORIZED: Authentication required');
+        }
+
+        const { serverId, channelId } = payload;
+        const userId = authenticatedUser.userId;
+
+        // Verify membership
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+        );
+        if (!member) {
+            throw new Error('FORBIDDEN: Not a member of this server');
+        }
+
+        const [hasView, hasConnect] = await Promise.all([
+            this.permissionService.hasChannelPermission(
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
+                new mongoose.Types.ObjectId(channelId),
+                'viewChannels',
+            ),
+            this.permissionService.hasChannelPermission(
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
+                new mongoose.Types.ObjectId(channelId),
+                'connect',
+            ),
+        ]);
+
+        if (!hasView || !hasConnect) {
+            throw new ApiError(403, 'FORBIDDEN: No permission to join this voice channel');
+        }
+
+        const redis = this.redisService.getClient();
+        const ttl = 86400; // 24 hours
+
+        const voiceKey = `voice_channel:${serverId}:${channelId}`;
+        const userVoiceKey = `user_voice:${userId}`;
+
+        // Ensure user leaves any previous voice channel before joining a new one
+        const existingVoiceRoom = await redis.get(userVoiceKey);
+        if (
+            existingVoiceRoom &&
+            existingVoiceRoom !== `${serverId}:${channelId}`
+        ) {
+            const [oldServerId, oldChannelId] = existingVoiceRoom.split(':');
+            if (oldServerId && oldChannelId) {
+                await this._internalLeaveVoice(
+                    userId,
+                    oldServerId,
+                    oldChannelId,
+                );
+            }
+        }
+
+        await redis.sadd(voiceKey, userId);
+        await redis.expire(voiceKey, ttl);
+
+        await redis.set(userVoiceKey, `${serverId}:${channelId}`, 'EX', ttl);
+
+        logger.debug(
+            `[ServerController] User ${userId} joined voice ${channelId}`,
+        );
+
+        const broadcastPayload: IUserJoinedVoiceEvent['payload'] = {
+            serverId,
+            channelId,
+            userId,
+        };
+
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'user_joined_voice',
+            payload: broadcastPayload,
+        });
+
+        const hkey = `voice_states:${serverId}:${channelId}`;
+        const participants = await redis.smembers(voiceKey);
+        const voiceStates = await redis.hgetall(hkey);
+        const parsedStates: Record<
+            string,
+            { isMuted: boolean; isDeafened: boolean }
+        > = {};
+        for (const [uid, state] of Object.entries(voiceStates)) {
+            try {
+                parsedStates[uid] = JSON.parse(state);
+            } catch (err) {
+                logger.error(
+                    `[ServerController] Failed to parse voice state for ${uid}: ${err}`,
+                );
+            }
+        }
+
+        return {
+            success: true,
+            serverId,
+            channelId,
+            participants,
+            voiceStates: parsedStates,
+        };
+    }
+
+    /**
+     * Handles 'leave_voice' event.
+     * Stops tracking user in a voice channel globally.
+     */
+    @Event('leave_voice')
+    @NeedAuth()
+    @Validate(LeaveVoiceSchema)
+    public async onLeaveVoice(
+        payload: ILeaveVoiceEvent['payload'],
+        authenticatedUser?: IWsUser,
+    ): Promise<{ success: boolean }> {
+        if (!authenticatedUser) {
+            return { success: false };
+        }
+
+        const { serverId, channelId } = payload;
+        const userId = authenticatedUser.userId;
+
+        await this._internalLeaveVoice(userId, serverId, channelId);
+
+        return { success: true };
+    }
+
+    @Event('update_voice_state')
+    @NeedAuth()
+    @Validate(UpdateVoiceStateSchema)
+    public async onUpdateVoiceState(
+        payload: IUpdateVoiceStateEvent['payload'],
+        authenticatedUser?: IWsUser,
+    ): Promise<{ success: boolean }> {
+        if (!authenticatedUser) {
+            throw new Error('UNAUTHORIZED: Authentication required');
+        }
+
+        const { serverId, channelId, isMuted, isDeafened } = payload;
+        const userId = authenticatedUser.userId;
+
+        const redis = this.redisService.getClient();
+        const hkey = `voice_states:${serverId}:${channelId}`;
+        const ttl = 86400; // 24 hours
+
+        await redis.hset(
+            hkey,
+            userId,
+            JSON.stringify({ isMuted, isDeafened }),
+        );
+        await redis.expire(hkey, ttl);
+
+        const broadcastPayload: IVoiceStateUpdatedEvent['payload'] = {
+            serverId,
+            channelId,
+            userId,
+            isMuted,
+            isDeafened,
+        };
+
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'voice_state_updated',
+            payload: broadcastPayload,
+        });
+
+        return { success: true };
+    }
+
     /**
      * Handles 'send_message_server' event.
      */
@@ -272,19 +577,19 @@ export class ServerController {
 
         // Slow Mode Check
         if (channel?.slowMode && channel.slowMode > 0) {
-            const hasBypass = 
-                await this.permissionService.hasChannelPermission(
-                    new mongoose.Types.ObjectId(serverId),
-                    new mongoose.Types.ObjectId(userId),
-                    new mongoose.Types.ObjectId(channelId),
-                    'bypassSlowmode',
-                );
+            const hasBypass = await this.permissionService.hasChannelPermission(
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
+                new mongoose.Types.ObjectId(channelId),
+                'bypassSlowmode',
+            );
 
             if (!hasBypass) {
-                const lastMessage = await this.serverMessageRepo.findLastByChannelAndUser(
-                    new mongoose.Types.ObjectId(channelId),
-                    new mongoose.Types.ObjectId(userId),
-                );
+                const lastMessage =
+                    await this.serverMessageRepo.findLastByChannelAndUser(
+                        new mongoose.Types.ObjectId(channelId),
+                        new mongoose.Types.ObjectId(userId),
+                    );
 
                 if (lastMessage && lastMessage.createdAt) {
                     const cooldownMs = channel.slowMode * 1000;
@@ -431,7 +736,7 @@ export class ServerController {
             {
                 type: 'channel',
                 targetId: channelId,
-                permission: 'viewChannels'
+                permission: 'viewChannels',
             },
             undefined,
             ws,

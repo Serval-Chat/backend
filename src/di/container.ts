@@ -28,6 +28,7 @@ import type { IPasswordResetRepository } from '@/di/interfaces/IPasswordResetRep
 import type { IMailService } from '@/di/interfaces/IMailService';
 import type { IMetricsService } from '@/di/interfaces/IMetricsService';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 
 // Infrastructure implementations
 import { WinstonLogger } from '@/infrastructure/WinstonLogger';
@@ -69,6 +70,7 @@ import { PingService } from '@/services/PingService';
 import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
+import { LiveKitService } from '@/services/LiveKitService';
 import { RedisService } from '@/services/RedisService';
 import { AdminController } from '@/controllers/AdminController';
 import { AuthController } from '@/controllers/AuthController';
@@ -266,12 +268,17 @@ container
     .inSingletonScope();
 
 container
+    .bind<LiveKitService>(TYPES.LiveKitService)
+    .to(LiveKitService)
+    .inSingletonScope();
+
+container
     .bind<IServerAuditLogService>(TYPES.ServerAuditLogService)
     .to(ServerAuditLogService)
     .inTransientScope();
 
 container
-    .bind<import('@/di/interfaces/IRedisService').IRedisService>(TYPES.RedisService)
+    .bind<IRedisService>(TYPES.RedisService)
     .to(RedisService)
     .inSingletonScope();
 

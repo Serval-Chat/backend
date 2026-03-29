@@ -31,7 +31,7 @@ export class PermissionService {
         @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-    ) {}
+    ) { }
 
     private getPermissionValue(
         permissions: Partial<IRolePermissions>,

@@ -211,7 +211,7 @@ export class ServerMessageController {
                 'Cannot send messages to a link channel via API',
             );
         }
-        
+
         // Check for slow mode
         if (channel.slowMode && channel.slowMode > 0) {
             const hasBypass = await this.permissionService.hasChannelPermission(
@@ -222,20 +222,29 @@ export class ServerMessageController {
             );
 
             if (!hasBypass) {
-                const lastMessage = await this.serverMessageRepo.findLastByChannelAndUser(
-                    new mongoose.Types.ObjectId(channelId),
-                    new mongoose.Types.ObjectId(userId),
-                );
+                const lastMessage =
+                    await this.serverMessageRepo.findLastByChannelAndUser(
+                        new mongoose.Types.ObjectId(channelId),
+                        new mongoose.Types.ObjectId(userId),
+                    );
 
                 if (lastMessage) {
                     const now = new Date();
-                    const lastSentAt = lastMessage.createdAt instanceof Date ? lastMessage.createdAt : new Date(lastMessage.createdAt);
-                    const elapsedSeconds = Math.floor((now.getTime() - lastSentAt.getTime()) / 1000);
-                    
+                    const lastSentAt =
+                        lastMessage.createdAt instanceof Date
+                            ? lastMessage.createdAt
+                            : new Date(lastMessage.createdAt);
+                    const elapsedSeconds = Math.floor(
+                        (now.getTime() - lastSentAt.getTime()) / 1000,
+                    );
+
                     if (elapsedSeconds < channel.slowMode) {
                         const remaining = channel.slowMode - elapsedSeconds;
                         throw new ForbiddenException(
-                            ErrorMessages.MESSAGE.SLOW_MODE.replace('%s', `${remaining}s`)
+                            ErrorMessages.MESSAGE.SLOW_MODE.replace(
+                                '%s',
+                                `${remaining}s`,
+                            ),
                         );
                     }
                 }

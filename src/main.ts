@@ -147,10 +147,12 @@ async function bootstrap() {
 
         try {
             await wsServer.shutdown();
-            
-            const redisService = container.get<IRedisService>(TYPES.RedisService);
+
+            const redisService = container.get<IRedisService>(
+                TYPES.RedisService,
+            );
             await redisService.quit();
-            
+
             await app.close();
             clearTimeout(forceExitTimeout);
             Logger.log('Application shut down successfully', 'Bootstrap');

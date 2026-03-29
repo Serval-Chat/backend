@@ -11,10 +11,15 @@ function getStore(prefix: string) {
     return new RedisStore({
         sendCommand: async (...args: string[]): Promise<RedisReply> => {
             if (args.length === 0) return null as unknown as RedisReply;
-            const client = container.get<IRedisService>(TYPES.RedisService).getClient();
+            const client = container
+                .get<IRedisService>(TYPES.RedisService)
+                .getClient();
             const command = args[0] as string;
             const cmdArgs = args.slice(1);
-            return client.call(command, ...cmdArgs) as unknown as Promise<RedisReply>;
+            return client.call(
+                command,
+                ...cmdArgs,
+            ) as unknown as Promise<RedisReply>;
         },
         prefix,
     });

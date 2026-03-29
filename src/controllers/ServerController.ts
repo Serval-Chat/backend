@@ -66,6 +66,7 @@ import {
 import { PingService } from '@/services/PingService';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 @injectable()
 @Controller('api/v1/servers')
 @ApiTags('Servers')
@@ -109,6 +110,8 @@ export class ServerController {
         private auditLogRepo: IAuditLogRepository,
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
+        @Inject(TYPES.RedisService)
+        private redisService: IRedisService,
     ) {
         if (!fs.existsSync(this.UPLOADS_DIR)) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
@@ -952,5 +955,59 @@ export class ServerController {
         }
 
         return { defaultRoleId: roleId || null };
+    }
+
+    @Get(':serverId/voice-states')
+    @ApiOperation({ summary: 'Get current voice states' })
+    @ApiResponse({ status: 200, description: 'Voice states map' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async getVoiceStates(
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
+    ): Promise<Record<string, string[]>> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            serverOid,
+            userOid,
+        );
+        if (!member) {
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
+        }
+
+        const redisClient = this.redisService.getClient();
+        let cursor = '0';
+        const scanMatch = `voice_channel:${serverId}:*`;
+        const voiceStates: Record<string, string[]> = {};
+
+        try {
+            do {
+                const [nextCursor, keys] = await redisClient.scan(
+                    cursor,
+                    'MATCH',
+                    scanMatch,
+                    'COUNT',
+                    100,
+                );
+                cursor = nextCursor;
+
+                for (const key of keys) {
+                    const parts = key.split(':');
+                    if (parts.length === 3) {
+                        const [, , channelId] = parts;
+                        const members = await redisClient.smembers(key);
+                        if (members.length > 0 && channelId) {
+                            voiceStates[channelId] = members;
+                        }
+                    }
+                }
+            } while (cursor !== '0');
+        } catch (error) {
+            this.logger.error('[ServerController] Failed to fetch voice states for getVoiceStates:', error);
+        }
+
+        return voiceStates;
     }
 }

@@ -41,6 +41,12 @@ import type {
     IServerUnreadUpdatedEvent,
     ITypingServerEvent,
     ITypingServerBroadcastEvent,
+    IJoinVoiceEvent,
+    ILeaveVoiceEvent,
+    IUserJoinedVoiceEvent,
+    IUserLeftVoiceEvent,
+    IUpdateVoiceStateEvent,
+    IVoiceStateUpdatedEvent,
 } from './events/messages';
 import type {
     IPresenceSyncEvent,
@@ -116,6 +122,9 @@ export type AnyMessageWsEvent =
     | IDeleteMessageServerEvent
     | IMarkChannelReadEvent
     | ITypingServerEvent
+    | IJoinVoiceEvent
+    | ILeaveVoiceEvent
+    | IUpdateVoiceStateEvent
     // Presence & Status
     | ISetStatusEvent
     // Reactions
@@ -143,6 +152,9 @@ export type AnyResponseWsEvent =
     | IChannelUnreadUpdatedEvent
     | IServerUnreadUpdatedEvent
     | ITypingServerBroadcastEvent
+    | IUserJoinedVoiceEvent
+    | IUserLeftVoiceEvent
+    | IVoiceStateUpdatedEvent
     // Server Notifications
     | IServerUpdatedEvent
     | IServerDeletedEvent

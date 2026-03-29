@@ -16,7 +16,6 @@ import { ApiError } from '@/utils/ApiError';
 
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
 const CACHE_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
-const MAX_CACHE_ENTRIES = 200;
 
 type HeaderRecord = Record<string, string>;
 
@@ -75,7 +74,9 @@ export class FileProxyController {
             let targetUrl = validateUrl(url);
             const cacheKey = getCacheKey(targetUrl.toString());
             const now = Date.now();
-            const cacheStr = await this.redisService.getClient().get(`proxy:dl:${cacheKey}`);
+            const cacheStr = await this.redisService
+                .getClient()
+                .get(`proxy:dl:${cacheKey}`);
             let cached: CacheEntry | null = null;
             if (cacheStr) {
                 try {
@@ -166,12 +167,14 @@ export class FileProxyController {
                     size,
                     expiresAt: now + CACHE_TTL_MS,
                 };
-                await this.redisService.getClient().set(
-                    `proxy:dl:${cacheKey}`,
-                    JSON.stringify(entryToSave),
-                    'PX',
-                    CACHE_TTL_MS,
-                );
+                await this.redisService
+                    .getClient()
+                    .set(
+                        `proxy:dl:${cacheKey}`,
+                        JSON.stringify(entryToSave),
+                        'PX',
+                        CACHE_TTL_MS,
+                    );
 
                 for (const [header, value] of Object.entries(headerRecord)) {
                     res.setHeader(header, value);
@@ -237,7 +240,9 @@ export class FileProxyController {
             const targetUrl = validateUrl(url);
             const cacheKey = getCacheKey(targetUrl.toString());
             const now = Date.now();
-            const cacheStr = await this.redisService.getClient().get(`proxy:meta:${cacheKey}`);
+            const cacheStr = await this.redisService
+                .getClient()
+                .get(`proxy:meta:${cacheKey}`);
             let cached: MetaCacheEntry | null = null;
             if (cacheStr) {
                 try {
@@ -277,12 +282,14 @@ export class FileProxyController {
                 entry.size = parsedLength;
             }
 
-            await this.redisService.getClient().set(
-                `proxy:meta:${cacheKey}`,
-                JSON.stringify(entry),
-                'PX',
-                CACHE_TTL_MS,
-            );
+            await this.redisService
+                .getClient()
+                .set(
+                    `proxy:meta:${cacheKey}`,
+                    JSON.stringify(entry),
+                    'PX',
+                    CACHE_TTL_MS,
+                );
 
             return {
                 status: response.status,

@@ -50,7 +50,11 @@ export interface IWsServer {
     broadcastToServerWithPermission(
         serverId: string,
         event: AnyResponseWsEvent,
-        permissionCheck: { type: 'server' | 'channel', targetId?: string, permission: string },
+        permissionCheck: {
+            type: 'server' | 'channel';
+            targetId?: string;
+            permission: string;
+        },
         replyTo?: string,
         excludeWs?: WebSocket,
     ): Promise<void>;

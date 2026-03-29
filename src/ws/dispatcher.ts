@@ -23,7 +23,10 @@ import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { WsErrorCode } from '@/ws/protocol/error';
 import { ApiError } from '@/utils/ApiError';
-import { websocketMessagesCounter, wsRateLimitRedisFailuresCounter } from '@/utils/metrics';
+import {
+    websocketMessagesCounter,
+    wsRateLimitRedisFailuresCounter,
+} from '@/utils/metrics';
 
 interface IEventHandlerInfo {
     instance: object;
@@ -255,7 +258,11 @@ export class WsDispatcher {
                     authenticatedUser?.userId || `anon:${connectionId}`;
                 const rateLimitKey = `${userId}:${envelope.event.type}`;
 
-                const isAllowed = await this.checkRateLimit(rateLimitKey, points, duration);
+                const isAllowed = await this.checkRateLimit(
+                    rateLimitKey,
+                    points,
+                    duration,
+                );
                 if (!isAllowed) {
                     this.metrics.rateLimitHits++;
                     this.sendError(
@@ -535,7 +542,7 @@ export class WsDispatcher {
     ): Promise<boolean> {
         const client = this.redisService.getClient();
         const redisKey = `ws:rl:${key}`;
-        
+
         try {
             const count = await client.incr(redisKey);
             if (count === 1) {
@@ -646,6 +653,7 @@ export class WsDispatcher {
             edit_message_server: 'message_server_edited',
             delete_message_server: 'message_server_deleted',
             mark_channel_read: 'channel_unread_updated',
+            join_voice: 'voice_joined',
             // Presence & Status
             set_status: 'status_updated',
             // Reactions

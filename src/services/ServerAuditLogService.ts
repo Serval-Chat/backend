@@ -71,8 +71,8 @@ export class ServerAuditLogService implements IServerAuditLogService {
                 },
                 {
                     type: 'server',
-                    permission: 'manageServer'
-                }
+                    permission: 'manageServer',
+                },
             );
         } else {
             this.logger.warn(
