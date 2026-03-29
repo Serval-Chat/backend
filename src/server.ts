@@ -86,6 +86,7 @@ export function setupExpressApp(app: Application): Application {
                         'https://www.gravatar.com',
                         'https://catfla.re/',
                         'https://rolling.catfla.re/',
+                        'https://static.klipy.com/',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
                                   'http://localhost:8000',
@@ -104,6 +105,7 @@ export function setupExpressApp(app: Application): Application {
                         'https://tenor.googleapis.com',
                         'https://static.cloudflareinsights.com',
                         'https://cloudflareinsights.com',
+                        'wss://rtc.catfla.re',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
                                   'http://localhost:8000',
