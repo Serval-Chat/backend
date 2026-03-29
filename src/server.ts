@@ -106,6 +106,7 @@ export function setupExpressApp(app: Application): Application {
                         'https://static.cloudflareinsights.com',
                         'https://cloudflareinsights.com',
                         'wss://rtc.catfla.re',
+                        'https://rtc.catfla.re',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
                                   'http://localhost:8000',
