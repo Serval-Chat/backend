@@ -296,6 +296,8 @@ export interface IMessageServer {
         text: string;
     };
     isEdited: boolean;
+    isPinned: boolean;
+    isSticky: boolean;
     isWebhook: boolean;
     webhookUsername?: string;
     webhookAvatarUrl?: string;
@@ -361,6 +363,22 @@ export interface IMessageServerDeletedEvent
         {
             messageId: string;
             channelId: string;
+        }
+    > {}
+
+/**
+ * Server → Client (Broadcast)
+ * Server message pin status updated.
+ */
+export interface IMessageServerPinUpdatedEvent
+    extends WsEvent<
+        'message_server_pin_updated',
+        {
+            messageId: string;
+            serverId: string;
+            channelId: string;
+            isPinned: boolean;
+            isSticky: boolean;
         }
     > {}
 

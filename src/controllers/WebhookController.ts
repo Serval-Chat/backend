@@ -451,6 +451,8 @@ export class WebhookController {
                         ? message.createdAt.toISOString()
                         : new Date().toISOString(),
                 isEdited: false,
+                isPinned: false,
+                isSticky: false,
                 isWebhook: true,
                 webhookUsername,
                 webhookAvatarUrl: webhookAvatarUrl || undefined,

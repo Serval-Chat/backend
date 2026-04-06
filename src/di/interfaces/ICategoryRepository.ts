@@ -22,6 +22,7 @@ export interface ICategory {
             manageInvites?: boolean;
             manageServer?: boolean;
             administrator?: boolean;
+            pinMessages?: boolean;
         };
     };
     createdAt: Date;
@@ -44,6 +45,7 @@ export interface CreateCategoryDTO {
             manageInvites?: boolean;
             manageServer?: boolean;
             administrator?: boolean;
+            pinMessages?: boolean;
         };
     };
 }

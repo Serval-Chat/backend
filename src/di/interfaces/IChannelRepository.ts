@@ -15,6 +15,7 @@ export interface IChannel {
             sendMessages?: boolean;
             manageMessages?: boolean;
             deleteMessagesOfOthers?: boolean;
+            pinMessages?: boolean;
         };
     };
     createdAt: Date;
@@ -38,6 +39,7 @@ export interface CreateChannelDTO {
             sendMessages?: boolean;
             manageMessages?: boolean;
             deleteMessagesOfOthers?: boolean;
+            pinMessages?: boolean;
         };
     };
     description?: string;

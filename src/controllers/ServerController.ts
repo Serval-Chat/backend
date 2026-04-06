@@ -175,6 +175,7 @@ export class ServerController {
                 manageServer: false,
                 administrator: false,
                 pingRolesAndEveryone: false,
+                pinMessages: false,
             },
         });
 

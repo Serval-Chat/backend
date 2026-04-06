@@ -18,6 +18,7 @@ export const PERMISSION_KEYS = [
     'export_channel_messages',
     'viewChannels',
     'bypassSlowmode',
+    'pinMessages',
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];

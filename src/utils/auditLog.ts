@@ -29,6 +29,7 @@ export function mapAuditLogEntry(entry: IAuditLog) {
               _id: Types.ObjectId;
               username?: string;
               displayName?: string | null;
+              profilePicture?: string;
           }
         | Types.ObjectId
         | null
@@ -41,6 +42,7 @@ export function mapAuditLogEntry(entry: IAuditLog) {
                   _id: Types.ObjectId;
                   username?: string;
                   displayName?: string | null;
+                  profilePicture?: string;
               });
 
     const metadata = entry.metadata ?? {};
@@ -70,6 +72,7 @@ export function mapAuditLogEntry(entry: IAuditLog) {
                   id: targetUserObj._id?.toString(),
                   username: targetUserObj.username,
                   name: targetUserObj.displayName ?? targetUserObj.username,
+                  avatarUrl: targetUserObj.profilePicture,
               }
             : resolvedName
               ? {

@@ -246,6 +246,8 @@ export class ReactionController {
                                       new Date().toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited || false,
+                            isPinned: message.isPinned || false,
+                            isSticky: message.isSticky || false,
                             isWebhook: message.isWebhook || false,
                         },
                     };

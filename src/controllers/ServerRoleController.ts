@@ -322,12 +322,20 @@ export class ServerRoleController {
 
         const updates: Record<string, unknown> = {};
         if (body.name) {
-            if (body.name.trim().toLowerCase() === '@everyone') {
-                throw new BadRequestException(
-                    'Role name "@everyone" is reserved',
-                );
+            const newName = body.name.trim();
+            if (newName !== role.name) {
+                if (newName.toLowerCase() === '@everyone') {
+                    throw new BadRequestException(
+                        'Role name "@everyone" is reserved',
+                    );
+                }
+                if (role.name === '@everyone') {
+                    throw new BadRequestException(
+                        'Cannot rename the @everyone role',
+                    );
+                }
+                updates.name = newName;
             }
-            updates.name = body.name.trim();
         }
 
         // If gradient colors are provided, clear the solid color to indicate gradient mode

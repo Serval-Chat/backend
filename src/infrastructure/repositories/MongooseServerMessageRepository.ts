@@ -320,4 +320,20 @@ export class MongooseServerMessageRepository
             ? this.transformMessage(doc as unknown as PopulatedServerMessageDoc)
             : null;
     }
+    async findPinnedByChannelId(
+        channelId: Types.ObjectId,
+    ): Promise<IServerMessage[]> {
+        const messages = (await ServerMessage.find({
+            channelId: new Types.ObjectId(channelId.toString()),
+            $or: [{ isPinned: true }, { isSticky: true }],
+        })
+            .sort({ createdAt: -1 })
+            .populate({
+                path: 'repliedToMessageId',
+                populate: { path: 'repliedToMessageId' },
+            })
+            .lean()) as unknown as PopulatedServerMessageDoc[];
+        if (messages.length === 0) return [];
+        return await this.transformMessages(messages);
+    }
 }

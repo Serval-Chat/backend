@@ -15,6 +15,8 @@ export interface IServerMessage {
     referenced_message?: IServerMessage;
     editedAt?: Date;
     isEdited?: boolean;
+    isPinned?: boolean;
+    isSticky?: boolean;
     isWebhook?: boolean;
     webhookUsername?: string;
     webhookAvatarUrl?: string;
@@ -80,4 +82,6 @@ export interface IServerMessageRepository {
         channelId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<IServerMessage | null>;
+    // Find all pinned messages in a channel
+    findPinnedByChannelId(channelId: Types.ObjectId): Promise<IServerMessage[]>;
 }

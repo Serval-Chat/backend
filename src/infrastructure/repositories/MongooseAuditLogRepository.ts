@@ -110,7 +110,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             .sort({ _id: -1 })
             .limit(options.limit || 50)
             .populate('actorId', 'username profilePicture displayName')
-            .populate('targetUserId', 'username displayName')
+            .populate('targetUserId', 'username displayName profilePicture')
             .lean()
             .exec();
 
@@ -121,7 +121,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         const result = await this.auditLogModel
             .findById(id)
             .populate('actorId', 'username profilePicture displayName')
-            .populate('targetUserId', 'username displayName')
+            .populate('targetUserId', 'username displayName profilePicture')
             .lean()
             .exec();
 

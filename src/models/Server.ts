@@ -45,6 +45,7 @@ export interface ICategory extends Document {
             manageReactions?: boolean;
             addReactions?: boolean;
             viewChannels?: boolean;
+            pinMessages?: boolean;
             connect?: boolean;
         };
     };
@@ -69,6 +70,7 @@ export interface IChannel extends Document {
             manageReactions?: boolean;
             addReactions?: boolean;
             viewChannels?: boolean;
+            pinMessages?: boolean;
             connect?: boolean;
         };
     };
@@ -121,6 +123,7 @@ export interface IRole extends Document {
         manageReactions: boolean;
         addReactions: boolean;
         viewChannels: boolean;
+        pinMessages: boolean;
         connect: boolean;
     };
     separateFromOtherRoles?: boolean;
@@ -157,6 +160,8 @@ export interface IServerMessage extends Document {
     repliedToMessageId?: mongoose.Types.ObjectId;
     editedAt?: Date;
     isEdited?: boolean;
+    isPinned?: boolean;
+    isSticky?: boolean;
     isWebhook?: boolean;
     webhookUsername?: string;
     webhookAvatarUrl?: string;
@@ -223,6 +228,7 @@ const categorySchema = new Schema<ICategory>({
                 manageReactions: { type: Boolean },
                 addReactions: { type: Boolean },
                 viewChannels: { type: Boolean },
+                pinMessages: { type: Boolean },
                 connect: { type: Boolean },
             },
             { _id: false },
@@ -262,6 +268,7 @@ const channelSchema = new Schema<IChannel>({
                 manageReactions: { type: Boolean },
                 addReactions: { type: Boolean },
                 viewChannels: { type: Boolean },
+                pinMessages: { type: Boolean },
                 connect: { type: Boolean },
             },
             { _id: false },
@@ -312,6 +319,7 @@ const roleSchema = new Schema<IRole>({
         manageReactions: { type: Boolean, default: false },
         addReactions: { type: Boolean, default: true },
         viewChannels: { type: Boolean, default: true },
+        pinMessages: { type: Boolean, default: false },
         connect: { type: Boolean, default: true },
     },
     separateFromOtherRoles: { type: Boolean, default: false },
@@ -350,6 +358,8 @@ const serverMessageSchema = new Schema<IServerMessage>({
     },
     editedAt: { type: Date, required: false },
     isEdited: { type: Boolean, default: false },
+    isPinned: { type: Boolean, default: false },
+    isSticky: { type: Boolean, default: false },
     isWebhook: { type: Boolean, default: false },
     webhookUsername: { type: String, required: false },
     webhookAvatarUrl: { type: String, required: false },

@@ -699,6 +699,8 @@ export class ServerController {
             replyToId: created.replyToId?.toString(),
             repliedTo: undefined,
             isEdited: false,
+            isPinned: false,
+            isSticky: false,
             isWebhook: false,
         };
 

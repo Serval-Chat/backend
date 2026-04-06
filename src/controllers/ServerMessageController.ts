@@ -40,6 +40,7 @@ import type {
     IChannelUnreadUpdatedEvent,
     IMessageServerEditedEvent,
     IMessageServerDeletedEvent,
+    IMessageServerPinUpdatedEvent,
 } from '@/ws/protocol/events/messages';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import type { Request as ExpressRequest } from 'express';
@@ -291,6 +292,8 @@ export class ServerMessageController {
                         : new Date().toISOString(),
                 replyToId: message.repliedToMessageId?.toString(),
                 isEdited: false,
+                isPinned: message.isPinned || false,
+                isSticky: message.isSticky || false,
                 isWebhook: message.isWebhook || false,
                 webhookUsername: message.webhookUsername,
                 webhookAvatarUrl: message.webhookAvatarUrl,
@@ -314,6 +317,58 @@ export class ServerMessageController {
         this.wsServer.broadcastToServer(serverId, unreadPayload);
 
         return message;
+    }
+
+    // Retrieves all pinned messages for a channel
+    @Get('pins')
+    @ApiOperation({ summary: 'Get all pinned messages' })
+    @ApiResponse({ status: 200, description: 'Pinned messages retrieved' })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
+    public async getPinnedMessages(
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Req() req: ExpressRequest,
+    ): Promise<IServerMessage[]> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+        );
+        if (!member) {
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
+        }
+
+        const canView = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
+            'viewChannels',
+        );
+        if (!canView) {
+            throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
+        }
+
+        const pins = await this.serverMessageRepo.findPinnedByChannelId(
+            new mongoose.Types.ObjectId(channelId),
+        );
+
+        // Bulk fetch reactions for pins
+        const pinIds = pins.map((p) => p._id);
+        if (pinIds.length === 0) return [];
+
+        const reactionsMap = await this.reactionRepo.getReactionsForMessages(
+            pinIds,
+            'server',
+            new mongoose.Types.ObjectId(userId),
+        );
+
+        return pins.map((pin) => ({
+            ...pin,
+            reactions:
+                (reactionsMap as Record<string, unknown[]>)[
+                    pin._id.toString()
+                ] || [],
+        })) as unknown as IServerMessage[];
     }
 
     // Retrieves a specific message and its replied-to message, if any
@@ -584,5 +639,146 @@ export class ServerMessageController {
         });
 
         return { message: 'Message deleted' };
+    }
+
+    // Toggles a regular pin on a message
+    @Post(':messageId/pin')
+    @ApiOperation({ summary: 'Toggle message pin' })
+    @ApiResponse({ status: 200, description: 'Pin status toggled' })
+    @ApiResponse({
+        status: 403,
+        description: 'No permission to pin messages',
+    })
+    public async togglePin(
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @Req() req: ExpressRequest,
+    ): Promise<IServerMessage> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const canPin = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
+            'pinMessages',
+        );
+        if (!canPin) {
+            throw new ForbiddenException('No permission to pin messages');
+        }
+
+        const message = await this.serverMessageRepo.findById(
+            new mongoose.Types.ObjectId(messageId),
+        );
+        if (!message || message.channelId.toString() !== channelId) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        const updated = await this.serverMessageRepo.update(message._id, {
+            isPinned: !message.isPinned,
+        });
+
+        if (updated) {
+            const event: IMessageServerPinUpdatedEvent = {
+                type: 'message_server_pin_updated',
+                payload: {
+                    messageId,
+                    serverId,
+                    channelId,
+                    isPinned: updated.isPinned || false,
+                    isSticky: updated.isSticky || false,
+                },
+            };
+            this.wsServer.broadcastToChannel(channelId, event);
+
+            const channelObj = await this.channelRepo.findById(
+                new mongoose.Types.ObjectId(channelId),
+            );
+
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: new mongoose.Types.ObjectId(serverId),
+                actorId: new mongoose.Types.ObjectId(userId),
+                actionType: updated.isPinned ? 'pin_message' : 'unpin_message',
+                targetId: message._id,
+                targetType: 'message',
+                targetUserId: message.senderId,
+                metadata: {
+                    channelId: message.channelId.toString(),
+                    channelName: channelObj ? channelObj.name : 'Unknown Channel',
+                    messageText: message.text,
+                },
+            });
+        }
+
+        return updated!;
+    }
+
+    // Toggles a sticky pin on a message
+    @Post(':messageId/sticky')
+    @ApiOperation({ summary: 'Toggle message sticky' })
+    @ApiResponse({ status: 200, description: 'Sticky status toggled' })
+    @ApiResponse({
+        status: 403,
+        description: 'No permission to pin messages',
+    })
+    public async toggleSticky(
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @Req() req: ExpressRequest,
+    ): Promise<IServerMessage> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const canPin = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
+            'pinMessages',
+        );
+        if (!canPin) {
+            throw new ForbiddenException('No permission to pin messages');
+        }
+
+        const message = await this.serverMessageRepo.findById(
+            new mongoose.Types.ObjectId(messageId),
+        );
+        if (!message || message.channelId.toString() !== channelId) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        const updated = await this.serverMessageRepo.update(message._id, {
+            isSticky: !message.isSticky,
+        });
+
+        if (updated) {
+            const event: IMessageServerPinUpdatedEvent = {
+                type: 'message_server_pin_updated',
+                payload: {
+                    messageId,
+                    serverId,
+                    channelId,
+                    isPinned: updated.isPinned || false,
+                    isSticky: updated.isSticky || false,
+                },
+            };
+            this.wsServer.broadcastToChannel(channelId, event);
+
+            const channelObj = await this.channelRepo.findById(
+                new mongoose.Types.ObjectId(channelId),
+            );
+
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: new mongoose.Types.ObjectId(serverId),
+                actorId: new mongoose.Types.ObjectId(userId),
+                actionType: updated.isSticky ? 'sticky_message' : 'unsticky_message',
+                targetId: message._id,
+                targetType: 'message',
+                targetUserId: message.senderId,
+                metadata: {
+                    channelId: message.channelId.toString(),
+                    channelName: channelObj ? channelObj.name : 'Unknown Channel',
+                },
+            });
+        }
+
+        return updated!;
     }
 }
