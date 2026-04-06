@@ -29,7 +29,9 @@ function getStore(prefix: string) {
 //
 // Limits to 5 attempts per minute per IP+login combination.
 export const loginLimiter = rateLimit({
-    store: getStore('rl:login:'),
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:login:') }
+        : {}),
     windowMs: 60_000, // 1 minute
     max: 5,
     keyGenerator: (req: Request) => {
@@ -49,7 +51,7 @@ export const loginLimiter = rateLimit({
 //
 // Limits to 3 attempts per minute per IP+login+invite combination.
 export const registrationLimiter = rateLimit({
-    store: getStore('rl:reg:'),
+    ...(process.env.NODE_ENV !== 'test' ? { store: getStore('rl:reg:') } : {}),
     windowMs: 60_000, // 1 minute
     max: 3,
     keyGenerator: (req: Request) => {
@@ -69,7 +71,7 @@ export const registrationLimiter = rateLimit({
 
 // Rate limiter for sensitive authenticated operations.
 export const sensitiveOperationLimiter = rateLimit({
-    store: getStore('rl:sens:'),
+    ...(process.env.NODE_ENV !== 'test' ? { store: getStore('rl:sens:') } : {}),
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3,
     keyGenerator: (req: Request) => {

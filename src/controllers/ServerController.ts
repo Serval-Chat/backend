@@ -968,7 +968,7 @@ export class ServerController {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        
+
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverOid,
             userOid,
@@ -1005,7 +1005,10 @@ export class ServerController {
                 }
             } while (cursor !== '0');
         } catch (error) {
-            this.logger.error('[ServerController] Failed to fetch voice states for getVoiceStates:', error);
+            this.logger.error(
+                '[ServerController] Failed to fetch voice states for getVoiceStates:',
+                error,
+            );
         }
 
         return voiceStates;

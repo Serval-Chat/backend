@@ -27,6 +27,7 @@ import path from 'path';
 import { extractClientIp } from '@/utils/ip';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
+import { normalizeEmail } from '@/utils/email';
 import { ApiTags, ApiResponse, ApiSecurity } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { ILogger } from '@/di/interfaces/ILogger';
@@ -259,6 +260,17 @@ export class AuthController {
     ): Promise<void> {
         const { login, username, password, invite } = body;
 
+        if (login.includes('+')) {
+            registrationAttemptsCounter.labels('failure').inc();
+            res.status(HttpStatus.BAD_REQUEST).json({
+                error: 'Subaddresses are not allowed.',
+            });
+            return;
+        }
+
+        // Normalize email (lowercase and trim)
+        const normalizedLogin = normalizeEmail(login);
+
         let tokens: string[];
         try {
             const file = fs.readFileSync(path.join('tokens.txt'), 'utf-8');
@@ -282,7 +294,7 @@ export class AuthController {
             return;
         }
 
-        const existingLogin = await this.userRepo.findByLogin(login);
+        const existingLogin = await this.userRepo.findByLogin(normalizedLogin);
         if (existingLogin) {
             registrationAttemptsCounter.labels('failure').inc();
             res.status(HttpStatus.BAD_REQUEST).json({
@@ -300,7 +312,11 @@ export class AuthController {
             return;
         }
 
-        await this.userRepo.create({ login, username, password });
+        await this.userRepo.create({
+            login: normalizedLogin,
+            username,
+            password,
+        });
 
         registrationAttemptsCounter.labels('success').inc();
         usersCreatedCounter.inc();
@@ -308,7 +324,7 @@ export class AuthController {
         const updatedTokens = tokens.filter((t) => t !== invite);
         fs.writeFileSync('tokens.txt', updatedTokens.join('\n'));
 
-        const newUser = await this.userRepo.findByLogin(login);
+        const newUser = await this.userRepo.findByLogin(normalizedLogin);
         if (!newUser)
             throw new ApiError(500, 'User just created but not found');
 
@@ -339,12 +355,19 @@ export class AuthController {
         const userOid = new Types.ObjectId(userId);
         const { newLogin, password } = body;
 
+        if (newLogin.includes('+')) {
+            throw new ApiError(400, 'Subaddresses are not allowed.');
+        }
+
+        const normalizedNewLogin = normalizeEmail(newLogin);
+
         const user = await this.userRepo.findById(userOid);
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        if (newLogin === user.login) {
+        const normalizedCurrentLogin = normalizeEmail(user.login || '');
+        if (normalizedNewLogin === normalizedCurrentLogin) {
             throw new ApiError(400, ErrorMessages.AUTH.NEW_LOGIN_SAME);
         }
 
@@ -356,12 +379,13 @@ export class AuthController {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_PASSWORD);
         }
 
-        const existingLogin = await this.userRepo.findByUsername(newLogin);
+        const existingLogin =
+            await this.userRepo.findByLogin(normalizedNewLogin);
         if (existingLogin) {
             throw new ApiError(409, ErrorMessages.AUTH.LOGIN_TAKEN);
         }
 
-        await this.userRepo.updateLogin(userOid, newLogin);
+        await this.userRepo.updateLogin(userOid, normalizedNewLogin);
 
         const updatedUser = await this.userRepo.findById(userOid);
         if (!updatedUser) {

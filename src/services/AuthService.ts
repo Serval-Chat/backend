@@ -9,6 +9,7 @@ import { IMetricsService } from '@/di/interfaces/IMetricsService';
 import { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { AUTH_CONSTANTS } from '@/constants/auth';
+import { normalizeEmail } from '@/utils/email';
 import crypto from 'crypto';
 import { FRONTEND_URL } from '@/config/env';
 import { ApiError } from '@/utils/ApiError';
@@ -85,19 +86,23 @@ export class AuthService {
     // Authenticate a user with login credentials.
     //
     // Flow:
-    // 1. Find user by login
-    // 2. Verify password hash
-    // 3. Check if user is soft-deleted (restore if so)
-    // 4. Check for active bans
-    // 5. Generate JWT and return auth result
+    // 1. Normalize email to prevent plus-addressing bypass
+    // 2. Find user by login
+    // 3. Verify password hash
+    // 4. Check if user is soft-deleted (restore if so)
+    // 5. Check for active bans
+    // 6. Generate JWT and return auth result
     async login(login: string, password: string): Promise<AuthResult> {
-        this.logger.debug(`Login attempt for: ${login}`);
+        // Normalize email to prevent plus-addressing bypass
+        const normalizedLogin = normalizeEmail(login);
+        this.logger.debug(`Login attempt for: ${normalizedLogin}`);
 
-        // Find user via repository
-        const user = await this.userRepo.findByLogin(login);
+        const user = await this.userRepo.findByLogin(normalizedLogin);
 
         if (!user) {
-            this.logger.warn(`Login failed: User not found - ${login}`);
+            this.logger.warn(
+                `Login failed: User not found - ${normalizedLogin}`,
+            );
             return {
                 success: false,
                 error: ErrorMessages.AUTH.INVALID_CREDENTIALS,
@@ -106,7 +111,9 @@ export class AuthService {
 
         // Block soft-deleted accounts
         if (user.deletedAt) {
-            this.logger.warn(`Login failed: Account deleted - ${login}`);
+            this.logger.warn(
+                `Login failed: Account deleted - ${normalizedLogin}`,
+            );
             return {
                 success: false,
                 error: ErrorMessages.AUTH.INVALID_CREDENTIALS,
@@ -116,7 +123,9 @@ export class AuthService {
         // Validate password via repository
         const valid = await this.userRepo.comparePassword(user._id, password);
         if (!valid) {
-            this.logger.warn(`Login failed: Invalid password - ${login}`);
+            this.logger.warn(
+                `Login failed: Invalid password - ${normalizedLogin}`,
+            );
             return {
                 success: false,
                 error: ErrorMessages.AUTH.INVALID_CREDENTIALS,
@@ -128,7 +137,9 @@ export class AuthService {
         const activeBan = await this.banRepo.findActiveByUserId(user._id);
 
         if (activeBan) {
-            this.logger.warn(`Login failed: Account banned - ${login}`);
+            this.logger.warn(
+                `Login failed: Account banned - ${normalizedLogin}`,
+            );
             return {
                 success: false,
                 error: ErrorMessages.AUTH.ACCOUNT_BANNED,
@@ -141,7 +152,7 @@ export class AuthService {
             };
         }
 
-        this.logger.info(`Login successful: ${login}`);
+        this.logger.info(`Login successful: ${normalizedLogin}`);
         return {
             success: true,
             user: user as unknown as IUser,
@@ -360,15 +371,19 @@ export class AuthService {
     // Request a password reset
     async requestPasswordReset(email: string, ip: string): Promise<string> {
         const requestId = crypto.randomBytes(8).toString('hex');
+
+        // Normalize email to prevent plus-addressing bypass
+        const normalizedEmail = normalizeEmail(email);
+
         this.logger.info(
-            `[${requestId}] Password reset requested for email: ${email}`,
+            `[${requestId}] Password reset requested for email: ${normalizedEmail}`,
         );
 
-        const user = await this.userRepo.findByLogin(email);
+        const user = await this.userRepo.findByLogin(normalizedEmail);
 
         if (!user) {
             this.logger.info(
-                `[${requestId}] Password reset requested for non-existent user: ${email}`,
+                `[${requestId}] Password reset requested for non-existent user: ${normalizedEmail}`,
             );
             return requestId;
         }

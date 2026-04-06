@@ -69,6 +69,24 @@ describe('Authentication Integration Tests', () => {
             assert.equal(res.status, 400);
         });
 
+        test('should fail to register with subaddressing', async () => {
+            const login = `user+sub@example.com`;
+            const username = `subaddress_user`;
+            const req = {
+                login,
+                username,
+                password: 'Password123!',
+                invite: 'beta',
+            };
+
+            const res = await request(app)
+                .post('/api/v1/auth/register')
+                .send(req);
+
+            assert.equal(res.status, 400);
+            assert.equal(res.body.error, 'Subaddresses are not allowed.');
+        });
+
         test('should fail with invalid data', async () => {
             const userData = {
                 username: 'ab', // Too short
@@ -128,5 +146,7 @@ describe('Authentication Integration Tests', () => {
 
             assert.equal(res.status, 401);
         });
+
+
     });
 });

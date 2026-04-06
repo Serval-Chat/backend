@@ -122,9 +122,15 @@ export class ServerController {
             } else if (parts.length === 1) {
                 const channelId = parts[0] as string;
                 try {
-                    const channel = await this.channelRepo.findById(new mongoose.Types.ObjectId(channelId));
+                    const channel = await this.channelRepo.findById(
+                        new mongoose.Types.ObjectId(channelId),
+                    );
                     if (channel) {
-                        await this._internalLeaveVoice(userId, channel.serverId.toString(), channelId);
+                        await this._internalLeaveVoice(
+                            userId,
+                            channel.serverId.toString(),
+                            channelId,
+                        );
                     } else {
                         await redis.del(`user_voice:${userId}`);
                         await redis.srem(`voice_channel:${channelId}`, userId);
@@ -142,7 +148,7 @@ export class ServerController {
         channelId: string,
     ) {
         const redis = this.redisService.getClient();
-        
+
         // Use both scoped and legacy keys for robust cleanup during transition
         const scopedVoiceKey = `voice_channel:${serverId}:${channelId}`;
         const legacyVoiceKey = `voice_channel:${channelId}`;
@@ -253,11 +259,13 @@ export class ServerController {
                 }
             } while (cursor !== '0');
         } catch (error) {
-            logger.error('[ServerController] Failed to fetch voice states for join_server:', error);
+            logger.error(
+                '[ServerController] Failed to fetch voice states for join_server:',
+                error,
+            );
         }
 
         return { serverId, voiceStates };
-
     }
 
     /**
@@ -389,7 +397,10 @@ export class ServerController {
         ]);
 
         if (!hasView || !hasConnect) {
-            throw new ApiError(403, 'FORBIDDEN: No permission to join this voice channel');
+            throw new ApiError(
+                403,
+                'FORBIDDEN: No permission to join this voice channel',
+            );
         }
 
         const redis = this.redisService.getClient();
@@ -501,11 +512,7 @@ export class ServerController {
         const hkey = `voice_states:${serverId}:${channelId}`;
         const ttl = 86400; // 24 hours
 
-        await redis.hset(
-            hkey,
-            userId,
-            JSON.stringify({ isMuted, isDeafened }),
-        );
+        await redis.hset(hkey, userId, JSON.stringify({ isMuted, isDeafened }));
         await redis.expire(hkey, ttl);
 
         const broadcastPayload: IVoiceStateUpdatedEvent['payload'] = {

@@ -47,6 +47,31 @@ async function setup() {
 
     // 3. Import App and Routes
     require('reflect-metadata'); // Required for InversifyJS
+
+    const { container } = require('../../src/di/container');
+    const { TYPES } = require('../../src/di/types');
+
+    container.unbind(TYPES.RedisService);
+    const mockRedisClient = {
+        get: async () => null,
+        set: async () => 'OK',
+        setex: async () => 'OK',
+        del: async () => 1,
+        publish: async () => 0,
+        subscribe: async () => 'OK',
+        on: () => {},
+        quit: async () => 'OK',
+        status: 'ready',
+        duplicate: function() { return this; }
+    };
+    container.bind(TYPES.RedisService).toConstantValue({
+        getClient: () => mockRedisClient,
+        getPublisher: () => mockRedisClient,
+        getSubscriber: () => mockRedisClient,
+        isHealthy: () => true,
+        quit: async () => {}
+    });
+
     const { setupExpressApp } = require('../../src/server');
     const { NestFactory } = require('@nestjs/core');
     const { AppModule } = require('../../src/app.module');
@@ -74,9 +99,6 @@ async function setup() {
     server = createServer(app);
 
     // 5. Initialize WebSocket Server
-    const { container } = require('../../src/di/container');
-    const { TYPES } = require('../../src/di/types');
-
     const wsServer = container.get(TYPES.WsServer);
     wsServer.initialize(server);
     io = null; // No Socket.IO anymore

@@ -14,9 +14,11 @@ const { User } = require('../../src/models/User');
  */
 async function createTestUser(overrides = {}) {
     const password = await bcrypt.hash('password123', 10);
+    const email = overrides.login || `test_${Date.now()}@example.com`;
+
     const user = await User.create({
         username: `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        login: `test_${Date.now()}@example.com`, // login can act as an email too :p
+        login: email, // login can act as an email too :p
         password,
         tokenVersion: 0,
         ...overrides
