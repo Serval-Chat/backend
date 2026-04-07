@@ -226,4 +226,13 @@ export interface IUserRepository {
 
     // Verify if user is currently banned
     isBanned(userId: Types.ObjectId): Promise<boolean>;
+
+    // Count registrations per hour for the last N hours (oldest-first array)
+    countByHour(since: Date, hours: number): Promise<number[]>;
+
+    // Count registrations per day for the last N days (oldest-first array)
+    countByDay(since: Date, days: number): Promise<number[]>;
+
+    // Count all registrations per day since the very first user (lifetime view)
+    countAllByDay(): Promise<number[]>;
 }

@@ -3,22 +3,22 @@ import { ApiProperty } from '@nestjs/swagger';
 export class DashBoardStatsDTO {
     @ApiProperty()
     users!: number;
-    @ApiProperty()
-    usersTrend!: number;
+    @ApiProperty({ type: [Number] })
+    usersSparkline!: number[];
     @ApiProperty()
     activeUsers!: number;
-    @ApiProperty()
-    activeUsersTrend!: number;
+    @ApiProperty({ type: [Number] })
+    activeUsersSparkline!: number[];
     @ApiProperty()
     bans!: number;
-    @ApiProperty()
-    bansTrend!: number;
+    @ApiProperty({ type: [Number] })
+    bansSparkline!: number[];
     @ApiProperty()
     servers!: number;
-    @ApiProperty()
-    serversTrend!: number;
+    @ApiProperty({ type: [Number] })
+    serversSparkline!: number[];
     @ApiProperty()
     messages!: number;
-    @ApiProperty()
-    messagesTrend!: number;
+    @ApiProperty({ type: [Number] })
+    messagesSparkline!: number[];
 }

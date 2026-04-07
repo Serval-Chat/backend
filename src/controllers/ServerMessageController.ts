@@ -703,7 +703,9 @@ export class ServerMessageController {
                 targetUserId: message.senderId,
                 metadata: {
                     channelId: message.channelId.toString(),
-                    channelName: channelObj ? channelObj.name : 'Unknown Channel',
+                    channelName: channelObj
+                        ? channelObj.name
+                        : 'Unknown Channel',
                     messageText: message.text,
                 },
             });
@@ -768,13 +770,17 @@ export class ServerMessageController {
             await this.serverAuditLogService.createAndBroadcast({
                 serverId: new mongoose.Types.ObjectId(serverId),
                 actorId: new mongoose.Types.ObjectId(userId),
-                actionType: updated.isSticky ? 'sticky_message' : 'unsticky_message',
+                actionType: updated.isSticky
+                    ? 'sticky_message'
+                    : 'unsticky_message',
                 targetId: message._id,
                 targetType: 'message',
                 targetUserId: message.senderId,
                 metadata: {
                     channelId: message.channelId.toString(),
-                    channelName: channelObj ? channelObj.name : 'Unknown Channel',
+                    channelName: channelObj
+                        ? channelObj.name
+                        : 'Unknown Channel',
                 },
             });
         }

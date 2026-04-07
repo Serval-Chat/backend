@@ -70,4 +70,13 @@ export interface IBanRepository {
 
     // Count bans created after a certain date
     countCreatedAfter(date: Date): Promise<number>;
+
+    // Count bans issued per hour for the last N hours (oldest-first array)
+    countByHour(since: Date, hours: number): Promise<number[]>;
+
+    // Count bans issued per day for the last N days (oldest-first array)
+    countByDay(since: Date, days: number): Promise<number[]>;
+
+    // Count all bans per day since the very first ban (lifetime view)
+    countAllByDay(): Promise<number[]>;
 }

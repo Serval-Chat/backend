@@ -139,81 +139,100 @@ export class AdminController {
     })
     @ApiResponse({ status: 200, type: DashBoardStatsDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
-    public async getStats(): Promise<DashBoardStatsDTO> {
+    public async getStats(
+        @Query('range') range: '24h' | '7d' | '30d' | 'all' = '24h',
+    ): Promise<DashBoardStatsDTO> {
         const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
-        const [users, bans, servers, dmMessages, serverMessages] =
-            await Promise.all([
-                this.userRepo.count(),
-                this.banRepo.countActive(),
-                this.serverRepo.count(),
-                this.messageRepo.count(),
-                this.serverMessageRepo.count(),
-            ]);
-
-        const messages = dmMessages + serverMessages;
+        const isHourly = range === '24h';
+        const isLifetime = range === 'all';
+        const buckets = range === '30d' ? 30 : range === '7d' ? 7 : 24;
+        const msWindow =
+            range === '30d'
+                ? 30 * 24 * 60 * 60 * 1000
+                : range === '7d'
+                  ? 7 * 24 * 60 * 60 * 1000
+                  : 24 * 60 * 60 * 1000;
+        const since = new Date(now.getTime() - msWindow);
 
         const [
-            users48h,
-            bans48h,
-            servers48h,
-            dmMessages48h,
-            serverMessages48h,
+            users,
+            bans,
+            servers,
+            dmMessages,
+            serverMessages,
+            usersSparkline,
+            bansSparkline,
+            serversSparkline,
+            dmSparkline,
+            serverMsgSparkline,
         ] = await Promise.all([
-            this.userRepo.countCreatedAfter(twoDaysAgo),
-            this.banRepo.countCreatedAfter(twoDaysAgo),
-            this.serverRepo.countCreatedAfter(twoDaysAgo),
-            this.messageRepo.countCreatedAfter(twoDaysAgo),
-            this.serverMessageRepo.countCreatedAfter(twoDaysAgo),
+            this.userRepo.count(),
+            this.banRepo.countActive(),
+            this.serverRepo.count(),
+            this.messageRepo.count(),
+            this.serverMessageRepo.count(),
+            isLifetime
+                ? this.userRepo.countAllByDay()
+                : isHourly
+                  ? this.userRepo.countByHour(since, buckets)
+                  : this.userRepo.countByDay(since, buckets),
+            isLifetime
+                ? this.banRepo.countAllByDay()
+                : isHourly
+                  ? this.banRepo.countByHour(since, buckets)
+                  : this.banRepo.countByDay(since, buckets),
+            isLifetime
+                ? this.serverRepo.countAllByDay()
+                : isHourly
+                  ? this.serverRepo.countByHour(since, buckets)
+                  : this.serverRepo.countByDay(since, buckets),
+            isLifetime
+                ? this.messageRepo.countAllByDay()
+                : isHourly
+                  ? this.messageRepo.countByHour(since, buckets)
+                  : this.messageRepo.countByDay(since, buckets),
+            isLifetime
+                ? this.serverMessageRepo.countAllByDay()
+                : isHourly
+                  ? this.serverMessageRepo.countByHour(since, buckets)
+                  : this.serverMessageRepo.countByDay(since, buckets),
         ]);
 
-        const [
-            users24h,
-            bans24h,
-            servers24h,
-            dmMessages24h,
-            serverMessages24h,
-        ] = await Promise.all([
-            this.userRepo.countCreatedAfter(oneDayAgo),
-            this.banRepo.countCreatedAfter(oneDayAgo),
-            this.serverRepo.countCreatedAfter(oneDayAgo),
-            this.messageRepo.countCreatedAfter(oneDayAgo),
-            this.serverMessageRepo.countCreatedAfter(oneDayAgo),
-        ]);
-
-        const newUsers = users24h;
-        const newBans = bans24h;
-        const newServers = servers24h;
-        const newMessages = dmMessages24h + serverMessages24h;
-
-        const prevNewUsers = users48h - users24h;
-        const prevNewBans = bans48h - bans24h;
-        const prevNewServers = servers48h - servers24h;
-        const prevNewMessages =
-            dmMessages48h + serverMessages48h - newMessages;
-
-        const calculateTrend = (recent: number, previousRecent: number) => {
-            if (previousRecent === 0) return recent > 0 ? 100 : 0;
-            return Math.round(
-                ((recent - previousRecent) / previousRecent) * 100,
+        let messagesSparkline: number[];
+        if (isLifetime) {
+            const maxLen = Math.max(
+                dmSparkline.length,
+                serverMsgSparkline.length,
             );
-        };
+            messagesSparkline = Array(maxLen).fill(0);
+            for (let i = 0; i < maxLen; i++) {
+                const dmVal = dmSparkline[dmSparkline.length - 1 - i] || 0;
+                const smVal =
+                    serverMsgSparkline[serverMsgSparkline.length - 1 - i] || 0;
+                messagesSparkline[maxLen - 1 - i] = dmVal + smVal;
+            }
+        } else {
+            messagesSparkline = dmSparkline.map(
+                (v, i) => v + (serverMsgSparkline[i] ?? 0),
+            );
+        }
 
         const activeUsersCount = this.wsServer.getAllOnlineUsers().length;
 
         const stats = new DashBoardStatsDTO();
         stats.users = users;
-        stats.usersTrend = calculateTrend(newUsers, prevNewUsers);
+        stats.usersSparkline = usersSparkline;
         stats.activeUsers = activeUsersCount;
-        stats.activeUsersTrend = 0;
+        stats.activeUsersSparkline = Array<number>(
+            isLifetime ? usersSparkline.length : buckets,
+        ).fill(0);
         stats.bans = bans;
-        stats.bansTrend = calculateTrend(newBans, prevNewBans);
+        stats.bansSparkline = bansSparkline;
         stats.servers = servers;
-        stats.serversTrend = calculateTrend(newServers, prevNewServers);
-        stats.messages = messages;
-        stats.messagesTrend = calculateTrend(newMessages, prevNewMessages);
+        stats.serversSparkline = serversSparkline;
+        stats.messages = dmMessages + serverMessages;
+        stats.messagesSparkline = messagesSparkline;
         return stats;
     }
 

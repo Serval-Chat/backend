@@ -339,4 +339,79 @@ export class MongooseUserRepository implements IUserRepository {
         });
         return !!activeBan;
     }
+
+    async countByHour(since: Date, hours: number): Promise<number[]> {
+        const msPerHour = 1000 * 60 * 60;
+        const buckets = await this.userModel.aggregate<{
+            _id: number;
+            count: number;
+        }>([
+            { $match: { createdAt: { $gte: since } } },
+            {
+                $group: {
+                    _id: {
+                        $floor: {
+                            $divide: [
+                                { $subtract: ['$createdAt', since] },
+                                msPerHour,
+                            ],
+                        },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+        const result = Array<number>(hours).fill(0);
+        for (const b of buckets) {
+            const idx = Math.floor(b._id);
+            if (idx >= 0 && idx < hours) result[idx] = b.count;
+        }
+        return result;
+    }
+
+    async countByDay(since: Date, days: number): Promise<number[]> {
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const buckets = await this.userModel.aggregate<{
+            _id: number;
+            count: number;
+        }>([
+            { $match: { createdAt: { $gte: since } } },
+            {
+                $group: {
+                    _id: {
+                        $floor: {
+                            $divide: [
+                                { $subtract: ['$createdAt', since] },
+                                msPerDay,
+                            ],
+                        },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+        const result = Array<number>(days).fill(0);
+        for (const b of buckets) {
+            const idx = Math.floor(b._id);
+            if (idx >= 0 && idx < days) result[idx] = b.count;
+        }
+        return result;
+    }
+
+    async countAllByDay(): Promise<number[]> {
+        const oldestUser = await this.userModel
+            .findOne()
+            .sort({ createdAt: 1 })
+            .lean();
+        if (!oldestUser || !oldestUser.createdAt) return [];
+
+        const now = new Date();
+        const startOfOldestDay = new Date(oldestUser.createdAt);
+        startOfOldestDay.setHours(0, 0, 0, 0);
+
+        const diffTime = Math.abs(now.getTime() - startOfOldestDay.getTime());
+        const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return this.countByDay(startOfOldestDay, days);
+    }
 }

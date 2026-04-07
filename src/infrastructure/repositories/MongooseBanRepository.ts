@@ -186,4 +186,79 @@ export class MongooseBanRepository implements IBanRepository {
     async countCreatedAfter(date: Date): Promise<number> {
         return await this.banModel.countDocuments({ timestamp: { $gt: date } });
     }
+
+    async countByHour(since: Date, hours: number): Promise<number[]> {
+        const msPerHour = 1000 * 60 * 60;
+        const buckets = await this.banModel.aggregate<{
+            _id: number;
+            count: number;
+        }>([
+            { $match: { timestamp: { $gte: since } } },
+            {
+                $group: {
+                    _id: {
+                        $floor: {
+                            $divide: [
+                                { $subtract: ['$timestamp', since] },
+                                msPerHour,
+                            ],
+                        },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+        const result = Array<number>(hours).fill(0);
+        for (const b of buckets) {
+            const idx = Math.floor(b._id);
+            if (idx >= 0 && idx < hours) result[idx] = b.count;
+        }
+        return result;
+    }
+
+    async countByDay(since: Date, days: number): Promise<number[]> {
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const buckets = await this.banModel.aggregate<{
+            _id: number;
+            count: number;
+        }>([
+            { $match: { timestamp: { $gte: since } } },
+            {
+                $group: {
+                    _id: {
+                        $floor: {
+                            $divide: [
+                                { $subtract: ['$timestamp', since] },
+                                msPerDay,
+                            ],
+                        },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+        const result = Array<number>(days).fill(0);
+        for (const b of buckets) {
+            const idx = Math.floor(b._id);
+            if (idx >= 0 && idx < days) result[idx] = b.count;
+        }
+        return result;
+    }
+
+    async countAllByDay(): Promise<number[]> {
+        const oldestBan = await this.banModel
+            .findOne()
+            .sort({ timestamp: 1 })
+            .lean();
+        if (!oldestBan || !oldestBan.timestamp) return [];
+
+        const now = new Date();
+        const startOfOldestDay = new Date(oldestBan.timestamp);
+        startOfOldestDay.setHours(0, 0, 0, 0);
+
+        const diffTime = Math.abs(now.getTime() - startOfOldestDay.getTime());
+        const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return this.countByDay(startOfOldestDay, days);
+    }
 }

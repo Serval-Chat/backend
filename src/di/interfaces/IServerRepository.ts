@@ -84,4 +84,13 @@ export interface IServerRepository {
 
     // Count servers created after a certain date
     countCreatedAfter(date: Date): Promise<number>;
+
+    // Count servers created per hour for the last N hours (oldest-first array)
+    countByHour(since: Date, hours: number): Promise<number[]>;
+
+    // Count servers created per day for the last N days (oldest-first array)
+    countByDay(since: Date, days: number): Promise<number[]>;
+
+    // Count all servers per day since the very first server (lifetime view)
+    countAllByDay(): Promise<number[]>;
 }
