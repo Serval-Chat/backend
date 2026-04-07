@@ -84,4 +84,10 @@ export interface IServerMessageRepository {
     ): Promise<IServerMessage | null>;
     // Find all pinned messages in a channel
     findPinnedByChannelId(channelId: Types.ObjectId): Promise<IServerMessage[]>;
+
+    // Count total keys
+    count(): Promise<number>;
+
+    // Count messages created after a certain date
+    countCreatedAfter(date: Date): Promise<number>;
 }

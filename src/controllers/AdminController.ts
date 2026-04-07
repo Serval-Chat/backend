@@ -28,6 +28,7 @@ import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepositor
 import type { IBanRepository } from '@/di/interfaces/IBanRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
+import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
@@ -123,6 +124,8 @@ export class AdminController {
         private serverRepo: IServerRepository,
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
+        @Inject(TYPES.ServerMessageRepository)
+        private serverMessageRepo: IServerMessageRepository,
         @Inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -139,41 +142,78 @@ export class AdminController {
     public async getStats(): Promise<DashBoardStatsDTO> {
         const now = new Date();
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
-        const [users, bans, servers, messages] = await Promise.all([
-            this.userRepo.count(),
-            this.banRepo.countActive(),
-            this.serverRepo.count(),
-            this.messageRepo.count(),
+        const [users, bans, servers, dmMessages, serverMessages] =
+            await Promise.all([
+                this.userRepo.count(),
+                this.banRepo.countActive(),
+                this.serverRepo.count(),
+                this.messageRepo.count(),
+                this.serverMessageRepo.count(),
+            ]);
+
+        const messages = dmMessages + serverMessages;
+
+        const [
+            users48h,
+            bans48h,
+            servers48h,
+            dmMessages48h,
+            serverMessages48h,
+        ] = await Promise.all([
+            this.userRepo.countCreatedAfter(twoDaysAgo),
+            this.banRepo.countCreatedAfter(twoDaysAgo),
+            this.serverRepo.countCreatedAfter(twoDaysAgo),
+            this.messageRepo.countCreatedAfter(twoDaysAgo),
+            this.serverMessageRepo.countCreatedAfter(twoDaysAgo),
         ]);
 
-        const [newUsers, newBans, newServers, newMessages] = await Promise.all([
+        const [
+            users24h,
+            bans24h,
+            servers24h,
+            dmMessages24h,
+            serverMessages24h,
+        ] = await Promise.all([
             this.userRepo.countCreatedAfter(oneDayAgo),
             this.banRepo.countCreatedAfter(oneDayAgo),
             this.serverRepo.countCreatedAfter(oneDayAgo),
             this.messageRepo.countCreatedAfter(oneDayAgo),
+            this.serverMessageRepo.countCreatedAfter(oneDayAgo),
         ]);
 
-        // Computes percent change between total and recent counts
-        const calculateTrend = (current: number, recent: number) => {
-            const previous = current - recent;
-            if (previous === 0) return recent > 0 ? 100 : 0;
-            return Math.round(((current - previous) / previous) * 100);
+        const newUsers = users24h;
+        const newBans = bans24h;
+        const newServers = servers24h;
+        const newMessages = dmMessages24h + serverMessages24h;
+
+        const prevNewUsers = users48h - users24h;
+        const prevNewBans = bans48h - bans24h;
+        const prevNewServers = servers48h - servers24h;
+        const prevNewMessages =
+            dmMessages48h + serverMessages48h - newMessages;
+
+        const calculateTrend = (recent: number, previousRecent: number) => {
+            if (previousRecent === 0) return recent > 0 ? 100 : 0;
+            return Math.round(
+                ((recent - previousRecent) / previousRecent) * 100,
+            );
         };
 
         const activeUsersCount = this.wsServer.getAllOnlineUsers().length;
 
         const stats = new DashBoardStatsDTO();
         stats.users = users;
-        stats.usersTrend = calculateTrend(users, newUsers);
+        stats.usersTrend = calculateTrend(newUsers, prevNewUsers);
         stats.activeUsers = activeUsersCount;
         stats.activeUsersTrend = 0;
         stats.bans = bans;
-        stats.bansTrend = calculateTrend(bans, newBans);
+        stats.bansTrend = calculateTrend(newBans, prevNewBans);
         stats.servers = servers;
-        stats.serversTrend = calculateTrend(servers, newServers);
+        stats.serversTrend = calculateTrend(newServers, prevNewServers);
         stats.messages = messages;
-        stats.messagesTrend = calculateTrend(messages, newMessages);
+        stats.messagesTrend = calculateTrend(newMessages, prevNewMessages);
         return stats;
     }
 

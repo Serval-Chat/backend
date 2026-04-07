@@ -336,4 +336,12 @@ export class MongooseServerMessageRepository
         if (messages.length === 0) return [];
         return await this.transformMessages(messages);
     }
+
+    async count(): Promise<number> {
+        return await ServerMessage.estimatedDocumentCount();
+    }
+
+    async countCreatedAfter(date: Date): Promise<number> {
+        return await ServerMessage.countDocuments({ createdAt: { $gte: date } });
+    }
 }
