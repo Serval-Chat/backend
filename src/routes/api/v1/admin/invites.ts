@@ -99,4 +99,64 @@ router.delete('/:token', requireAdmin('manageInvites'), async (req, res) => {
     }
 });
 
+/**
+ * Batch generates new random invite tokens.
+ */
+router.post('/batch', requireAdmin('manageInvites'), async (req, res) => {
+    try {
+        const { count } = req.body;
+        const numCount = Number(count);
+
+        if (isNaN(numCount) || numCount <= 0 || numCount > 1000) {
+            return res.status(400).json({
+                error: 'Count must be a number between 1 and 1000',
+            });
+        }
+
+        const existingTokens = await readTokens();
+        const newTokens: string[] = [];
+
+        while (newTokens.length < numCount) {
+            const token = crypto.randomBytes(16).toString('hex');
+            if (
+                !existingTokens.includes(token) &&
+                !newTokens.includes(token)
+            ) {
+                newTokens.push(token);
+            }
+        }
+
+        const allTokens = [...existingTokens, ...newTokens];
+        await writeTokens(allTokens);
+
+        res.json({
+            message: `${numCount} invites created`,
+            tokens: newTokens,
+        });
+    } catch (error) {
+        logger.error('Failed to batch create invites:', error);
+        res.status(500).json({ error: 'Failed to batch create invites' });
+    }
+});
+
+/**
+ * Exports all active invite tokens as a file.
+ */
+router.get('/export', requireAdmin('manageInvites'), async (req, res) => {
+    try {
+        if (!fs.existsSync(TOKENS_FILE)) {
+            return res.status(404).json({ error: 'No tokens found' });
+        }
+
+        res.download(TOKENS_FILE, 'invites.txt');
+    } catch (error) {
+        logger.error('Failed to export invites:', error);
+        res.status(500).json({ error: 'Failed to export invites' });
+    }
+});
+
 export default router;
+
+/*
+ * Yes I know this is quite archaic but I am too lazy to rewrite it rn
+ */
