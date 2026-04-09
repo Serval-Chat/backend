@@ -9,6 +9,7 @@ import { extractOriginalFilename } from '@/config/multer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { injectable } from 'inversify';
+import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 
 // Compatibility controller for file downloads
 // Provides the legacy /api/v1/download/:filename endpoint
@@ -19,6 +20,8 @@ export class FileCompatibilityController {
     constructor(
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @Inject(TYPES.ImageDeliveryService)
+        private imageDeliveryService: ImageDeliveryService,
     ) {}
 
     @Get('download/:filename')
@@ -59,26 +62,20 @@ export class FileCompatibilityController {
         const escapedFilename = originalFilename.replace(/["\\]/g, '\\$&');
         const encodedFilename = encodeURIComponent(originalFilename);
 
-        const ext = path.extname(originalFilename).toLowerCase();
-        const stats = fs.statSync(filePath);
+        const { buffer, contentType, contentLength } =
+            await this.imageDeliveryService.getProcessedImage(
+                filePath,
+                req.headers.accept,
+            );
+
         res.setHeader(
             'Content-Disposition',
             `attachment; filename="${escapedFilename}"; filename*=UTF-8''${encodedFilename}`,
         );
-        res.setHeader('Content-Length', stats.size);
-        res.setHeader('Content-Type', this.getMimeType(ext));
+        res.setHeader('Content-Length', contentLength);
+        res.setHeader('Content-Type', contentType);
 
-        const fileStream = fs.createReadStream(filePath);
-
-        fileStream.pipe(res);
-        fileStream.on('error', (err) => {
-            this.logger.error('Stream error:', err);
-            if (!res.headersSent) {
-                res.status(500).json({
-                    error: ErrorMessages.FILE.FAILED_STREAM,
-                });
-            }
-        });
+        res.send(buffer);
     }
 
     private getMimeType(ext: string): string {

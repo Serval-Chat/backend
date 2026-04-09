@@ -63,6 +63,7 @@ import { IUserRepository, IUser } from '@/di/interfaces/IUserRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { ILogger } from '@/di/interfaces/ILogger';
+import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 
 import { Badge } from '@/models/Badge';
 import { storage } from '@/config/multer';
@@ -92,6 +93,8 @@ export class ProfileController {
         private friendshipRepo: IFriendshipRepository,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
+        @Inject(TYPES.ImageDeliveryService)
+        private imageDeliveryService: ImageDeliveryService,
     ) {}
 
     // Maps a user document to a public UserProfileResponseDTO payload
@@ -717,36 +720,17 @@ export class ProfileController {
             return;
         }
 
-        const ext = path.extname(filename).toLowerCase();
-        const contentTypes: { [key: string]: string } = {
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.png': 'image/png',
-            '.gif': 'image/gif',
-            '.webp': 'image/webp',
-        };
+        const { buffer, contentType, contentLength } =
+            await this.imageDeliveryService.getProcessedImage(
+                filePath,
+                req.headers.accept,
+            );
 
-        res.setHeader(
-            'Content-Type',
-            contentTypes[ext] || 'application/octet-stream',
-        );
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Length', contentLength);
         res.setHeader('Cache-Control', 'public, max-age=86400');
 
-        return new Promise<void>((resolve, _reject) => {
-            res.sendFile(filePath, (err) => {
-                if (err) {
-                    this.logger.error('Error sending banner file:', err);
-                    if (!res.headersSent) {
-                        res.status(500).send({
-                            error: 'Failed to send banner',
-                        });
-                    }
-                    resolve();
-                } else {
-                    resolve();
-                }
-            });
-        });
+        res.send(buffer);
     }
 
     @Patch('bio')
@@ -1435,31 +1419,16 @@ export class ProfileController {
             return;
         }
 
-        const ext = path.extname(filename).toLowerCase();
-        const contentTypes: { [key: string]: string } = {
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.png': 'image/png',
-            '.gif': 'image/gif',
-        };
+        const { buffer, contentType, contentLength } =
+            await this.imageDeliveryService.getProcessedImage(
+                filePath,
+                req.headers.accept,
+            );
 
-        const contentType = contentTypes[ext] || 'application/octet-stream';
         res.setHeader('Content-Type', contentType);
-        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Content-Length', contentLength);
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
 
-        return new Promise<void>((resolve, _reject) => {
-            res.sendFile(filePath, (err) => {
-                if (err) {
-                    if (!res.headersSent) {
-                        res.status(404).send({
-                            error: 'Profile picture not found',
-                        });
-                    }
-                    resolve();
-                    return;
-                }
-                resolve();
-            });
-        });
+        res.send(buffer);
     }
 }

@@ -36,6 +36,7 @@ import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogServ
 import { PermissionService } from '@/permissions/PermissionService';
 import { isPermissionKey } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
+import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 
 import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -80,6 +81,8 @@ export class ServerRoleController {
         private auditLogRepo: IAuditLogRepository,
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
+        @Inject(TYPES.ImageDeliveryService)
+        private imageDeliveryService: ImageDeliveryService,
     ) {}
 
     // Retrieves all roles for a specific server
@@ -682,6 +685,7 @@ export class ServerRoleController {
     @ApiResponse({ status: 404, description: 'Icon not found' })
     public async getRoleIcon(
         @Param('filename') filename: string,
+        @Req() req: ExpressRequest,
         @Res() res: Response,
     ): Promise<void> {
         const filePath = path.join(
@@ -696,18 +700,16 @@ export class ServerRoleController {
             return;
         }
 
-        res.setHeader('Content-Type', 'image/webp');
+        const { buffer, contentType, contentLength } =
+            await this.imageDeliveryService.getProcessedImage(
+                filePath,
+                req.headers.accept,
+            );
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Length', contentLength);
         res.setHeader('Cache-Control', 'public, max-age=86400');
 
-        return new Promise<void>((resolve, _reject) => {
-            res.sendFile(filePath, (err) => {
-                if (err) {
-                    if (!res.headersSent) {
-                        res.status(500).send({ error: 'Failed to send icon' });
-                    }
-                }
-                resolve();
-            });
-        });
+        res.send(buffer);
     }
 }

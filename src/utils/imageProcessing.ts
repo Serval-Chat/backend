@@ -16,6 +16,8 @@ export interface ImageProcessingOptions {
     format: 'png' | 'jpeg' | 'webp' | 'gif';
     /** Compression quality (1-100, default: 85) */
     quality?: number;
+    /** CPU effort for compression (0-6 for webp, 1-10 for png/gif) */
+    effort?: number;
     /** Whether the image may be animated */
     animated?: boolean;
     /** Background color for contain fit (default: transparent) */
@@ -118,6 +120,7 @@ export async function processImage(
         fit = 'cover',
         format,
         quality = 85,
+        effort,
         animated = false,
         background,
         stripMetadata = true,
@@ -144,7 +147,9 @@ export async function processImage(
         case 'webp':
             pipeline = pipeline.webp({
                 quality,
-                effort: 6,
+                effort: effort ?? 6,
+                lossless: false,
+                smartSubsample: true,
                 ...(animated && { loop: 0 }),
             });
             break;
@@ -152,12 +157,14 @@ export async function processImage(
             pipeline = pipeline.png({
                 quality,
                 compressionLevel: 9,
+                palette: true,
+                effort: effort ?? 10,
                 progressive: true,
             });
             break;
         case 'gif':
             pipeline = pipeline.gif({
-                effort: 10,
+                effort: effort ?? 10,
             });
             break;
     }

@@ -44,6 +44,7 @@ export const TYPES = {
     PasswordResetRepository: Symbol.for('PasswordResetRepository'),
     ServerAuditLogService: Symbol.for('ServerAuditLogService'),
     RedisService: Symbol.for('RedisService'),
+    ImageDeliveryService: Symbol.for('ImageDeliveryService'),
 
     // Application
     ExpressApp: Symbol.for('ExpressApp'),

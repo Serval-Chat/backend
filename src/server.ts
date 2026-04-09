@@ -89,6 +89,10 @@ export function setupExpressApp(app: Application): Application {
                         'https://static.klipy.com/',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
+                                  'http://localhost:3000',
+                                  'http://127.0.0.1:3000',
+                                  'http://localhost:5173',
+                                  'http://127.0.0.1:5173',
                                   'http://localhost:8000',
                                   'http://localhost:8001',
                                   'http://127.0.0.1:8000',
@@ -109,10 +113,18 @@ export function setupExpressApp(app: Application): Application {
                         'https://rtc.catfla.re',
                         ...(PROJECT_LEVEL === 'development'
                             ? [
+                                  'http://localhost:3000',
+                                  'http://127.0.0.1:3000',
+                                  'http://localhost:5173',
+                                  'http://127.0.0.1:5173',
                                   'http://localhost:8000',
                                   'http://localhost:8001',
                                   'http://127.0.0.1:8000',
                                   'http://127.0.0.1:8001',
+                                  'ws://localhost:3000',
+                                  'ws://127.0.0.1:3000',
+                                  'ws://localhost:5173',
+                                  'ws://127.0.0.1:5173',
                                   'ws://localhost:8000',
                                   'ws://localhost:8001',
                                   'ws://127.0.0.1:8000',
@@ -175,26 +187,53 @@ export function setupExpressApp(app: Application): Application {
         next();
     });
 
+    // Chrome hack
+    app.use((req: Request, res: Response, next: NextFunction) => {
+        if (
+            req.method === 'OPTIONS' &&
+            req.headers['access-control-request-private-network'] === 'true'
+        ) {
+            res.setHeader('Access-Control-Allow-Private-Network', 'true');
+        }
+        next();
+    });
+
     // CORS
+    const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+    const PROD_ALLOWED_ORIGINS = [
+        'https://catfla.re',
+        'https://rolling.catfla.re',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        FRONTEND_URL.replace(/\/$/, ''),
+    ];
+
     app.use(
         cors({
             origin: (origin, callback) => {
-                const allowedOrigins = [
-                    'https://catfla.re',
-                    'https://rolling.catfla.re',
-                    'http://localhost:5173',
-                    'http://localhost:8001',
-                    FRONTEND_URL,
-                ];
-
-                if (!origin || allowedOrigins.includes(origin)) {
-                    callback(null, true);
-                } else {
-                    callback(new Error('Not allowed by CORS'));
+                if (!origin) {
+                    return callback(null, true);
                 }
+
+                if (
+                    PROJECT_LEVEL !== 'production' &&
+                    LOCAL_ORIGIN_RE.test(origin)
+                ) {
+                    return callback(null, true);
+                }
+
+                if (PROD_ALLOWED_ORIGINS.includes(origin)) {
+                    return callback(null, true);
+                }
+
+                return callback(new Error('Not allowed by CORS'));
             },
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization'],
+            allowedHeaders: [
+                'Content-Type',
+                'Authorization',
+                'Access-Control-Request-Private-Network',
+            ],
             credentials: true,
             maxAge: 86400,
         }),

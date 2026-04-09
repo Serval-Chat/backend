@@ -37,6 +37,7 @@ interface MetaCacheEntry {
 import { FileProxyMetaResponseDTO } from './dto/file-proxy.response.dto';
 import { injectable } from 'inversify';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
+import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 
 @ApiTags('File Proxy')
 @injectable()
@@ -47,6 +48,8 @@ export class FileProxyController {
         private logger: ILogger,
         @Inject(TYPES.RedisService)
         private redisService: IRedisService,
+        @Inject(TYPES.ImageDeliveryService)
+        private imageDeliveryService: ImageDeliveryService,
     ) {}
 
     // Rewrite the old URL to new URL so old messages that use the old URL are still valid
@@ -157,11 +160,27 @@ export class FileProxyController {
                 }
 
                 const headerRecord = sanitizeHeaders(response.headers);
-                const size = buffer.length;
+                const originalMimeType =
+                    headerRecord['content-type'] || 'application/octet-stream';
 
-                // Maintain cache size limits
+                // Try to convert to WebP on the fly if it's an image and client supports it
+                const {
+                    buffer: processedBuffer,
+                    contentType: finalContentType,
+                } = await this.imageDeliveryService.processRemoteImage(
+                    buffer,
+                    originalMimeType,
+                    req.headers.accept,
+                    cacheKey, // Use the same cache key suffix
+                );
+
+                const size = processedBuffer.length;
+                headerRecord['content-type'] = finalContentType;
+
+                // Maintain cache size limits (original buffer is still in 'buffer',
+                // but we might want to cache the processed one if it was converted)
                 const entryToSave = {
-                    buffer: buffer.toString('base64'),
+                    buffer: processedBuffer.toString('base64'),
                     status: response.status,
                     headers: headerRecord,
                     size,
@@ -184,7 +203,7 @@ export class FileProxyController {
                     'Cache-Control',
                     'private, max-age=0, must-revalidate',
                 );
-                res.status(response.status).send(buffer);
+                res.status(response.status).send(processedBuffer);
             } catch (err) {
                 if (err instanceof Error) {
                     if (

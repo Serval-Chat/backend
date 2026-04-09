@@ -10,6 +10,7 @@ import {
     UploadedFile,
     Inject,
 } from '@nestjs/common';
+import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
@@ -51,6 +52,8 @@ export class FileController {
     constructor(
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @Inject(TYPES.ImageDeliveryService)
+        private imageDeliveryService: ImageDeliveryService,
     ) {}
 
     @Post('upload')
@@ -124,33 +127,29 @@ export class FileController {
     @ApiResponse({ status: 404, description: 'File not found' })
     public async downloadFile(
         @Param('filename') filename: string,
+        @Req() req: Request,
         @Res() res: Response,
     ): Promise<void> {
         const filePath = await this.getFilePath(filename);
-        const stats = await fsPromises.stat(filePath);
         const originalFilename = this.getOriginalFilename(filename);
 
         const escapedFilename = originalFilename.replace(/["\\]/g, '\\$&');
         const encodedFilename = encodeURIComponent(originalFilename);
 
+        const { buffer, contentType, contentLength } =
+            await this.imageDeliveryService.getProcessedImage(
+                filePath,
+                req.headers.accept,
+            );
+
         res.setHeader(
             'Content-Disposition',
             `attachment; filename="${escapedFilename}"; filename*=UTF-8''${encodedFilename}`,
         );
-        res.setHeader('Content-Length', stats.size);
-        res.setHeader('Content-Type', this.getContentType(originalFilename));
+        res.setHeader('Content-Length', contentLength);
+        res.setHeader('Content-Type', contentType);
 
-        const fileStream = fs.createReadStream(filePath);
-
-        fileStream.pipe(res);
-        fileStream.on('error', (err) => {
-            this.logger.error('Stream error:', err);
-            if (!res.headersSent) {
-                res.status(500).json({
-                    error: ErrorMessages.FILE.FAILED_STREAM,
-                });
-            }
-        });
+        res.send(buffer);
     }
 
     /**

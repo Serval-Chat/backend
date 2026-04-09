@@ -72,6 +72,7 @@ import { KlipyService } from '@/services/KlipyService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { LiveKitService } from '@/services/LiveKitService';
 import { RedisService } from '@/services/RedisService';
+import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { AdminController } from '@/controllers/AdminController';
 import { AuthController } from '@/controllers/AuthController';
 import { FileController } from '@/controllers/FileController';
@@ -280,6 +281,10 @@ container
 container
     .bind<IRedisService>(TYPES.RedisService)
     .to(RedisService)
+    .inSingletonScope();
+container
+    .bind<ImageDeliveryService>(TYPES.ImageDeliveryService)
+    .to(ImageDeliveryService)
     .inSingletonScope();
 
 container.bind(TYPES.MailConfig).toConstantValue({

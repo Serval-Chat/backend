@@ -118,10 +118,7 @@ router.post('/batch', requireAdmin('manageInvites'), async (req, res) => {
 
         while (newTokens.length < numCount) {
             const token = crypto.randomBytes(16).toString('hex');
-            if (
-                !existingTokens.includes(token) &&
-                !newTokens.includes(token)
-            ) {
+            if (!existingTokens.includes(token) && !newTokens.includes(token)) {
                 newTokens.push(token);
             }
         }

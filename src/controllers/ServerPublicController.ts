@@ -7,15 +7,17 @@ import {
     NotFoundException,
     Inject,
     StreamableFile,
+    Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
+import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import path from 'path';
 import fs from 'fs';
 import { ErrorMessages } from '@/constants/errorMessages';
-import type { Response } from 'express';
+import { Request, Response } from 'express';
 
 // Controller for serving public server assets
 @injectable()
@@ -31,6 +33,8 @@ export class ServerPublicController {
     constructor(
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @Inject(TYPES.ImageDeliveryService)
+        private imageDeliveryService: ImageDeliveryService,
     ) {}
 
     // Serves a server icon file
@@ -40,6 +44,7 @@ export class ServerPublicController {
     @ApiResponse({ status: 404, description: ErrorMessages.FILE.NOT_FOUND })
     public async getServerIcon(
         @Param('filename') filename: string,
+        @Req() req: Request,
         @Res({ passthrough: true }) res: Response,
     ): Promise<StreamableFile> {
         // Strict filename validation to prevent directory traversal attacks
@@ -58,19 +63,19 @@ export class ServerPublicController {
             throw new NotFoundException(ErrorMessages.FILE.NOT_FOUND);
         }
 
-        const ext = path.extname(filename).toLowerCase();
-        if (ext === '.gif') {
-            res.set({
-                'Content-Type': 'image/gif',
-            });
-        } else {
-            res.set({
-                'Content-Type': 'image/png',
-            });
-        }
+        const { buffer, contentType, contentLength } =
+            await this.imageDeliveryService.getProcessedImage(
+                filepath,
+                req.headers.accept,
+            );
 
-        const file = fs.createReadStream(filepath);
-        return new StreamableFile(file);
+        res.set({
+            'Content-Type': contentType,
+            'Content-Length': contentLength,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+        });
+
+        return new StreamableFile(buffer);
     }
 
     // Serves a server banner file
@@ -80,6 +85,7 @@ export class ServerPublicController {
     @ApiResponse({ status: 404, description: ErrorMessages.FILE.NOT_FOUND })
     public async getServerBanner(
         @Param('filename') filename: string,
+        @Req() req: Request,
         @Res({ passthrough: true }) res: Response,
     ): Promise<StreamableFile> {
         // Strict filename validation to prevent directory traversal attacks
@@ -104,18 +110,18 @@ export class ServerPublicController {
             throw new NotFoundException(ErrorMessages.FILE.NOT_FOUND);
         }
 
-        const ext = path.extname(filename).toLowerCase();
-        if (ext === '.gif') {
-            res.set({
-                'Content-Type': 'image/gif',
-            });
-        } else {
-            res.set({
-                'Content-Type': 'image/png',
-            });
-        }
+        const { buffer, contentType, contentLength } =
+            await this.imageDeliveryService.getProcessedImage(
+                filepath,
+                req.headers.accept,
+            );
 
-        const file = fs.createReadStream(filepath);
-        return new StreamableFile(file);
+        res.set({
+            'Content-Type': contentType,
+            'Content-Length': contentLength,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+        });
+
+        return new StreamableFile(buffer);
     }
 }
