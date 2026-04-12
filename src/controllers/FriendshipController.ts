@@ -281,18 +281,6 @@ export class FriendshipController {
             meOid,
         );
 
-        if (blockFlags & BlockFlags.BLOCK_FRIEND_REQUESTS) {
-            return {
-                message: 'Friend request sent successfully',
-                request: {
-                    _id: new Types.ObjectId().toString(),
-                    from: meUser.username || '',
-                    fromId: meId,
-                    createdAt: new Date().toISOString(),
-                },
-            };
-        }
-
         const reqDoc = await this.friendshipRepo.createRequest(meOid, friendId);
 
         const requestPayload = {

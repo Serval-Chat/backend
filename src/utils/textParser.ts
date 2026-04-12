@@ -1,5 +1,5 @@
 import { User } from '../models/User';
-import { Role } from '../models/Server';
+import { Role, Channel } from '../models/Server';
 
 /**
  * Parse gobblygook to readable text
@@ -65,6 +65,7 @@ export async function parseNotificationText(text: string): Promise<string> {
             );
         }
     }
+
 
     // replace <emoji:name:id>
     parsedText = parsedText.replace(/<emoji:([^:]+):?[^>]*>/g, ':$1:');

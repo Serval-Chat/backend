@@ -2,7 +2,6 @@ export const BlockFlags = {
     BLOCK_REACTIONS: 1 << 0,
     HIDE_FROM_MEMBER_LIST: 1 << 1,
     HIDE_FROM_MENTIONS: 1 << 2,
-    BLOCK_FRIEND_REQUESTS: 1 << 3,
     HIDE_MY_PRESENCE: 1 << 4,
     HIDE_MY_PRONOUNS: 1 << 5,
     HIDE_MY_BIO: 1 << 6,

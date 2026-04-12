@@ -28,7 +28,6 @@ const BlockFlags = {
     BLOCK_REACTIONS: 1 << 0,
     HIDE_FROM_MEMBER_LIST: 1 << 1,
     HIDE_FROM_MENTIONS: 1 << 2,
-    BLOCK_FRIEND_REQUESTS: 1 << 3,
     HIDE_MY_PRESENCE: 1 << 4,
     HIDE_MY_PRONOUNS: 1 << 5,
     HIDE_MY_BIO: 1 << 6,
@@ -83,7 +82,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
     it('POST /blocks/profiles creates a profile', async () => {
         const res = await api(app, userToken).post('/api/v1/blocks/profiles', {
             name: 'Strict Block',
-            flags: BlockFlags.BLOCK_REACTIONS | BlockFlags.BLOCK_FRIEND_REQUESTS,
+            flags: BlockFlags.BLOCK_REACTIONS,
         });
         assert.equal(res.status, 201);
         assert.ok(res.body.id || res.body._id);
@@ -344,43 +343,7 @@ describe('Advanced Blocking - Flag 3: HIDE_FROM_MEMBER_LIST', () => {
     });
 });
 
-describe('Advanced Blocking - Flag 6: BLOCK_FRIEND_REQUESTS', () => {
 
-
-
-    beforeEach(async () => {
-        await clearDatabase();
-
-        blocker = await createTestUser();
-        blocked = await createTestUser();
-
-        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123' });
-        blockerToken = r1.body.token;
-        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123' });
-        blockedToken = r2.body.token;
-
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.BLOCK_FRIEND_REQUESTS);
-    });
-
-    it('Opacity: friend request returns 200 when blocked', async () => {
-        const res = await api(app, blockedToken).post('/api/v1/friends', {
-            username: blocker.username,
-        });
-        assert.ok([200, 201].includes(res.status), `Expected 200/201 neutral response, got ${res.status}: ${JSON.stringify(res.body)}`);
-    });
-
-    it('Friend request not stored when BLOCK_FRIEND_REQUESTS is set', async () => {
-        await api(app, blockedToken).post('/api/v1/friends', {
-            username: blocker.username,
-        });
-
-        const requests = await api(app, blockerToken).get('/api/v1/friends/incoming').then((r: Response) => r.body);
-        const found = (Array.isArray(requests) ? requests : []).find(
-            r => r.from?._id === blocked._id.toString() || r.fromId === blocked._id.toString()
-        );
-        assert.equal(found, undefined, 'Friend request should not be stored when BLOCK_FRIEND_REQUESTS is active');
-    });
-});
 
 describe('Advanced Blocking - Flags 12a-12d: Profile Field Visibility', () => {
 
