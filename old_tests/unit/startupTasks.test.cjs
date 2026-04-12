@@ -21,7 +21,7 @@ function makeChannelModel(existingIds = []) {
     };
 }
 
-test('cleanupOrphanedPings — no pings at all', async () => {
+test('cleanupOrphanedPings - no pings at all', async () => {
     let deleteCalled = false;
     const ping = {
         distinct: async () => [],
@@ -34,7 +34,7 @@ test('cleanupOrphanedPings — no pings at all', async () => {
     assert.equal(deleteCalled, false);
 });
 
-test('cleanupOrphanedPings — all referenced channels still exist', async () => {
+test('cleanupOrphanedPings - all referenced channels still exist', async () => {
     const id1 = new Types.ObjectId();
     const id2 = new Types.ObjectId();
 
@@ -50,7 +50,7 @@ test('cleanupOrphanedPings — all referenced channels still exist', async () =>
     assert.equal(deletedWith, null);
 });
 
-test('cleanupOrphanedPings — some channels deleted (orphans removed)', async () => {
+test('cleanupOrphanedPings - some channels deleted (orphans removed)', async () => {
     const liveId = new Types.ObjectId();
     const deadId = new Types.ObjectId();
 
@@ -68,7 +68,7 @@ test('cleanupOrphanedPings — some channels deleted (orphans removed)', async (
     assert.equal(deletedWith.channelId.$in[0].toString(), deadId.toString());
 });
 
-test('cleanupOrphanedPings — all channels deleted (all pings orphaned)', async () => {
+test('cleanupOrphanedPings - all channels deleted (all pings orphaned)', async () => {
     const dead1 = new Types.ObjectId();
     const dead2 = new Types.ObjectId();
 
@@ -85,7 +85,7 @@ test('cleanupOrphanedPings — all channels deleted (all pings orphaned)', async
     assert.equal(deletedWith.channelId.$in.length, 2);
 });
 
-test('cleanupOrphanedPings — error is caught and does not throw', async () => {
+test('cleanupOrphanedPings - error is caught and does not throw', async () => {
     const ping = {
         distinct: async () => { throw new Error('DB is down'); },
         deleteMany: async () => ({ deletedCount: 0 }),
@@ -118,7 +118,7 @@ function makeMemberModel(modifiedCount = 0) {
 
 // ─── Tests for repairEveryoneRoles ──────────────────────────────────────────
 
-test('repairEveryoneRoles — no @everyone roles found anywhere', async () => {
+test('repairEveryoneRoles - no @everyone roles found anywhere', async () => {
     const role = makeRoleModel([]);
     const member = makeMemberModel(0);
 
@@ -127,7 +127,7 @@ test('repairEveryoneRoles — no @everyone roles found anywhere', async () => {
     assert.equal(member.calls.length, 0, 'should not call updateMany if no roles exist');
 });
 
-test('repairEveryoneRoles — all members already have the role', async () => {
+test('repairEveryoneRoles - all members already have the role', async () => {
     const r1 = { _id: new Types.ObjectId(), serverId: new Types.ObjectId() };
     const r2 = { _id: new Types.ObjectId(), serverId: new Types.ObjectId() };
 
@@ -148,7 +148,7 @@ test('repairEveryoneRoles — all members already have the role', async () => {
     });
 });
 
-test('repairEveryoneRoles — fixes members across multiple servers', async () => {
+test('repairEveryoneRoles - fixes members across multiple servers', async () => {
     const r1 = { _id: new Types.ObjectId(), serverId: new Types.ObjectId() };
     const r2 = { _id: new Types.ObjectId(), serverId: new Types.ObjectId() };
 
@@ -171,7 +171,7 @@ test('repairEveryoneRoles — fixes members across multiple servers', async () =
     assert.equal(member.calls.length, 2);
 });
 
-test('repairEveryoneRoles — catches and logs errors without throwing', async () => {
+test('repairEveryoneRoles - catches and logs errors without throwing', async () => {
     const brokenRole = {
         find: () => ({ lean: async () => { throw new Error('DB is down'); } })
     };

@@ -44,7 +44,6 @@ import type {
     IJoinVoiceEvent,
     ILeaveVoiceEvent,
     IUserJoinedVoiceEvent,
-    IUserLeftVoiceEvent,
     IUpdateVoiceStateEvent,
     IVoiceStateUpdatedEvent,
 } from '@/ws/protocol/events/messages';
@@ -62,7 +61,6 @@ import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
-import type { IWsEnvelope } from '@/ws/protocol/envelope';
 import type { IWsUser } from '@/ws/types';
 import type { WebSocket } from 'ws';
 import logger from '@/utils/logger';
@@ -135,7 +133,7 @@ export class ServerController {
                         await redis.del(`user_voice:${userId}`);
                         await redis.srem(`voice_channel:${channelId}`, userId);
                     }
-                } catch (err) {
+                } catch {
                     await redis.del(`user_voice:${userId}`);
                 }
             }
@@ -149,7 +147,7 @@ export class ServerController {
     ) {
         const redis = this.redisService.getClient();
 
-        // Use both scoped and legacy keys for robust cleanup during transition
+        // use both scoped and legacy keys for cleanup during transition.
         const scopedVoiceKey = `voice_channel:${serverId}:${channelId}`;
         const legacyVoiceKey = `voice_channel:${channelId}`;
         const scopedHkey = `voice_states:${serverId}:${channelId}`;
@@ -163,13 +161,13 @@ export class ServerController {
             redis.del(`user_voice:${userId}`),
         ]);
 
-        // Broadcast to server
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'user_left_voice',
             payload: { serverId, channelId, userId },
         });
 
-        // Cleanup empty keys
+        // cleanup empty keys.
         const [remScoped, remLegacy] = await Promise.all([
             redis.scard(scopedVoiceKey),
             redis.scard(legacyVoiceKey),
@@ -210,7 +208,7 @@ export class ServerController {
         const { serverId } = payload;
         const userId = authenticatedUser.userId;
 
-        // Verify membership or ownership
+
         const serverOid = new mongoose.Types.ObjectId(serverId);
         const userOid = new mongoose.Types.ObjectId(userId);
 
@@ -225,7 +223,7 @@ export class ServerController {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
 
-        // Subscribe to server events
+
         this.wsServer.subscribeToServer(ws, serverId);
         logger.debug(
             `[ServerController] User ${userId} joined server ${serverId}`,
@@ -310,7 +308,7 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-        // Verify server membership
+
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -319,7 +317,7 @@ export class ServerController {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
 
-        // Subscribe to channel
+
         const channel = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
         );
@@ -372,7 +370,7 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-        // Verify membership
+
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -409,7 +407,7 @@ export class ServerController {
         const voiceKey = `voice_channel:${serverId}:${channelId}`;
         const userVoiceKey = `user_voice:${userId}`;
 
-        // Ensure user leaves any previous voice channel before joining a new one
+        // ensure user leaves any previous voice channel before joining a new one.
         const existingVoiceRoom = await redis.get(userVoiceKey);
         if (
             existingVoiceRoom &&
@@ -551,7 +549,7 @@ export class ServerController {
         const { serverId, channelId, text, replyToId } = payload;
         const userId = authenticatedUser.userId;
 
-        // Verify membership
+
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -560,7 +558,7 @@ export class ServerController {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
 
-        // Check sendMessages permission
+
         const channel = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
         );
@@ -582,7 +580,7 @@ export class ServerController {
             );
         }
 
-        // Slow Mode Check
+
         if (channel?.slowMode && channel.slowMode > 0) {
             const hasBypass = await this.permissionService.hasChannelPermission(
                 new mongoose.Types.ObjectId(serverId),
@@ -617,14 +615,14 @@ export class ServerController {
             }
         }
 
-        // Parse mentions
+
         const {
             userIds: mentionedUserIds,
             roleIds: mentionedRoleIds,
             everyone: mentionedEveryone,
         } = this.parseMentions(text);
 
-        // Check permission for @everyone
+
         if (mentionedEveryone) {
             const canPingEveryone = await this.permissionService.hasPermission(
                 new mongoose.Types.ObjectId(serverId),
@@ -636,7 +634,7 @@ export class ServerController {
             }
         }
 
-        // Check permission for @role
+
         if (mentionedRoleIds.length > 0) {
             const canPingRoles = await this.permissionService.hasPermission(
                 new mongoose.Types.ObjectId(serverId),
@@ -751,7 +749,7 @@ export class ServerController {
             ws,
         );
 
-        // Notify all server members with view permission
+        // notify all server members with view permission.
         const members = await this.serverMemberRepo.findByServerId(
             new mongoose.Types.ObjectId(serverId),
         );
@@ -826,7 +824,7 @@ export class ServerController {
         const { messageId, text } = payload;
         const userId = authenticatedUser.userId;
 
-        // Find message
+
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
         );
@@ -834,12 +832,12 @@ export class ServerController {
             throw new Error('NOT_FOUND: Message not found');
         }
 
-        // Validate ownership
+
         if (message.senderId.toString() !== userId) {
             throw new Error('FORBIDDEN: Can only edit your own messages');
         }
 
-        // Update message
+
         const updated = await this.serverMessageRepo.update(
             new mongoose.Types.ObjectId(messageId),
             {
@@ -856,7 +854,7 @@ export class ServerController {
             `[ServerController] Server message ${messageId} edited by ${userId}`,
         );
 
-        // Broadcast to channel
+
         const broadcastPayload: IMessageServerEditedEvent['payload'] = {
             messageId,
             serverId: message.serverId.toString(),
@@ -899,7 +897,7 @@ export class ServerController {
         const { serverId, messageId } = payload;
         const userId = authenticatedUser.userId;
 
-        // Find message
+
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
         );
@@ -926,7 +924,7 @@ export class ServerController {
             throw new Error('FORBIDDEN: No permission to delete this message');
         }
 
-        // Delete message
+
         await this.serverMessageRepo.delete(
             new mongoose.Types.ObjectId(messageId),
         );
@@ -935,7 +933,7 @@ export class ServerController {
             `[ServerController] Server message ${messageId} deleted by ${userId}`,
         );
 
-        // Broadcast to channel
+
         this.wsServer.broadcastToChannel(
             message.channelId.toString(),
             {
@@ -970,7 +968,7 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-        // Verify membership
+
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -979,7 +977,7 @@ export class ServerController {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
 
-        // Update read state
+
         const updatedRead = await this.serverChannelReadRepo.upsert(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(channelId),
@@ -990,7 +988,7 @@ export class ServerController {
             `[ServerController] User ${userId} marked channel ${channelId} as read`,
         );
 
-        // Broadcast to user's sessions
+
         const unreadPayload: IChannelUnreadUpdatedEvent['payload'] = {
             serverId,
             channelId,
@@ -1004,7 +1002,7 @@ export class ServerController {
             payload: unreadPayload,
         });
 
-        // Notify whether server still has unread channels for this user
+        // notify whether server still has unread channels for this user.
         const channels = await this.channelRepo.findByServerIds([
             new mongoose.Types.ObjectId(serverId),
         ]);
@@ -1049,7 +1047,7 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-        // Check sendMessages permission
+
         const canSend = await this.permissionService.hasChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -1060,7 +1058,7 @@ export class ServerController {
             return; // Silently ignore
         }
 
-        // Broadcast typing to channel
+
         const typingPayload: ITypingServerBroadcastEvent['payload'] = {
             channelId,
             senderId: userId,

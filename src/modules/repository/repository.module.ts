@@ -22,6 +22,7 @@ import { MongooseDmUnreadRepository } from '@/infrastructure/repositories/Mongoo
 import { MongooseWebhookRepository } from '@/infrastructure/repositories/MongooseWebhookRepository';
 import { MongooseExportJobRepository } from '@/infrastructure/repositories/MongooseExportJobRepository';
 import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
+import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseBlockRepository';
 
 @Global()
 @Module({
@@ -114,6 +115,10 @@ import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/M
             provide: TYPES.ExportJobRepository,
             useClass: MongooseExportJobRepository,
         },
+        {
+            provide: TYPES.BlockRepository,
+            useClass: MongooseBlockRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -138,6 +143,7 @@ import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/M
         TYPES.WebhookRepository,
         TYPES.PasswordResetRepository,
         TYPES.ExportJobRepository,
+        TYPES.BlockRepository,
     ],
 })
 export class RepositoryModule {}

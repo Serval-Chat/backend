@@ -1056,6 +1056,7 @@ export class AdminController {
         @Query() query: AdminListAuditLogsRequestDTO,
     ): Promise<AdminAuditLogListResponseDTO> {
         const logs = await this.auditLogRepo.find({
+            serverId: null,
             limit: Number(query.limit ?? 100),
             offset: Number(query.offset ?? 0),
             actorId: query.actorId

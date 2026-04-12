@@ -44,7 +44,7 @@ export async function cleanupOrphanedPings(
 
         if (referencedChannelIds.length === 0) {
             logger.info(
-                '[PingCleanup] No channel pings found — nothing to clean up.',
+                '[PingCleanup] No channel pings found - nothing to clean up.',
             );
             return;
         }
@@ -92,7 +92,7 @@ export async function repairEveryoneRoles(
 
         if (everyoneRoles.length === 0) {
             logger.info(
-                '[EveryoneRepair] No @everyone roles found — skipping.',
+                '[EveryoneRepair] No @everyone roles found - skipping.',
             );
             return;
         }
@@ -122,7 +122,7 @@ export async function repairEveryoneRoles(
             );
         } else {
             logger.info(
-                `[EveryoneRepair] Done — assigned @everyone to ${totalFixed} member(s) total.`,
+                `[EveryoneRepair] Done - assigned @everyone to ${totalFixed} member(s) total.`,
             );
         }
     } catch (error) {

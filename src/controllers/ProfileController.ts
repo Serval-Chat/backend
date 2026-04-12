@@ -62,6 +62,8 @@ import { TYPES } from '@/di/types';
 import { IUserRepository, IUser } from '@/di/interfaces/IUserRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
+import { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import { BlockFlags } from '@/privacy/blockFlags';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 
@@ -95,12 +97,17 @@ export class ProfileController {
         private wsServer: WsServer,
         @Inject(TYPES.ImageDeliveryService)
         private imageDeliveryService: ImageDeliveryService,
+        @Inject(TYPES.BlockRepository)
+        private blockRepo: IBlockRepository,
     ) {}
 
-    // Maps a user document to a public UserProfileResponseDTO payload
     private async mapToProfile(
         user: IUser,
-        options: { includePermissions?: boolean; includeTotp?: boolean } = {},
+        options: {
+            includePermissions?: boolean;
+            includeTotp?: boolean;
+            viewerId?: string;
+        } = {},
     ): Promise<UserProfileResponseDTO> {
         const mapped = mapUser(user, options);
         if (!mapped) {
@@ -139,6 +146,27 @@ export class ProfileController {
         // @ts-ignore
         mapped.serverSettings = user.serverSettings;
 
+        if (options.viewerId && options.viewerId !== user._id.toString()) {
+            const blockFlags = await this.blockRepo.getActiveBlockFlags(
+                user._id,
+                new Types.ObjectId(options.viewerId),
+            );
+
+            const profile = mapped as UserProfileResponseDTO;
+            if (blockFlags & BlockFlags.HIDE_MY_PRONOUNS) {
+                profile.pronouns = undefined;
+            }
+            if (blockFlags & BlockFlags.HIDE_MY_BIO) {
+                profile.bio = undefined;
+            }
+            if (blockFlags & BlockFlags.HIDE_MY_DISPLAY_NAME) {
+                profile.displayName = null;
+            }
+            if (blockFlags & BlockFlags.HIDE_MY_AVATAR) {
+                profile.profilePicture = null;
+            }
+        }
+
         return mapped as unknown as UserProfileResponseDTO;
     }
 
@@ -159,6 +187,7 @@ export class ProfileController {
         return this.mapToProfile(user, {
             includePermissions: true,
             includeTotp: true,
+            viewerId: userId,
         });
     }
 
@@ -170,13 +199,15 @@ export class ProfileController {
     @ApiResponse({ status: 404, description: 'User not found' })
     public async getUserProfileResponseDTO(
         @Param('userId') userId: string,
+        @Req() req: Request,
     ): Promise<UserProfileResponseDTO> {
+        const viewerId = (req as unknown as RequestWithUser).user.id;
         const user = await this.userRepo.findById(new Types.ObjectId(userId));
         if (!user) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        return this.mapToProfile(user);
+        return this.mapToProfile(user, { viewerId });
     }
 
     @Post(':id/badges')

@@ -29,6 +29,8 @@ import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import { BlockFlags } from '@/privacy/blockFlags';
 import { PermissionService } from '@/permissions/PermissionService';
 
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
@@ -76,6 +78,8 @@ export class ReactionController {
         private auditLogRepo: IAuditLogRepository,
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
+        @Inject(TYPES.BlockRepository)
+        private blockRepo: IBlockRepository,
     ) {}
 
     @Get('messages/:messageId/reactions')
@@ -148,11 +152,23 @@ export class ReactionController {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
-        if (
-            message.senderId.toString() !== userId &&
-            message.receiverId.toString() !== userId
-        ) {
-            throw new ApiError(403, ErrorMessages.REACTION.ACCESS_DENIED);
+        const receiverId =
+            message.senderId.toString() === userId
+                ? message.receiverId.toString()
+                : message.senderId.toString();
+
+        const blockFlags = await this.blockRepo.getActiveBlockFlags(
+            new Types.ObjectId(receiverId),
+            new Types.ObjectId(userId),
+        );
+
+        if (blockFlags & BlockFlags.BLOCK_REACTIONS) {
+            const reactions = await this.reactionRepo.getReactionsByMessage(
+                new Types.ObjectId(messageId),
+                'dm',
+                new Types.ObjectId(userId),
+            );
+            return { reactions };
         }
 
         try {
@@ -196,11 +212,6 @@ export class ReactionController {
             'dm',
             new Types.ObjectId(userId),
         );
-
-        const receiverId =
-            message.senderId.toString() === userId
-                ? message.receiverId.toString()
-                : message.senderId.toString();
 
         // Broadcast reaction to both users
         const event: IReactionAddedEvent = {
@@ -367,6 +378,20 @@ export class ReactionController {
         );
         if (!message || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        const blockFlags = await this.blockRepo.getActiveBlockFlags(
+            message.senderId,
+            new Types.ObjectId(userId),
+        );
+
+        if (blockFlags & BlockFlags.BLOCK_REACTIONS) {
+            const reactions = await this.reactionRepo.getReactionsByMessage(
+                new Types.ObjectId(messageId),
+                'server',
+                new Types.ObjectId(userId),
+            );
+            return { reactions };
         }
 
         try {

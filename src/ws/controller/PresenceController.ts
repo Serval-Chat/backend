@@ -17,6 +17,8 @@ import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepositor
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
+import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import { BlockFlags } from '@/privacy/blockFlags';
 import logger from '@/utils/logger';
 
 /**
@@ -34,6 +36,8 @@ export class PresenceController {
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
+        @inject(TYPES.BlockRepository)
+        private blockRepo: IBlockRepository,
     ) {}
 
     @postConstruct()
@@ -90,7 +94,7 @@ export class PresenceController {
             `[PresenceController] User ${userId} set status: ${status}`,
         );
 
-        // Broadcast status update to friends and server members
+        // broadcast status update to friends and server members.
         const broadcastPayload: IStatusUpdatedEvent['payload'] = {
             userId,
             username: authenticatedUser.username,
@@ -138,15 +142,44 @@ export class PresenceController {
 
         const relevantUserIds = new Set<string>([
             ...friendIds,
-            ...serverMemberIds.map((id) => id.toString()),
+            ...serverMemberIds.map((id: mongoose.Types.ObjectId) =>
+                id.toString(),
+            ),
         ]);
         relevantUserIds.delete(userId);
 
+        // fetch blocks to filter the presence sync list.
+        const [blocksByA, blocksAgainstA] = await Promise.all([
+            this.blockRepo.findBlocksByBlocker(
+                new mongoose.Types.ObjectId(userId),
+            ),
+            this.blockRepo.findBlocksByTarget(
+                new mongoose.Types.ObjectId(userId),
+            ),
+        ]);
+
+        const peopleADoesntWantToSee = new Set(
+            blocksByA
+                .filter((b) => b.flags & BlockFlags.HIDE_THEIR_PRESENCE)
+                .map((b) => b.targetId),
+        );
+        const peopleWhoHidFromA = new Set(
+            blocksAgainstA
+                .filter((b) => b.flags & BlockFlags.HIDE_MY_PRESENCE)
+                .map((b) => b.blockerId),
+        );
+
         const onlineStatusResults = await Promise.all(
-            [...relevantUserIds].map(async (id) => ({
-                id,
-                isOnline: await this.wsServer.isUserOnline(id),
-            })),
+            [...relevantUserIds]
+                .filter(
+                    (id) =>
+                        !peopleADoesntWantToSee.has(id) &&
+                        !peopleWhoHidFromA.has(id),
+                )
+                .map(async (id) => ({
+                    id,
+                    isOnline: await this.wsServer.isUserOnline(id),
+                })),
         );
         const onlineRelevantIds = onlineStatusResults
             .filter((r) => r.isOnline)
@@ -163,7 +196,7 @@ export class PresenceController {
         const online = onlineUsers.map((u) => ({
             userId: u._id.toString(),
             username: u.username || '',
-            status: u.status || undefined,
+            status: u.customStatus?.text || undefined,
         }));
 
         const syncPayload: IPresenceSyncEvent['payload'] = {
@@ -244,7 +277,7 @@ export class PresenceController {
         );
 
         const onlineFriendStatusResults = await Promise.all(
-            friendIds.map(async (id) => ({
+            friendIds.map(async (id: string) => ({
                 id,
                 isOnline: await this.wsServer.isUserOnline(id),
             })),
@@ -256,11 +289,34 @@ export class PresenceController {
             new mongoose.Types.ObjectId(userId),
         );
 
+        const [blocksByA, blocksAgainstA] = await Promise.all([
+            this.blockRepo.findBlocksByBlocker(
+                new mongoose.Types.ObjectId(userId),
+            ),
+            this.blockRepo.findBlocksByTarget(
+                new mongoose.Types.ObjectId(userId),
+            ),
+        ]);
+
+        const hideFromUserIds = [
+            ...blocksByA
+                .filter((b) => b.flags & BlockFlags.HIDE_MY_PRESENCE)
+                .map((b) => b.targetId.toString()),
+            ...blocksAgainstA
+                .filter((b) => b.flags & BlockFlags.HIDE_THEIR_PRESENCE)
+                .map((b) => b.blockerId.toString()),
+        ];
+
+        const filteredFriendIds = onlineFriendIds.filter(
+            (id: string) => !hideFromUserIds.includes(id),
+        );
+
         this.wsServer.broadcastToPresenceAudience(
-            onlineFriendIds,
-            serverIds.map((id) => id.toString()),
+            filteredFriendIds,
+            serverIds.map((id: mongoose.Types.ObjectId) => id.toString()),
             event,
             excludeWs,
+            hideFromUserIds,
         );
     }
 }

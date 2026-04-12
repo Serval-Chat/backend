@@ -3,7 +3,7 @@
  */
 
 import assert from 'assert';
-import { normalizeEmail, emailsEqual } from '../src/utils/email';
+import { normalizeEmail, emailsEqual } from '../../src/utils/email';
 
 describe('Email Normalization', () => {
     describe('normalizeEmail()', () => {
@@ -38,8 +38,8 @@ describe('Email Normalization', () => {
         });
 
         it('should handle Gmail-style addresses', () => {
-            const result = normalizeEmail('piotrjakobczak616+test@gmail.com');
-            assert.strictEqual(result, 'piotrjakobczak616@gmail.com');
+            const result = normalizeEmail('example+test@gmail.com');
+            assert.strictEqual(result, 'example@gmail.com');
         });
 
         it('should handle nested plus signs correctly', () => {
@@ -106,16 +106,16 @@ describe('Email Normalization', () => {
 
         it('should handle Gmail example from issue', () => {
             const result = emailsEqual(
-                'piotrjakobczak616@gmail.com',
-                'piotrjakobczak616+test@gmail.com',
+                'example@gmail.com',
+                'example+test@gmail.com',
             );
             assert.strictEqual(result, true);
         });
 
         it('should handle multiple aliases from issue', () => {
             const result = emailsEqual(
-                'piotrjakobczak616+anything@gmail.com',
-                'piotrjakobczak616+test@gmail.com',
+                'example+anything@gmail.com',
+                'example+test@gmail.com',
             );
             assert.strictEqual(result, true);
         });

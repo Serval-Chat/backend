@@ -16,6 +16,8 @@ import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { WsServer } from '@/ws/server';
 import { ILogger } from '@/di/interfaces/ILogger';
+import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import { BlockFlags } from '@/privacy/blockFlags';
 import {
     ApiTags,
     ApiResponse,
@@ -62,6 +64,8 @@ export class FriendshipController {
         private wsServer: WsServer,
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @Inject(TYPES.BlockRepository)
+        private blockRepo: IBlockRepository,
     ) {}
 
     // Maps a user document to a public friend payload
@@ -270,6 +274,23 @@ export class FriendshipController {
                 );
             }
             await this.friendshipRepo.rejectRequest(existingRequest._id);
+        }
+
+        const blockFlags = await this.blockRepo.getActiveBlockFlags(
+            friendId,
+            meOid,
+        );
+
+        if (blockFlags & BlockFlags.BLOCK_FRIEND_REQUESTS) {
+            return {
+                message: 'Friend request sent successfully',
+                request: {
+                    _id: new Types.ObjectId().toString(),
+                    from: meUser.username || '',
+                    fromId: meId,
+                    createdAt: new Date().toISOString(),
+                },
+            };
         }
 
         const reqDoc = await this.friendshipRepo.createRequest(meOid, friendId);

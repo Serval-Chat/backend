@@ -54,20 +54,20 @@ interface NotificationPayload {
 
 type NotificationTemplateData =
     | {
-          type: 'mention';
-          senderName: string;
-          channelName?: string;
-          preview: string;
-      }
+        type: 'mention';
+        senderName: string;
+        channelName?: string;
+        preview: string;
+    }
     | { type: 'friend_request'; senderName: string; senderId: string }
     | { type: 'dm'; senderName: string; senderId: string; preview: string }
     | {
-          type: 'custom';
-          title: string;
-          body: string;
-          url?: string;
-          tag?: string;
-      };
+        type: 'custom';
+        title: string;
+        body: string;
+        url?: string;
+        tag?: string;
+    };
 
 const templates: {
     [K in NotificationType]: (
@@ -110,7 +110,7 @@ async function sendToSubscription(
 
         if (!config) {
             logger.warn(
-                `[PushService] Key version ${version} no longer loaded — removing subscription ${sub._id}`,
+                `[PushService] Key version ${version} no longer loaded - removing subscription ${sub._id}`,
             );
             await PushSubscription.deleteOne({ _id: sub._id });
             return;
@@ -264,8 +264,10 @@ export async function notifyUser(
     }
 
     // safely downcast templates index to apply the combined union
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload = (templates[type] as any)(data);
+    const templateFn = templates[type] as (
+        d: NotificationTemplateData,
+    ) => NotificationPayload;
+    const payload = templateFn(data);
     const subs = await PushSubscription.find({ userId });
 
     logger.info(

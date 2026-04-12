@@ -12,6 +12,7 @@ import { InfrastructureModule } from './modules/infrastructure/infrastructure.mo
 import { ServicesModule } from './modules/services/services.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthController } from './controllers/AuthController';
+import { BlockController } from './controllers/BlockController';
 import { AdminController } from './controllers/AdminController';
 import { UserPingController } from './controllers/UserPingController';
 import { ExportController } from './controllers/ExportController';
@@ -95,6 +96,7 @@ import { ServerAuditLogController } from './controllers/ServerAuditLogController
     ],
     controllers: [
         AuthController,
+        BlockController,
         AdminController,
         UserPingController,
         UserWarningController,

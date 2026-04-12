@@ -51,7 +51,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }
 
     async find(options: {
-        serverId?: Types.ObjectId;
+        serverId?: Types.ObjectId | null;
         limit?: number;
         offset?: number;
         cursor?: string;
@@ -65,7 +65,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }): Promise<IAuditLog[]> {
         const query: FilterQuery<IAuditLog> = {};
 
-        if (options.serverId) {
+        if (options.serverId !== undefined) {
             query.serverId = options.serverId;
         }
 
@@ -129,7 +129,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }
 
     async count(options: {
-        serverId?: Types.ObjectId;
+        serverId?: Types.ObjectId | null;
         actorId?: Types.ObjectId;
         actionType?: string;
         targetUserId?: Types.ObjectId;
@@ -138,7 +138,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     }): Promise<number> {
         const query: FilterQuery<IAuditLog> = {};
 
-        if (options.serverId) {
+        if (options.serverId !== undefined) {
             query.serverId = options.serverId;
         }
 

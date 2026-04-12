@@ -82,6 +82,7 @@ type RedisBroadcastMessage =
               friendIds: string[];
               serverIds: string[];
               event: AnyResponseWsEvent;
+              excludeUserIds?: string[];
           };
       };
 
@@ -225,6 +226,8 @@ export class WsServer extends EventEmitter implements IWsServer {
                         data.payload.friendIds,
                         data.payload.serverIds,
                         data.payload.event,
+                        undefined,
+                        data.payload.excludeUserIds,
                     );
                     break;
             }
@@ -1021,17 +1024,20 @@ export class WsServer extends EventEmitter implements IWsServer {
         serverIds: string[],
         event: AnyResponseWsEvent,
         excludeWs?: WebSocket,
+        excludeUserIds?: string[],
     ): void {
         this.publishToRedis('broadcastToPresenceAudience', {
             friendIds,
             serverIds,
             event,
+            excludeUserIds,
         });
         this._localBroadcastToPresenceAudience(
             friendIds,
             serverIds,
             event,
             excludeWs,
+            excludeUserIds,
         );
     }
 
@@ -1040,11 +1046,14 @@ export class WsServer extends EventEmitter implements IWsServer {
         serverIds: string[],
         event: AnyResponseWsEvent,
         excludeWs?: WebSocket,
+        excludeUserIds?: string[],
     ): void {
         const recipients = new Set<WebSocket>();
+        const excludeSet = excludeUserIds ? new Set(excludeUserIds) : null;
 
         // 1. Add friends' sockets
         for (const friendId of friendIds) {
+            if (excludeSet?.has(friendId)) continue;
             const sockets = this.connectionsByUserId.get(friendId);
             if (sockets) {
                 sockets.forEach((socket) => recipients.add(socket));
@@ -1055,7 +1064,11 @@ export class WsServer extends EventEmitter implements IWsServer {
         for (const serverId of serverIds) {
             const subscribers = this.serverSubscriptions.get(serverId);
             if (subscribers) {
-                subscribers.forEach((socket) => recipients.add(socket));
+                subscribers.forEach((socket) => {
+                    const user = this.socketToUser.get(socket);
+                    if (user && excludeSet?.has(user.userId)) return;
+                    recipients.add(socket);
+                });
             }
         }
 
@@ -1067,7 +1080,7 @@ export class WsServer extends EventEmitter implements IWsServer {
         if (recipients.size > 0) {
             sendToMany(Array.from(recipients), event);
             logger.debug(
-                `[WsServer] Broadcast presence to ${recipients.size} unique sockets (${friendIds.length} friends, ${serverIds.length} servers)`,
+                `[WsServer] Broadcast presence to ${recipients.size} unique sockets (${friendIds.length} friends, ${serverIds.length} servers, excluded: ${excludeUserIds?.length || 0})`,
             );
         }
     }

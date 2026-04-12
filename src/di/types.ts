@@ -28,6 +28,7 @@ export const TYPES = {
     PingRepository: Symbol.for('PingRepository'),
     ReactionRepository: Symbol.for('ReactionRepository'),
     ExportJobRepository: Symbol.for('ExportJobRepository'),
+    BlockRepository: Symbol.for('BlockRepository'),
     ExportService: Symbol.for('ExportService'),
 
     // Services

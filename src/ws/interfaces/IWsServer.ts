@@ -74,6 +74,7 @@ export interface IWsServer {
         serverIds: string[],
         event: AnyResponseWsEvent,
         excludeWs?: WebSocket,
+        excludeUserIds?: string[],
     ): void;
 
     getMetrics(): IWsServerMetrics;

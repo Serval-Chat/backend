@@ -191,6 +191,19 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         const result = await this.friendRequestModel.deleteMany({
             $or: [{ fromId: userId }, { toId: userId }],
         });
-        return { deletedCount: result.deletedCount };
+        return { deletedCount: result.deletedCount || 0 };
+    }
+
+    async removeRequestBetweenUsers(
+        user1: Types.ObjectId,
+        user2: Types.ObjectId,
+    ): Promise<boolean> {
+        const result = await this.friendRequestModel.deleteMany({
+            $or: [
+                { fromId: user1, toId: user2 },
+                { fromId: user2, toId: user1 },
+            ],
+        });
+        return result.deletedCount ? result.deletedCount > 0 : false;
     }
 }

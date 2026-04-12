@@ -1,14 +1,10 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    // File Layout
-    "rootDir": "./src",
+    "rootDir": "./",
     "outDir": "./dist",
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
     "module": "commonjs",
     "target": "esnext",
-    "types": [],
+    "types": ["node", "jest"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -46,12 +42,18 @@
     }
   },
   "include": [
+    "tests/**/*",
+    "old_tests/**/*",
     "src/**/*",
     "src/di/types.ts"
   ],
   "exclude": [
     "frontend",
     "node_modules",
-    "dist"
+    "dist",
+    "*.js",
+    "*.cjs",
+    "*.mjs",
+    "*.config.js"
   ]
 }

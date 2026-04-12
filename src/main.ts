@@ -151,6 +151,7 @@ async function bootstrap() {
             const redisService = container.get<IRedisService>(
                 TYPES.RedisService,
             );
+
             await redisService.quit();
 
             await app.close();

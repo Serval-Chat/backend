@@ -24,6 +24,7 @@ import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChanne
 import type { IPingRepository } from '@/di/interfaces/IPingRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
+import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import type { IPasswordResetRepository } from '@/di/interfaces/IPasswordResetRepository';
 import type { IMailService } from '@/di/interfaces/IMailService';
 import type { IMetricsService } from '@/di/interfaces/IMetricsService';
@@ -59,6 +60,7 @@ import { MongooseServerChannelReadRepository } from '@/infrastructure/repositori
 import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePingRepository';
 import { MongooseReactionRepository } from '@/infrastructure/repositories/MongooseReactionRepository';
 import { MongooseExportJobRepository } from '@/infrastructure/repositories/MongooseExportJobRepository';
+import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseBlockRepository';
 import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
 import { MailService } from '@/services/MailService';
 import { MetricsService } from '@/services/MetricsService';
@@ -82,6 +84,7 @@ import { FriendshipController } from '@/controllers/FriendshipController';
 import { UserMessageController } from '@/controllers/UserMessageController';
 import { EmojiController } from '@/controllers/EmojiController';
 import { ReactionController } from '@/controllers/ReactionController';
+import { BlockController } from '@/controllers/BlockController';
 import { SystemController } from '@/controllers/SystemController';
 import { ServerController } from '@/controllers/ServerController';
 import { ServerChannelController } from '@/controllers/ServerChannelController';
@@ -230,6 +233,11 @@ container
     .inTransientScope();
 
 container
+    .bind<IBlockRepository>(TYPES.BlockRepository)
+    .to(MongooseBlockRepository)
+    .inTransientScope();
+
+container
     .bind<IPasswordResetRepository>(TYPES.PasswordResetRepository)
     .to(MongoosePasswordResetRepository)
     .inTransientScope();
@@ -328,6 +336,8 @@ container
     .bind<ReactionController>(ReactionController)
     .toSelf()
     .inTransientScope();
+
+container.bind<BlockController>(BlockController).toSelf().inTransientScope();
 
 container.bind<SystemController>(SystemController).toSelf().inTransientScope();
 

@@ -21,6 +21,8 @@ import type { IMentionEvent } from '@/ws/protocol/events/mentions';
 import type { PermissionService } from '@/permissions/PermissionService';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
+import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import { BlockFlags } from '@/privacy/blockFlags';
 import logger from '@/utils/logger';
 
 /**
@@ -41,6 +43,7 @@ export class ReactionController {
         @inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
+        @inject(TYPES.BlockRepository) private blockRepo: IBlockRepository,
     ) {}
 
     /**
@@ -76,6 +79,18 @@ export class ReactionController {
 
             if (!isParticipant) {
                 throw new Error('FORBIDDEN: Not part of this conversation');
+            }
+
+            const receiverId =
+                message.senderId.toString() === userId
+                    ? message.receiverId
+                    : message.senderId;
+            const blockFlags = await this.blockRepo.getActiveBlockFlags(
+                receiverId,
+                new mongoose.Types.ObjectId(userId),
+            );
+            if (blockFlags & BlockFlags.BLOCK_REACTIONS) {
+                return { success: true };
             }
 
             await this.reactionRepo.addReaction(
@@ -182,6 +197,14 @@ export class ReactionController {
 
             if (!canReact) {
                 throw new Error('FORBIDDEN: No permission to add reactions');
+            }
+
+            const serverBlockFlags = await this.blockRepo.getActiveBlockFlags(
+                message.senderId,
+                new mongoose.Types.ObjectId(userId),
+            );
+            if (serverBlockFlags & BlockFlags.BLOCK_REACTIONS) {
+                return { success: true };
             }
 
             // Add reaction

@@ -88,4 +88,10 @@ export interface IFriendshipRepository {
     deleteAllRequestsForUser(
         userId: Types.ObjectId,
     ): Promise<{ deletedCount: number }>;
+
+    // remove any existing friend request between two users.
+    removeRequestBetweenUsers(
+        user1: Types.ObjectId,
+        user2: Types.ObjectId,
+    ): Promise<boolean>;
 }

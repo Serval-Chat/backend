@@ -56,7 +56,7 @@ export interface IAuditLogRepository {
 
     // Find audit logs with pagination and filtering
     find(options: {
-        serverId?: Types.ObjectId;
+        serverId?: Types.ObjectId | null;
         limit?: number;
         offset?: number;
         cursor?: string; // ObjectId string for cursor-based pagination
@@ -74,7 +74,7 @@ export interface IAuditLogRepository {
 
     // Count audit logs matching criteria
     count(options: {
-        serverId?: Types.ObjectId;
+        serverId?: Types.ObjectId | null;
         actorId?: Types.ObjectId;
         actionType?: string;
         targetUserId?: Types.ObjectId;

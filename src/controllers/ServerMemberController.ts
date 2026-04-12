@@ -33,6 +33,8 @@ import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository'
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import { BlockFlags } from '@/privacy/blockFlags';
 
 import { mapUser } from '@/utils/user';
 import type { Request as ExpressRequest } from 'express';
@@ -75,6 +77,8 @@ export class ServerMemberController {
         private wsServer: WsServer,
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
+        @Inject(TYPES.BlockRepository)
+        private blockRepo: IBlockRepository,
     ) {}
 
     // Retrieves all members of a server
@@ -103,11 +107,47 @@ export class ServerMemberController {
         const members =
             await this.serverMemberRepo.findByServerIdWithUserInfo(serverOid);
 
+        const [blocksByA, blocksAgainstA] = await Promise.all([
+            this.blockRepo.findBlocksByBlocker(userOid),
+            this.blockRepo.findBlocksByTarget(userOid),
+        ]);
+
+        const hideEntirelySet = new Set(
+            blocksByA
+                .filter((b) => b.flags & BlockFlags.HIDE_FROM_MEMBER_LIST)
+                .map((b) => b.targetId),
+        );
+
+        const hidePresenceByA = new Set(
+            blocksByA
+                .filter((b) => b.flags & BlockFlags.HIDE_THEIR_PRESENCE)
+                .map((b) => b.targetId),
+        );
+
+        const hidePresenceAgainstA = new Set(
+            blocksAgainstA
+                .filter((b) => b.flags & BlockFlags.HIDE_MY_PRESENCE)
+                .map((b) => b.blockerId),
+        );
+
+        const filteredMembers = members.filter(
+            (m) => !hideEntirelySet.has(m.userId.toString()),
+        );
+
         return Promise.all(
-            members.map(async (m) => ({
-                ...m,
-                online: await this.wsServer.isUserOnline(m.userId.toString()),
-            })),
+            filteredMembers.map(async (m) => {
+                const targetUserIdStr = m.userId.toString();
+                const shouldHidePresence =
+                    hidePresenceByA.has(targetUserIdStr) ||
+                    hidePresenceAgainstA.has(targetUserIdStr);
+
+                return {
+                    ...m,
+                    online: shouldHidePresence
+                        ? false
+                        : await this.wsServer.isUserOnline(targetUserIdStr),
+                };
+            }),
         );
     }
 
@@ -136,11 +176,48 @@ export class ServerMemberController {
         }
 
         const members = await this.serverMemberRepo.searchMembers(serverOid, q);
+
+        const [blocksByA, blocksAgainstA] = await Promise.all([
+            this.blockRepo.findBlocksByBlocker(userOid),
+            this.blockRepo.findBlocksByTarget(userOid),
+        ]);
+
+        const hideEntirelySet = new Set(
+            blocksByA
+                .filter((b) => b.flags & BlockFlags.HIDE_FROM_MENTIONS)
+                .map((b) => b.targetId),
+        );
+
+        const hidePresenceByA = new Set(
+            blocksByA
+                .filter((b) => b.flags & BlockFlags.HIDE_THEIR_PRESENCE)
+                .map((b) => b.targetId),
+        );
+
+        const hidePresenceAgainstA = new Set(
+            blocksAgainstA
+                .filter((b) => b.flags & BlockFlags.HIDE_MY_PRESENCE)
+                .map((b) => b.blockerId),
+        );
+
+        const filteredMembers = members.filter(
+            (m) => !hideEntirelySet.has(m.userId.toString()),
+        );
+
         return Promise.all(
-            members.map(async (m) => ({
-                ...m,
-                online: await this.wsServer.isUserOnline(m.userId.toString()),
-            })),
+            filteredMembers.map(async (m) => {
+                const targetUserIdStr = m.userId.toString();
+                const shouldHidePresence =
+                    hidePresenceByA.has(targetUserIdStr) ||
+                    hidePresenceAgainstA.has(targetUserIdStr);
+
+                return {
+                    ...m,
+                    online: shouldHidePresence
+                        ? false
+                        : await this.wsServer.isUserOnline(targetUserIdStr),
+                };
+            }),
         );
     }
 
