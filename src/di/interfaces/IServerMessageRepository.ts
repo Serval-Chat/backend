@@ -77,6 +77,9 @@ export interface IServerMessageRepository {
     // Count messages in a channel
     countByChannelId(channelId: Types.ObjectId): Promise<number>;
 
+    // Count messages in a server
+    countByServerId(serverId: Types.ObjectId): Promise<number>;
+
     // Find last message by channel and user
     findLastByChannelAndUser(
         channelId: Types.ObjectId,

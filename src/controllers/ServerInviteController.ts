@@ -313,6 +313,8 @@ export class ServerInviteController {
                 name: server.name,
                 icon: server.icon,
                 banner: server.banner,
+                verified: server.verified,
+                tags: server.tags || [],
             },
             memberCount,
         };

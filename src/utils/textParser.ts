@@ -1,5 +1,5 @@
 import { User } from '../models/User';
-import { Role, Channel } from '../models/Server';
+import { Role } from '../models/Server';
 
 /**
  * Parse gobblygook to readable text

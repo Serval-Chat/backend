@@ -6,8 +6,6 @@ import { setup, teardown, getApp } from './setup';
 import { clearDatabase, createTestUser } from './helpers';
 import type { IUser } from '../../src/models/User';
 import { BlockProfile } from '../../src/models/BlockProfile';
-import { container } from '../../src/di/container';
-import { TYPES } from '../../src/di/types';
 
 let app: Application;
 let user: IUser, userToken: string;

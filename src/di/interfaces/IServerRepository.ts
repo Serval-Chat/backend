@@ -15,11 +15,14 @@ export interface IServer {
     defaultRoleId?: Types.ObjectId;
     disableCustomFonts?: boolean;
     disableUsernameGlowAndCustomColor?: boolean;
+    verified?: boolean;
+    verificationRequested?: boolean;
     createdAt?: Date;
     updatedAt?: Date;
     deletedAt?: Date;
     allTimeHigh?: number;
     memberCount?: number;
+    tags?: string[];
 }
 
 // Server creation DTO
@@ -27,6 +30,7 @@ export interface CreateServerDTO {
     name: string;
     ownerId: Types.ObjectId;
     icon?: string;
+    tags?: string[];
 }
 
 // Server Repository Interface
@@ -93,4 +97,9 @@ export interface IServerRepository {
 
     // Count all servers per day since the very first server (lifetime view)
     countAllByDay(): Promise<number[]>;
+    listAwaitingReview(options: {
+        limit: number;
+        offset: number;
+    }): Promise<(IServer & { memberCount?: number; realMessageCount?: number; weightScore?: number })[]>;
+    countAwaitingReview(): Promise<number>;
 }

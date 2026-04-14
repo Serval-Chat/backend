@@ -30,6 +30,7 @@ import type { IMailService } from '@/di/interfaces/IMailService';
 import type { IMetricsService } from '@/di/interfaces/IMetricsService';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
+import type { IAdminNoteRepository } from '@/di/interfaces/IAdminNoteRepository';
 
 // Infrastructure implementations
 import { WinstonLogger } from '@/infrastructure/WinstonLogger';
@@ -61,6 +62,7 @@ import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePi
 import { MongooseReactionRepository } from '@/infrastructure/repositories/MongooseReactionRepository';
 import { MongooseExportJobRepository } from '@/infrastructure/repositories/MongooseExportJobRepository';
 import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseBlockRepository';
+import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/MongooseAdminNoteRepository';
 import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
 import { MailService } from '@/services/MailService';
 import { MetricsService } from '@/services/MetricsService';
@@ -235,6 +237,11 @@ container
 container
     .bind<IBlockRepository>(TYPES.BlockRepository)
     .to(MongooseBlockRepository)
+    .inTransientScope();
+
+container
+    .bind<IAdminNoteRepository>(TYPES.AdminNoteRepository)
+    .to(MongooseAdminNoteRepository)
     .inTransientScope();
 
 container

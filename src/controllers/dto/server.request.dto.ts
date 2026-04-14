@@ -8,6 +8,9 @@ import {
     ValidateIf,
     MinLength,
     IsMongoId,
+    IsArray,
+    ArrayMaxSize,
+    MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsName, IsRoleId, IsColor } from '@/validation/schemas/common';
@@ -59,6 +62,14 @@ export class UpdateServerRequestDTO {
     @IsMongoId()
     @IsRoleId()
     defaultRoleId?: string | null;
+
+    @ApiPropertyOptional({ type: [String] })
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(8)
+    @IsString({ each: true })
+    @MaxLength(25, { each: true })
+    tags?: string[];
 }
 
 export class SetDefaultRoleRequestDTO {

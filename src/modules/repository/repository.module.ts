@@ -23,6 +23,7 @@ import { MongooseWebhookRepository } from '@/infrastructure/repositories/Mongoos
 import { MongooseExportJobRepository } from '@/infrastructure/repositories/MongooseExportJobRepository';
 import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
 import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseBlockRepository';
+import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/MongooseAdminNoteRepository';
 
 @Global()
 @Module({
@@ -119,6 +120,10 @@ import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseB
             provide: TYPES.BlockRepository,
             useClass: MongooseBlockRepository,
         },
+        {
+            provide: TYPES.AdminNoteRepository,
+            useClass: MongooseAdminNoteRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -144,6 +149,7 @@ import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseB
         TYPES.PasswordResetRepository,
         TYPES.ExportJobRepository,
         TYPES.BlockRepository,
+        TYPES.AdminNoteRepository,
     ],
 })
 export class RepositoryModule {}

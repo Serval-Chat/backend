@@ -44,6 +44,14 @@ export class AdminServerListItemDTO {
     deletedAt?: Date;
     @ApiProperty({ type: AdminServerOwnerDTO, nullable: true })
     owner!: AdminServerOwnerDTO | null;
+    @ApiProperty({ default: false })
+    verified!: boolean;
+    @ApiProperty({ default: false })
+    verificationRequested!: boolean;
+    @ApiPropertyOptional()
+    realMessageCount?: number;
+    @ApiPropertyOptional()
+    weightScore?: number;
 }
 
 export type AdminServerListResponseDTO = AdminServerListItemDTO[];

@@ -300,6 +300,10 @@ export class MongooseServerMessageRepository
         return await ServerMessage.countDocuments({ channelId });
     }
 
+    async countByServerId(serverId: Types.ObjectId): Promise<number> {
+        return await ServerMessage.countDocuments({ serverId });
+    }
+
     findCursorByChannelId(
         channelId: Types.ObjectId,
     ): AsyncIterable<IServerMessage> {

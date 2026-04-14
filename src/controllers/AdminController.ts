@@ -26,11 +26,14 @@ import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IBanRepository } from '@/di/interfaces/IBanRepository';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { IServerRepository, IServer } from '@/di/interfaces/IServerRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
+import type { IAdminNoteRepository } from '@/di/interfaces/IAdminNoteRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -44,6 +47,7 @@ import type {
 import { Badge } from '@/models/Badge';
 import { Ban } from '@/models/Ban';
 import { ServerBan } from '@/models/Server';
+import { IAdminNote, IAdminNoteHistory } from '@/models/AdminNote';
 import mongoose, { Types } from 'mongoose';
 import {
     generateAnonymizedUsername,
@@ -93,6 +97,16 @@ import {
     AdminRestoreServerResponseDTO,
     AdminServerListItemDTO,
 } from './dto/admin-servers.response.dto';
+import {
+    AdminServerDetailsDTO,
+    AdminChannelShortDTO,
+} from './dto/admin-servers-details.response.dto';
+import {
+    CreateAdminNoteRequestDTO,
+    UpdateAdminNoteRequestDTO,
+    SoftDeleteAdminNoteRequestDTO,
+    AdminNoteResponseDTO,
+} from './dto/admin-notes.dto';
 import { AdminListUsersRequestDTO } from './dto/admin-list-users.request.dto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Permissions } from '@/modules/auth/permissions.decorator';
@@ -130,6 +144,12 @@ export class AdminController {
         private warningRepo: IWarningRepository,
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
+        @Inject(TYPES.ChannelRepository)
+        private channelRepo: IChannelRepository,
+        @Inject(TYPES.InviteRepository)
+        private inviteRepo: IInviteRepository,
+        @Inject(TYPES.AdminNoteRepository)
+        private adminNoteRepo: IAdminNoteRepository,
     ) {}
 
     @Get('stats')
@@ -450,6 +470,9 @@ export class AdminController {
         actionType: string,
         targetUserId?: string,
         additionalData?: Record<string, unknown>,
+        targetId?: string,
+        targetType?: string,
+        serverId?: string,
     ): Promise<void> {
         try {
             const safeData: Record<string, unknown> = {};
@@ -465,6 +488,11 @@ export class AdminController {
                     safeData.serverName = additionalData.serverName;
                 if (additionalData.fields)
                     safeData.fields = additionalData.fields;
+                if (additionalData.noteId) safeData.noteId = additionalData.noteId;
+                if (additionalData.content) 
+                    safeData.content = typeof additionalData.content === 'string' 
+                        ? additionalData.content.substring(0, 100) 
+                        : additionalData.content;
             }
 
             const actorId = req.user.id;
@@ -478,6 +506,9 @@ export class AdminController {
                 actionType: string;
                 additionalData: Record<string, unknown>;
                 targetUserId?: Types.ObjectId;
+                targetId?: Types.ObjectId;
+                targetType?: string;
+                serverId?: Types.ObjectId;
             } = {
                 actorId: new Types.ObjectId(actorId),
                 actionType,
@@ -488,7 +519,19 @@ export class AdminController {
                 auditData.targetUserId = new Types.ObjectId(targetUserId);
             }
 
-            await this.auditLogRepo.create(auditData);
+            if (targetId) {
+                auditData.targetId = new Types.ObjectId(targetId);
+            }
+
+            if (targetType) {
+                auditData.targetType = targetType.toLowerCase();
+            }
+
+            if (serverId) {
+                auditData.serverId = new Types.ObjectId(serverId);
+            }
+
+            await this.auditLogRepo.create(auditData as any); // eslint-disable-line @typescript-eslint/no-explicit-any
         } catch (error) {
             this.logger.error('Audit log error:', error);
         }
@@ -1101,6 +1144,8 @@ export class AdminController {
                     server._id,
                 );
                 const item = new AdminServerListItemDTO();
+                const enrichedServer = server as IServer & { realMessageCount?: number; weightScore?: number };
+                
                 item._id = server._id.toString();
                 item.name = server.name;
                 item.icon = server.icon ? `${server.icon}` : null;
@@ -1109,6 +1154,10 @@ export class AdminController {
                 item.memberCount = memberCount;
                 item.createdAt = server.createdAt || new Date();
                 item.deletedAt = server.deletedAt;
+                item.verified = server.verified ?? false;
+                item.verificationRequested = server.verificationRequested ?? false;
+                item.realMessageCount = enrichedServer.realMessageCount;
+                item.weightScore = enrichedServer.weightScore;
                 if (owner) {
                     item.owner = {
                         _id: owner._id.toString(),
@@ -1277,5 +1326,453 @@ export class AdminController {
         response.servers = serverList;
 
         return response;
+    }
+    @Get('servers/awaiting-review')
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'List servers awaiting verification review' })
+    @ApiResponse({ status: 200, type: [AdminServerListItemDTO] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async listAwaitingReviewServers(
+        @Query('limit') limit: number = 50,
+        @Query('offset') offset: number = 0,
+    ): Promise<{ items: AdminServerListResponseDTO; total: number }> {
+        const servers = await this.serverRepo.listAwaitingReview({
+            limit: Number(limit),
+            offset: Number(offset)
+        });
+
+        const total = await this.serverRepo.countAwaitingReview();
+
+        const ownerIds = [...new Set(servers.map((s) => s.ownerId))].filter(
+            (id) => mongoose.Types.ObjectId.isValid(id.toString()),
+        );
+        const owners = await this.userRepo.findByIds(ownerIds);
+
+        const items = servers.map((server) => {
+            const owner = owners.find((u) => u._id.equals(server.ownerId));
+            const item = new AdminServerListItemDTO();
+            item._id = server._id.toString();
+            item.name = server.name;
+            item.icon = server.icon ? `${server.icon}` : null;
+            item.banner = server.banner;
+            item.ownerId = server.ownerId.toString();
+            item.memberCount = server.memberCount || 0;
+            item.createdAt = server.createdAt || new Date();
+            item.deletedAt = server.deletedAt;
+            item.verified = server.verified ?? false;
+            item.verificationRequested = server.verificationRequested ?? false;
+            item.realMessageCount = server.realMessageCount || 0;
+            item.weightScore = server.weightScore || 0;
+
+            if (owner) {
+                item.owner = {
+                    _id: owner._id.toString(),
+                    username: owner.username || '',
+                    displayName: owner.displayName || null,
+                    profilePicture: owner.profilePicture
+                        ? `/api/v1/profile/picture/${owner.profilePicture}`
+                        : null,
+                };
+            }
+            return item;
+        });
+
+        return { items, total };
+    }
+
+    @Get('servers/:serverId')
+    @Permissions('manageServer')
+    @ApiOperation({
+        summary: 'Retrieve detailed information about a specific server',
+    })
+    @ApiResponse({ status: 200, type: AdminServerDetailsDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server not found' })
+    public async getServerDetails(
+        @Path('serverId') serverId: string,
+    ): Promise<AdminServerDetailsDTO> {
+        const serverOid = new Types.ObjectId(serverId);
+        const server = await this.serverRepo.findById(serverOid, true);
+        if (!server) {
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        const owner = await this.userRepo.findById(server.ownerId);
+        const memberCount = await this.serverMemberRepo.countByServerId(
+            serverOid,
+        );
+        const messageVolume = await this.serverMessageRepo.countByServerId(
+            serverOid,
+        );
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const [recentBanCount, recentKickCount] = await Promise.all([
+            this.auditLogRepo.count({
+                serverId: serverOid,
+                actionType: 'user_ban',
+                startDate: since,
+            }),
+            this.auditLogRepo.count({
+                serverId: serverOid,
+                actionType: 'user_kick',
+                startDate: since,
+            }),
+        ]);
+        const channels = await this.channelRepo.findByServerId(serverOid);
+
+        const details = new AdminServerDetailsDTO();
+        details._id = server._id.toString();
+        details.name = server.name;
+        details.icon = server.icon ? `${server.icon}` : null;
+        details.banner = server.banner;
+        details.ownerId = server.ownerId.toString();
+        details.memberCount = memberCount;
+        details.messageVolume = messageVolume;
+        details.recentBanCount = recentBanCount;
+        details.recentKickCount = recentKickCount;
+        details.createdAt = server.createdAt || new Date();
+        details.deletedAt = server.deletedAt;
+        details.verified = server.verified ?? false;
+        details.verificationRequested = server.verificationRequested ?? false;
+
+        if (owner) {
+            details.owner = {
+                _id: owner._id.toString(),
+                username: owner.username || '',
+                displayName: owner.displayName || null,
+                profilePicture: owner.profilePicture
+                    ? `/api/v1/profile/picture/${owner.profilePicture}`
+                    : null,
+            };
+        } else {
+            details.owner = null;
+        }
+
+        details.channels = channels.map((c) => {
+            const dto = new AdminChannelShortDTO();
+            dto._id = c._id.toString();
+            dto.name = c.name;
+            dto.type = c.type;
+            dto.position = c.position;
+            return dto;
+        });
+
+        return details;
+    }
+
+    @Get('servers/:serverId/invites')
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'List all invites for a server (Admin access)' })
+    @ApiResponse({ status: 200, type: [Object] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server not found' })
+    public async getServerInvites(
+        @Path('serverId') serverId: string,
+    ): Promise<unknown[]> {
+        const serverOid = new Types.ObjectId(serverId);
+        const server = await this.serverRepo.findById(serverOid, true);
+        if (!server) {
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        const invites = await this.inviteRepo.findByServerId(serverOid);
+        return invites.map((invite) => ({
+            _id: invite._id.toString(),
+            serverId: invite.serverId.toString(),
+            code: invite.code,
+            customPath: invite.customPath,
+            createdByUserId: invite.createdByUserId?.toString() || '',
+            maxUses: invite.maxUses,
+            uses: invite.uses,
+            expiresAt: invite.expiresAt,
+            createdAt: invite.createdAt,
+        }));
+    }
+
+    @Delete('servers/:serverId/invites/:inviteId')
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Delete a server invite (Admin access)' })
+    @ApiResponse({ status: 200 })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Invite not found' })
+    public async deleteServerInvite(
+        @Path('serverId') serverId: string,
+        @Path('inviteId') inviteId: string,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<{ message: string }> {
+        const inviteOid = new Types.ObjectId(inviteId);
+        const serverOid = new Types.ObjectId(serverId);
+
+        const invite = await this.inviteRepo.findById(inviteOid);
+        if (!invite || !invite.serverId.equals(serverOid)) {
+            throw new NotFoundException('Invite not found for this server');
+        }
+
+        await this.inviteRepo.delete(inviteOid);
+
+        await this.logAdminAction(
+            req,
+            'delete_server_invite',
+            invite.createdByUserId?.toString(),
+            { serverId, inviteCode: invite.code },
+        );
+
+        return { message: 'Invite deleted' };
+    }
+
+
+    @Delete('servers/:serverId/verification')
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Decline server verification application' })
+    @ApiResponse({ status: 200 })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server not found' })
+    public async declineVerification(
+        @Path('serverId') serverId: string,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<{ message: string }> {
+        const serverOid = new Types.ObjectId(serverId);
+        const server = await this.serverRepo.findById(serverOid, true);
+        if (!server || !server.verificationRequested) {
+            throw new NotFoundException('Verification request not found.');
+        }
+        await this.serverRepo.update(serverOid, { 
+            verificationRequested: false
+        });
+        await this.logAdminAction(req, 'decline_server_verification', server.ownerId.toString(), {
+            serverId,
+            serverName: server.name,
+        });
+        return { message: 'Verification application declined.' };
+    }
+
+    @Post('servers/:serverId/verify')
+    @HttpCode(200)
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Grant a server the verified badge' })
+    @ApiResponse({ status: 200 })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server not found' })
+    public async verifyServer(
+        @Path('serverId') serverId: string,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<{ verified: boolean }> {
+        const serverOid = new Types.ObjectId(serverId);
+        const server = await this.serverRepo.findById(serverOid, true);
+        if (!server) {
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        if (!server.verificationRequested) {
+            throw new BadRequestException('Verification has not been requested for this server.');
+        }
+        await this.serverRepo.update(serverOid, { 
+            verified: true,
+            verificationRequested: false
+        });
+        await this.logAdminAction(req, 'verify_server', server.ownerId.toString(), {
+            serverId,
+            serverName: server.name,
+        });
+        return { verified: true };
+    }
+
+    @Delete('servers/:serverId/verify')
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Remove the verified badge from a server' })
+    @ApiResponse({ status: 200 })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server not found' })
+    public async unverifyServer(
+        @Path('serverId') serverId: string,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<{ verified: boolean }> {
+        const serverOid = new Types.ObjectId(serverId);
+        const server = await this.serverRepo.findById(serverOid, true);
+        if (!server) {
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
+        }
+        await this.serverRepo.update(serverOid, { verified: false });
+        await this.logAdminAction(req, 'unverify_server', server.ownerId.toString(), {
+            serverId,
+            serverName: server.name,
+        });
+        return { verified: false };
+    }
+
+    private mapAdminInfo(admin: unknown): Record<string, unknown> | null {
+        if (!admin) return null;
+        const a = admin as { _id?: { toString(): string }; id?: string; username?: string; displayName?: string; profilePicture?: string };
+        return {
+            _id: (a._id || a.id)?.toString(),
+            username: a.username,
+            displayName: a.displayName || null,
+            profilePicture: a.profilePicture
+                ? `/api/v1/profile/picture/${a.profilePicture}`
+                : null,
+        };
+    }
+
+    private mapAdminNote(note: IAdminNote): Record<string, unknown> {
+        return {
+            _id: note._id.toString(),
+            targetId: note.targetId.toString(),
+            targetType: note.targetType,
+            adminId: this.mapAdminInfo(note.adminId),
+            content: note.content,
+            history: (note.history || []).map((h: IAdminNoteHistory) => ({
+                content: h.content,
+                editorId: this.mapAdminInfo(h.editorId),
+                editedAt: h.editedAt,
+            })),
+            deletedAt: note.deletedAt,
+            deletedBy: this.mapAdminInfo(note.deletedBy),
+            deleteReason: note.deleteReason,
+            createdAt: note.createdAt,
+            updatedAt: note.updatedAt,
+        };
+    }
+
+    @Get('servers/:serverId/notes')
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Get all notes for a specific server' })
+    @ApiResponse({ status: 200, type: [AdminNoteResponseDTO] })
+    public async getServerNotes(
+        @Path('serverId') serverId: string,
+    ): Promise<AdminNoteResponseDTO[]> {
+        const notes = await this.adminNoteRepo.findByTarget(
+            new Types.ObjectId(serverId),
+            'Server',
+        );
+        return notes.map((n) =>
+            this.mapAdminNote(n),
+        ) as unknown as AdminNoteResponseDTO[];
+    }
+
+    @Post('servers/:serverId/notes')
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Create a new note for a server' })
+    @ApiResponse({ status: 201, type: AdminNoteResponseDTO })
+    public async createServerNote(
+        @Path('serverId') serverId: string,
+        @Request() req: AuthenticatedRequest,
+        @Body() body: CreateAdminNoteRequestDTO,
+    ): Promise<AdminNoteResponseDTO> {
+        const note = await this.adminNoteRepo.create({
+            targetId: new Types.ObjectId(serverId),
+            targetType: 'Server',
+            adminId: new Types.ObjectId(req.user.id),
+            content: body.content,
+        });
+
+        await this.logAdminAction(req, 'create_admin_note', undefined, {
+            noteId: note._id.toString(),
+            targetId: serverId,
+            targetType: 'Server',
+            content: body.content,
+        }, serverId, 'server', serverId);
+
+        const found = await this.adminNoteRepo.findById(note._id);
+        if (!found) {
+            throw new NotFoundException('Note not found');
+        }
+        return this.mapAdminNote(found) as unknown as AdminNoteResponseDTO;
+    }
+
+    @Get('users/:userId/notes')
+    @Permissions('manageUsers')
+    @ApiOperation({ summary: 'Get all notes for a specific user' })
+    @ApiResponse({ status: 200, type: [AdminNoteResponseDTO] })
+    public async getUserNotes(
+        @Path('userId') userId: string,
+    ): Promise<AdminNoteResponseDTO[]> {
+        const notes = await this.adminNoteRepo.findByTarget(
+            new Types.ObjectId(userId),
+            'User',
+        );
+        return notes.map((n) =>
+            this.mapAdminNote(n),
+        ) as unknown as AdminNoteResponseDTO[];
+    }
+
+    @Post('users/:userId/notes')
+    @Permissions('manageUsers')
+    @ApiOperation({ summary: 'Create a new note for a user' })
+    @ApiResponse({ status: 201, type: AdminNoteResponseDTO })
+    public async createUserNote(
+        @Path('userId') userId: string,
+        @Request() req: AuthenticatedRequest,
+        @Body() body: CreateAdminNoteRequestDTO,
+    ): Promise<AdminNoteResponseDTO> {
+        const note = await this.adminNoteRepo.create({
+            targetId: new Types.ObjectId(userId),
+            targetType: 'User',
+            adminId: new Types.ObjectId(req.user.id),
+            content: body.content,
+        });
+
+        await this.logAdminAction(req, 'create_admin_note', userId, {
+            noteId: note._id.toString(),
+            targetId: userId,
+            targetType: 'User',
+            content: body.content,
+        }, userId, 'user');
+
+        const found = await this.adminNoteRepo.findById(note._id);
+        if (!found) throw new NotFoundException('Note not found');
+        return this.mapAdminNote(found) as unknown as AdminNoteResponseDTO;
+    }
+
+    @Put('notes/:noteId')
+    @Permissions('manageUsers')
+    @ApiOperation({ summary: 'Update an existing admin note' })
+    @ApiResponse({ status: 200, type: AdminNoteResponseDTO })
+    public async updateNote(
+        @Path('noteId') noteId: string,
+        @Request() req: AuthenticatedRequest,
+        @Body() body: UpdateAdminNoteRequestDTO,
+    ): Promise<AdminNoteResponseDTO> {
+        const updated = await this.adminNoteRepo.update(
+            new Types.ObjectId(noteId),
+            new Types.ObjectId(req.user.id),
+            body.content,
+        );
+        if (!updated) {
+            throw new NotFoundException(
+                'Note not found or already deleted',
+            );
+        }
+
+        await this.logAdminAction(req, 'update_admin_note', undefined, {
+            noteId,
+            content: body.content,
+        }, noteId, updated.targetType.toLowerCase());
+
+        return this.mapAdminNote(updated!) as unknown as AdminNoteResponseDTO;
+    }
+
+    @Delete('notes/:noteId')
+    @Permissions('manageUsers')
+    @ApiOperation({ summary: 'Soft-delete a note with a reason' })
+    @ApiResponse({ status: 200, type: AdminNoteResponseDTO })
+    public async deleteNote(
+        @Path('noteId') noteId: string,
+        @Request() req: AuthenticatedRequest,
+        @Body() body: SoftDeleteAdminNoteRequestDTO,
+    ): Promise<AdminNoteResponseDTO> {
+        const deleted = await this.adminNoteRepo.softDelete({
+            id: new Types.ObjectId(noteId),
+            deletedBy: new Types.ObjectId(req.user.id),
+            deleteReason: body.reason,
+        });
+        if (!deleted) {
+            throw new NotFoundException('Note not found');
+        }
+
+        await this.logAdminAction(req, 'delete_admin_note', undefined, {
+            noteId,
+            reason: body.reason,
+        }, noteId, deleted.targetType.toLowerCase());
+
+        return this.mapAdminNote(deleted!) as unknown as AdminNoteResponseDTO;
     }
 }

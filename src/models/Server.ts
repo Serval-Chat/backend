@@ -16,9 +16,12 @@ export interface IServer extends Document {
     defaultRoleId?: mongoose.Types.ObjectId;
     disableCustomFonts?: boolean;
     disableUsernameGlowAndCustomColor?: boolean;
+    verified?: boolean;
+    verificationRequested?: boolean;
     createdAt: Date;
     deletedAt?: Date;
     allTimeHigh?: number;
+    tags?: string[];
 }
 
 // Category interface
@@ -200,9 +203,21 @@ const serverSchema = new Schema<IServer>({
     },
     disableCustomFonts: { type: Boolean, default: false },
     disableUsernameGlowAndCustomColor: { type: Boolean, default: false },
+    verified: { type: Boolean, default: false },
+    verificationRequested: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     deletedAt: { type: Date },
     allTimeHigh: { type: Number, default: 0 },
+    tags: { 
+        type: [String], 
+        default: [],
+        validate: [
+            {
+                validator: (v: string[]) => v.length <= 8,
+                message: 'Max 8 tags allowed'
+            }
+        ]
+    },
 });
 
 const categorySchema = new Schema<ICategory>({

@@ -23,6 +23,12 @@ export class InviteServerDTO {
 
     @ApiPropertyOptional({ type: InviteServerBannerDTO })
     banner?: InviteServerBannerDTO;
+
+    @ApiPropertyOptional()
+    verified?: boolean;
+
+    @ApiPropertyOptional({ type: [String] })
+    tags?: string[];
 }
 
 export class InviteDetailsResponseDTO {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Types } from 'mongoose';
+import { Types, type PipelineStage } from 'mongoose';
 import type { FilterQuery } from 'mongoose';
 import {
     IServerRepository,
@@ -214,5 +214,76 @@ export class MongooseServerRepository implements IServerRepository {
         const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         return this.countByDay(startOfOldestDay, days);
+    }
+
+    async countAwaitingReview(): Promise<number> {
+        return await this.serverModel.countDocuments({
+            verificationRequested: true,
+            verified: { $ne: true },
+            deletedAt: { $exists: false }
+        });
+    }
+
+    async listAwaitingReview(options: {
+        limit: number;
+        offset: number;
+    }): Promise<(IServer & { memberCount?: number; realMessageCount?: number; weightScore?: number })[]> {
+        const pipeline: PipelineStage[] = [
+            { 
+                $match: { 
+                    verificationRequested: true, 
+                    verified: { $ne: true }, 
+                    deletedAt: { $exists: false } 
+                } 
+            },
+            {
+                $lookup: {
+                    from: 'servermembers',
+                    localField: '_id',
+                    foreignField: 'serverId',
+                    as: 'members'
+                }
+            },
+            {
+                $addFields: {
+                    memberCount: { $size: "$members" }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'servermessages',
+                    localField: '_id',
+                    foreignField: 'serverId',
+                    pipeline: [
+                        { $match: { isWebhook: { $ne: true } } },
+                        { $count: "realMessageCount" }
+                    ],
+                    as: "messagesInfo"
+                }
+            },
+            {
+                $addFields: {
+                    realMessageCount: { 
+                        $ifNull: [ { $arrayElemAt: ["$messagesInfo.realMessageCount", 0] }, 0 ] 
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    weightScore: { 
+                        $add: [
+                            { $multiply: ["$memberCount", 10] },
+                            { $multiply: ["$realMessageCount", 1] }
+                        ]
+                    }
+                }
+            },
+            { $sort: { weightScore: -1, createdAt: -1 } },
+            { $skip: options.offset },
+            { $limit: options.limit },
+            { $project: { members: 0, messagesInfo: 0 } }
+        ];
+
+        return await this.serverModel.aggregate(pipeline).exec();
     }
 }

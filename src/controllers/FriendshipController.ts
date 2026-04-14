@@ -17,7 +17,6 @@ import { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { WsServer } from '@/ws/server';
 import { ILogger } from '@/di/interfaces/ILogger';
 import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
-import { BlockFlags } from '@/privacy/blockFlags';
 import {
     ApiTags,
     ApiResponse,
@@ -276,7 +275,7 @@ export class FriendshipController {
             await this.friendshipRepo.rejectRequest(existingRequest._id);
         }
 
-        const blockFlags = await this.blockRepo.getActiveBlockFlags(
+        await this.blockRepo.getActiveBlockFlags(
             friendId,
             meOid,
         );

@@ -481,9 +481,10 @@ export class ServerController {
         if (body.banner) updates.banner = body.banner;
         if (body.disableCustomFonts !== undefined)
             updates.disableCustomFonts = body.disableCustomFonts;
-        if (body.disableUsernameGlowAndCustomColor !== undefined)
             updates.disableUsernameGlowAndCustomColor =
                 body.disableUsernameGlowAndCustomColor;
+
+        if (body.tags !== undefined) updates.tags = body.tags;
 
         if (body.defaultRoleId !== undefined) {
             const roleId = body.defaultRoleId;
@@ -548,6 +549,12 @@ export class ServerController {
                     field: 'defaultRoleId',
                     before: existingServer.defaultRoleId?.toString() || null,
                     after: body.defaultRoleId || null,
+                });
+            if (body.tags !== undefined && JSON.stringify(body.tags) !== JSON.stringify(existingServer.tags))
+                changes.push({
+                    field: 'tags',
+                    before: existingServer.tags || [],
+                    after: body.tags,
                 });
         }
 
@@ -643,6 +650,43 @@ export class ServerController {
         }
 
         return { defaultRoleId: roleId || null };
+    }
+
+    @Post(':serverId/verification-request')
+    @ApiOperation({ summary: 'Apply for server verification' })
+    @ApiResponse({ status: 201, description: 'Verification requested' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server Not Found' })
+    public async requestVerification(
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
+    ): Promise<{ message: string }> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        
+        const server = await this.serverRepo.findById(serverOid);
+        if (!server) {
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+        }
+        
+        if (server.ownerId.toString() !== userId) {
+            throw new ApiError(403, 'Only the server owner can apply for verification.');
+        }
+
+        if (server.verified || server.verificationRequested) {
+            return { message: 'Already verified or request pending.' };
+        }
+
+        await this.serverRepo.update(serverOid, { verificationRequested: true });
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: new Types.ObjectId(userId),
+            actionType: 'request_server_verification',
+            targetId: serverOid,
+            targetType: 'server',
+            changes: [{ field: 'verificationRequested', before: false, after: true }],
+        });
+        return { message: 'Verification requested' };
     }
 
     @Delete(':serverId')
