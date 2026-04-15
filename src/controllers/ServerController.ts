@@ -63,6 +63,7 @@ import {
     UploadIconResponseDTO,
     UploadBannerResponseDTO,
 } from './dto/server.response.dto';
+import { EmojiResponseDTO } from './dto/emoji.response.dto';
 import { PingService } from '@/services/PingService';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
@@ -280,6 +281,37 @@ export class ServerController {
         });
 
         return result;
+    }
+
+    @Get('emojis')
+    @ApiOperation({ summary: 'Get all emojis from all joined servers' })
+    @ApiResponse({ status: 200, description: 'Aggregate list of server emojis' })
+    public async getAllServerEmojis(
+        @Req() req: Request,
+    ): Promise<EmojiResponseDTO[]> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        const userOid = new Types.ObjectId(userId);
+
+        const memberships = await this.serverMemberRepo.findByUserId(userOid);
+        const serverIds = memberships.map((m) => m.serverId);
+
+        if (serverIds.length === 0) return [];
+
+        const EmojiModel = mongoose.model('Emoji');
+        const emojis = await EmojiModel.find({
+            serverId: { $in: serverIds },
+        })
+            .sort({ name: 1 })
+            .exec();
+
+        return emojis.map((e) => ({
+            _id: e._id.toString(),
+            name: e.name,
+            imageUrl: e.imageUrl,
+            serverId: e.serverId?.toString(),
+            createdBy: e.createdBy?.toString(),
+            createdAt: e.createdAt,
+        }));
     }
 
     @Post(':serverId/ack')

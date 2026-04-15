@@ -192,6 +192,73 @@ export class FriendshipController {
             .filter((p) => p !== null);
     }
 
+    @Get('profiles')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Get full profiles for all friends in one request' })
+    @ApiResponse({ status: 200, description: 'Array of full user profiles' })
+    public async getFriendProfiles(@Req() req: Request): Promise<unknown[]> {
+        const userId = (req as unknown as RequestWithUser).user.id;
+        const userOid = new Types.ObjectId(userId);
+
+        const friendships = await this.friendshipRepo.findByUserId(userOid);
+        const friendIds = new Set<string>();
+        const legacyUsernames = new Set<string>();
+
+        friendships.forEach((rel) => {
+            const userIdStr = rel.userId?.toString();
+            const friendIdStr = rel.friendId?.toString();
+            const otherId = userIdStr === userId ? friendIdStr : userIdStr;
+
+            if (otherId && otherId !== userId) {
+                friendIds.add(otherId);
+            } else if (rel.friend) {
+                legacyUsernames.add(rel.friend);
+            }
+        });
+
+        const friendDocs = await Promise.all([
+            ...Array.from(friendIds).map((id) =>
+                this.userRepo.findById(new Types.ObjectId(id)),
+            ),
+            ...Array.from(legacyUsernames).map((username) =>
+                this.userRepo.findByUsername(username),
+            ),
+        ]);
+
+        const HIDE_PRONOUNS = 1 << 0;
+        const HIDE_BIO = 1 << 1;
+        const HIDE_DISPLAY_NAME = 1 << 2;
+        const HIDE_AVATAR = 1 << 3;
+
+        const profiles = await Promise.all(
+            friendDocs
+                .filter((u): u is NonNullable<typeof u> => u !== null)
+                .map(async (user) => {
+                    const mapped = mapUser(user) as Record<string, unknown> | null;
+                    if (!mapped) return null;
+
+                    const blockFlags = await this.blockRepo.getActiveBlockFlags(
+                        user._id,
+                        userOid,
+                    );
+
+                    if (blockFlags & HIDE_PRONOUNS) mapped.pronouns = undefined;
+                    if (blockFlags & HIDE_BIO) mapped.bio = undefined;
+                    if (blockFlags & HIDE_DISPLAY_NAME) mapped.displayName = null;
+                    if (blockFlags & HIDE_AVATAR) mapped.profilePicture = null;
+
+                    if (user.deletedAt) {
+                        mapped.profilePicture = '/images/deleted-cat.jpg';
+                    }
+
+                    return mapped;
+                }),
+        );
+
+        return profiles.filter((p): p is NonNullable<typeof p> => p !== null);
+    }
+
     @Get('incoming')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
