@@ -319,7 +319,7 @@ export class ServerMessageController {
                 webhookUsername: message.webhookUsername,
                 webhookAvatarUrl: message.webhookAvatarUrl,
                 embeds: message.embeds || [],
-                interaction: message.interaction,
+                interaction: (message.interaction?.command !== undefined && message.interaction.command !== '') ? message.interaction : undefined,
             },
         };
         this.wsServer.broadcastToChannel(channelId, messagePayload);
