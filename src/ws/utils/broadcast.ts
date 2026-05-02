@@ -2,6 +2,7 @@ import type { WebSocket } from 'ws';
 import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { IWsEnvelope } from '@/ws/protocol/envelope';
 import * as crypto from 'node:crypto';
+import logger from '@/utils/logger';
 
 /**
  * Creates an envelope for a WebSocket message.
@@ -17,7 +18,7 @@ export function createEnvelope(
         id: crypto.randomUUID(),
         event,
         meta: {
-            replyTo: replyTo || '',
+            replyTo: replyTo ?? '',
             ts: Date.now(),
         },
     };
@@ -37,7 +38,11 @@ export function send(
     if (ws.readyState !== ws.OPEN) return;
 
     const envelope = createEnvelope(event, replyTo);
-    ws.send(JSON.stringify(envelope));
+    ws.send(JSON.stringify(envelope), (err) => {
+        if (err) {
+            logger.warn(`[WsServer] Send failed for event '${event.type}': ${err.message}`);
+        }
+    });
 }
 
 /**
@@ -56,7 +61,11 @@ export function sendToMany(
 
     for (const ws of sockets) {
         if (ws.readyState === ws.OPEN) {
-            ws.send(message);
+            ws.send(message, (err) => {
+                if (err) {
+                    logger.warn(`[WsServer] sendToMany failed for event '${event.type}': ${err.message}`);
+                }
+            });
         }
     }
 }

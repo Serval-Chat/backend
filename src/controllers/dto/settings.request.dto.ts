@@ -7,50 +7,50 @@ export class UpdateSettingsRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    muteNotifications?: boolean;
+    public muteNotifications?: boolean;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    useDiscordStyleMessages?: boolean;
+    public useDiscordStyleMessages?: boolean;
 
     @ApiPropertyOptional({ enum: MessageAlignmentDTO })
     @IsOptional()
     @IsEnum(MessageAlignmentDTO)
-    ownMessagesAlign?: MessageAlignmentDTO;
+    public ownMessagesAlign?: MessageAlignmentDTO;
 
     @ApiPropertyOptional({ enum: MessageAlignmentDTO })
     @IsOptional()
     @IsEnum(MessageAlignmentDTO)
-    otherMessagesAlign?: MessageAlignmentDTO;
+    public otherMessagesAlign?: MessageAlignmentDTO;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    showYouLabel?: boolean;
+    public showYouLabel?: boolean;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsColor()
-    ownMessageColor?: string;
+    public ownMessageColor?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsColor()
-    otherMessageColor?: string;
+    public otherMessageColor?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    disableCustomUsernameFonts?: boolean;
+    public disableCustomUsernameFonts?: boolean;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    disableCustomUsernameColors?: boolean;
+    public disableCustomUsernameColors?: boolean;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    disableCustomUsernameGlow?: boolean;
+    public disableCustomUsernameGlow?: boolean;
 }

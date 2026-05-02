@@ -134,7 +134,7 @@ export function encryptSecret(secret: string): string {
 
 export function decryptSecret(payload: string): string {
     const [ivB64, tagB64, cipherB64] = payload.split('.');
-    if (!ivB64 || !tagB64 || !cipherB64) {
+    if (ivB64 === undefined || ivB64 === '' || tagB64 === undefined || tagB64 === '' || cipherB64 === undefined || cipherB64 === '') {
         throw new Error('Invalid encrypted secret payload');
     }
     const key = normalizeEncryptionKey();

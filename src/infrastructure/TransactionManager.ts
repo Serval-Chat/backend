@@ -51,7 +51,7 @@ export class TransactionManager {
             }
             throw err;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 }

@@ -71,6 +71,7 @@ export interface IMemberAddedEvent
         {
             serverId: string;
             userId: string;
+            username: string;
         }
     > {}
 
@@ -308,5 +309,31 @@ export interface IAuditLogEntryCreatedEvent
         {
             serverId: string;
             entry: ReturnType<typeof mapAuditLogEntry>;
+        }
+    > {}
+
+// ============================================================================
+// Invite Events
+// ============================================================================
+
+export interface IServerInviteCreatedEvent
+    extends WsEvent<
+        'server_invite_created',
+        {
+            serverId: string;
+            code: string;
+            maxUses: number | null;
+            expiresAt: Date | string | null;
+            senderId?: string;
+        }
+    > {}
+
+export interface IServerInviteDeletedEvent
+    extends WsEvent<
+        'server_invite_deleted',
+        {
+            serverId: string;
+            code: string;
+            senderId?: string;
         }
     > {}

@@ -77,8 +77,8 @@ describe('AuthService', () => {
     it('login with valid username credentials', async () => {
         const testUser = createTestUser({ username: 'validuser', login: 'validuser' });
 
-        mockUserRepo.findByLogin!.mockResolvedValue(testUser);
-        mockUserRepo.comparePassword!.mockResolvedValue(true);
+        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
+        (mockUserRepo.comparePassword as jest.Mock).mockResolvedValue(true);
 
         const result = await authService.login('validuser', 'correctpassword');
 
@@ -99,8 +99,8 @@ describe('AuthService', () => {
             email: 'test@example.com'
         });
 
-        mockUserRepo.findByLogin!.mockResolvedValue(testUser);
-        mockUserRepo.comparePassword!.mockResolvedValue(true);
+        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
+        (mockUserRepo.comparePassword as jest.Mock).mockResolvedValue(true);
 
         const result = await authService.login('test@example.com', 'password123');
 
@@ -111,8 +111,8 @@ describe('AuthService', () => {
     it('login with invalid password', async () => {
         const testUser = createTestUser();
 
-        mockUserRepo.findByLogin!.mockResolvedValue(testUser);
-        mockUserRepo.comparePassword!.mockResolvedValue(false);
+        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
+        (mockUserRepo.comparePassword as jest.Mock).mockResolvedValue(false);
 
         const result = await authService.login('testuser', 'wrongpassword');
 
@@ -122,7 +122,7 @@ describe('AuthService', () => {
     });
 
     it('login with non-existent user', async () => {
-        mockUserRepo.findByLogin!.mockResolvedValue(null);
+        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(null);
 
         const result = await authService.login('nonexistent', 'password');
 
@@ -138,7 +138,7 @@ describe('AuthService', () => {
             anonymizedUsername: 'deleted-user-12345'
         });
 
-        mockUserRepo.findByLogin!.mockResolvedValue(deletedUser);
+        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(deletedUser);
 
         const result = await authService.login('testuser', 'password');
 
@@ -155,9 +155,9 @@ describe('AuthService', () => {
             active: true
         });
 
-        mockUserRepo.findByLogin!.mockResolvedValue(testUser);
-        mockUserRepo.comparePassword!.mockResolvedValue(true);
-        mockBanRepo.findActiveByUserId!.mockResolvedValue(activeBan);
+        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
+        (mockUserRepo.comparePassword as jest.Mock).mockResolvedValue(true);
+        (mockBanRepo.findActiveByUserId as jest.Mock).mockResolvedValue(activeBan);
 
         const result = await authService.login('testuser', 'password');
 
@@ -180,9 +180,9 @@ describe('AuthService', () => {
             expirationTimestamp: futureDate
         });
 
-        mockUserRepo.findByLogin!.mockResolvedValue(testUser);
-        mockUserRepo.comparePassword!.mockResolvedValue(true);
-        mockBanRepo.findActiveByUserId!.mockResolvedValue(activeBan);
+        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
+        (mockUserRepo.comparePassword as jest.Mock).mockResolvedValue(true);
+        (mockBanRepo.findActiveByUserId as jest.Mock).mockResolvedValue(activeBan);
 
         const result = await authService.login('testuser', 'password');
 
@@ -195,8 +195,8 @@ describe('AuthService', () => {
     it('login calls ban expiration check', async () => {
         const testUser = createTestUser();
 
-        mockUserRepo.findByLogin!.mockResolvedValue(testUser);
-        mockUserRepo.comparePassword!.mockResolvedValue(true);
+        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
+        (mockUserRepo.comparePassword as jest.Mock).mockResolvedValue(true);
 
         await authService.login('testuser', 'password');
 
@@ -207,9 +207,9 @@ describe('AuthService', () => {
     it('login without active ban succeeds', async () => {
         const testUser = createTestUser();
 
-        mockUserRepo.findByLogin!.mockResolvedValue(testUser);
-        mockUserRepo.comparePassword!.mockResolvedValue(true);
-        mockBanRepo.findActiveByUserId!.mockResolvedValue(null);
+        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
+        (mockUserRepo.comparePassword as jest.Mock).mockResolvedValue(true);
+        (mockBanRepo.findActiveByUserId as jest.Mock).mockResolvedValue(null);
 
         const result = await authService.login('testuser', 'password');
 
@@ -222,22 +222,22 @@ describe('AuthService', () => {
         const callOrder: string[] = [];
         const testUser = createTestUser();
 
-        mockUserRepo.findByLogin!.mockImplementation(async () => {
+        (mockUserRepo.findByLogin as jest.Mock).mockImplementation(async () => {
             callOrder.push('findByLogin');
             return testUser;
         });
 
-        mockUserRepo.comparePassword!.mockImplementation(async () => {
+        (mockUserRepo.comparePassword as jest.Mock).mockImplementation(async () => {
             callOrder.push('comparePassword');
             return true;
         });
 
-        mockBanRepo.checkExpired!.mockImplementation(async () => {
+        (mockBanRepo.checkExpired as jest.Mock).mockImplementation(async () => {
             callOrder.push('checkExpired');
             return true;
         });
 
-        mockBanRepo.findActiveByUserId!.mockImplementation(async () => {
+        (mockBanRepo.findActiveByUserId as jest.Mock).mockImplementation(async () => {
             callOrder.push('findActiveByUserId');
             return null;
         });

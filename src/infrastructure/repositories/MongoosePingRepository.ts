@@ -1,19 +1,23 @@
+import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { IPingRepository, IPing } from '@/di/interfaces/IPingRepository';
 import { Ping } from '@/models/Ping';
 import { type FilterQuery, Types } from 'mongoose';
+import { PingMentionMessageDTO, PingExportMessageDTO } from '@/controllers/dto/types.dto';
+
 
 // Mongoose Ping repository
 //
 // Implements IPingRepository using Mongoose Ping model
 // Encapsulates all ping operations
 @injectable()
+@Injectable()
 export class MongoosePingRepository implements IPingRepository {
-    async findById(id: Types.ObjectId): Promise<IPing | null> {
-        return await Ping.findById(id).lean();
+    public async findById(id: Types.ObjectId): Promise<IPing | null> {
+        return await Ping.findById(id).lean() as unknown as IPing | null;
     }
 
-    async findByUserId(
+    public async findByUserId(
         userId: Types.ObjectId,
         maxAge?: number,
     ): Promise<IPing[]> {
@@ -22,15 +26,15 @@ export class MongoosePingRepository implements IPingRepository {
         };
 
         // Filter out old pings if maxAge is specified (in milliseconds)
-        if (maxAge) {
+        if (maxAge !== undefined && maxAge > 0) {
             const cutoffDate = new Date(Date.now() - maxAge);
             query.timestamp = { $gte: cutoffDate };
         }
 
-        return await Ping.find(query).sort({ timestamp: -1 }).lean();
+        return await Ping.find(query).sort({ timestamp: -1 }).lean() as unknown as IPing[];
     }
 
-    async create(data: {
+    public async create(data: {
         userId: Types.ObjectId;
         type: 'mention' | 'export_status';
         sender: string;
@@ -38,7 +42,7 @@ export class MongoosePingRepository implements IPingRepository {
         serverId?: Types.ObjectId;
         channelId?: Types.ObjectId;
         messageId: Types.ObjectId;
-        message: Record<string, unknown>;
+        message: PingMentionMessageDTO | PingExportMessageDTO;
         timestamp?: Date;
     }): Promise<IPing> {
         const pingData = {
@@ -74,10 +78,10 @@ export class MongoosePingRepository implements IPingRepository {
             },
         );
 
-        return ping!;
+        return ping as unknown as IPing;
     }
 
-    async exists(
+    public async exists(
         userId: Types.ObjectId,
         senderId: Types.ObjectId,
         messageId: Types.ObjectId,
@@ -90,12 +94,12 @@ export class MongoosePingRepository implements IPingRepository {
         return count > 0;
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Ping.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async deleteByChannelId(
+    public async deleteByChannelId(
         userId: Types.ObjectId,
         channelId: Types.ObjectId,
     ): Promise<number> {
@@ -103,10 +107,10 @@ export class MongoosePingRepository implements IPingRepository {
             userId,
             channelId,
         });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async deleteByServerId(
+    public async deleteByServerId(
         userId: Types.ObjectId,
         serverId: Types.ObjectId,
     ): Promise<number> {
@@ -114,21 +118,21 @@ export class MongoosePingRepository implements IPingRepository {
             userId,
             serverId,
         });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async deleteByUserId(userId: Types.ObjectId): Promise<number> {
+    public async deleteByUserId(userId: Types.ObjectId): Promise<number> {
         const result = await Ping.deleteMany({
             userId,
         });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async deleteOldPings(maxAge: number): Promise<number> {
+    public async deleteOldPings(maxAge: number): Promise<number> {
         const cutoffDate = new Date(Date.now() - maxAge);
         const result = await Ping.deleteMany({
             timestamp: { $lt: cutoffDate },
         });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 }

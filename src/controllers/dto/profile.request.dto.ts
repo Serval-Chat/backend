@@ -30,32 +30,32 @@ import { VALID_USERNAME_FONTS } from '@/validation/schemas/profile';
 export class UsernameGradientDTO {
     @ApiProperty()
     @IsBoolean()
-    enabled!: boolean;
+    public enabled!: boolean;
 
     @ApiProperty()
     @IsArray()
     @IsColor({ each: true })
-    colors!: string[];
+    public colors!: string[];
 
     @ApiProperty()
     @IsNumber()
     @Min(0)
     @Max(360)
-    angle!: number;
+    public angle!: number;
 }
 
 export class UsernameGlowDTO {
     @ApiProperty()
     @IsBoolean()
-    enabled!: boolean;
+    public enabled!: boolean;
 
     @ApiProperty()
     @IsColor()
-    color!: string;
+    public color!: string;
 
     @ApiProperty()
     @IsIntensity()
-    intensity!: number;
+    public intensity!: number;
 }
 
 export class UpdateStatusRequestDTO {
@@ -63,28 +63,28 @@ export class UpdateStatusRequestDTO {
     @IsOptional()
     @IsString()
     @MaxLength(120)
-    text?: string;
+    public text?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsEmoji()
-    emoji?: string;
+    public emoji?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsIsoDate()
-    expiresAt?: string | null;
+    public expiresAt?: string | null;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsInt()
     @IsPositive()
-    expiresInMinutes?: number;
+    public expiresInMinutes?: number;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    clear?: boolean;
+    public clear?: boolean;
 }
 
 export class BulkStatusRequestDTO {
@@ -92,32 +92,32 @@ export class BulkStatusRequestDTO {
     @IsArray()
     @IsString({ each: true })
     @ArrayMaxSize(200)
-    usernames!: string[];
+    public usernames!: string[];
 }
 
 export class UpdateStyleRequestDTO {
     @ApiPropertyOptional({ enum: VALID_USERNAME_FONTS })
     @IsOptional()
     @IsIn(VALID_USERNAME_FONTS)
-    usernameFont?: string;
+    public usernameFont?: string;
 
     @ApiPropertyOptional({ type: UsernameGradientDTO })
     @IsOptional()
     @ValidateNested()
     @Type(() => UsernameGradientDTO)
-    usernameGradient?: UsernameGradientDTO;
+    public usernameGradient?: UsernameGradientDTO;
 
     @ApiPropertyOptional({ type: UsernameGlowDTO })
     @IsOptional()
     @ValidateNested()
     @Type(() => UsernameGlowDTO)
-    usernameGlow?: UsernameGlowDTO;
+    public usernameGlow?: UsernameGlowDTO;
 }
 
 export class ChangeUsernameRequestDTO {
     @ApiProperty()
     @IsUsername()
-    newUsername!: string;
+    public newUsername!: string;
 }
 
 export class UpdateLanguageRequestDTO {
@@ -125,13 +125,13 @@ export class UpdateLanguageRequestDTO {
     @IsString()
     @MinLength(2)
     @MaxLength(10)
-    language!: string;
+    public language!: string;
 }
 
 export class UpdateBioRequestDTO {
     @ApiProperty()
     @IsBio()
-    bio!: string;
+    public bio!: string;
 }
 
 export class UpdatePronounsRequestDTO {
@@ -139,7 +139,7 @@ export class UpdatePronounsRequestDTO {
     @IsString()
     @MaxLength(60)
     @IsOptional()
-    pronouns!: string;
+    public pronouns!: string;
 }
 
 export class UpdateDisplayNameRequestDTO {
@@ -148,18 +148,18 @@ export class UpdateDisplayNameRequestDTO {
     @MinLength(1)
     @MaxLength(32)
     @IsOptional()
-    displayName!: string;
+    public displayName!: string;
 }
 
 export class AssignBadgesRequestDTO {
     @ApiProperty()
     @IsArray()
     @IsString({ each: true })
-    badgeIds!: string[];
+    public badgeIds!: string[];
 }
 
 export class FilenameParamDTO {
     @ApiProperty()
     @IsFilename()
-    filename!: string;
+    public filename!: string;
 }

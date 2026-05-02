@@ -19,7 +19,6 @@ import fs from 'fs';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { Request, Response } from 'express';
 
-// Controller for serving public server assets
 @injectable()
 @Controller('api/v1/servers')
 @ApiTags('Servers (Public)')
@@ -30,14 +29,13 @@ export class ServerPublicController {
         'servers',
     );
 
-    constructor(
+    public constructor(
         @Inject(TYPES.Logger)
         private logger: ILogger,
         @Inject(TYPES.ImageDeliveryService)
         private imageDeliveryService: ImageDeliveryService,
     ) {}
 
-    // Serves a server icon file
     @Get('icon/:filename')
     @ApiOperation({ summary: 'Get server icon' })
     @ApiResponse({ status: 200, description: 'Icon file retrieved' })
@@ -78,7 +76,6 @@ export class ServerPublicController {
         return new StreamableFile(buffer);
     }
 
-    // Serves a server banner file
     @Get('banner/:filename')
     @ApiOperation({ summary: 'Get server banner' })
     @ApiResponse({ status: 200, description: 'Banner file retrieved' })

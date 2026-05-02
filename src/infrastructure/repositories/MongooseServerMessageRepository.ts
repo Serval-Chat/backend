@@ -1,11 +1,15 @@
 import { injectable } from 'inversify';
-import {
+import type {
     IServerMessageRepository,
     IServerMessage,
 } from '@/di/interfaces/IServerMessageRepository';
+import type { InteractionValue } from '@/types/interactions';
 import { ServerMessage } from '@/models/Server';
+import { IEmbed } from '@/models/Embed';
 import { Reaction } from '@/models/Reaction';
 import { type FilterQuery, Types, ClientSession } from 'mongoose';
+import type { ReactionData } from '@/di/interfaces/IReactionRepository';
+
 
 type PopulatedServerMessageDoc = Omit<IServerMessage, 'repliedToMessageId'> & {
     repliedToMessageId?: Types.ObjectId | PopulatedServerMessageDoc;
@@ -44,8 +48,8 @@ export class MongooseServerMessageRepository
 
         // Collect IDs of messages that still lack referenced_message but have replyToId
         const replyToIds = transformed
-            .filter((m) => !m.referenced_message && m.replyToId)
-            .map((m) => m.replyToId!.toString());
+            .filter((m) => m.referenced_message === undefined && m.replyToId !== undefined)
+            .map((m) => m.replyToId?.toString() ?? '').filter((id) => id !== '');
 
         // Skip legacy replyToId lookup if all messages are modern (populated via repliedToMessageId)
         if (replyToIds.length === 0) return transformed;
@@ -57,7 +61,7 @@ export class MongooseServerMessageRepository
         const replyMap = new Map(replyDocs.map((d) => [d._id.toString(), d]));
 
         return transformed.map((m) => {
-            if (!m.referenced_message && m.replyToId) {
+            if (m.referenced_message === undefined && m.replyToId !== undefined) {
                 const ref = replyMap.get(m.replyToId.toString());
                 if (ref) {
                     return {
@@ -70,7 +74,7 @@ export class MongooseServerMessageRepository
         });
     }
 
-    async create(
+    public async create(
         data: {
             serverId: string | Types.ObjectId;
             channelId: string | Types.ObjectId;
@@ -81,6 +85,12 @@ export class MongooseServerMessageRepository
             webhookAvatarUrl?: string;
             replyToId?: string | Types.ObjectId;
             repliedToMessageId?: Types.ObjectId;
+            embeds?: IEmbed[];
+            interaction?: {
+                command: string;
+                options: { name: string; value: InteractionValue }[];
+                user: { id: string; username: string };
+            };
         },
         session?: ClientSession,
     ): Promise<IServerMessage> {
@@ -89,32 +99,54 @@ export class MongooseServerMessageRepository
             serverId: new Types.ObjectId(data.serverId),
             channelId: new Types.ObjectId(data.channelId),
             senderId: new Types.ObjectId(data.senderId),
-            replyToId: data.replyToId
+            replyToId: (data.replyToId !== undefined && data.replyToId !== '')
                 ? new Types.ObjectId(data.replyToId)
                 : undefined,
         };
         const message = new ServerMessage(createData);
         const savedMessage = await message.save({ session });
-        return this.transformMessage(savedMessage.toObject());
+        return this.transformMessage(savedMessage.toObject() as unknown as PopulatedServerMessageDoc);
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
-        const result = await ServerMessage.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+    public async delete(id: Types.ObjectId): Promise<boolean> {
+        const result = await ServerMessage.updateOne(
+            { _id: id },
+            { $set: { deletedAt: new Date() } },
+        );
+        return result.modifiedCount > 0;
     }
 
-    async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
         const result = await ServerMessage.deleteMany({ serverId });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async deleteByChannelId(channelId: Types.ObjectId): Promise<number> {
+    public async deleteByChannelId(channelId: Types.ObjectId): Promise<number> {
         const result = await ServerMessage.deleteMany({ channelId });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async findById(id: Types.ObjectId): Promise<IServerMessage | null> {
-        const message = (await ServerMessage.findById(id)
+    public async bulkDelete(channelId: Types.ObjectId, ids: Types.ObjectId[]): Promise<number> {
+        const result = await ServerMessage.updateMany(
+            { 
+                channelId: new Types.ObjectId(channelId.toString()),
+                _id: { $in: ids } 
+            },
+            { $set: { deletedAt: new Date() } },
+        );
+        return result.modifiedCount;
+    }
+
+    public async findById(
+        id: Types.ObjectId,
+        includeDeleted?: boolean,
+    ): Promise<IServerMessage | null> {
+        const filter: FilterQuery<IServerMessage> = { _id: id };
+        if (includeDeleted !== true) {
+            filter.deletedAt = { $exists: false };
+        }
+
+        const message = (await ServerMessage.findOne(filter)
             .populate({
                 path: 'repliedToMessageId',
                 populate: { path: 'repliedToMessageId' },
@@ -132,25 +164,40 @@ export class MongooseServerMessageRepository
     }
 
     // Find messages in a channel with pagination
-    async findByChannelId(
+    public async findByChannelId(
         channelId: Types.ObjectId,
         limit = 50,
         before?: string,
         around?: string,
         after?: string,
+        includeDeleted?: boolean,
     ): Promise<IServerMessage[]> {
         let messages: PopulatedServerMessageDoc[] = [];
 
-        if (around) {
-            const targetMessage = (await ServerMessage.findById(
-                new Types.ObjectId(around),
+        if (around !== undefined && around !== '') {
+            const targetFilter: FilterQuery<IServerMessage> = {
+                _id: new Types.ObjectId(around),
+            };
+            if (includeDeleted !== true) {
+                targetFilter.deletedAt = { $exists: false };
+            }
+
+            const targetMessage = (await ServerMessage.findOne(
+                targetFilter,
             ).lean()) as PopulatedServerMessageDoc | null;
             if (!targetMessage) return [];
 
             const targetDate = targetMessage.createdAt;
 
-            const beforeMessages = (await ServerMessage.find({
+            const commonFilter: FilterQuery<IServerMessage> = {
                 channelId: new Types.ObjectId(channelId.toString()),
+            };
+            if (includeDeleted !== true) {
+                commonFilter.deletedAt = { $exists: false };
+            }
+
+            const beforeMessages = (await ServerMessage.find({
+                ...commonFilter,
                 createdAt: { $lt: targetDate },
             })
                 .sort({ createdAt: -1 })
@@ -162,7 +209,7 @@ export class MongooseServerMessageRepository
                 .lean()) as unknown as PopulatedServerMessageDoc[];
 
             const afterMessages = (await ServerMessage.find({
-                channelId: new Types.ObjectId(channelId.toString()),
+                ...commonFilter,
                 createdAt: { $gte: targetDate },
             })
                 .sort({ createdAt: 1 })
@@ -181,15 +228,18 @@ export class MongooseServerMessageRepository
             const query: FilterQuery<IServerMessage> = {
                 channelId: new Types.ObjectId(channelId.toString()),
             };
+            if (includeDeleted !== true) {
+                query.deletedAt = { $exists: false };
+            }
 
-            if (before) {
+            if (before !== undefined && before !== '') {
                 const isValidObjectId = /^[a-f\d]{24}$/i.test(before);
                 if (isValidObjectId) {
                     query._id = { $lt: new Types.ObjectId(before) };
                 } else {
                     query.createdAt = { $lt: new Date(before) };
                 }
-            } else if (after) {
+            } else if (after !== undefined && after !== '') {
                 const isValidObjectId = /^[a-f\d]{24}$/i.test(after);
                 if (isValidObjectId) {
                     query._id = { $gt: new Types.ObjectId(after) };
@@ -199,7 +249,7 @@ export class MongooseServerMessageRepository
             }
 
             const docs = (await ServerMessage.find(query)
-                .sort({ createdAt: after ? 1 : -1 })
+                .sort({ createdAt: (after !== undefined && after !== '') ? 1 : -1 })
                 .limit(limit)
                 .populate({
                     path: 'repliedToMessageId',
@@ -208,7 +258,7 @@ export class MongooseServerMessageRepository
                 .lean()) as unknown as PopulatedServerMessageDoc[];
 
             messages = docs;
-            if (!after) {
+            if (after === undefined || after === '') {
                 messages.reverse();
             }
         }
@@ -218,7 +268,7 @@ export class MongooseServerMessageRepository
         return await this.transformMessages(messages);
     }
 
-    async update(
+    public async update(
         id: Types.ObjectId,
         data: Partial<IServerMessage>,
     ): Promise<IServerMessage | null> {
@@ -246,7 +296,7 @@ export class MongooseServerMessageRepository
     // Groups reactions by emoji type and collects user IDs
     private async getReactionsForMessages(
         messageIds: (string | Types.ObjectId)[],
-    ): Promise<Record<string, unknown[]>> {
+    ): Promise<Record<string, ReactionData[]>> {
         const reactions = await Reaction.aggregate([
             {
                 $match: {
@@ -289,48 +339,65 @@ export class MongooseServerMessageRepository
             },
         ]);
 
-        const map: Record<string, unknown[]> = {};
+        const map: Record<string, ReactionData[]> = {};
         reactions.forEach((r) => {
             map[r._id.toString()] = r.reactions;
         });
         return map;
     }
 
-    async countByChannelId(channelId: Types.ObjectId): Promise<number> {
-        return await ServerMessage.countDocuments({ channelId });
+    public async countByChannelId(
+        channelId: Types.ObjectId,
+        includeDeleted?: boolean,
+    ): Promise<number> {
+        const filter: FilterQuery<IServerMessage> = { channelId };
+        if (includeDeleted !== true) {
+            filter.deletedAt = { $exists: false };
+        }
+        return await ServerMessage.countDocuments(filter);
     }
 
-    async countByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async countByServerId(serverId: Types.ObjectId): Promise<number> {
         return await ServerMessage.countDocuments({ serverId });
     }
 
-    findCursorByChannelId(
+    public findCursorByChannelId(
         channelId: Types.ObjectId,
     ): AsyncIterable<IServerMessage> {
         return ServerMessage.find({ channelId })
             .sort({ createdAt: 1 })
             .lean()
-            .cursor();
+            .cursor() as unknown as AsyncIterable<IServerMessage>;
     }
 
-    async findLastByChannelAndUser(
+    public async findLastByChannelAndUser(
         channelId: Types.ObjectId,
         userId: Types.ObjectId,
+        includeDeleted?: boolean,
     ): Promise<IServerMessage | null> {
-        const doc = await ServerMessage.findOne({ channelId, senderId: userId })
+        const filter: FilterQuery<IServerMessage> = { channelId, senderId: userId };
+        if (includeDeleted !== true) {
+            filter.deletedAt = { $exists: false };
+        }
+        const doc = await ServerMessage.findOne(filter)
             .sort({ createdAt: -1 })
             .lean();
         return doc
             ? this.transformMessage(doc as unknown as PopulatedServerMessageDoc)
             : null;
     }
-    async findPinnedByChannelId(
+    public async findPinnedByChannelId(
         channelId: Types.ObjectId,
+        includeDeleted?: boolean,
     ): Promise<IServerMessage[]> {
-        const messages = (await ServerMessage.find({
+        const filter: FilterQuery<IServerMessage> = {
             channelId: new Types.ObjectId(channelId.toString()),
             $or: [{ isPinned: true }, { isSticky: true }],
-        })
+        };
+        if (includeDeleted !== true) {
+            filter.deletedAt = { $exists: false };
+        }
+        const messages = (await ServerMessage.find(filter)
             .sort({ createdAt: -1 })
             .populate({
                 path: 'repliedToMessageId',
@@ -341,17 +408,17 @@ export class MongooseServerMessageRepository
         return await this.transformMessages(messages);
     }
 
-    async count(): Promise<number> {
+    public async count(): Promise<number> {
         return await ServerMessage.estimatedDocumentCount();
     }
 
-    async countCreatedAfter(date: Date): Promise<number> {
+    public async countCreatedAfter(date: Date): Promise<number> {
         return await ServerMessage.countDocuments({
             createdAt: { $gte: date },
         });
     }
 
-    async countByHour(since: Date, hours: number): Promise<number[]> {
+    public async countByHour(since: Date, hours: number): Promise<number[]> {
         const msPerHour = 1000 * 60 * 60;
         const buckets = await ServerMessage.aggregate<{
             _id: number;
@@ -380,7 +447,7 @@ export class MongooseServerMessageRepository
         return result;
     }
 
-    async countByDay(since: Date, days: number): Promise<number[]> {
+    public async countByDay(since: Date, days: number): Promise<number[]> {
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await ServerMessage.aggregate<{
             _id: number;
@@ -409,11 +476,11 @@ export class MongooseServerMessageRepository
         return result;
     }
 
-    async countAllByDay(): Promise<number[]> {
+    public async countAllByDay(): Promise<number[]> {
         const oldestMessage = await ServerMessage.findOne()
             .sort({ createdAt: 1 })
             .lean();
-        if (!oldestMessage || !oldestMessage.createdAt) return [];
+        if (!oldestMessage) return [];
 
         const now = new Date();
         const startOfOldestDay = new Date(oldestMessage.createdAt);

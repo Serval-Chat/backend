@@ -12,6 +12,7 @@ export interface IUser extends Document {
     login: string;
     username: string;
     password: string;
+    isBot?: boolean;
     profilePicture?: string;
     usernameFont?: string; // Stored as a string but typed by Mongoose enum
     usernameGradient?: {
@@ -65,6 +66,7 @@ export interface IUser extends Document {
         disableCustomUsernameGlow?: boolean;
     };
     banner?: string;
+    bannerColor?: string;
     serverSettings?: {
         order: (
             | string
@@ -80,6 +82,7 @@ const schema = new Schema<IUser>(
         username: { type: String, required: true, unique: true },
         displayName: { type: String, maxlength: 32, trim: true },
         password: { type: String, required: true },
+        isBot: { type: Boolean, default: false },
         profilePicture: { type: String, required: false },
         usernameFont: {
             type: String,
@@ -181,6 +184,7 @@ const schema = new Schema<IUser>(
             }),
         },
         banner: { type: String, required: false },
+        bannerColor: { type: String, required: false },
         serverSettings: {
             order: {
                 type: [Schema.Types.Mixed],
@@ -204,7 +208,7 @@ schema.virtual('deleted').get(function () {
 // Returns the anonymized username if the user is soft-deleted,
 // Otherwise returns the real username
 schema.virtual('displayUsername').get(function () {
-    return this.deletedAt && this.anonymizedUsername
+    return this.deletedAt !== undefined && this.anonymizedUsername !== undefined && this.anonymizedUsername !== ''
         ? this.anonymizedUsername
         : this.username;
 });

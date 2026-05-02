@@ -22,6 +22,24 @@ function getPermissionDefault(permission: PermissionKey): boolean {
         case 'sendMessages':
         case 'addReactions':
             return true;
+        case 'manageMessages':
+        case 'deleteMessagesOfOthers':
+        case 'manageChannels':
+        case 'manageRoles':
+        case 'banMembers':
+        case 'kickMembers':
+        case 'manageInvites':
+        case 'manageServer':
+        case 'administrator':
+        case 'manageWebhooks':
+        case 'pingRolesAndEveryone':
+        case 'manageReactions':
+        case 'export_channel_messages':
+        case 'bypassSlowmode':
+        case 'pinMessages':
+        case 'seeDeletedMessages':
+        case 'moderateMembers':
+            return false;
         default:
             return false;
     }
@@ -68,7 +86,7 @@ export class PermissionResolver {
     private readonly everyoneRoleId?: string;
     private readonly logger?: ILogger;
 
-    constructor(data: ServerData, logger?: ILogger) {
+    public constructor(data: ServerData, logger?: ILogger) {
         this.data = data;
         this.logger = logger;
 
@@ -88,9 +106,9 @@ export class PermissionResolver {
         this.everyoneRoleId = data.everyoneRoleId?.toString();
     }
 
-    hasServerPermission(userId: string, permission: PermissionKey): boolean {
+    public hasServerPermission(userId: string, permission: PermissionKey): boolean {
         // 1) Owner
-        if (this.data.ownerId && userId === this.data.ownerId.toString()) {
+        if (userId === this.data.ownerId.toString()) {
             this.logger?.debug(
                 `[PermissionResolver] User ${userId} is the OWNER of server ${this.data.serverId}. Bypassing server permission check for '${permission}'.`,
             );
@@ -103,7 +121,7 @@ export class PermissionResolver {
         const rolesAsc = this.getMemberRolesByAscPosition(member);
 
         // Include @everyone as the lowest-priority role in base permission merging.
-        const rolesAscWithEveryone = this.everyoneRoleId
+        const rolesAscWithEveryone = (this.everyoneRoleId !== undefined && this.everyoneRoleId !== '')
             ? this.appendEveryoneRole(rolesAsc)
             : rolesAsc;
 
@@ -118,7 +136,7 @@ export class PermissionResolver {
         return merged ?? getPermissionDefault(permission);
     }
 
-    canUserDo(
+    public canUserDo(
         userId: string,
         channelId: string,
         permission: PermissionKey,
@@ -127,16 +145,24 @@ export class PermissionResolver {
         if (!channel) return false;
 
         // 1) Owner
-        if (this.data.ownerId && userId === this.data.ownerId.toString())
+        if (userId === this.data.ownerId.toString())
             return true;
 
         const member = this.memberByUserId.get(userId);
         if (!member) return false;
 
+        if (
+            (permission === 'sendMessages' || permission === 'addReactions') &&
+            member.communicationDisabledUntil &&
+            new Date(member.communicationDisabledUntil) > new Date()
+        ) {
+            return false;
+        }
+
         const rolesAsc = this.getMemberRolesByAscPosition(member);
 
         // Include @everyone role for overrides if available.
-        const rolesAscForOverrides = this.everyoneRoleId
+        const rolesAscForOverrides = (this.everyoneRoleId !== undefined && this.everyoneRoleId !== '')
             ? this.appendEveryoneRole(rolesAsc)
             : rolesAsc;
 
@@ -153,7 +179,7 @@ export class PermissionResolver {
 
         // 4) Category overrides
         const categoryId = channel.categoryId?.toString();
-        if (categoryId) {
+        if (categoryId !== undefined && categoryId !== '') {
             const category = this.categoryById.get(categoryId);
             const categoryValue = applyOverridesForRoles(
                 rolesAscForOverrides,
@@ -171,13 +197,13 @@ export class PermissionResolver {
         return merged ?? getPermissionDefault(permission);
     }
 
-    canUserDoMultiple(
+    public canUserDoMultiple(
         userId: string,
         channelIds: string[],
         permission: PermissionKey,
     ): Map<string, boolean> {
         const results = new Map<string, boolean>();
-        if (this.data.ownerId && userId === this.data.ownerId.toString()) {
+        if (userId === this.data.ownerId.toString()) {
             for (const id of channelIds) results.set(id, true);
             return results;
         }
@@ -188,8 +214,17 @@ export class PermissionResolver {
             return results;
         }
 
+        if (
+            (permission === 'sendMessages' || permission === 'addReactions') &&
+            member.communicationDisabledUntil &&
+            new Date(member.communicationDisabledUntil) > new Date()
+        ) {
+            for (const id of channelIds) results.set(id, false);
+            return results;
+        }
+
         const rolesAsc = this.getMemberRolesByAscPosition(member);
-        const rolesAscForOverrides = this.everyoneRoleId
+        const rolesAscForOverrides = (this.everyoneRoleId !== undefined && this.everyoneRoleId !== '')
             ? this.appendEveryoneRole(rolesAsc)
             : rolesAsc;
 
@@ -220,7 +255,7 @@ export class PermissionResolver {
 
             // 4) Category overrides
             const categoryId = channel.categoryId?.toString();
-            if (categoryId) {
+            if (categoryId !== undefined && categoryId !== '') {
                 const category = this.categoryById.get(categoryId);
                 const categoryValue = applyOverridesForRoles(
                     rolesAscForOverrides,
@@ -247,8 +282,8 @@ export class PermissionResolver {
         return results;
     }
 
-    getHighestRolePosition(userId: string): number {
-        if (this.data.ownerId && userId === this.data.ownerId.toString())
+    public getHighestRolePosition(userId: string): number {
+        if (userId === this.data.ownerId.toString())
             return Number.MAX_SAFE_INTEGER;
 
         const member = this.memberByUserId.get(userId);
@@ -284,7 +319,7 @@ export class PermissionResolver {
     private getEveryonePermission(
         permission: PermissionKey,
     ): boolean | undefined {
-        if (!this.everyoneRoleId) return undefined;
+        if (this.everyoneRoleId === undefined || this.everyoneRoleId === '') return undefined;
         const role = this.roleById.get(this.everyoneRoleId);
         if (!role) return undefined;
 
@@ -295,7 +330,7 @@ export class PermissionResolver {
     private appendEveryoneRole(
         rolesByAscPosition: readonly ServerRole[],
     ): ServerRole[] {
-        if (!this.everyoneRoleId) return [...rolesByAscPosition];
+        if (this.everyoneRoleId === undefined || this.everyoneRoleId === '') return [...rolesByAscPosition];
         const everyone = this.roleById.get(this.everyoneRoleId);
         if (!everyone) return [...rolesByAscPosition];
 

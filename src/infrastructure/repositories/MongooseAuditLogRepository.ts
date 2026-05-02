@@ -12,9 +12,9 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseAuditLogRepository implements IAuditLogRepository {
     private auditLogModel = AuditLog;
-    constructor() {}
+    public constructor() {}
 
-    async create(data: {
+    public async create(data: {
         serverId?: Types.ObjectId;
         actorId: Types.ObjectId;
         actionType: string;
@@ -50,7 +50,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         return savedAuditLog.toObject() as IAuditLog;
     }
 
-    async find(options: {
+    public async find(options: {
         serverId?: Types.ObjectId | null;
         limit?: number;
         offset?: number;
@@ -69,46 +69,43 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             query.serverId = options.serverId;
         }
 
-        if (options.actorId) {
+        if (options.actorId !== undefined) {
             query.actorId = options.actorId;
         }
 
-        if (options.actionType) {
+        if (options.actionType !== undefined && options.actionType !== '') {
             query.actionType = options.actionType;
         }
 
-        if (options.targetId) {
+        if (options.targetId !== undefined) {
             query.targetId = options.targetId;
         }
 
-        if (options.targetUserId) {
+        if (options.targetUserId !== undefined) {
             query.targetUserId = options.targetUserId;
         }
 
-        if (options.reason) {
+        if (options.reason !== undefined && options.reason !== '') {
             query.reason = { $regex: options.reason, $options: 'i' };
         }
 
-        if (options.startDate || options.endDate) {
+        if (options.startDate !== undefined || options.endDate !== undefined) {
             query.timestamp = {};
-            if (options.startDate) {
+            if (options.startDate !== undefined) {
                 query.timestamp.$gte = options.startDate;
             }
-            if (options.endDate) {
+            if (options.endDate !== undefined) {
                 query.timestamp.$lte = options.endDate;
             }
         }
 
-        if (options.cursor) {
-            try {
-                query._id = { $lt: new Types.ObjectId(options.cursor) };
-            } catch {}
+        if (options.cursor !== undefined && options.cursor !== '') {
         }
 
         const results = await this.auditLogModel
             .find(query)
             .sort({ _id: -1 })
-            .limit(options.limit || 50)
+            .limit(options.limit ?? 50)
             .populate('actorId', 'username profilePicture displayName')
             .populate('targetUserId', 'username displayName profilePicture')
             .lean()
@@ -117,7 +114,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         return results as unknown as IAuditLog[];
     }
 
-    async findById(id: Types.ObjectId): Promise<IAuditLog | null> {
+    public async findById(id: Types.ObjectId): Promise<IAuditLog | null> {
         const result = await this.auditLogModel
             .findById(id)
             .populate('actorId', 'username profilePicture displayName')
@@ -128,7 +125,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         return result as IAuditLog | null;
     }
 
-    async count(options: {
+    public async count(options: {
         serverId?: Types.ObjectId | null;
         actorId?: Types.ObjectId;
         actionType?: string;
@@ -142,24 +139,24 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             query.serverId = options.serverId;
         }
 
-        if (options.actorId) {
+        if (options.actorId !== undefined) {
             query.actorId = options.actorId;
         }
 
-        if (options.actionType) {
+        if (options.actionType !== undefined && options.actionType !== '') {
             query.actionType = options.actionType;
         }
 
-        if (options.targetUserId) {
+        if (options.targetUserId !== undefined) {
             query.targetUserId = options.targetUserId;
         }
 
-        if (options.startDate || options.endDate) {
+        if (options.startDate !== undefined || options.endDate !== undefined) {
             query.timestamp = {};
-            if (options.startDate) {
+            if (options.startDate !== undefined) {
                 query.timestamp.$gte = options.startDate;
             }
-            if (options.endDate) {
+            if (options.endDate !== undefined) {
                 query.timestamp.$lte = options.endDate;
             }
         }

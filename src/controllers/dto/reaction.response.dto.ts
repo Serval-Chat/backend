@@ -3,20 +3,20 @@ import { IsMongoId, IsOptional, IsString } from 'class-validator';
 
 export class ReactionResponseDTO {
     @ApiProperty()
-    emoji!: string;
+    public emoji!: string;
 
     @ApiProperty()
-    type!: 'unicode' | 'custom';
+    public type!: 'unicode' | 'custom';
 
     @ApiProperty({ required: false })
     @IsOptional()
     @IsMongoId()
     @IsString()
-    emojiId?: string;
+    public emojiId?: string;
 
     @ApiProperty()
-    count!: number;
+    public count!: number;
 
     @ApiProperty()
-    me!: boolean;
+    public me!: boolean;
 }

@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import { BlockProfile, IBlockProfile } from '@/models/BlockProfile';
@@ -9,6 +10,7 @@ import {
 } from '@/di/interfaces/IBlockRepository';
 
 @injectable()
+@Injectable()
 export class MongooseBlockRepository implements IBlockRepository {
     public async createProfile(
         ownerId: Types.ObjectId,
@@ -108,17 +110,13 @@ export class MongooseBlockRepository implements IBlockRepository {
             return {
                 targetId: target
                     ? target._id.toString()
-                    : rawTargetId
-                      ? rawTargetId.toString()
-                      : 'unknown',
+                    : rawTargetId.toString(),
                 targetUsername: target
-                    ? target.username || 'Unknown User'
+                    ? target.username
                     : 'Deleted User',
                 profileId: profile
                     ? profile._id.toString()
-                    : rawProfileId
-                      ? rawProfileId.toString()
-                      : 'unknown',
+                    : rawProfileId.toString(),
                 flags: profile ? profile.flags : 0,
             };
         });
@@ -132,7 +130,7 @@ export class MongooseBlockRepository implements IBlockRepository {
             .exec();
 
         return blocks.map((b) => {
-            const profile = b.profileId as unknown as IBlockProfile;
+            const profile = b.profileId as unknown as IBlockProfile | null;
             return {
                 blockerId: b.blockerId.toString(),
                 flags: profile ? profile.flags : 0,
@@ -154,9 +152,9 @@ export class MongooseBlockRepository implements IBlockRepository {
         const block = await UserBlock.findOne({ blockerId, targetId })
             .populate('profileId')
             .exec();
-        if (!block) return 0;
+        if (block === null) return 0;
 
-        const profile = block.profileId as unknown as IBlockProfile;
+        const profile = block.profileId as unknown as IBlockProfile | null;
         return profile ? profile.flags : 0;
     }
 }

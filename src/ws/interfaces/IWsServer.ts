@@ -29,6 +29,7 @@ export interface IWsServer {
         event: AnyResponseWsEvent,
         replyTo?: string,
         excludeWs?: WebSocket,
+        options?: { excludeBots?: boolean },
     ): void;
     broadcastToAll(event: AnyResponseWsEvent): void;
     subscribeToChannel(ws: WebSocket, channelId: string): void;
@@ -46,6 +47,7 @@ export interface IWsServer {
         event: AnyResponseWsEvent,
         replyTo?: string,
         excludeWs?: WebSocket,
+        options?: { excludeBots?: boolean; onlyBots?: boolean },
     ): void;
     broadcastToServerWithPermission(
         serverId: string,
@@ -54,9 +56,11 @@ export interface IWsServer {
             type: 'server' | 'channel';
             targetId?: string;
             permission: string;
+            negate?: boolean;
         },
         replyTo?: string,
         excludeWs?: WebSocket,
+        options?: { excludeBots?: boolean; onlyBots?: boolean },
     ): Promise<void>;
     sendToSocketById(
         socketId: string,

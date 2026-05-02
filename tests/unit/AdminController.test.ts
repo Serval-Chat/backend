@@ -4,7 +4,7 @@ import { AdminController } from '../../src/controllers/AdminController';
 import { createTestUser, createMockRequest } from '../utils/test-utils';
 import { ProfileFieldDTO } from '../../src/controllers/dto/common.request.dto';
 import type { AuthenticatedRequest } from '../../src/middleware/auth';
-import type { IServerRepository } from '../../src/di/interfaces/IServerRepository';
+
 
 describe('AdminController', () => {
     let mockUserRepo: Record<string, jest.Mock>;
@@ -13,7 +13,7 @@ describe('AdminController', () => {
     let mockWsServer: Record<string, jest.Mock>;
     let mockLogger: Record<string, jest.Mock>;
     let mockBanRepo: Record<string, jest.Mock>;
-    let mockServerRepo: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    let mockServerRepo: Record<string, jest.Mock>;
     let mockMessageRepo: Record<string, jest.Mock>;
     let mockServerMessageRepo: Record<string, jest.Mock>;
     let mockWarningRepo: Record<string, jest.Mock>;
@@ -23,7 +23,7 @@ describe('AdminController', () => {
     let mockAdminNoteRepo: Record<string, jest.Mock>;
 
     let controller: AdminController;
-    const getMockServerRepo = (): any => mockServerRepo; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const getMockServerRepo = (): Record<string, jest.Mock> => mockServerRepo;
 
     beforeEach(() => {
         mockUserRepo = {
@@ -46,7 +46,7 @@ describe('AdminController', () => {
             findByIds: jest.fn(),
             delete: jest.fn(),
             create: jest.fn(),
-        } as unknown as IServerRepository;
+        } as unknown as Record<string, jest.Mock>;
         mockMessageRepo = {} as Record<string, jest.Mock>;
         mockServerMessageRepo = {} as Record<string, jest.Mock>;
         mockWarningRepo = {} as Record<string, jest.Mock>;
@@ -81,8 +81,8 @@ describe('AdminController', () => {
         const userId = new Types.ObjectId().toString();
         const testUser = createTestUser({ _id: new Types.ObjectId(userId), banner: 'old-banner.png' });
 
-        mockUserRepo.findById!.mockResolvedValue(testUser);
-        mockUserRepo.update!.mockImplementation(async (id: string | Types.ObjectId, data: Record<string, unknown>) => ({ ...testUser, ...data }));
+        (mockUserRepo.findById as jest.Mock).mockResolvedValue(testUser);
+        (mockUserRepo.update as jest.Mock).mockImplementation(async (id: string | Types.ObjectId, data: Record<string, unknown>) => ({ ...testUser, ...data }));
 
         const mockReq = createMockRequest({
             user: { id: new Types.ObjectId().toString() }
@@ -90,8 +90,8 @@ describe('AdminController', () => {
 
         const result = await controller.resetUserProfile(userId, { fields: [ProfileFieldDTO.BANNER] }, mockReq);
 
-        expect(mockUserRepo.update!).toHaveBeenCalledTimes(1);
-        const updateCall = mockUserRepo.update!.mock.calls[0];
+        expect(mockUserRepo.update as jest.Mock).toHaveBeenCalledTimes(1);
+        const updateCall = (mockUserRepo.update as jest.Mock).mock.calls[0];
         expect(updateCall[0].toString()).toBe(userId);
         expect(updateCall[1]).toEqual({ banner: null });
         expect(result.message).toBe('User profile fields reset');
@@ -112,6 +112,7 @@ describe('AdminController', () => {
                 profilePicture: 'admin_pic.webp'
             },
             content: 'Test note',
+            history: [],
             createdAt: new Date(),
             updatedAt: new Date(),
             deletedAt: null,
@@ -124,7 +125,8 @@ describe('AdminController', () => {
         const result = await controller.getUserNotes(userId);
 
         expect(result).toHaveLength(1);
-        const note = result[0]!;
+        const note = result[0];
+        if (note === undefined) throw new Error('note should not be undefined');
         expect(note.adminId.profilePicture).toBe('/api/v1/profile/picture/admin_pic.webp');
         expect(note.content).toBe('Test note');
         expect(note.history).toEqual([]);
@@ -136,11 +138,12 @@ describe('AdminController', () => {
             const mockServer = {
                 _id: new Types.ObjectId(serverId),
                 name: 'Test Server',
+                verificationRequested: true,
                 ownerId: new Types.ObjectId()
             };
 
-            getMockServerRepo().findById.mockResolvedValue(mockServer);
-            getMockServerRepo().update.mockResolvedValue({ ...mockServer, verified: true });
+            (getMockServerRepo().findById as jest.Mock).mockResolvedValue(mockServer);
+            (getMockServerRepo().update as jest.Mock).mockResolvedValue({ ...mockServer, verified: true });
             
             mockAuditLogRepo.create = jest.fn().mockResolvedValue({});
 
@@ -151,7 +154,10 @@ describe('AdminController', () => {
             const result = await controller.verifyServer(serverId, mockReq);
 
             expect(mockServerRepo.findById).toHaveBeenCalledWith(new Types.ObjectId(serverId), true);
-            expect(mockServerRepo.update).toHaveBeenCalledWith(new Types.ObjectId(serverId), { verified: true });
+            expect(mockServerRepo.update).toHaveBeenCalledWith(new Types.ObjectId(serverId), { 
+                verified: true,
+                verificationRequested: false
+            });
             expect(mockAuditLogRepo.create).toHaveBeenCalled();
             expect(mockAuditLogRepo.create.mock.calls[0][0]).toMatchObject({
                 actionType: 'verify_server'
@@ -167,8 +173,8 @@ describe('AdminController', () => {
                 ownerId: new Types.ObjectId()
             };
 
-            getMockServerRepo().findById.mockResolvedValue(mockServer);
-            getMockServerRepo().update.mockResolvedValue({ ...mockServer, verified: false });
+            (getMockServerRepo().findById as jest.Mock).mockResolvedValue(mockServer);
+            (getMockServerRepo().update as jest.Mock).mockResolvedValue({ ...mockServer, verified: false });
             mockAuditLogRepo.create = jest.fn().mockResolvedValue({});
 
             const mockReq = createMockRequest({

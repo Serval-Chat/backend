@@ -11,7 +11,7 @@ export class RedisService implements IRedisService {
     private publisher: Redis;
     private subscriber: Redis;
 
-    constructor(@inject(TYPES.Logger) private logger: ILogger) {
+    public constructor(@inject(TYPES.Logger) private logger: ILogger) {
         this.client = new Redis(REDIS_URL, {
             retryStrategy: (times) => {
                 const delay = Math.min(times * 50, 2000);

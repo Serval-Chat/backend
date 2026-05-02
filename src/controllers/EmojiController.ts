@@ -22,13 +22,11 @@ interface RequestWithUser extends Request {
     user: JWTPayload;
 }
 
-// Controller for emoji management
-// Provides access to server-specific and global emojis
 @ApiTags('Emojis')
 @injectable()
 @Controller('api/v1/emojis')
 export class EmojiController {
-    constructor(
+    public constructor(
         @Inject(TYPES.EmojiRepository)
         private emojiRepo: IEmojiRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -50,7 +48,6 @@ export class EmojiController {
 
         const memberships =
             await this.serverMemberRepo.findAllByUserId(userOid);
-        // Extract server IDs from membership objects
         const serverIds = memberships.map((m) => m.serverId);
 
         const emojis = await this.emojiRepo.findByServerIds(serverIds);
@@ -58,7 +55,7 @@ export class EmojiController {
             _id: e._id.toString(),
             name: e.name,
             imageUrl: e.imageUrl,
-            serverId: e.serverId?.toString() || '', // Handle global emojis if serverId is optional/missing
+            serverId: e.serverId.toString(),
             createdBy: e.createdBy.toString(),
             createdAt: e.createdAt,
         }));
@@ -71,10 +68,9 @@ export class EmojiController {
     public async getEmojiById(
         @Param('emojiId') emojiId: string,
     ): Promise<EmojiResponseDTO> {
-        // Fetch emoji by its unique ID
         const emojiOid = new Types.ObjectId(emojiId);
         const emoji = await this.emojiRepo.findById(emojiOid);
-        if (!emoji) {
+        if (emoji === null) {
             throw new ApiError(404, ErrorMessages.EMOJI.NOT_FOUND);
         }
 
@@ -82,7 +78,7 @@ export class EmojiController {
             _id: emoji._id.toString(),
             name: emoji.name,
             imageUrl: emoji.imageUrl,
-            serverId: emoji.serverId?.toString() || '',
+            serverId: emoji.serverId.toString(),
             createdBy: emoji.createdBy.toString(),
             createdAt: emoji.createdAt,
         };

@@ -24,10 +24,8 @@ export interface IMessage {
 //
 // Encapsulates all direct message-related database operations
 export interface IMessageRepository {
-    // Find message by ID
     findById(id: Types.ObjectId): Promise<IMessage | null>;
 
-    // Find messages between two users
     findByConversation(
         user1Id: Types.ObjectId,
         user2Id: Types.ObjectId,
@@ -37,7 +35,6 @@ export interface IMessageRepository {
         after?: string,
     ): Promise<IMessage[]>;
 
-    // Create a new message
     create(
         data: {
             senderId: Types.ObjectId;
@@ -49,10 +46,8 @@ export interface IMessageRepository {
         session?: ClientSession,
     ): Promise<IMessage>;
 
-    // Update message (for editing)
     update(id: Types.ObjectId, text: string): Promise<IMessage | null>;
 
-    // Delete message by ID
     delete(id: Types.ObjectId): Promise<boolean>;
 
     // Update many messages sent by a user (for hard delete - anonymize)
@@ -73,7 +68,6 @@ export interface IMessageRepository {
         },
     ): Promise<{ modifiedCount: number }>;
 
-    // Count total messages
     count(): Promise<number>;
 
     // Count messages created after a certain date

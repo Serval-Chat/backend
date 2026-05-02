@@ -4,6 +4,8 @@ import { Injectable, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { IPingRepository } from '@/di/interfaces/IPingRepository';
 import type { IPing } from '@/di/interfaces/IPingRepository';
+import { PingMentionMessageDTO, PingExportMessageDTO } from '@/controllers/dto/types.dto';
+
 
 export interface PingNotification {
     id: string;
@@ -12,7 +14,7 @@ export interface PingNotification {
     senderId: string;
     serverId?: string;
     channelId?: string;
-    message: Record<string, unknown>;
+    message: PingMentionMessageDTO | PingExportMessageDTO;
     timestamp: number;
 }
 
@@ -22,14 +24,14 @@ export interface PingNotification {
 export class PingService {
     private readonly maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
-    constructor(
+    public constructor(
         @inject(TYPES.PingRepository)
         @Inject(TYPES.PingRepository)
         private pingRepo: IPingRepository,
     ) {}
 
     // Store a ping for a user (both online and offline)
-    async addPing(
+    public async addPing(
         userId: mongoose.Types.ObjectId,
         pingData: Omit<PingNotification, 'id' | 'timestamp'>,
     ): Promise<PingNotification> {
@@ -38,8 +40,8 @@ export class PingService {
             _id?: string;
             messageId?: string;
         };
-        const messageId = (msg?._id || msg?.messageId)?.toString() || 'unknown';
-        const senderId = pingData.senderId?.toString() || 'unknown';
+        const messageId = (msg._id ?? msg.messageId ?? 'unknown').toString();
+        const senderId = pingData.senderId.toString();
 
         if (
             !mongoose.Types.ObjectId.isValid(senderId) ||
@@ -82,7 +84,7 @@ export class PingService {
             serverId?: mongoose.Types.ObjectId;
             channelId?: mongoose.Types.ObjectId;
             messageId: mongoose.Types.ObjectId;
-            message: Record<string, unknown>;
+            message: PingMentionMessageDTO | PingExportMessageDTO;
             timestamp?: Date;
         } = {
             userId,
@@ -93,12 +95,12 @@ export class PingService {
             message: pingData.message,
         };
 
-        if (pingData.serverId) {
+        if (pingData.serverId !== undefined && pingData.serverId !== '') {
             createData.serverId = new mongoose.Types.ObjectId(
                 pingData.serverId,
             );
         }
-        if (pingData.channelId) {
+        if (pingData.channelId !== undefined && pingData.channelId !== '') {
             createData.channelId = new mongoose.Types.ObjectId(
                 pingData.channelId,
             );
@@ -110,7 +112,7 @@ export class PingService {
     }
 
     // Get all pings for a user (with age filtering)
-    async getPingsForUser(
+    public async getPingsForUser(
         userId: mongoose.Types.ObjectId,
     ): Promise<PingNotification[]> {
         const pings = await this.pingRepo.findByUserId(userId, this.maxAge);
@@ -118,7 +120,7 @@ export class PingService {
     }
 
     // Remove a specific ping
-    async removePing(
+    public async removePing(
         userId: mongoose.Types.ObjectId,
         pingId: mongoose.Types.ObjectId,
     ): Promise<boolean> {
@@ -126,14 +128,14 @@ export class PingService {
     }
 
     // Clear all pings for a specific channel
-    async clearChannelPings(
+    public async clearChannelPings(
         userId: mongoose.Types.ObjectId,
         channelId: mongoose.Types.ObjectId,
     ): Promise<number> {
         return await this.pingRepo.deleteByChannelId(userId, channelId);
     }
 
-    async clearServerPings(
+    public async clearServerPings(
         userId: mongoose.Types.ObjectId,
         serverId: mongoose.Types.ObjectId,
     ): Promise<number> {
@@ -141,7 +143,7 @@ export class PingService {
     }
 
     // Clear all pings for a user
-    async clearAllPings(userId: mongoose.Types.ObjectId): Promise<void> {
+    public async clearAllPings(userId: mongoose.Types.ObjectId): Promise<void> {
         await this.pingRepo.deleteByUserId(userId);
     }
 
@@ -152,7 +154,7 @@ export class PingService {
             type: ping.type,
             sender: ping.sender,
             senderId: ping.senderId.toString(),
-            message: ping.message,
+            message: ping.message as unknown as PingMentionMessageDTO | PingExportMessageDTO,
             timestamp:
                 ping.timestamp instanceof Date
                     ? ping.timestamp.getTime()

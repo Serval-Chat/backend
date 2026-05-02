@@ -12,17 +12,17 @@ export class CreateInviteRequestDTO {
     @IsOptional()
     @IsInt()
     @IsPositive()
-    maxUses?: number;
+    public maxUses?: number;
 
     @ApiPropertyOptional({ description: 'Expiration time in seconds' })
     @IsOptional()
     @IsInt()
     @IsPositive()
-    expiresIn?: number;
+    public expiresIn?: number;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
     @MaxLength(50)
-    customPath?: string;
+    public customPath?: string;
 }

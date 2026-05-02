@@ -41,7 +41,7 @@ const writeTokens = (tokens: string[]) => {
  */
 router.get('/', requireAdmin('manageInvites'), async (req, res) => {
     try {
-        const tokens = await readTokens();
+        const tokens = readTokens();
         res.json(tokens);
     } catch (error) {
         logger.error('Failed to list invites:', error);
@@ -55,7 +55,7 @@ router.get('/', requireAdmin('manageInvites'), async (req, res) => {
 router.post('/', requireAdmin('manageInvites'), async (req, res) => {
     try {
         const token = crypto.randomBytes(16).toString('hex');
-        const tokens = await readTokens();
+        const tokens = readTokens();
 
         if (tokens.includes(token)) {
             // This is highly unlikely with randomBytes, but good practice
@@ -65,7 +65,7 @@ router.post('/', requireAdmin('manageInvites'), async (req, res) => {
         }
 
         tokens.push(token);
-        await writeTokens(tokens);
+        writeTokens(tokens);
 
         res.json({ message: 'Invite created', token });
     } catch (error) {
@@ -80,17 +80,17 @@ router.post('/', requireAdmin('manageInvites'), async (req, res) => {
 router.delete('/:token', requireAdmin('manageInvites'), async (req, res) => {
     try {
         const tokenToDelete = req.params.token;
-        if (!tokenToDelete) {
+        if (tokenToDelete === undefined || tokenToDelete === '') {
             return res.status(400).json({ error: 'Token is required' });
         }
-        const tokens = await readTokens();
+        const tokens = readTokens();
 
         if (!tokens.includes(tokenToDelete)) {
             return res.status(404).json({ error: 'Token not found' });
         }
 
         const newTokens = tokens.filter((t) => t !== tokenToDelete);
-        await writeTokens(newTokens);
+        writeTokens(newTokens);
 
         res.json({ message: 'Invite deleted' });
     } catch (error) {
@@ -113,7 +113,7 @@ router.post('/batch', requireAdmin('manageInvites'), async (req, res) => {
             });
         }
 
-        const existingTokens = await readTokens();
+        const existingTokens = readTokens();
         const newTokens: string[] = [];
 
         while (newTokens.length < numCount) {
@@ -124,7 +124,7 @@ router.post('/batch', requireAdmin('manageInvites'), async (req, res) => {
         }
 
         const allTokens = [...existingTokens, ...newTokens];
-        await writeTokens(allTokens);
+        writeTokens(allTokens);
 
         res.json({
             message: `${numCount} invites created`,

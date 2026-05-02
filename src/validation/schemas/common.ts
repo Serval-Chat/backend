@@ -18,6 +18,7 @@ import {
 import { isPermissionKey } from '@/permissions/types';
 import type { ValidationOptions } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { MAX_MESSAGE_LENGTH } from '@/config/env';
 
 // --- ID Validations ---
 
@@ -238,9 +239,9 @@ export function IsMessageContent(validationOptions?: ValidationOptions) {
             ...validationOptions,
             message: 'Message content cannot be empty',
         }),
-        MaxLength(2000, {
+        MaxLength(MAX_MESSAGE_LENGTH, {
             ...validationOptions,
-            message: 'Message content must be at most 2000 characters',
+            message: `Message content must be at most ${MAX_MESSAGE_LENGTH} characters`,
         }),
     );
 }
@@ -256,7 +257,7 @@ export function IsUrlField(validationOptions?: ValidationOptions) {
 export function IsLimit(validationOptions?: ValidationOptions) {
     return applyDecorators(
         IsOptional(validationOptions),
-        Transform(({ value }) => (value ? parseInt(value, 10) : 50)),
+        Transform(({ value }) => (value !== undefined && value !== '' ? parseInt(value as string, 10) : 50)),
         IsInt(validationOptions),
         Min(1, validationOptions),
         Max(100, validationOptions),
@@ -266,7 +267,7 @@ export function IsLimit(validationOptions?: ValidationOptions) {
 export function IsOffset(validationOptions?: ValidationOptions) {
     return applyDecorators(
         IsOptional(validationOptions),
-        Transform(({ value }) => (value ? parseInt(value, 10) : 0)),
+        Transform(({ value }) => (value !== undefined && value !== '' ? parseInt(value as string, 10) : 0)),
         IsInt(validationOptions),
         Min(0, validationOptions),
     );
@@ -276,7 +277,7 @@ export function IsBooleanQuery(validationOptions?: ValidationOptions) {
     return applyDecorators(
         IsOptional(validationOptions),
         Transform(({ value }) => {
-            if (!value) return undefined;
+            if (value === undefined || value === '') return undefined;
             const normalized = String(value).toLowerCase();
             return normalized === 'true' || normalized === '1';
         }),
@@ -393,7 +394,7 @@ export const nameSchema = z
 export const messageContentSchema = z
     .string()
     .min(1, 'Message content cannot be empty')
-    .max(2000, 'Message content must be at most 2000 characters')
+    .max(MAX_MESSAGE_LENGTH, `Message content must be at most ${MAX_MESSAGE_LENGTH} characters`)
     .trim();
 
 export const reasonSchema = z
@@ -421,12 +422,12 @@ export const optionalUrlSchema = z
 export const limitSchema = z
     .string()
     .optional()
-    .transform((val) => (val ? parseInt(val, 10) : 50));
+    .transform((val) => (val !== undefined && val !== '' ? parseInt(val, 10) : 50));
 
 export const offsetSchema = z
     .string()
     .optional()
-    .transform((val) => (val ? parseInt(val, 10) : 0));
+    .transform((val) => (val !== undefined && val !== '' ? parseInt(val, 10) : 0));
 
 export const searchSchema = z.string().optional();
 
@@ -446,7 +447,7 @@ export function IsPermissionMap(validationOptions?: ValidationOptions) {
             options: {
                 ...validationOptions,
                 message:
-                    validationOptions?.message || 'Invalid permission key(s)',
+                    validationOptions?.message ?? 'Invalid permission key(s)',
             },
             validator: {
                 validate(value: unknown) {
@@ -458,7 +459,7 @@ export function IsPermissionMap(validationOptions?: ValidationOptions) {
                     >;
                     for (const roleId in map) {
                         const perms = map[roleId];
-                        if (typeof perms !== 'object' || perms === null)
+                        if (typeof perms !== 'object')
                             return false;
                         for (const key in perms) {
                             // Unknown keys (e.g. _id) are skipped; the
@@ -483,7 +484,7 @@ export function IsPermissions(validationOptions?: ValidationOptions) {
             options: {
                 ...validationOptions,
                 message:
-                    validationOptions?.message || 'Invalid permission key(s)',
+                    validationOptions?.message ?? 'Invalid permission key(s)',
             },
             validator: {
                 validate(value: unknown) {

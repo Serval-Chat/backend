@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import { User } from '@/models/User';
@@ -13,19 +14,20 @@ import { ServerBan } from '@/models/Server';
 //
 // Implements IServerBanRepository using Mongoose ServerBan model
 @injectable()
+@Injectable()
 export class MongooseServerBanRepository implements IServerBanRepository {
-    async findByServerAndUser(
+    public async findByServerAndUser(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<IServerBan | null> {
         return await ServerBan.findOne({ serverId, userId }).lean();
     }
 
-    async findByServerId(serverId: Types.ObjectId): Promise<IServerBan[]> {
+    public async findByServerId(serverId: Types.ObjectId): Promise<IServerBan[]> {
         return await ServerBan.find({ serverId }).lean();
     }
 
-    async findByServerIdWithUserInfo(
+    public async findByServerIdWithUserInfo(
         serverId: Types.ObjectId,
     ): Promise<(IServerBan & { user: MappedUser | null })[]> {
         const bans = await ServerBan.find({ serverId }).lean();
@@ -52,28 +54,28 @@ export class MongooseServerBanRepository implements IServerBanRepository {
         });
     }
 
-    async create(data: CreateServerBanDTO): Promise<IServerBan> {
+    public async create(data: CreateServerBanDTO): Promise<IServerBan> {
         const ban = new ServerBan(data);
         return await ban.save();
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await ServerBan.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
         const result = await ServerBan.deleteMany({ serverId });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
     // Unban user from server
     // Removes the ban record for the specified user and server
-    async unban(
+    public async unban(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<boolean> {
         const result = await ServerBan.deleteOne({ serverId, userId });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 }

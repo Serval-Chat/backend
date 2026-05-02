@@ -37,7 +37,7 @@ router.get('*', (req, res, next) => {
         let html = readFileSync(htmlPath, 'utf8');
 
         // Inject CSP nonce
-        const nonce = res.locals.cspNonce || '';
+        const nonce = (res.locals.cspNonce !== undefined && res.locals.cspNonce !== null && res.locals.cspNonce !== '') ? String(res.locals.cspNonce) : '';
         html = html.replace(/<script/g, `<script nonce="${nonce}"`);
 
         res.send(html);

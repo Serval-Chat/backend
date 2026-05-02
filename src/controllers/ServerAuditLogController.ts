@@ -32,7 +32,7 @@ import { mapAuditLogEntry } from '@/utils/auditLog';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class ServerAuditLogController {
-    constructor(
+    public constructor(
         @Inject(TYPES.AuditLogRepository)
         private auditLogRepo: IAuditLogRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -62,7 +62,7 @@ export class ServerAuditLogController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException('You are not a member of this server');
         }
 
@@ -72,7 +72,7 @@ export class ServerAuditLogController {
             userOid,
             'manageServer',
         );
-        if (!hasPermission) {
+        if (hasPermission !== true) {
             throw new ForbiddenException(
                 'You do not have permission to view the audit log',
             );
@@ -85,22 +85,17 @@ export class ServerAuditLogController {
             limit: limit + 1, // fetch one extra to determine if there's a next page
             cursor: query.cursor,
             actionType: query.action,
-            actorId: query.moderatorId
-                ? new Types.ObjectId(query.moderatorId)
-                : undefined,
-            targetId: query.targetId
-                ? new Types.ObjectId(query.targetId)
-                : undefined,
-            startDate: query.after ? new Date(query.after) : undefined,
-            endDate: query.before ? new Date(query.before) : undefined,
+            actorId: (query.moderatorId !== undefined && query.moderatorId !== '') ? new Types.ObjectId(query.moderatorId) : undefined,
+            targetId: (query.targetId !== undefined && query.targetId !== '') ? new Types.ObjectId(query.targetId) : undefined,
+            startDate: (query.after !== undefined && query.after !== '') ? new Date(query.after) : undefined,
+            endDate: (query.before !== undefined && query.before !== '') ? new Date(query.before) : undefined,
             reason: query.reason,
         });
 
         const hasMore = entries.length > limit;
         const pageEntries = hasMore ? entries.slice(0, limit) : entries;
         const lastEntry = pageEntries[pageEntries.length - 1];
-        const nextCursor =
-            hasMore && lastEntry?._id ? lastEntry._id.toString() : null;
+        const nextCursor = (hasMore && lastEntry) ? lastEntry._id.toString() : null;
 
         return {
             entries: pageEntries.map((entry) =>

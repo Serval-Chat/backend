@@ -66,6 +66,7 @@ import { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
+import { NoBot } from '@/modules/auth/bot.decorator';
 
 import { Badge } from '@/models/Badge';
 import { storage } from '@/config/multer';
@@ -84,7 +85,7 @@ interface RequestWithUser extends Request {
 @injectable()
 @Controller('api/v1/profile')
 export class ProfileController {
-    constructor(
+    public constructor(
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
         @Inject(TYPES.Logger)
@@ -99,7 +100,7 @@ export class ProfileController {
         private imageDeliveryService: ImageDeliveryService,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
-    ) {}
+    ) { }
 
     private async mapToProfile(
         user: IUser,
@@ -110,20 +111,18 @@ export class ProfileController {
         } = {},
     ): Promise<UserProfileResponseDTO> {
         const mapped = mapUser(user, options);
-        if (!mapped) {
+        if (mapped === null) {
             throw new Error('User not found');
         }
 
         if (
-            user.badges &&
-            Array.isArray(user.badges) &&
+            user.badges !== undefined &&
             user.badges.length > 0
         ) {
             try {
                 const badgeDocs = await Badge.find({ id: { $in: user.badges } })
                     .lean()
                     .exec();
-                // @ts-ignore - badges type mismatch in mapUser vs DTO but compatible at runtime
                 mapped.badges = badgeDocs.map((doc) => ({
                     _id: doc._id.toString(),
                     id: doc.id,
@@ -138,31 +137,25 @@ export class ProfileController {
             }
         }
 
-        // @ts-ignore
-        mapped.banner = user.banner
-            ? `/api/v1/profile/banner/${user.banner}`
-            : null;
-
-        // @ts-ignore
         mapped.serverSettings = user.serverSettings;
 
-        if (options.viewerId && options.viewerId !== user._id.toString()) {
+        if (options.viewerId !== undefined && options.viewerId !== '' && options.viewerId !== user._id.toString()) {
             const blockFlags = await this.blockRepo.getActiveBlockFlags(
                 user._id,
                 new Types.ObjectId(options.viewerId),
             );
 
             const profile = mapped as UserProfileResponseDTO;
-            if (blockFlags & BlockFlags.HIDE_MY_PRONOUNS) {
+            if ((blockFlags & BlockFlags.HIDE_MY_PRONOUNS) !== 0) {
                 profile.pronouns = undefined;
             }
-            if (blockFlags & BlockFlags.HIDE_MY_BIO) {
+            if ((blockFlags & BlockFlags.HIDE_MY_BIO) !== 0) {
                 profile.bio = undefined;
             }
-            if (blockFlags & BlockFlags.HIDE_MY_DISPLAY_NAME) {
+            if ((blockFlags & BlockFlags.HIDE_MY_DISPLAY_NAME) !== 0) {
                 profile.displayName = null;
             }
-            if (blockFlags & BlockFlags.HIDE_MY_AVATAR) {
+            if ((blockFlags & BlockFlags.HIDE_MY_AVATAR) !== 0) {
                 profile.profilePicture = null;
             }
         }
@@ -181,7 +174,7 @@ export class ProfileController {
     ): Promise<UserProfileResponseDTO> {
         const userId = (req as unknown as RequestWithUser).user.id;
         const user = await this.userRepo.findById(new Types.ObjectId(userId));
-        if (!user) {
+        if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         return this.mapToProfile(user, {
@@ -201,10 +194,24 @@ export class ProfileController {
         @Param('userId') userId: string,
         @Req() req: Request,
     ): Promise<UserProfileResponseDTO> {
-        const viewerId = (req as unknown as RequestWithUser).user.id;
+        const viewer = (req as unknown as RequestWithUser).user;
+        const viewerId = viewer.id;
         const user = await this.userRepo.findById(new Types.ObjectId(userId));
-        if (!user) {
+        if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        if (viewer.isBot === true && viewerId !== userId) {
+            const botServerIds = await this.serverMemberRepo.findServerIdsByUserId(new Types.ObjectId(viewerId));
+            const userServerIds = await this.serverMemberRepo.findServerIdsByUserId(user._id);
+
+            const hasSharedServer = botServerIds.some(botSid =>
+                userServerIds.some(userSid => userSid.toString() === botSid.toString())
+            );
+
+            if (hasSharedServer !== true) {
+                throw new ApiError(403, 'Bots can only view profiles of users they share a server with');
+            }
         }
 
         return this.mapToProfile(user, { viewerId });
@@ -225,11 +232,8 @@ export class ProfileController {
     ): Promise<BadgeOperationResponseDTO> {
         const adminUser = (req as unknown as RequestWithUser).user;
         try {
-            if (!adminUser) {
-                throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
-            }
 
-            if (!hasPermission(adminUser, 'manageUsers')) {
+            if (hasPermission(adminUser, 'manageUsers') !== true) {
                 throw new ApiError(
                     403,
                     ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -237,7 +241,7 @@ export class ProfileController {
             }
 
             const user = await this.userRepo.findById(new Types.ObjectId(id));
-            if (!user) {
+            if (user === null) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
@@ -322,6 +326,7 @@ export class ProfileController {
     @UseGuards(JwtAuthGuard)
     @UseInterceptors(FileInterceptor('profilePicture', { storage }))
     @ApiConsumes('multipart/form-data')
+    @NoBot()
     @ApiBody({
         schema: {
             type: 'object',
@@ -338,14 +343,14 @@ export class ProfileController {
     @ApiResponse({ status: 201, type: UpdateProfilePictureResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid file or dimensions' })
     public async uploadProfilePicture(
-        @UploadedFile() profilePicture: Express.Multer.File,
+        @UploadedFile() profilePicture: Express.Multer.File | undefined,
         @Req() req: Request,
     ): Promise<UpdateProfilePictureResponseDTO> {
         try {
             const userPayload = (req as unknown as RequestWithUser).user;
             const userId = userPayload.id;
 
-            if (!profilePicture) {
+            if (profilePicture === undefined) {
                 throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
             }
 
@@ -362,25 +367,25 @@ export class ProfileController {
             const user = await this.userRepo.findById(
                 new Types.ObjectId(userId),
             );
-            if (!user) {
+            if (user === null) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
             // Remove old profile picture
-            if (user.profilePicture) {
+            if (user.profilePicture !== undefined && user.profilePicture !== '') {
                 const oldPath = path.join(
                     process.cwd(),
                     'uploads',
                     'profiles',
                     path.basename(user.profilePicture),
                 );
-                if (fs.existsSync(oldPath)) {
+                if (fs.existsSync(oldPath) === true) {
                     fs.unlinkSync(oldPath);
                 }
             }
 
             const profilesDir = path.join(process.cwd(), 'uploads', 'profiles');
-            if (!fs.existsSync(profilesDir)) {
+            if (fs.existsSync(profilesDir) === false) {
                 fs.mkdirSync(profilesDir, { recursive: true });
             }
 
@@ -391,7 +396,7 @@ export class ProfileController {
             try {
                 metadata = await getImageMetadata(uploadedPath);
 
-                if (!metadata.width || !metadata.height) {
+                if (metadata.width === 0 || metadata.height === 0) {
                     fs.unlinkSync(uploadedPath);
                     throw new ApiError(400, 'Could not read image dimensions');
                 }
@@ -413,7 +418,7 @@ export class ProfileController {
                     );
                 }
             } catch (validationErr: unknown) {
-                if (fs.existsSync(uploadedPath)) {
+                if (fs.existsSync(uploadedPath) === true) {
                     fs.unlinkSync(uploadedPath);
                 }
                 const error = validationErr as Error;
@@ -424,15 +429,13 @@ export class ProfileController {
                 );
             }
 
-            const isAnimated: boolean = !!(
-                metadata.pages && metadata.pages > 1
-            );
+            const isAnimated: boolean = (metadata.pages !== undefined && metadata.pages > 1);
             const format =
                 metadata.format === 'gif'
                     ? 'gif'
                     : isAnimated
-                      ? 'webp'
-                      : 'webp';
+                        ? 'webp'
+                        : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(profilesDir, filename);
@@ -448,7 +451,7 @@ export class ProfileController {
                 );
 
                 // Delete temp upload
-                if (fs.existsSync(uploadedPath)) {
+                if (fs.existsSync(uploadedPath) === true) {
                     fs.unlinkSync(uploadedPath);
                 }
             } catch (processErr) {
@@ -456,7 +459,7 @@ export class ProfileController {
                     'Profile picture processing error:',
                     processErr,
                 );
-                if (fs.existsSync(uploadedPath)) {
+                if (fs.existsSync(uploadedPath) === true) {
                     fs.unlinkSync(uploadedPath);
                 }
                 throw new ApiError(500, 'Failed to process profile picture');
@@ -526,6 +529,7 @@ export class ProfileController {
     }
 
     @Post('banner')
+    @NoBot()
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @UseInterceptors(FileInterceptor('banner', { storage }))
@@ -546,7 +550,7 @@ export class ProfileController {
     @ApiResponse({ status: 201, type: UpdateBannerResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid file or dimensions' })
     public async uploadBanner(
-        @UploadedFile() banner: Express.Multer.File,
+        @UploadedFile() banner: Express.Multer.File | undefined,
         @Req() req: Request,
     ): Promise<UpdateBannerResponseDTO> {
         try {
@@ -554,7 +558,7 @@ export class ProfileController {
             const username = userPayload.username;
             const userId = userPayload.id;
 
-            if (!banner) {
+            if (banner === undefined) {
                 throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
             }
 
@@ -571,25 +575,25 @@ export class ProfileController {
             const user = await this.userRepo.findById(
                 new Types.ObjectId(userId),
             );
-            if (!user) {
+            if (user === null) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
             // Remove old banner to save storage
-            if (user.banner) {
+            if (user.banner !== undefined && user.banner !== '') {
                 const oldPath = path.join(
                     process.cwd(),
                     'uploads',
                     'banners',
                     path.basename(user.banner),
                 );
-                if (fs.existsSync(oldPath)) {
+                if (fs.existsSync(oldPath) === true) {
                     fs.unlinkSync(oldPath);
                 }
             }
 
             const bannersDir = path.join(process.cwd(), 'uploads', 'banners');
-            if (!fs.existsSync(bannersDir)) {
+            if (fs.existsSync(bannersDir) === false) {
                 fs.mkdirSync(bannersDir, { recursive: true });
             }
 
@@ -599,7 +603,7 @@ export class ProfileController {
             try {
                 metadata = await getImageMetadata(uploadedPath);
 
-                if (!metadata.width || !metadata.height) {
+                if (metadata.width === 0 || metadata.height === 0) {
                     fs.unlinkSync(uploadedPath);
                     throw new ApiError(400, 'Could not read image dimensions');
                 }
@@ -621,7 +625,7 @@ export class ProfileController {
                     );
                 }
             } catch (validationErr: unknown) {
-                if (fs.existsSync(uploadedPath)) {
+                if (fs.existsSync(uploadedPath) === true) {
                     fs.unlinkSync(uploadedPath);
                 }
                 const error = validationErr as Error;
@@ -632,15 +636,13 @@ export class ProfileController {
                 );
             }
 
-            const isAnimated: boolean = !!(
-                metadata.pages && metadata.pages > 1
-            );
+            const isAnimated: boolean = (metadata.pages !== undefined && metadata.pages > 1);
             const format =
                 metadata.format === 'gif'
                     ? 'gif'
                     : isAnimated
-                      ? 'webp'
-                      : 'webp';
+                        ? 'webp'
+                        : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(bannersDir, filename);
@@ -656,12 +658,12 @@ export class ProfileController {
                 );
 
                 // Delete temp upload
-                if (fs.existsSync(uploadedPath)) {
+                if (fs.existsSync(uploadedPath) === true) {
                     fs.unlinkSync(uploadedPath);
                 }
             } catch (processErr) {
                 this.logger.error('Banner processing error:', processErr);
-                if (fs.existsSync(uploadedPath)) {
+                if (fs.existsSync(uploadedPath) === true) {
                     fs.unlinkSync(uploadedPath);
                 }
                 throw new ApiError(500, 'Failed to process banner');
@@ -765,6 +767,7 @@ export class ProfileController {
     }
 
     @Patch('bio')
+    @NoBot()
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Update bio' })
@@ -777,7 +780,7 @@ export class ProfileController {
         const { bio } = body;
 
         await this.userRepo.update(new Types.ObjectId(userId), {
-            bio: bio || '',
+            bio: bio !== '' ? bio : '',
         });
 
         const userOid = new Types.ObjectId(userId);
@@ -789,7 +792,7 @@ export class ProfileController {
 
             const payload = {
                 userId,
-                bio: bio || '',
+                bio: bio !== '' ? bio : '',
             };
 
             // Emit to servers
@@ -823,13 +826,14 @@ export class ProfileController {
 
         return {
             message: 'Bio updated successfully',
-            bio: bio || '',
+            bio: bio !== '' ? bio : '',
         };
     }
 
     @Patch('pronouns')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
+    @NoBot()
     @ApiOperation({ summary: 'Update pronouns' })
     @ApiResponse({ status: 200, description: 'Pronouns updated' })
     public async updatePronouns(
@@ -840,7 +844,7 @@ export class ProfileController {
         const { pronouns } = body;
 
         await this.userRepo.update(new Types.ObjectId(userId), {
-            pronouns: pronouns || '',
+            pronouns: pronouns !== '' ? pronouns : '',
         });
 
         const userOid = new Types.ObjectId(userId);
@@ -852,7 +856,7 @@ export class ProfileController {
 
             const payload = {
                 userId,
-                pronouns: pronouns || '',
+                pronouns: pronouns !== '' ? pronouns : '',
             };
 
             // Emit to servers
@@ -886,13 +890,14 @@ export class ProfileController {
 
         return {
             message: 'Pronouns updated successfully',
-            pronouns: pronouns || '',
+            pronouns: pronouns !== '' ? pronouns : '',
         };
     }
 
     @Patch('display-name')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
+    @NoBot()
     @ApiOperation({ summary: 'Update display name' })
     @ApiResponse({ status: 200, description: 'Display name updated' })
     @ApiResponse({ status: 400, description: 'Invalid display name' })
@@ -921,7 +926,7 @@ export class ProfileController {
 
             const payload = {
                 username,
-                displayName: updatedUser?.displayName || null,
+                displayName: (updatedUser !== null) ? (updatedUser.displayName ?? null) : null,
             };
 
             // Emit to servers
@@ -955,7 +960,7 @@ export class ProfileController {
 
         return {
             message: 'Display name updated successfully',
-            displayName: updatedUser?.displayName || null,
+            displayName: (updatedUser !== null) ? (updatedUser.displayName ?? null) : null,
         };
     }
 
@@ -976,16 +981,14 @@ export class ProfileController {
         const userOid = new Types.ObjectId(userId);
 
         const user = await this.userRepo.findById(userOid);
-        if (!user) {
+        if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         if (
             clear === true ||
-            ((text === undefined ||
-                text === null ||
-                String(text).trim().length === 0) &&
-                (!emoji || String(emoji).trim().length === 0))
+            ((text === undefined || String(text).trim().length === 0) &&
+                (emoji === undefined || String(emoji).trim().length === 0))
         ) {
             await this.userRepo.updateCustomStatus(userOid, null);
 
@@ -1054,19 +1057,19 @@ export class ProfileController {
             updatedAt: Date;
             emoji?: string;
         } = {
-            text: text || '',
+            text: text ?? '',
             expiresAt: expiresAtDate,
             updatedAt: new Date(),
         };
 
-        if (emoji) {
+        if (emoji !== undefined && emoji !== '') {
             newStatus.emoji = emoji;
         }
 
         await this.userRepo.updateCustomStatus(userOid, newStatus);
 
         const updatedUser = await this.userRepo.findById(userOid);
-        const serialized = updatedUser
+        const serialized = (updatedUser !== null)
             ? resolveSerializedCustomStatus(updatedUser.customStatus)
             : null;
 
@@ -1119,7 +1122,7 @@ export class ProfileController {
         const userOid = new Types.ObjectId(userId);
 
         const user = await this.userRepo.findById(userOid);
-        if (!user) {
+        if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
@@ -1169,7 +1172,7 @@ export class ProfileController {
     ): Promise<{ statuses: Record<string, SerializedCustomStatus | null> }> {
         const { usernames } = body;
 
-        if (!Array.isArray(usernames)) {
+        if (Array.isArray(usernames) === false) {
             throw new ApiError(
                 400,
                 ErrorMessages.PROFILE.USERNAMES_ARRAY_REQUIRED,
@@ -1194,7 +1197,7 @@ export class ProfileController {
 
         for (const name of sanitized) {
             const user = await this.userRepo.findByUsername(name);
-            statuses[name] = user
+            statuses[name] = (user !== null)
                 ? resolveSerializedCustomStatus(user.customStatus)
                 : null;
         }
@@ -1203,6 +1206,7 @@ export class ProfileController {
     }
 
     @Patch('style')
+    @NoBot()
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Update username style' })
@@ -1301,7 +1305,7 @@ export class ProfileController {
     ): Promise<UserLookupResponseDTO> {
         const user = await this.userRepo.findByUsername(username);
 
-        if (!user) {
+        if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
@@ -1309,6 +1313,7 @@ export class ProfileController {
     }
 
     @Patch('username')
+    @NoBot()
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Change username' })
@@ -1324,16 +1329,16 @@ export class ProfileController {
         const { newUsername } = body;
 
         const existingUser = await this.userRepo.findByUsername(newUsername);
-        if (existingUser) {
+        if (existingUser !== null) {
             throw new ApiError(409, ErrorMessages.PROFILE.USERNAME_TAKEN);
         }
 
         const user = await this.userRepo.findById(userOid);
-        if (!user) {
+        if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        const oldUsername = user.username || '';
+        const oldUsername = user.username ?? '';
 
         await this.userRepo.updateUsername(userOid, newUsername);
 
@@ -1349,7 +1354,7 @@ export class ProfileController {
                 userId,
                 oldUsername,
                 newUsername,
-                profilePicture: updatedUser?.profilePicture
+                profilePicture: (updatedUser !== null && updatedUser.profilePicture !== undefined && updatedUser.profilePicture !== '')
                     ? `/api/v1/profile/picture/${updatedUser.profilePicture}`
                     : null,
                 usernameFont: updatedUser?.usernameFont,
@@ -1395,6 +1400,7 @@ export class ProfileController {
     @Patch('language')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
+    @NoBot()
     @ApiOperation({ summary: 'Update language' })
     @ApiResponse({ status: 200, description: 'Language updated' })
     public async updateLanguage(
@@ -1404,12 +1410,12 @@ export class ProfileController {
         const username = (req as unknown as RequestWithUser).user.username;
         const { language } = body;
 
-        if (!language || typeof language !== 'string') {
+        if (language === '') {
             throw new ApiError(400, 'Language is required');
         }
 
         const user = await this.userRepo.findByUsername(username);
-        if (!user) {
+        if (user === null) {
             throw new ApiError(404, 'User not found');
         }
 
@@ -1433,7 +1439,7 @@ export class ProfileController {
     ): Promise<void> {
         const { filename } = params;
 
-        if (!filename) {
+        if (filename === '') {
             res.status(400).send({ error: 'Filename required' });
             return;
         }
@@ -1445,7 +1451,7 @@ export class ProfileController {
             filename,
         );
 
-        if (!fs.existsSync(filePath)) {
+        if (fs.existsSync(filePath) === false) {
             res.status(404).send({ error: 'Profile picture not found' });
             return;
         }

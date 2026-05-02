@@ -54,8 +54,6 @@ import {
     getImageMetadata,
 } from '@/utils/imageProcessing';
 
-// Controller for managing server-specific emojis
-// Enforces server membership and 'manageServer' permission checks
 @injectable()
 @Controller('api/v1/servers/:serverId/emojis')
 @ApiTags('Server Emojis')
@@ -68,7 +66,7 @@ export class ServerEmojiController {
         'emojis',
     );
 
-    constructor(
+    public constructor(
         @Inject(TYPES.EmojiRepository)
         private emojiRepo: IEmojiRepository,
         @Inject(TYPES.ServerRepository)
@@ -90,8 +88,6 @@ export class ServerEmojiController {
         }
     }
 
-    // Retrieves all emojis for a specific server
-    // Enforces server membership
     @Get()
     @ApiOperation({ summary: 'Get all server emojis' })
     @ApiResponse({ status: 200, description: 'Server emojis retrieved' })
@@ -108,15 +104,13 @@ export class ServerEmojiController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         return await this.emojiRepo.findByServerIdWithCreator(serverOid);
     }
 
-    // Uploads a new emoji to a server
-    // Resizes the image to 128x128 and enforces 'manageServer' permission
     @Post()
     @UseInterceptors(FileInterceptor('emoji', { storage }))
     @ApiOperation({ summary: 'Upload a server emoji' })
@@ -151,16 +145,12 @@ export class ServerEmojiController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
-        if (!emoji) {
-            throw new BadRequestException(ErrorMessages.EMOJI.FILE_REQUIRED);
-        }
-
         if (!name || name.length > 32 || !/^[a-zA-Z0-9_-]+$/.test(name)) {
             throw new BadRequestException(ErrorMessages.EMOJI.INVALID_NAME);
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        if (!server) {
+        if (server === null || !server.ownerId.equals(userOid)) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -182,17 +172,12 @@ export class ServerEmojiController {
             serverOid,
             name,
         );
-        if (existingEmoji) {
+        if (existingEmoji !== null) {
             throw new ConflictException(ErrorMessages.EMOJI.NAME_EXISTS);
         }
 
         const emojiId = new mongoose.Types.ObjectId();
         const input = emoji.path || emoji.buffer;
-        if (!input) {
-            throw new InternalServerErrorException(
-                ErrorMessages.FILE.DATA_MISSING,
-            );
-        }
 
         try {
             const isAnimated = await isAnimatedImage(input);
@@ -227,7 +212,7 @@ export class ServerEmojiController {
                 newEmoji._id,
             );
 
-            if (!populatedEmoji) {
+            if (populatedEmoji === null) {
                 throw new InternalServerErrorException(
                     ErrorMessages.EMOJI.NOT_FOUND,
                 );
@@ -257,8 +242,6 @@ export class ServerEmojiController {
         }
     }
 
-    // Retrieves a specific emoji by ID
-    // Enforces server membership
     @Get(':emojiId')
     @ApiOperation({ summary: 'Get a specific emoji' })
     @ApiResponse({ status: 200, description: 'Emoji retrieved' })
@@ -277,20 +260,18 @@ export class ServerEmojiController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const emoji = await this.emojiRepo.findById(emojiOid);
-        if (!emoji || !emoji.serverId.equals(serverOid)) {
+        if (emoji === null || !emoji.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
         }
 
         return emoji;
     }
 
-    // Deletes an emoji from a server
-    // Enforces 'manageServer' permission
     @Delete(':emojiId')
     @ApiOperation({ summary: 'Delete a server emoji' })
     @ApiResponse({ status: 204, description: 'Emoji deleted' })
@@ -311,7 +292,7 @@ export class ServerEmojiController {
         const emojiOid = new Types.ObjectId(emojiId);
 
         const server = await this.serverRepo.findById(serverOid);
-        if (!server) {
+        if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -320,7 +301,7 @@ export class ServerEmojiController {
         }
 
         const emoji = await this.emojiRepo.findById(emojiOid);
-        if (!emoji || !emoji.serverId.equals(serverOid)) {
+        if (emoji === null || !emoji.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
         }
 

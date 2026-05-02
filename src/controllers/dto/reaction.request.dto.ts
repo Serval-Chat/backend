@@ -15,25 +15,25 @@ export enum ReactionScopeDTO {
 export class AddUnicodeReactionRequestDTO {
     @ApiProperty({ example: '👍' })
     @IsString()
-    emoji!: string;
+    public emoji!: string;
 
     @ApiProperty({ example: 'unicode', enum: [EmojiTypeDTO.UNICODE] })
     @IsEnum([EmojiTypeDTO.UNICODE])
-    emojiType!: EmojiTypeDTO.UNICODE;
+    public emojiType!: EmojiTypeDTO.UNICODE;
 }
 
 export class AddCustomReactionRequestDTO {
     @ApiProperty({ example: 'party_blob' })
     @IsString()
-    emoji!: string;
+    public emoji!: string;
 
     @ApiProperty({ example: 'custom', enum: [EmojiTypeDTO.CUSTOM] })
     @IsEnum([EmojiTypeDTO.CUSTOM])
-    emojiType!: EmojiTypeDTO.CUSTOM;
+    public emojiType!: EmojiTypeDTO.CUSTOM;
 
     @ApiProperty({ example: '60d5ecb8b5c9c62b3c7c4b5e' })
     @IsEmojiId()
-    emojiId!: string;
+    public emojiId!: string;
 }
 
 export type AddReactionRequestDTO =
@@ -43,28 +43,28 @@ export type AddReactionRequestDTO =
 export class RemoveUnicodeReactionRequestDTO {
     @ApiProperty({ example: '👍' })
     @IsString()
-    emoji!: string;
+    public emoji!: string;
 
     @ApiProperty({ example: 'me', enum: ReactionScopeDTO, required: false })
     @IsOptional()
     @IsEnum(ReactionScopeDTO)
-    scope?: ReactionScopeDTO;
+    public scope?: ReactionScopeDTO;
 }
 
 export class RemoveCustomReactionRequestDTO {
     @ApiProperty({ example: '60d5ecb8b5c9c62b3c7c4b5e' })
     @IsEmojiId()
-    emojiId!: string;
+    public emojiId!: string;
 
     @ApiPropertyOptional({ example: 'party_blob' })
     @IsOptional()
     @IsString()
-    emoji?: string;
+    public emoji?: string;
 
     @ApiPropertyOptional({ example: 'me', enum: ReactionScopeDTO })
     @IsOptional()
     @IsEnum(ReactionScopeDTO)
-    scope?: ReactionScopeDTO;
+    public scope?: ReactionScopeDTO;
 }
 
 export type RemoveReactionRequestDTO =

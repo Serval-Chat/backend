@@ -10,7 +10,7 @@ let cachedVersion: string | null = null;
 //
 // @returns Full and short commit hash, or 'unknown' if git is (somehow) unavailable
 export function getGitCommitHash(): { commit: string; short: string } {
-    if (cachedCommitHash) {
+    if (cachedCommitHash !== null) {
         return cachedCommitHash;
     }
 
@@ -42,7 +42,7 @@ export function getGitCommitHash(): { commit: string; short: string } {
 //
 // @returns Version string, defaults to 'unknown' if unavailable
 export function getVersion(): string {
-    if (cachedVersion) {
+    if (cachedVersion !== null) {
         return cachedVersion;
     }
 
@@ -53,8 +53,9 @@ export function getVersion(): string {
             const packageJson = JSON.parse(
                 fs.readFileSync(packageJsonPath, 'utf-8'),
             );
-            cachedVersion = packageJson.version || 'unknown';
-            return cachedVersion!;
+            const version = (packageJson.version as string | undefined) ?? 'unknown';
+            cachedVersion = version;
+            return version;
         }
     } catch (err) {
         logger.error('Failed to read version from package.json:', err);

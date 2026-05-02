@@ -37,6 +37,7 @@ import { PermissionService } from '@/permissions/PermissionService';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 
 import { ErrorMessages } from '@/constants/errorMessages';
 import type { Request as ExpressRequest } from 'express';
@@ -46,13 +47,11 @@ import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { CreateInviteRequestDTO } from './dto/server-invite.request.dto';
 import { InviteDetailsResponseDTO } from './dto/server-invite.response.dto';
 
-// Controller for managing server invites
-// Enforces 'manageInvites' permission checks and owner-only custom code restrictions
 @injectable()
 @Controller('api/v1')
 @ApiTags('Server Invites')
 export class ServerInviteController {
-    constructor(
+    public constructor(
         @Inject(TYPES.InviteRepository)
         private inviteRepo: IInviteRepository,
         @Inject(TYPES.ServerRepository)
@@ -73,10 +72,10 @@ export class ServerInviteController {
         private wsServer: WsServer,
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
     ) {}
 
-    // Retrieves all active invites for a server
-    // Enforces 'manageInvites' permission
     @Get('servers/:serverId/invites')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
@@ -94,11 +93,11 @@ export class ServerInviteController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageInvites',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(
                 ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
@@ -108,8 +107,6 @@ export class ServerInviteController {
         return await this.inviteRepo.findByServerId(serverOid);
     }
 
-    // Creates a new invite for a server
-    // Enforces 'manageInvites' permission; custom codes require server ownership
     @Post('servers/:serverId/invites')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
@@ -134,11 +131,11 @@ export class ServerInviteController {
         const userOid = new Types.ObjectId(userId);
 
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageInvites',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(
                 ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
@@ -148,17 +145,17 @@ export class ServerInviteController {
         const { maxUses, expiresIn, customPath } = body;
 
         let code = customPath;
-        if (code) {
+        if (code !== undefined && code !== '') {
             // Restrict custom invite codes to the server owner to prevent squatting/abuse
             const server = await this.serverRepo.findById(serverOid);
-            if (!server?.ownerId.equals(userOid)) {
+            if (server === null || !server.ownerId.equals(userOid)) {
                 throw new ForbiddenException(
                     ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
                 );
             }
 
             const existing = await this.inviteRepo.findByCode(code);
-            if (existing) {
+            if (existing !== null) {
                 throw new BadRequestException(
                     ErrorMessages.INVITE.ALREADY_EXISTS,
                 );
@@ -168,14 +165,14 @@ export class ServerInviteController {
             code = crypto.randomBytes(4).toString('hex');
         }
 
-        const expiresAt = expiresIn
+        const expiresAt = (expiresIn !== undefined && expiresIn !== 0)
             ? new Date(Date.now() + expiresIn * 1000)
             : undefined;
 
         const invite = await this.inviteRepo.create({
             serverId: serverOid,
             code,
-            maxUses: maxUses || 0,
+            maxUses: maxUses !== undefined ? maxUses : 0,
             expiresAt,
             createdByUserId: userOid,
         });
@@ -193,11 +190,20 @@ export class ServerInviteController {
             },
         });
 
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'server_invite_created',
+            payload: {
+                serverId,
+                code: invite.code,
+                maxUses: invite.maxUses ?? null,
+                expiresAt: invite.expiresAt ?? null,
+                senderId: userId
+            }
+        });
+
         return invite;
     }
 
-    // Deletes an invite
-    // Enforces 'manageInvites' permission
     @Delete('servers/:serverId/invites/:inviteId')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
@@ -218,11 +224,11 @@ export class ServerInviteController {
         const userOid = new Types.ObjectId(userId);
         const inviteOid = new Types.ObjectId(inviteId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageInvites',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(
                 ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
@@ -230,7 +236,7 @@ export class ServerInviteController {
         }
 
         const invite = await this.inviteRepo.findById(inviteOid);
-        if (!invite || !invite.serverId.equals(serverOid)) {
+        if (invite === null || !invite.serverId.equals(serverOid)) {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
@@ -250,10 +256,18 @@ export class ServerInviteController {
             },
         });
 
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'server_invite_deleted',
+            payload: {
+                serverId,
+                code: invite.code,
+                senderId: userId
+            }
+        });
+
         return { message: 'Invite deleted' };
     }
 
-    // Retrieves public details for an invite code
     @Get('invites/:code')
     @ApiOperation({ summary: 'Get invite details' })
     @ApiResponse({
@@ -267,21 +281,19 @@ export class ServerInviteController {
         @Param('code') code: string,
     ): Promise<InviteDetailsResponseDTO> {
         const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
-        if (!invite) {
+        if (invite === null) {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        // Check if the invite has reached its expiration date
-        if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+        if (invite.expiresAt !== undefined && new Date(invite.expiresAt) < new Date()) {
             throw new HttpException(
                 ErrorMessages.INVITE.EXPIRED,
                 HttpStatus.GONE,
             );
         }
 
-        // Check if the invite has exceeded its maximum allowed uses
         if (
-            invite.maxUses &&
+            invite.maxUses !== undefined &&
             invite.maxUses > 0 &&
             invite.uses >= invite.maxUses
         ) {
@@ -292,7 +304,7 @@ export class ServerInviteController {
         }
 
         const server = await this.serverRepo.findById(invite.serverId);
-        if (!server) {
+        if (server === null) {
             this.logger.warn('getInviteDetails: Server not found for invite:', {
                 serverId: invite.serverId.toString(),
             });
@@ -304,7 +316,7 @@ export class ServerInviteController {
         );
 
         return {
-            code: invite.customPath || invite.code,
+            code: (invite.customPath !== undefined && invite.customPath !== '') ? invite.customPath : invite.code,
             expiresAt: invite.expiresAt,
             maxUses: invite.maxUses,
             uses: invite.uses,
@@ -320,8 +332,6 @@ export class ServerInviteController {
         };
     }
 
-    // Joins a server using an invite code
-    // Enforces ban checks and automatically assigns default roles
     @Post('invites/:code/join')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
@@ -341,11 +351,11 @@ export class ServerInviteController {
     ): Promise<{ serverId: string }> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
-        if (!invite) {
+        if (invite === null) {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+        if (invite.expiresAt !== undefined && new Date(invite.expiresAt) < new Date()) {
             throw new HttpException(
                 ErrorMessages.INVITE.EXPIRED,
                 HttpStatus.GONE,
@@ -353,7 +363,7 @@ export class ServerInviteController {
         }
 
         if (
-            invite.maxUses &&
+            invite.maxUses !== undefined &&
             invite.maxUses > 0 &&
             invite.uses >= invite.maxUses
         ) {
@@ -370,7 +380,7 @@ export class ServerInviteController {
             serverOid,
             userOid,
         );
-        if (existingMember) {
+        if (existingMember !== null) {
             throw new BadRequestException(ErrorMessages.SERVER.ALREADY_MEMBER);
         }
 
@@ -379,24 +389,22 @@ export class ServerInviteController {
             serverOid,
             userOid,
         );
-        if (existingBan) {
+        if (existingBan !== null) {
             throw new ForbiddenException(ErrorMessages.SERVER.BANNED);
         }
 
         const server = await this.serverRepo.findById(serverOid);
         const roles: Types.ObjectId[] = [];
 
-        // Automatically assign the mandatory '@everyone' role
         const everyoneRole = await this.roleRepo.findByServerIdAndName(
             serverOid,
             '@everyone',
         );
-        if (everyoneRole) {
+        if (everyoneRole !== null) {
             roles.push(everyoneRole._id);
         }
 
-        // Assign the server's configured default role, if any
-        if (server?.defaultRoleId) {
+        if (server !== null && server.defaultRoleId !== undefined) {
             roles.push(server.defaultRoleId);
         }
 
@@ -410,9 +418,12 @@ export class ServerInviteController {
         await this.inviteRepo.incrementUses(invite._id);
         this.permissionService.invalidateCache(serverOid);
 
+        const user = await this.userRepo.findById(userOid);
+        const username = user !== null ? (user.username ?? 'Unknown') : 'Unknown';
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_added',
-            payload: { serverId, userId },
+            payload: { serverId, userId, username },
         });
 
         await this.serverAuditLogService.createAndBroadcast({

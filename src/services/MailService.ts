@@ -18,16 +18,16 @@ import {
 export class MailService implements IMailService, OnModuleInit {
     private client: ReturnType<Mailgun['client']> | null;
 
-    constructor(
+    public constructor(
         @inject(TYPES.Logger) @Inject(TYPES.Logger) private logger: ILogger,
         @inject(TYPES.MailConfig)
         @Inject(TYPES.MailConfig)
         private config?: { skipSending?: boolean },
     ) {
         const shouldSkip =
-            this.config?.skipSending || process.env.NODE_ENV === 'test';
+            this.config?.skipSending === true || process.env.NODE_ENV === 'test';
 
-        if (MAILGUN_API_KEY && MAILGUN_DOMAIN && !shouldSkip) {
+        if (MAILGUN_API_KEY !== '' && MAILGUN_DOMAIN !== '' && !shouldSkip) {
             const mailgun = new Mailgun(FormData);
             this.client = mailgun.client({
                 username: 'api',
@@ -46,11 +46,11 @@ export class MailService implements IMailService, OnModuleInit {
         }
     }
 
-    async onModuleInit(): Promise<void> {
+    public async onModuleInit(): Promise<void> {
         await this.validateTemplates();
     }
 
-    async validateTemplates(): Promise<void> {
+    public async validateTemplates(): Promise<void> {
         const required = ['password-reset', 'password-changed'];
         for (const template of required) {
             try {
@@ -67,7 +67,7 @@ export class MailService implements IMailService, OnModuleInit {
     ): Promise<string> {
         try {
             const TEMPLATE_DIR =
-                process.env.TEMPLATE_DIR ||
+                (process.env.TEMPLATE_DIR !== undefined && process.env.TEMPLATE_DIR !== '') ? process.env.TEMPLATE_DIR :
                 path.join(process.cwd(), 'templates');
             const templatePath = path.join(
                 TEMPLATE_DIR,
@@ -98,7 +98,7 @@ export class MailService implements IMailService, OnModuleInit {
         }
     }
 
-    async sendPasswordResetEmail(
+    public async sendPasswordResetEmail(
         to: string,
         resetLink: string,
         requestId: string,
@@ -138,7 +138,7 @@ export class MailService implements IMailService, OnModuleInit {
         }
     }
 
-    async sendPasswordChangedNotification(to: string): Promise<void> {
+    public async sendPasswordChangedNotification(to: string): Promise<void> {
         if (!this.client) return;
 
         try {
@@ -166,7 +166,7 @@ export class MailService implements IMailService, OnModuleInit {
         }
     }
 
-    async sendExportSuccessEmail(
+    public async sendExportSuccessEmail(
         to: string,
         channelName: string,
         serverName: string,
@@ -191,7 +191,7 @@ export class MailService implements IMailService, OnModuleInit {
         }
     }
 
-    async sendExportFailureEmail(
+    public async sendExportFailureEmail(
         to: string,
         channelName: string,
         serverName: string,
@@ -215,7 +215,7 @@ export class MailService implements IMailService, OnModuleInit {
         }
     }
 
-    async sendExportCancelledEmail(
+    public async sendExportCancelledEmail(
         to: string,
         channelName: string,
         serverName: string,

@@ -4,118 +4,120 @@ import { SerializedCustomStatus } from '@/utils/status';
 import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
 import { VALID_USERNAME_FONTS } from '@/validation/schemas/profile';
 import { UsernameGradientDTO, UsernameGlowDTO } from './profile.request.dto';
+import { UserSettingsDTO } from './types.dto';
+
 
 export class BadgeResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
 
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    id!: string;
+    public id!: string;
 
     @ApiProperty()
-    name!: string;
+    public name!: string;
 
     @ApiProperty()
-    description!: string;
+    public description!: string;
 
     @ApiProperty()
-    icon!: string;
+    public icon!: string;
 
     @ApiProperty()
-    color!: string;
+    public color!: string;
 
     @ApiProperty()
-    createdAt!: Date;
+    public createdAt!: Date;
 }
 
 export class UserLookupResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
 }
 
 export class UserProfileResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    id!: string;
+    public id!: string;
 
     @ApiProperty()
-    username!: string;
+    public username!: string;
 
     @ApiProperty({ nullable: true })
-    displayName!: string | null;
+    public displayName!: string | null;
 
     @ApiProperty({ nullable: true })
-    profilePicture!: string | null;
+    public profilePicture!: string | null;
 
     @ApiPropertyOptional({ enum: VALID_USERNAME_FONTS })
-    usernameFont?: string;
+    public usernameFont?: string;
 
     @ApiPropertyOptional({ type: UsernameGradientDTO })
-    usernameGradient?: UsernameGradientDTO;
+    public usernameGradient?: UsernameGradientDTO;
 
     @ApiPropertyOptional({ type: UsernameGlowDTO })
-    usernameGlow?: UsernameGlowDTO;
+    public usernameGlow?: UsernameGlowDTO;
 
     @ApiProperty({ nullable: true })
-    customStatus!: SerializedCustomStatus | null;
+    public customStatus!: SerializedCustomStatus | null;
 
     @ApiPropertyOptional()
-    permissions?: AdminPermissions;
+    public permissions?: AdminPermissions;
 
     @ApiProperty()
-    createdAt!: Date;
+    public createdAt!: Date;
 
     @ApiPropertyOptional()
-    bio?: string;
+    public bio?: string;
 
     @ApiPropertyOptional()
-    pronouns?: string;
+    public pronouns?: string;
 
     @ApiProperty({ type: [BadgeResponseDTO] })
-    badges!: BadgeResponseDTO[];
+    public badges!: BadgeResponseDTO[];
 
     @ApiProperty({ nullable: true })
-    banner!: string | null;
+    public banner!: string | null;
 
     @ApiPropertyOptional()
-    serverSettings?: {
+    public serverSettings?: {
         order: (
             | string
             | { id: string; name: string; color: string; serverIds: string[] }
         )[];
     };
 
-    @ApiPropertyOptional()
-    settings?: Record<string, unknown>;
+    @ApiPropertyOptional({ type: UserSettingsDTO })
+    public settings?: UserSettingsDTO;
 }
 
 export class UpdateProfilePictureResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 
     @ApiProperty()
-    profilePicture!: string;
+    public profilePicture!: string;
 }
 
 export class UpdateBannerResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 
     @ApiProperty()
-    banner!: string;
+    public banner!: string;
 }
 
 export class BadgeOperationResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 
     @ApiProperty({ type: [BadgeResponseDTO] })
-    badges!: BadgeResponseDTO[];
+    public badges!: BadgeResponseDTO[];
 }

@@ -19,6 +19,8 @@ export const PERMISSION_KEYS = [
     'viewChannels',
     'bypassSlowmode',
     'pinMessages',
+    'seeDeletedMessages',
+    'moderateMembers',
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
@@ -60,6 +62,7 @@ export interface ServerMember {
     serverId: Types.ObjectId;
     userId: Types.ObjectId;
     roleIds: Types.ObjectId[];
+    communicationDisabledUntil?: Date | null;
 }
 
 export interface ServerData {

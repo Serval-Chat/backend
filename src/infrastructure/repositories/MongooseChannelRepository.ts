@@ -10,7 +10,7 @@ import { Channel } from '@/models/Server';
 
 // Transform MongoDB document to match IChannel interface
 const transformChannel = (doc: unknown): IChannel | null => {
-    if (!doc) return null;
+    if (doc === null) return null;
 
     const d = doc as {
         _id: Types.ObjectId;
@@ -22,7 +22,7 @@ const transformChannel = (doc: unknown): IChannel | null => {
         ...d,
         _id: d._id,
         serverId: d.serverId,
-        categoryId: d.categoryId || null,
+        categoryId: d.categoryId ?? null,
     } as unknown as IChannel;
 };
 
@@ -32,12 +32,12 @@ const transformChannel = (doc: unknown): IChannel | null => {
 @injectable()
 @Injectable()
 export class MongooseChannelRepository implements IChannelRepository {
-    async findById(id: Types.ObjectId): Promise<IChannel | null> {
+    public async findById(id: Types.ObjectId): Promise<IChannel | null> {
         const result = await Channel.findById(id).lean();
         return transformChannel(result);
     }
 
-    async findByIdAndServer(
+    public async findByIdAndServer(
         id: Types.ObjectId,
         serverId: Types.ObjectId,
     ): Promise<IChannel | null> {
@@ -45,21 +45,21 @@ export class MongooseChannelRepository implements IChannelRepository {
         return transformChannel(result);
     }
 
-    async findByServerId(serverId: Types.ObjectId): Promise<IChannel[]> {
+    public async findByServerId(serverId: Types.ObjectId): Promise<IChannel[]> {
         const results = await Channel.find({ serverId })
             .sort({ position: 1 })
             .lean();
-        return results.map(transformChannel).filter(Boolean) as IChannel[];
+        return results.map(transformChannel).filter((c): c is IChannel => c !== null) as IChannel[];
     }
 
-    async findByServerIds(serverIds: Types.ObjectId[]): Promise<IChannel[]> {
+    public async findByServerIds(serverIds: Types.ObjectId[]): Promise<IChannel[]> {
         const results = await Channel.find({
             serverId: { $in: serverIds },
         }).lean();
-        return results.map(transformChannel).filter(Boolean) as IChannel[];
+        return results.map(transformChannel).filter((c): c is IChannel => c !== null) as IChannel[];
     }
 
-    async findMaxPositionByServerId(
+    public async findMaxPositionByServerId(
         serverId: Types.ObjectId,
     ): Promise<IChannel | null> {
         const result = await Channel.findOne({ serverId })
@@ -68,13 +68,15 @@ export class MongooseChannelRepository implements IChannelRepository {
         return transformChannel(result);
     }
 
-    async create(data: CreateChannelDTO): Promise<IChannel> {
+    public async create(data: CreateChannelDTO): Promise<IChannel> {
         const channel = new Channel(data);
         const result = await channel.save();
-        return transformChannel(result.toObject())!;
+        const transformed = transformChannel(result.toObject());
+        if (transformed === null) throw new Error('Failed to create channel');
+        return transformed;
     }
 
-    async update(
+    public async update(
         id: Types.ObjectId,
         data: Partial<IChannel>,
     ): Promise<IChannel | null> {
@@ -84,12 +86,12 @@ export class MongooseChannelRepository implements IChannelRepository {
         return transformChannel(result);
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Channel.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async updatePosition(
+    public async updatePosition(
         id: Types.ObjectId,
         position: number,
     ): Promise<IChannel | null> {
@@ -101,7 +103,7 @@ export class MongooseChannelRepository implements IChannelRepository {
         return transformChannel(result);
     }
 
-    async updateLastMessageAt(
+    public async updateLastMessageAt(
         id: Types.ObjectId,
         date: Date = new Date(),
         session?: ClientSession,
@@ -114,16 +116,16 @@ export class MongooseChannelRepository implements IChannelRepository {
         return transformChannel(result);
     }
 
-    async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
         const result = await Channel.deleteMany({ serverId });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async updateChannelsInCategory(
+    public async updateChannelsInCategory(
         categoryId: Types.ObjectId,
         updates: Partial<IChannel>,
     ): Promise<boolean> {
         const result = await Channel.updateMany({ categoryId }, updates);
-        return result.modifiedCount ? result.modifiedCount > 0 : false;
+        return result.modifiedCount > 0;
     }
 }

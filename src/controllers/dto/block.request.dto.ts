@@ -14,7 +14,7 @@ export class CreateBlockProfileRequestDTO {
         example: 'Mute and hide',
     })
     @IsString()
-    name!: string;
+    public name!: string;
 
     @ApiProperty({
         description: '15-bit bitmask of flags',
@@ -25,7 +25,7 @@ export class CreateBlockProfileRequestDTO {
     @IsInt()
     @Min(0)
     @Max(32767)
-    flags!: number;
+    public flags!: number;
 }
 
 export class UpdateBlockProfileRequestDTO {
@@ -35,7 +35,7 @@ export class UpdateBlockProfileRequestDTO {
     })
     @IsOptional()
     @IsString()
-    name?: string;
+    public name?: string;
 
     @ApiPropertyOptional({
         description: 'New 15-bit bitmask of flags',
@@ -47,7 +47,7 @@ export class UpdateBlockProfileRequestDTO {
     @IsInt()
     @Min(0)
     @Max(32767)
-    flags?: number;
+    public flags?: number;
 }
 
 export class UpsertBlockRelationshipRequestDTO {
@@ -56,5 +56,5 @@ export class UpsertBlockRelationshipRequestDTO {
         example: '60d0fe4f5311236168a109ca',
     })
     @IsMongoId()
-    profileId!: string;
+    public profileId!: string;
 }

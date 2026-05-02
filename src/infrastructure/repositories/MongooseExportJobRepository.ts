@@ -7,27 +7,27 @@ import { Injectable } from '@nestjs/common';
 @injectable()
 @Injectable()
 export class MongooseExportJobRepository implements IExportJobRepository {
-    async findById(id: Types.ObjectId): Promise<IExportJob | null> {
+    public async findById(id: Types.ObjectId): Promise<IExportJob | null> {
         return await ExportJob.findById(id);
     }
 
-    async findByChannelId(
+    public async findByChannelId(
         channelId: Types.ObjectId,
     ): Promise<IExportJob | null> {
         return await ExportJob.findOne({ channelId });
     }
 
-    async findLatestByChannel(
+    public async findLatestByChannel(
         channelId: Types.ObjectId,
     ): Promise<IExportJob | null> {
         return await ExportJob.findOne({ channelId }).sort({ createdAt: -1 });
     }
 
-    async findByDownloadToken(token: string): Promise<IExportJob | null> {
+    public async findByDownloadToken(token: string): Promise<IExportJob | null> {
         return await ExportJob.findOne({ downloadToken: token });
     }
 
-    async findPendingJobs(): Promise<IExportJob[]> {
+    public async findPendingJobs(): Promise<IExportJob[]> {
         return await ExportJob.find({
             status: { $in: ['queued', 'failed'] },
             attempts: { $lt: 5 },
@@ -35,30 +35,30 @@ export class MongooseExportJobRepository implements IExportJobRepository {
         }).sort({ nextAttemptAt: 1 });
     }
 
-    async findExpiredJobs(): Promise<IExportJob[]> {
+    public async findExpiredJobs(): Promise<IExportJob[]> {
         return await ExportJob.find({
             status: 'completed',
             expiresAt: { $lte: new Date() },
         });
     }
 
-    async create(data: Partial<IExportJob>): Promise<IExportJob> {
+    public async create(data: Partial<IExportJob>): Promise<IExportJob> {
         return await ExportJob.create(data);
     }
 
-    async update(
+    public async update(
         id: Types.ObjectId,
         data: Partial<IExportJob>,
     ): Promise<IExportJob | null> {
         return await ExportJob.findByIdAndUpdate(id, data, { new: true });
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await ExportJob.deleteOne({ _id: id });
         return result.deletedCount > 0;
     }
 
-    async deleteByChannelId(channelId: Types.ObjectId): Promise<number> {
+    public async deleteByChannelId(channelId: Types.ObjectId): Promise<number> {
         const result = await ExportJob.deleteMany({ channelId });
         return result.deletedCount;
     }

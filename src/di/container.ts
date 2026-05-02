@@ -67,7 +67,6 @@ import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/M
 import { MailService } from '@/services/MailService';
 import { MetricsService } from '@/services/MetricsService';
 
-// Services
 import { AuthService } from '@/services/AuthService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';

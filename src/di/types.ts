@@ -30,9 +30,9 @@ export const TYPES = {
     ExportJobRepository: Symbol.for('ExportJobRepository'),
     BlockRepository: Symbol.for('BlockRepository'),
     AdminNoteRepository: Symbol.for('AdminNoteRepository'),
+    SlashCommandRepository: Symbol.for('SlashCommandRepository'),
     ExportService: Symbol.for('ExportService'),
 
-    // Services
     AuthService: Symbol.for('AuthService'),
     PermissionService: Symbol.for('PermissionService'),
     WebPushService: Symbol.for('WebPushService'),

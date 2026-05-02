@@ -2,31 +2,31 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class BlockProfileResponseDTO {
     @ApiProperty({ example: '60d0fe4f5311236168a109ca' })
-    id!: string;
+    public id!: string;
 
     @ApiProperty({ example: 'Mute and hide' })
-    name!: string;
+    public name!: string;
 
     @ApiProperty({ example: 1024 })
-    flags!: number;
+    public flags!: number;
 
     @ApiProperty()
-    createdAt!: Date;
+    public createdAt!: Date;
 
     @ApiProperty()
-    updatedAt!: Date;
+    public updatedAt!: Date;
 }
 
 export class BlockRelationshipResponseDTO {
     @ApiProperty({ example: '60d0fe4f5311236168a109cb' })
-    targetUserId!: string;
+    public targetUserId!: string;
 
     @ApiProperty({ example: 'BlockedUser' })
-    targetUsername!: string;
+    public targetUsername!: string;
 
     @ApiProperty({ example: '60d0fe4f5311236168a109ca' })
-    profileId!: string;
+    public profileId!: string;
 
     @ApiProperty({ example: 1024 })
-    flags!: number;
+    public flags!: number;
 }

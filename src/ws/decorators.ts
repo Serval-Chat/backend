@@ -31,7 +31,7 @@ export function WsController(): ClassDecorator {
 export function Event(type: AnyWsEventType): MethodDecorator {
     return (target, propertyKey) => {
         const events =
-            Reflect.getMetadata(WS_EVENT_METADATA, target.constructor) || [];
+            Reflect.getMetadata(WS_EVENT_METADATA, target.constructor) ?? [];
         events.push({ type, method: propertyKey });
         Reflect.defineMetadata(WS_EVENT_METADATA, events, target.constructor);
     };
@@ -108,7 +108,7 @@ export function Cache(ttl: number): MethodDecorator {
 export function Before(hook: Function): MethodDecorator {
     return (target, propertyKey) => {
         const hooks =
-            Reflect.getMetadata(WS_BEFORE_METADATA, target, propertyKey) || [];
+            Reflect.getMetadata(WS_BEFORE_METADATA, target, propertyKey) ?? [];
         hooks.push(hook);
         Reflect.defineMetadata(WS_BEFORE_METADATA, hooks, target, propertyKey);
     };
@@ -121,7 +121,7 @@ export function Before(hook: Function): MethodDecorator {
 export function After(hook: Function): MethodDecorator {
     return (target, propertyKey) => {
         const hooks =
-            Reflect.getMetadata(WS_AFTER_METADATA, target, propertyKey) || [];
+            Reflect.getMetadata(WS_AFTER_METADATA, target, propertyKey) ?? [];
         hooks.push(hook);
         Reflect.defineMetadata(WS_AFTER_METADATA, hooks, target, propertyKey);
     };
@@ -134,7 +134,7 @@ export function After(hook: Function): MethodDecorator {
 export function OnError(hook: Function): MethodDecorator {
     return (target, propertyKey) => {
         const hooks =
-            Reflect.getMetadata(WS_ON_ERROR_METADATA, target, propertyKey) ||
+            Reflect.getMetadata(WS_ON_ERROR_METADATA, target, propertyKey) ??
             [];
         hooks.push(hook);
         Reflect.defineMetadata(

@@ -40,7 +40,7 @@ router.post(
         try {
             const { id, name, description, icon, color } = req.body;
 
-            if (!id || !name || !description || !icon) {
+            if (id === undefined || id === '' || name === undefined || name === '' || description === undefined || description === '' || icon === undefined || icon === '') {
                 return res.status(400).send({
                     error: 'id, name, description, and icon are required',
                 });
@@ -59,7 +59,7 @@ router.post(
                 name,
                 description,
                 icon,
-                color: color || '#3b82f6',
+                color: color !== undefined && color !== '' ? color : '#3b82f6',
             });
 
             await badge.save();
@@ -85,10 +85,10 @@ router.put(
                 return res.status(404).send({ error: 'Badge not found' });
             }
 
-            if (name) badge.name = name;
-            if (description) badge.description = description;
-            if (icon) badge.icon = icon;
-            if (color) badge.color = color;
+            if (name !== undefined && name !== '') badge.name = name;
+            if (description !== undefined && description !== '') badge.description = description;
+            if (icon !== undefined && icon !== '') badge.icon = icon;
+            if (color !== undefined && color !== '') badge.color = color;
 
             await badge.save();
             res.status(200).send(badge);
@@ -107,7 +107,7 @@ router.delete(
         try {
             const { badgeId } = req.params;
 
-            if (!badgeId) {
+            if (badgeId === undefined || badgeId === '') {
                 return res.status(400).send({ error: 'Badge ID is required' });
             }
 
@@ -137,7 +137,7 @@ router.get(
         try {
             const { userId } = req.params;
 
-            if (!userId) {
+            if (userId === undefined || userId === '') {
                 return res.status(400).send({ error: 'User ID is required' });
             }
 
@@ -168,11 +168,11 @@ router.post(
             const { userId } = req.params;
             const { badgeId } = req.body;
 
-            if (!userId) {
+            if (userId === undefined || userId === '') {
                 return res.status(400).send({ error: 'User ID is required' });
             }
 
-            if (!badgeId) {
+            if (badgeId === undefined || badgeId === '') {
                 return res.status(400).send({ error: 'badgeId is required' });
             }
 
@@ -217,11 +217,11 @@ router.delete(
         try {
             const { userId, badgeId } = req.params;
 
-            if (!userId) {
+            if (userId === undefined || userId === '') {
                 return res.status(400).send({ error: 'User ID is required' });
             }
 
-            if (!badgeId) {
+            if (badgeId === undefined || badgeId === '') {
                 return res.status(400).send({ error: 'badgeId is required' });
             }
 

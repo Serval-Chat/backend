@@ -16,20 +16,20 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseServerRepository implements IServerRepository {
     private serverModel = Server;
-    constructor() {}
+    public constructor() {}
 
-    async findById(
+    public async findById(
         id: Types.ObjectId,
         includeDeleted: boolean = false,
     ): Promise<IServer | null> {
         const query: FilterQuery<IServer> = { _id: id };
-        if (!includeDeleted) {
+        if (includeDeleted !== true) {
             query.deletedAt = { $exists: false };
         }
         return await this.serverModel.findOne(query).lean();
     }
 
-    async findByIds(ids: Types.ObjectId[]): Promise<IServer[]> {
+    public async findByIds(ids: Types.ObjectId[]): Promise<IServer[]> {
         return await this.serverModel
             .find({
                 _id: { $in: ids },
@@ -38,7 +38,7 @@ export class MongooseServerRepository implements IServerRepository {
             .lean();
     }
 
-    async findByOwnerId(ownerId: Types.ObjectId): Promise<IServer[]> {
+    public async findByOwnerId(ownerId: Types.ObjectId): Promise<IServer[]> {
         return await this.serverModel
             .find({
                 ownerId,
@@ -47,12 +47,12 @@ export class MongooseServerRepository implements IServerRepository {
             .lean();
     }
 
-    async create(data: CreateServerDTO): Promise<IServer> {
+    public async create(data: CreateServerDTO): Promise<IServer> {
         const server = new this.serverModel(data);
         return await server.save();
     }
 
-    async update(
+    public async update(
         id: Types.ObjectId,
         data: Partial<IServer>,
     ): Promise<IServer | null> {
@@ -65,15 +65,15 @@ export class MongooseServerRepository implements IServerRepository {
             .lean();
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await this.serverModel.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
     // Soft delete a server
     //
     // Marks the server as deleted by setting 'deletedAt' timestamp
-    async softDelete(id: Types.ObjectId): Promise<boolean> {
+    public async softDelete(id: Types.ObjectId): Promise<boolean> {
         const result = await this.serverModel.updateOne(
             { _id: id },
             { $set: { deletedAt: new Date() } },
@@ -82,7 +82,7 @@ export class MongooseServerRepository implements IServerRepository {
     }
 
     // Restore a soft-deleted server
-    async restore(id: Types.ObjectId): Promise<boolean> {
+    public async restore(id: Types.ObjectId): Promise<boolean> {
         const result = await this.serverModel.updateOne(
             { _id: id },
             { $unset: { deletedAt: 1 } },
@@ -90,7 +90,7 @@ export class MongooseServerRepository implements IServerRepository {
         return result.modifiedCount > 0;
     }
 
-    async clearDefaultRole(
+    public async clearDefaultRole(
         serverId: Types.ObjectId,
         roleId: Types.ObjectId,
     ): Promise<boolean> {
@@ -101,7 +101,7 @@ export class MongooseServerRepository implements IServerRepository {
         return result.modifiedCount > 0;
     }
 
-    async findMany(options: {
+    public async findMany(options: {
         limit: number;
         offset: number;
         search?: string;
@@ -109,11 +109,11 @@ export class MongooseServerRepository implements IServerRepository {
     }): Promise<IServer[]> {
         const query: FilterQuery<IServer> = {};
 
-        if (!options.includeDeleted) {
+        if (options.includeDeleted !== true) {
             query.deletedAt = { $exists: false };
         }
 
-        if (options.search) {
+        if (options.search !== undefined && options.search !== '') {
             query.$or = [
                 { name: { $regex: options.search, $options: 'i' } },
                 { _id: options.search }, // Exact match for ID
@@ -127,21 +127,21 @@ export class MongooseServerRepository implements IServerRepository {
             .lean();
     }
 
-    async count(includeDeleted: boolean = false): Promise<number> {
+    public async count(includeDeleted: boolean = false): Promise<number> {
         const query: FilterQuery<IServer> = {};
-        if (!includeDeleted) {
+        if (includeDeleted !== true) {
             query.deletedAt = { $exists: false };
         }
         return await this.serverModel.countDocuments(query);
     }
 
-    async countCreatedAfter(date: Date): Promise<number> {
+    public async countCreatedAfter(date: Date): Promise<number> {
         return await this.serverModel.countDocuments({
             createdAt: { $gt: date },
         });
     }
 
-    async countByHour(since: Date, hours: number): Promise<number[]> {
+    public async countByHour(since: Date, hours: number): Promise<number[]> {
         const msPerHour = 1000 * 60 * 60;
         const buckets = await this.serverModel.aggregate<{
             _id: number;
@@ -170,7 +170,7 @@ export class MongooseServerRepository implements IServerRepository {
         return result;
     }
 
-    async countByDay(since: Date, days: number): Promise<number[]> {
+    public async countByDay(since: Date, days: number): Promise<number[]> {
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await this.serverModel.aggregate<{
             _id: number;
@@ -199,12 +199,12 @@ export class MongooseServerRepository implements IServerRepository {
         return result;
     }
 
-    async countAllByDay(): Promise<number[]> {
+    public async countAllByDay(): Promise<number[]> {
         const oldestServer = await this.serverModel
             .findOne()
             .sort({ createdAt: 1 })
             .lean();
-        if (!oldestServer || !oldestServer.createdAt) return [];
+        if (!oldestServer) return [];
 
         const now = new Date();
         const startOfOldestDay = new Date(oldestServer.createdAt);
@@ -216,7 +216,7 @@ export class MongooseServerRepository implements IServerRepository {
         return this.countByDay(startOfOldestDay, days);
     }
 
-    async countAwaitingReview(): Promise<number> {
+    public async countAwaitingReview(): Promise<number> {
         return await this.serverModel.countDocuments({
             verificationRequested: true,
             verified: { $ne: true },
@@ -224,7 +224,7 @@ export class MongooseServerRepository implements IServerRepository {
         });
     }
 
-    async listAwaitingReview(options: {
+    public async listAwaitingReview(options: {
         limit: number;
         offset: number;
     }): Promise<(IServer & { memberCount?: number; realMessageCount?: number; weightScore?: number })[]> {

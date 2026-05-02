@@ -10,11 +10,11 @@ export class MongoosePasswordResetRepository
 {
     private model: Model<IPasswordReset>;
 
-    constructor() {
+    public constructor() {
         this.model = PasswordReset;
     }
 
-    async create(data: {
+    public async create(data: {
         userId: Types.ObjectId;
         hashedToken: string;
         expiresAt: Date;
@@ -23,7 +23,7 @@ export class MongoosePasswordResetRepository
         return this.model.create(data);
     }
 
-    async findByHashedToken(
+    public async findByHashedToken(
         hashedToken: string,
     ): Promise<IPasswordReset | null> {
         return this.model.findOne({
@@ -33,7 +33,7 @@ export class MongoosePasswordResetRepository
         });
     }
 
-    async markAsUsed(hashedToken: string): Promise<IPasswordReset | null> {
+    public async markAsUsed(hashedToken: string): Promise<IPasswordReset | null> {
         return this.model.findOneAndUpdate(
             {
                 hashedToken,
@@ -45,11 +45,11 @@ export class MongoosePasswordResetRepository
         );
     }
 
-    async deleteByUser(userId: Types.ObjectId): Promise<void> {
+    public async deleteByUser(userId: Types.ObjectId): Promise<void> {
         await this.model.deleteMany({ userId });
     }
 
-    async countActiveRequestsByUser(
+    public async countActiveRequestsByUser(
         userId: Types.ObjectId,
         windowStart: Date,
     ): Promise<number> {
@@ -60,7 +60,7 @@ export class MongoosePasswordResetRepository
         });
     }
 
-    async countActiveRequestsByIp(
+    public async countActiveRequestsByIp(
         ip: string,
         windowStart: Date,
     ): Promise<number> {
@@ -71,7 +71,7 @@ export class MongoosePasswordResetRepository
         });
     }
 
-    async createIfUnderLimit(
+    public async createIfUnderLimit(
         data: {
             userId: Types.ObjectId;
             hashedToken: string;

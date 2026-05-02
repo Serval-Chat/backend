@@ -10,7 +10,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class WebPushDto {
     @ApiProperty()
     @IsObject()
-    subscription!: {
+    public subscription!: {
         endpoint: string;
         keys: { p256dh: string; auth: string };
         expirationTime?: number | null;
@@ -20,34 +20,34 @@ export class WebPushDto {
 export class FcmDto {
     @ApiProperty()
     @IsString()
-    token!: string;
+    public token!: string;
 }
 
 export class UpdatePreferencesDto {
     @ApiProperty()
     @IsOptional()
     @IsBoolean()
-    mention?: boolean;
+    public mention?: boolean;
 
     @ApiProperty()
     @IsOptional()
     @IsBoolean()
-    friend_request?: boolean;
+    public friend_request?: boolean;
 
     @ApiProperty()
     @IsOptional()
     @IsBoolean()
-    custom?: boolean;
+    public custom?: boolean;
 }
 
 export class MigrateVapidDto {
     @ApiProperty()
     @IsUrl()
-    oldEndpoint!: string;
+    public oldEndpoint!: string;
 
     @ApiProperty()
     @IsObject()
-    newSubscription!: {
+    public newSubscription!: {
         endpoint: string;
         keys: { p256dh: string; auth: string };
     };

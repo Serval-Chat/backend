@@ -1,5 +1,6 @@
 import type { Types } from 'mongoose';
 import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import type { NonEmptyString } from '@/types/branded';
 
 // User DTO for creation
 export interface CreateUserDTO {
@@ -16,6 +17,7 @@ export interface IUser {
     _id: Types.ObjectId;
     login?: string;
     username?: string;
+    isBot?: boolean;
     displayName?: string;
     password: string;
     email?: string;
@@ -56,7 +58,7 @@ export interface IUser {
     updatedAt?: Date;
     pronouns?: string;
     badges?: string[];
-    totpSecret?: string | null;
+    totpSecret?: NonEmptyString | null;
     totpEnabled?: boolean;
     totpVerifiedAt?: Date | null;
     backupCodes?: string[];

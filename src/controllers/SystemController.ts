@@ -9,15 +9,12 @@ interface SystemInfo {
     partialCommitHash: string;
 }
 
-// Controller for retrieving system-level information and versioning
-// Provides public endpoints for monitoring and version tracking
 @injectable()
 @Controller('api/v1')
 @ApiTags('System')
 export class SystemController {
-    constructor() {}
+    public constructor() {}
 
-    // Retrieves commit hash, version and partial commit hash
     @Get('system/info')
     @ApiOperation({ summary: 'Get system info' })
     @ApiResponse({ status: 200, description: 'System info retrieved' })

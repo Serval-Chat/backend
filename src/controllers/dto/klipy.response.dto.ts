@@ -2,42 +2,42 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class GifMetadataResponseDTO {
     @ApiProperty({ description: 'Klipy GIF identifier' })
-    klipyId!: string;
+    public klipyId!: string;
 
     @ApiProperty({ description: 'Full-resolution GIF URL' })
-    url!: string;
+    public url!: string;
 
     @ApiProperty({ description: 'Small / preview GIF URL' })
-    previewUrl!: string;
+    public previewUrl!: string;
 
     @ApiProperty({ description: 'GIF width in pixels' })
-    width!: number;
+    public width!: number;
 
     @ApiProperty({ description: 'GIF height in pixels' })
-    height!: number;
+    public height!: number;
 
     @ApiProperty({ description: 'Cache expiry timestamp' })
-    expiresAt!: Date;
+    public expiresAt!: Date;
 }
 
 export class FavoriteGifResponseDTO {
     @ApiProperty({ description: 'Klipy GIF identifier' })
-    klipyId!: string;
+    public klipyId!: string;
 
     @ApiProperty({ description: 'Full-resolution GIF URL' })
-    url!: string;
+    public url!: string;
 
     @ApiProperty({ description: 'Small / preview GIF URL' })
-    previewUrl!: string;
+    public previewUrl!: string;
 
     @ApiProperty({ description: 'GIF width in pixels' })
-    width!: number;
+    public width!: number;
 
     @ApiProperty({ description: 'GIF height in pixels' })
-    height!: number;
+    public height!: number;
 }
 
 export class ToggleFavoriteResponseDTO {
     @ApiProperty({ description: 'Whether the GIF is now favorited' })
-    favorited!: boolean;
+    public favorited!: boolean;
 }

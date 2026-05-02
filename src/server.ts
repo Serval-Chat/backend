@@ -211,7 +211,7 @@ export function setupExpressApp(app: Application): Application {
     app.use(
         cors({
             origin: (origin, callback) => {
-                if (!origin) {
+                if (origin === undefined || origin === '') {
                     return callback(null, true);
                 }
 
@@ -302,11 +302,11 @@ export function setupExpressApp(app: Application): Application {
             message?: string;
             stack?: string;
         };
-        const status = error.status || 500;
+        const status = error.status ?? 500;
         const message =
             PROJECT_LEVEL === 'production' && status >= 500
                 ? 'Internal Server Error'
-                : error.message || 'Internal Server Error';
+                : error.message ?? 'Internal Server Error';
 
         res.status(status).json({
             error: message,

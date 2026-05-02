@@ -19,49 +19,49 @@ import { ServerBannerTypeDTO } from './common.request.dto';
 export class ServerBannerDTO {
     @ApiProperty({ enum: ServerBannerTypeDTO })
     @IsEnum(ServerBannerTypeDTO)
-    type!: ServerBannerTypeDTO;
+    public type!: ServerBannerTypeDTO;
 
     @ApiProperty()
     @ValidateIf((o) => o.type === ServerBannerTypeDTO.COLOR)
     @IsColor()
     @IsString()
-    value!: string;
+    public value!: string;
 }
 
 export class CreateServerRequestDTO {
     @ApiProperty()
     @IsName()
     @MinLength(2, { message: 'Name must be at least 2 characters' })
-    name!: string;
+    public name!: string;
 }
 
 export class UpdateServerRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsName()
-    name?: string;
+    public name?: string;
 
     @ApiPropertyOptional({ type: ServerBannerDTO })
     @IsOptional()
     @ValidateNested()
     @Type(() => ServerBannerDTO)
-    banner?: ServerBannerDTO;
+    public banner?: ServerBannerDTO;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    disableCustomFonts?: boolean;
+    public disableCustomFonts?: boolean;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    disableUsernameGlowAndCustomColor?: boolean;
+    public disableUsernameGlowAndCustomColor?: boolean;
 
     @ApiPropertyOptional({ nullable: true, type: String })
     @IsOptional()
     @IsMongoId()
     @IsRoleId()
-    defaultRoleId?: string | null;
+    public defaultRoleId?: string | null;
 
     @ApiPropertyOptional({ type: [String] })
     @IsOptional()
@@ -69,7 +69,7 @@ export class UpdateServerRequestDTO {
     @ArrayMaxSize(8)
     @IsString({ each: true })
     @MaxLength(25, { each: true })
-    tags?: string[];
+    public tags?: string[];
 }
 
 export class SetDefaultRoleRequestDTO {
@@ -77,5 +77,5 @@ export class SetDefaultRoleRequestDTO {
     @IsOptional()
     @IsMongoId()
     @IsRoleId()
-    roleId!: string | null;
+    public roleId!: string | null;
 }

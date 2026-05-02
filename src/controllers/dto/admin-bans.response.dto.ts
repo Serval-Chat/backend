@@ -1,29 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsMongoId, IsString } from 'class-validator';
+
+import { AdminBanSampleDTO, AdminBanHistoryItemDTO } from './types.dto';
+
 import type { IBan } from '@/di/interfaces/IBanRepository';
-
-export class AdminBanHistoryItemDTO {
-    @ApiProperty()
-    @IsMongoId()
-    @IsString()
-    _id!: string;
-
-    @ApiProperty()
-    reason!: string;
-
-    @ApiProperty()
-    timestamp!: Date;
-
-    @ApiProperty()
-    expirationTimestamp!: Date;
-
-    @ApiProperty()
-    @IsMongoId()
-    @IsString()
-    issuedBy!: string;
-    @ApiProperty()
-    active!: boolean;
-}
 
 export type AdminUserBanHistoryResponseDTO = AdminBanHistoryItemDTO[];
 
@@ -37,9 +16,9 @@ export class AdminBansDiagnosticResponseDTO {
             sample: { type: 'array', items: { type: 'object' } },
         },
     })
-    appBans!: {
+    public appBans!: {
         count: number;
-        sample: unknown[];
+        sample: AdminBanSampleDTO[];
     };
 
     @ApiProperty({
@@ -49,8 +28,8 @@ export class AdminBansDiagnosticResponseDTO {
             sample: { type: 'array', items: { type: 'object' } },
         },
     })
-    serverBans!: {
+    public serverBans!: {
         count: number;
-        sample: unknown[];
+        sample: AdminBanSampleDTO[];
     };
 }

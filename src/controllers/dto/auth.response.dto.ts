@@ -1,51 +1,53 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { BanInfoDTO } from './types.dto';
+
 
 export class LoginResponseDTO {
     @ApiProperty({ required: false })
-    token?: string;
+    public token?: string;
     @ApiProperty({ required: false })
-    temp_token?: string;
+    public temp_token?: string;
     @ApiProperty({ required: false })
-    two_factor_required?: boolean;
+    public two_factor_required?: boolean;
     @ApiProperty()
-    username!: string;
+    public username!: string;
 }
 
 export class RegisterResponseDTO {
     @ApiProperty()
-    token!: string;
+    public token!: string;
 }
 
 export class ChangeLoginResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
     @ApiProperty()
-    login!: string;
+    public login!: string;
     @ApiProperty()
-    token!: string;
+    public token!: string;
 }
 
 export class ChangePasswordResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
     @ApiProperty()
-    token!: string;
+    public token!: string;
 }
 
 export class AuthErrorResponseDTO {
     @ApiProperty()
-    error!: string;
-    @ApiProperty({ required: false })
-    ban?: Record<string, unknown>;
+    public error!: string;
+    @ApiProperty({ required: false, type: BanInfoDTO })
+    public ban?: BanInfoDTO;
 }
 
 export class PasswordResetResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 
     @ApiProperty({
         description: 'Request ID for support reference',
         example: 'a1b2c3d4e5f6g7h8',
     })
-    requestId?: string;
+    public requestId?: string;
 }

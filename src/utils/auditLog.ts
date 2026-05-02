@@ -49,19 +49,22 @@ export function mapAuditLogEntry(entry: IAuditLog) {
     const metadataObj =
         metadata instanceof Map ? Object.fromEntries(metadata) : metadata;
 
-    const resolvedName = (metadataObj.targetName ||
-        metadataObj.channelName ||
-        metadataObj.roleName ||
-        metadataObj.categoryName ||
-        metadataObj.emojiName ||
-        metadataObj.code) as string | undefined;
+    const m = metadataObj as Record<string, unknown>;
+    const resolvedName = (
+        (m['targetName'] as string | undefined) ??
+        (m['channelName'] as string | undefined) ??
+        (m['roleName'] as string | undefined) ??
+        (m['categoryName'] as string | undefined) ??
+        (m['emojiName'] as string | undefined) ??
+        (m['code'] as string | undefined)
+    );
 
     return {
         id: entry._id.toString(),
         action: entry.actionType,
-        moderatorId: actorObj?._id?.toString() ?? entry.actorId.toString(),
+        moderatorId: actorObj?._id.toString() ?? entry.actorId.toString(),
         moderator: {
-            id: actorObj?._id?.toString() ?? entry.actorId.toString(),
+            id: actorObj?._id.toString() ?? entry.actorId.toString(),
             username: actorObj?.username ?? 'Unknown',
             avatarUrl: actorObj?.profilePicture,
         },
@@ -69,12 +72,12 @@ export function mapAuditLogEntry(entry: IAuditLog) {
         targetType: entry.targetType,
         target: targetUserObj
             ? {
-                  id: targetUserObj._id?.toString(),
+                  id: targetUserObj._id.toString(),
                   username: targetUserObj.username,
                   name: targetUserObj.displayName ?? targetUserObj.username,
                   avatarUrl: targetUserObj.profilePicture,
               }
-            : resolvedName
+            : (resolvedName !== undefined && resolvedName !== '')
               ? {
                     id: entry.targetId?.toString(),
                     name: resolvedName,

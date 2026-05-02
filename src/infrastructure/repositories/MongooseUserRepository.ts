@@ -25,89 +25,106 @@ export class MongooseUserRepository implements IUserRepository {
     private friendRequestModel = FriendRequest;
     private banModel = Ban;
 
-    constructor() {}
+    public constructor() { }
 
-    async findById(id: Types.ObjectId): Promise<IUser | null> {
-        return await this.userModel.findById(id).select('-password').lean();
+    private toDomain(doc: unknown): IUser | null {
+        if (doc === undefined || doc === null) return null;
+        return doc as IUser;
     }
 
-    async findByIds(ids: Types.ObjectId[]): Promise<IUser[]> {
-        return await this.userModel
-            .find({ _id: { $in: ids } })
-            .select(
-                'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
-            )
-            .lean();
+    private toDomainList(docs: unknown[]): IUser[] {
+        return docs as IUser[];
     }
 
-    async findByLogin(login: string): Promise<IUser | null> {
-        return await this.userModel.findOne({ login }).lean();
+    public async findById(id: Types.ObjectId): Promise<IUser | null> {
+        return this.toDomain(await this.userModel.findById(id).select('-password').lean());
     }
 
-    async findByUsername(username: string): Promise<IUser | null> {
-        return await this.userModel.findOne({ username }).lean();
+    public async findByIds(ids: Types.ObjectId[]): Promise<IUser[]> {
+        return this.toDomainList(
+            await this.userModel
+                .find({ _id: { $in: ids } })
+                .select(
+                    'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
+                )
+                .lean()
+        );
     }
 
-    async findByUsernames(usernames: string[]): Promise<IUser[]> {
-        return await this.userModel
-            .find({ username: { $in: usernames } })
-            .select('username displayName customStatus')
-            .lean();
+    public async findByLogin(login: string): Promise<IUser | null> {
+        return this.toDomain(await this.userModel.findOne({ login }).lean());
     }
 
-    async findByUsernamePrefix(
+    public async findByUsername(username: string): Promise<IUser | null> {
+        return this.toDomain(await this.userModel.findOne({ username }).lean());
+    }
+
+    public async findByUsernames(usernames: string[]): Promise<IUser[]> {
+        return this.toDomainList(
+            await this.userModel
+                .find({ username: { $in: usernames } })
+                .select('username displayName customStatus')
+                .lean()
+        );
+    }
+
+    public async findByUsernamePrefix(
         userIds: Types.ObjectId[],
         prefix: string,
         limit: number = 10,
     ): Promise<IUser[]> {
-        return await this.userModel
-            .find({
-                _id: { $in: userIds },
-                username: { $regex: `^${prefix}`, $options: 'i' },
-            })
-            .select(
-                'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
-            )
-            .limit(limit)
-            .lean();
+        return this.toDomainList(
+            await this.userModel
+                .find({
+                    _id: { $in: userIds },
+                    username: { $regex: `^${prefix}`, $options: 'i' },
+                })
+                .select(
+                    'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
+                )
+                .limit(limit)
+                .lean()
+        );
     }
 
-    async create(data: CreateUserDTO): Promise<IUser> {
+    public async create(data: CreateUserDTO): Promise<IUser> {
         const user = new this.userModel(data);
-        return await user.save();
+        return this.toDomain(await user.save()) as IUser;
     }
 
-    async update(
+    public async update(
         id: Types.ObjectId,
         data: Partial<IUser>,
     ): Promise<IUser | null> {
-        return await this.userModel
-            .findByIdAndUpdate(id, data, { new: true })
-            .lean();
+        return this.toDomain(
+            await this.userModel
+                .findByIdAndUpdate(id, data, { new: true })
+                .lean()
+        );
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await this.userModel.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
     // Soft delete a user
     //
     // Marks the user as deleted, sets a reason, and increments the token version
     // To invalidate all existing sessions
-    async softDelete(id: Types.ObjectId, reason: string): Promise<boolean> {
+    public async softDelete(id: Types.ObjectId, reason: string): Promise<boolean> {
         const user = await this.userModel.findById(id);
         if (!user) return false;
 
         user.deletedAt = new Date();
         user.deletedReason = reason;
-        user.tokenVersion = (user.tokenVersion || 0) + 1;
+        user.tokenVersion = (user.tokenVersion ?? 0) + 1;
         await user.save();
 
         return true;
     }
 
-    async comparePassword(
+    public async comparePassword(
         id: Types.ObjectId,
         candidate: string,
     ): Promise<boolean> {
@@ -116,7 +133,7 @@ export class MongooseUserRepository implements IUserRepository {
         return (user as unknown as IUserModel).comparePassword(candidate);
     }
 
-    async updateCustomStatus(
+    public async updateCustomStatus(
         id: Types.ObjectId,
         status: {
             text: string;
@@ -128,7 +145,7 @@ export class MongooseUserRepository implements IUserRepository {
         await this.userModel.findByIdAndUpdate(id, { customStatus: status });
     }
 
-    async updateProfilePicture(
+    public async updateProfilePicture(
         id: Types.ObjectId,
         filename: string,
     ): Promise<void> {
@@ -137,11 +154,11 @@ export class MongooseUserRepository implements IUserRepository {
         });
     }
 
-    async updateLogin(id: Types.ObjectId, newLogin: string): Promise<void> {
+    public async updateLogin(id: Types.ObjectId, newLogin: string): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { login: newLogin });
     }
 
-    async updatePassword(
+    public async updatePassword(
         id: Types.ObjectId,
         newPassword: string,
     ): Promise<void> {
@@ -151,7 +168,7 @@ export class MongooseUserRepository implements IUserRepository {
         await user.save();
     }
 
-    async updateUsernameStyle(
+    public async updateUsernameStyle(
         id: Types.ObjectId,
         style: {
             usernameFont?: string;
@@ -174,7 +191,7 @@ export class MongooseUserRepository implements IUserRepository {
     //
     // Cascades the change to related collections (Friendships, FriendRequests)
     // To maintain data consistency for legacy fields
-    async updateUsername(
+    public async updateUsername(
         id: Types.ObjectId,
         newUsername: string,
     ): Promise<void> {
@@ -204,29 +221,29 @@ export class MongooseUserRepository implements IUserRepository {
         );
     }
 
-    async updateLanguage(id: Types.ObjectId, language: string): Promise<void> {
+    public async updateLanguage(id: Types.ObjectId, language: string): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { language });
     }
 
-    async updateBio(id: Types.ObjectId, bio: string | null): Promise<void> {
+    public async updateBio(id: Types.ObjectId, bio: string | null): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { bio });
     }
 
-    async updatePronouns(
+    public async updatePronouns(
         id: Types.ObjectId,
         pronouns: string | null,
     ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { pronouns });
     }
 
-    async updateDisplayName(
+    public async updateDisplayName(
         id: Types.ObjectId,
         displayName: string | null,
     ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { displayName });
     }
 
-    async findMany(options: {
+    public async findMany(options: {
         limit?: number;
         offset?: number;
         search?: string;
@@ -242,11 +259,11 @@ export class MongooseUserRepository implements IUserRepository {
         } = options;
         const query: FilterQuery<IUserModel> = {};
 
-        if (!includeDeleted) {
+        if (includeDeleted !== true) {
             query.deleted = { $ne: true };
         }
 
-        if (search) {
+        if (search !== undefined && search !== '') {
             query.username = { $regex: search, $options: 'i' };
         }
 
@@ -263,33 +280,35 @@ export class MongooseUserRepository implements IUserRepository {
             };
         }
 
-        return await this.userModel
-            .find(query)
-            .limit(Number(limit))
-            .skip(Number(offset))
-            .select('-password')
-            .lean();
+        return this.toDomainList(
+            await this.userModel
+                .find(query)
+                .limit(Number(limit))
+                .skip(Number(offset))
+                .select('-password')
+                .lean()
+        );
     }
 
-    async hardDelete(id: Types.ObjectId): Promise<boolean> {
+    public async hardDelete(id: Types.ObjectId): Promise<boolean> {
         const result = await this.userModel.findByIdAndDelete(id);
         return !!result;
     }
 
-    async updatePermissions(
+    public async updatePermissions(
         id: Types.ObjectId,
         permissions: AdminPermissions,
     ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { permissions });
     }
 
-    async incrementTokenVersion(id: Types.ObjectId): Promise<void> {
+    public async incrementTokenVersion(id: Types.ObjectId): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, {
             $inc: { tokenVersion: 1 },
         });
     }
 
-    async removeBadgeFromAllUsers(badgeId: string): Promise<void> {
+    public async removeBadgeFromAllUsers(badgeId: string): Promise<void> {
         const bid = new Types.ObjectId(badgeId);
         await this.userModel.updateMany(
             { badges: bid },
@@ -297,7 +316,7 @@ export class MongooseUserRepository implements IUserRepository {
         );
     }
 
-    async updateSettings(
+    public async updateSettings(
         id: Types.ObjectId,
         settings: {
             muteNotifications?: boolean;
@@ -314,24 +333,24 @@ export class MongooseUserRepository implements IUserRepository {
         });
     }
 
-    async count(): Promise<number> {
+    public async count(): Promise<number> {
         return await this.userModel.countDocuments();
     }
 
-    async countCreatedAfter(date: Date): Promise<number> {
+    public async countCreatedAfter(date: Date): Promise<number> {
         return await this.userModel.countDocuments({
             createdAt: { $gt: date },
         });
     }
 
-    async updateBanner(
+    public async updateBanner(
         id: Types.ObjectId,
         filename: string | null,
     ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { banner: filename });
     }
 
-    async isBanned(userId: Types.ObjectId): Promise<boolean> {
+    public async isBanned(userId: Types.ObjectId): Promise<boolean> {
         await this.banModel.checkExpired(userId);
         const activeBan = await this.banModel.findOne({
             userId,
@@ -340,7 +359,7 @@ export class MongooseUserRepository implements IUserRepository {
         return !!activeBan;
     }
 
-    async countByHour(since: Date, hours: number): Promise<number[]> {
+    public async countByHour(since: Date, hours: number): Promise<number[]> {
         const msPerHour = 1000 * 60 * 60;
         const buckets = await this.userModel.aggregate<{
             _id: number;
@@ -369,7 +388,7 @@ export class MongooseUserRepository implements IUserRepository {
         return result;
     }
 
-    async countByDay(since: Date, days: number): Promise<number[]> {
+    public async countByDay(since: Date, days: number): Promise<number[]> {
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await this.userModel.aggregate<{
             _id: number;
@@ -398,12 +417,12 @@ export class MongooseUserRepository implements IUserRepository {
         return result;
     }
 
-    async countAllByDay(): Promise<number[]> {
+    public async countAllByDay(): Promise<number[]> {
         const oldestUser = await this.userModel
             .findOne()
             .sort({ createdAt: 1 })
             .lean();
-        if (!oldestUser || !oldestUser.createdAt) return [];
+        if (!oldestUser) return [];
 
         const now = new Date();
         const startOfOldestDay = new Date(oldestUser.createdAt);

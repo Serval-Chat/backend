@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/home/neko/Serchat/backend/logs-test/.6ca4923cd53baae3ad33175fbf70085c39332a2a-audit.json",
+    "files": [
+        {
+            "date": 1777725752825,
+            "name": "/home/neko/Serchat/backend/logs-test/app-2026-05-02.log",
+            "hash": "858d9f1444260dbb4354f134f0463428d453539cd4f63a1a15bd30b7e86e7d10"
+        }
+    ],
+    "hashType": "sha256"
+}

@@ -36,6 +36,7 @@ type RedisBroadcastMessage =
               userId: string;
               event: AnyResponseWsEvent;
               replyTo?: string;
+              options?: { excludeBots?: boolean };
           };
       }
     | { action: 'broadcastToAll'; payload: { event: AnyResponseWsEvent } }
@@ -53,6 +54,7 @@ type RedisBroadcastMessage =
               serverId: string;
               event: AnyResponseWsEvent;
               replyTo?: string;
+              options?: { excludeBots?: boolean; onlyBots?: boolean };
           };
       }
     | {
@@ -64,8 +66,10 @@ type RedisBroadcastMessage =
                   type: 'server' | 'channel';
                   targetId?: string;
                   permission: string;
+                  negate?: boolean;
               };
               replyTo?: string;
+              options?: { excludeBots?: boolean; onlyBots?: boolean };
           };
       }
     | {
@@ -134,7 +138,7 @@ export class WsServer extends EventEmitter implements IWsServer {
     /** Presence TTL in seconds. Must be comfortably longer than the client ping interval. */
     private static readonly PRESENCE_TTL_S = 90;
 
-    constructor(
+    public constructor(
         @inject(TYPES.WsDispatcher) private dispatcher: WsDispatcher,
         @inject(TYPES.RedisService) private redisService: IRedisService,
         @inject(TYPES.PermissionService)
@@ -187,6 +191,8 @@ export class WsServer extends EventEmitter implements IWsServer {
                         data.payload.userId,
                         data.payload.event,
                         data.payload.replyTo,
+                        undefined,
+                        data.payload.options,
                     );
                     break;
                 case 'broadcastToAll':
@@ -204,6 +210,8 @@ export class WsServer extends EventEmitter implements IWsServer {
                         data.payload.serverId,
                         data.payload.event,
                         data.payload.replyTo,
+                        undefined,
+                        data.payload.options,
                     );
                     break;
                 case 'broadcastToServerWithPermission':
@@ -212,6 +220,8 @@ export class WsServer extends EventEmitter implements IWsServer {
                         data.payload.event,
                         data.payload.permissionCheck,
                         data.payload.replyTo,
+                        undefined,
+                        data.payload.options,
                     );
                     break;
                 case 'sendToSocketById':
@@ -240,7 +250,7 @@ export class WsServer extends EventEmitter implements IWsServer {
         this.dispatcher.registerControllers();
 
         const subscriber = this.redisService.getSubscriber();
-        subscriber.subscribe('SERCHAT_WS_BROADCAST', (err, count) => {
+        void subscriber.subscribe('SERCHAT_WS_BROADCAST', (err, count) => {
             if (err) {
                 logger.error(
                     '[WsServer] Failed to subscribe to Redis channel',
@@ -253,18 +263,20 @@ export class WsServer extends EventEmitter implements IWsServer {
             }
         });
 
-        subscriber.on('message', async (channel, message) => {
+        subscriber.on('message', (channel, message) => {
             if (channel === 'SERCHAT_WS_BROADCAST') {
-                try {
-                    const data = JSON.parse(message);
-                    if (data.instanceId === this.instanceId) return; // Ignore our own messages
-                    await this.handleRedisMessage(data);
-                } catch (err) {
-                    logger.error(
-                        '[WsServer] Failed to process Redis broadcast',
-                        err,
-                    );
-                }
+                void (async () => {
+                    try {
+                        const data = JSON.parse(message);
+                        if (data.instanceId === this.instanceId) return; // Ignore our own messages
+                        await this.handleRedisMessage(data);
+                    } catch (err) {
+                        logger.error(
+                            '[WsServer] Failed to process Redis broadcast',
+                            err,
+                        );
+                    }
+                })();
             }
         });
 
@@ -276,7 +288,7 @@ export class WsServer extends EventEmitter implements IWsServer {
 
         server.on('upgrade', (request, socket, head) => {
             const pathname = new URL(
-                request.url || '',
+                request.url ?? '',
                 `http://${request.headers.host}`,
             ).pathname;
 
@@ -299,15 +311,16 @@ export class WsServer extends EventEmitter implements IWsServer {
 
             // Set authentication timeout
             const timeout = setTimeout(() => {
-                if (!this.socketToUser.has(ws)) {
+                if (this.socketToUser.has(ws) === false) {
                     logger.warn('[WsServer] Connection authentication timeout');
                     ws.close(4001, 'Authentication timeout');
                 }
             }, this.AUTH_TIMEOUT_MS);
             this.authTimeouts.set(ws, timeout);
 
-            ws.on('message', async (data) => {
-                const span = wsTracer.startSpan('ws.message.handle', {
+            ws.on('message', (data) => {
+                void (async () => {
+                    const span = wsTracer.startSpan('ws.message.handle', {
                     attributes: {
                         'messaging.system': 'websocket',
                         'messaging.destination': 'chat',
@@ -330,7 +343,7 @@ export class WsServer extends EventEmitter implements IWsServer {
                                 raw.toString(),
                             );
                             const msgType =
-                                (message.event as { type?: string })?.type ??
+                                (message.event as { type?: string }).type ??
                                 'unknown';
 
                             wsMsgTotalCounter.inc({ type: msgType });
@@ -361,18 +374,21 @@ export class WsServer extends EventEmitter implements IWsServer {
                         }
                     },
                 );
+            })().catch(err => {
+                logger.error('[WsServer] Unhandled error in message event listener', err);
             });
+        });
 
             ws.on('close', () => {
                 logger.info('[WsServer] Connection closed');
-                this.removeConnection(ws);
+                void this.removeConnection(ws);
                 websocketConnectionsGauge.dec();
             });
 
             ws.on('error', (error) => {
                 logger.error('[WsServer] WebSocket error:', error);
                 wsErrorsTotalCounter.inc({ reason: 'ws_error_event' });
-                this.removeConnection(ws);
+                void this.removeConnection(ws);
             });
         });
 
@@ -389,7 +405,7 @@ export class WsServer extends EventEmitter implements IWsServer {
     ): Promise<void> {
         // Clear authentication timeout
         const timeout = this.authTimeouts.get(ws);
-        if (timeout) {
+        if (timeout !== undefined) {
             clearTimeout(timeout);
             this.authTimeouts.delete(ws);
         }
@@ -398,7 +414,7 @@ export class WsServer extends EventEmitter implements IWsServer {
         this.socketToUser.set(ws, user);
 
         let userSockets = this.connectionsByUserId.get(user.userId);
-        if (!userSockets) {
+        if (userSockets === undefined) {
             userSockets = new Set();
             this.connectionsByUserId.set(user.userId, userSockets);
         }
@@ -412,7 +428,7 @@ export class WsServer extends EventEmitter implements IWsServer {
 
         const presenceKey = `presence:user:${user.userId}`;
         const socketId = this.getSocketId(ws);
-        if (!socketId) {
+        if (socketId === undefined) {
             logger.error(
                 `[WsServer] authenticateConnection: socket has no ID for user ${user.userId}`,
             );
@@ -446,7 +462,7 @@ export class WsServer extends EventEmitter implements IWsServer {
      */
     public getUserSockets(userId: string): WebSocket[] {
         const sockets = this.connectionsByUserId.get(userId);
-        return sockets ? Array.from(sockets) : [];
+        return (sockets !== undefined) ? Array.from(sockets) : [];
     }
 
     /**
@@ -490,9 +506,15 @@ export class WsServer extends EventEmitter implements IWsServer {
         event: AnyResponseWsEvent,
         replyTo?: string,
         excludeWs?: WebSocket,
+        options?: { excludeBots?: boolean },
     ): void {
-        this.publishToRedis('broadcastToUser', { userId, event, replyTo });
-        this._localBroadcastToUser(userId, event, replyTo, excludeWs);
+        this.publishToRedis('broadcastToUser', {
+            userId,
+            event,
+            replyTo,
+            options,
+        });
+        this._localBroadcastToUser(userId, event, replyTo, excludeWs, options);
     }
 
     private _localBroadcastToUser(
@@ -500,10 +522,14 @@ export class WsServer extends EventEmitter implements IWsServer {
         event: AnyResponseWsEvent,
         replyTo?: string,
         excludeWs?: WebSocket,
+        options?: { excludeBots?: boolean },
     ): void {
         let sockets = this.getUserSockets(userId);
-        if (excludeWs) {
+        if (excludeWs !== undefined) {
             sockets = sockets.filter((s) => s !== excludeWs);
+        }
+        if (options?.excludeBots === true) {
+            sockets = sockets.filter((s) => this.socketToUser.get(s)?.isBot === false);
         }
         if (sockets.length > 0) {
             sendToMany(sockets, event, replyTo);
@@ -520,7 +546,7 @@ export class WsServer extends EventEmitter implements IWsServer {
     public async refreshPresence(ws: WebSocket): Promise<void> {
         const user = this.socketToUser.get(ws);
         const socketId = this.getSocketId(ws);
-        if (!user || !socketId) return;
+        if (user === undefined || socketId === undefined) return;
 
         const presenceKey = `presence:user:${user.userId}`;
         const presenceMember = `${this.instanceId}:${socketId}`;
@@ -570,14 +596,14 @@ export class WsServer extends EventEmitter implements IWsServer {
      */
     public subscribeToChannel(ws: WebSocket, channelId: string): void {
         let subscribers = this.channelSubscriptions.get(channelId);
-        if (!subscribers) {
+        if (subscribers === undefined) {
             subscribers = new Set();
             this.channelSubscriptions.set(channelId, subscribers);
         }
         subscribers.add(ws);
 
         let subs = this.socketSubscriptions.get(ws);
-        if (!subs) {
+        if (subs === undefined) {
             subs = { channels: new Set(), servers: new Set() };
             this.socketSubscriptions.set(ws, subs);
         }
@@ -592,7 +618,7 @@ export class WsServer extends EventEmitter implements IWsServer {
      */
     public unsubscribeFromChannel(ws: WebSocket, channelId: string): void {
         const subscribers = this.channelSubscriptions.get(channelId);
-        if (subscribers) {
+        if (subscribers !== undefined) {
             subscribers.delete(ws);
             if (subscribers.size === 0) {
                 this.channelSubscriptions.delete(channelId);
@@ -649,14 +675,14 @@ export class WsServer extends EventEmitter implements IWsServer {
      */
     public subscribeToServer(ws: WebSocket, serverId: string): void {
         let subscribers = this.serverSubscriptions.get(serverId);
-        if (!subscribers) {
+        if (subscribers === undefined) {
             subscribers = new Set();
             this.serverSubscriptions.set(serverId, subscribers);
         }
         subscribers.add(ws);
 
         let subs = this.socketSubscriptions.get(ws);
-        if (!subs) {
+        if (subs === undefined) {
             subs = { channels: new Set(), servers: new Set() };
             this.socketSubscriptions.set(ws, subs);
         }
@@ -691,9 +717,15 @@ export class WsServer extends EventEmitter implements IWsServer {
         event: AnyResponseWsEvent,
         replyTo?: string,
         excludeWs?: WebSocket,
+        options?: { excludeBots?: boolean; onlyBots?: boolean },
     ): void {
-        this.publishToRedis('broadcastToServer', { serverId, event, replyTo });
-        this._localBroadcastToServer(serverId, event, replyTo, excludeWs);
+        this.publishToRedis('broadcastToServer', {
+            serverId,
+            event,
+            replyTo,
+            options,
+        });
+        this._localBroadcastToServer(serverId, event, replyTo, excludeWs, options);
     }
 
     private _localBroadcastToServer(
@@ -701,12 +733,19 @@ export class WsServer extends EventEmitter implements IWsServer {
         event: AnyResponseWsEvent,
         replyTo?: string,
         excludeWs?: WebSocket,
+        options?: { excludeBots?: boolean; onlyBots?: boolean },
     ): void {
         const subscribers = this.serverSubscriptions.get(serverId);
-        if (subscribers && subscribers.size > 0) {
+        if (subscribers !== undefined && subscribers.size > 0) {
             let recipients = Array.from(subscribers);
-            if (excludeWs) {
+            if (excludeWs !== undefined) {
                 recipients = recipients.filter((r) => r !== excludeWs);
+            }
+            if (options?.excludeBots === true) {
+                recipients = recipients.filter((r) => this.socketToUser.get(r)?.isBot === false);
+            }
+            if (options?.onlyBots === true) {
+                recipients = recipients.filter((r) => this.socketToUser.get(r)?.isBot === true);
             }
             if (recipients.length > 0) {
                 sendToMany(recipients, event, replyTo);
@@ -727,15 +766,18 @@ export class WsServer extends EventEmitter implements IWsServer {
             type: 'server' | 'channel';
             targetId?: string;
             permission: string;
+            negate?: boolean;
         },
         replyTo?: string,
         excludeWs?: WebSocket,
+        options?: { excludeBots?: boolean; onlyBots?: boolean },
     ): Promise<void> {
         this.publishToRedis('broadcastToServerWithPermission', {
             serverId,
             event,
             permissionCheck,
             replyTo,
+            options,
         });
         await this._localBroadcastToServerWithPermission(
             serverId,
@@ -743,6 +785,7 @@ export class WsServer extends EventEmitter implements IWsServer {
             permissionCheck,
             replyTo,
             excludeWs,
+            options,
         );
     }
 
@@ -752,6 +795,7 @@ export class WsServer extends EventEmitter implements IWsServer {
             type: 'server' | 'channel';
             targetId?: string;
             permission: string;
+            negate?: boolean;
         },
         serverId: string,
     ): Promise<boolean> {
@@ -762,8 +806,7 @@ export class WsServer extends EventEmitter implements IWsServer {
                 permissionCheck.permission,
             );
         } else if (
-            permissionCheck.type === 'channel' &&
-            permissionCheck.targetId
+            permissionCheck.targetId !== undefined && permissionCheck.targetId !== ''
         ) {
             return this.permissionService.hasChannelPermission(
                 new mongoose.Types.ObjectId(serverId),
@@ -782,9 +825,11 @@ export class WsServer extends EventEmitter implements IWsServer {
             type: 'server' | 'channel';
             targetId?: string;
             permission: string;
+            negate?: boolean;
         },
         replyTo?: string,
         excludeWs?: WebSocket,
+        options?: { excludeBots?: boolean; onlyBots?: boolean },
     ): Promise<void> {
         const subscribers = this.serverSubscriptions.get(serverId);
         if (!subscribers || subscribers.size === 0) {
@@ -812,10 +857,17 @@ export class WsServer extends EventEmitter implements IWsServer {
             }
 
             const user = this.getAuthenticatedUser(ws);
-            if (!user) {
+            if (user === undefined) {
                 logger.debug(
                     `[WsServer] Skip subscriber for server ${serverId}: unauthenticated socket`,
                 );
+                continue;
+            }
+
+            if (options?.excludeBots === true && user.isBot === true) {
+                continue;
+            }
+            if (options?.onlyBots === true && user.isBot !== true) {
                 continue;
             }
 
@@ -827,6 +879,9 @@ export class WsServer extends EventEmitter implements IWsServer {
                         permissionCheck,
                         serverId,
                     );
+                    if (permissionCheck.negate === true) {
+                        hasPermission = !hasPermission;
+                    }
                     logger.debug(
                         `[WsServer] Permission check for user ${user.userId} on server ${serverId}: ${hasPermission}`,
                     );
@@ -875,7 +930,7 @@ export class WsServer extends EventEmitter implements IWsServer {
         replyTo?: string,
     ): void {
         const ws = this.socketsById.get(socketId);
-        if (ws && ws.readyState === 1) {
+        if (ws !== undefined && ws.readyState === 1) {
             send(ws, event, replyTo);
         }
     }
@@ -896,7 +951,7 @@ export class WsServer extends EventEmitter implements IWsServer {
      */
     public closeConnection(ws: WebSocket, code: number, reason: string): void {
         ws.close(code, reason);
-        this.removeConnection(ws);
+        void this.removeConnection(ws);
     }
 
     /**
@@ -905,13 +960,13 @@ export class WsServer extends EventEmitter implements IWsServer {
     private async removeConnection(ws: WebSocket) {
         // Clear auth timeout if exists
         const timeout = this.authTimeouts.get(ws);
-        if (timeout) {
+        if (timeout !== undefined) {
             clearTimeout(timeout);
             this.authTimeouts.delete(ws);
         }
 
         const socketId = this.getSocketId(ws);
-        if (socketId) {
+        if (socketId !== undefined) {
             this.socketsById.delete(socketId);
         }
 
@@ -924,10 +979,9 @@ export class WsServer extends EventEmitter implements IWsServer {
 
         // Get user before we lose the reference
         const user = this.socketToUser.get(ws);
-
-        if (user) {
+        if (user !== undefined) {
             const userSockets = this.connectionsByUserId.get(user.userId);
-            if (userSockets) {
+            if (userSockets !== undefined) {
                 userSockets.delete(ws);
                 if (userSockets.size === 0) {
                     this.connectionsByUserId.delete(user.userId);
@@ -936,7 +990,7 @@ export class WsServer extends EventEmitter implements IWsServer {
                     );
 
                     const socketId = this.getSocketId(ws);
-                    if (socketId) {
+                    if (socketId !== undefined && socketId !== '') {
                         const presenceMember = `${this.instanceId}:${socketId}`;
                         const presenceKey = `presence:user:${user.userId}`;
                         const redis = this.redisService.getClient();
@@ -947,8 +1001,8 @@ export class WsServer extends EventEmitter implements IWsServer {
                             .scard(presenceKey)
                             .exec()
                             .then((results) => {
-                                const countAfter =
-                                    (results?.[1]?.[1] as number) || 0;
+                                if (results === null || results[1] === undefined) return;
+                                const countAfter = results[1][1] as number;
                                 if (countAfter === 0) {
                                     logger.info(
                                         `[WsServer] User ${user.username} went offline globally`,
@@ -1049,30 +1103,27 @@ export class WsServer extends EventEmitter implements IWsServer {
         excludeUserIds?: string[],
     ): void {
         const recipients = new Set<WebSocket>();
-        const excludeSet = excludeUserIds ? new Set(excludeUserIds) : null;
+        const excludeSet = excludeUserIds !== undefined ? new Set(excludeUserIds) : null;
 
-        // 1. Add friends' sockets
         for (const friendId of friendIds) {
-            if (excludeSet?.has(friendId)) continue;
+            if (excludeSet !== null && excludeSet.has(friendId)) continue;
             const sockets = this.connectionsByUserId.get(friendId);
             if (sockets) {
                 sockets.forEach((socket) => recipients.add(socket));
             }
         }
 
-        // 2. Add server subscribers (people viewing the servers the user is in)
         for (const serverId of serverIds) {
             const subscribers = this.serverSubscriptions.get(serverId);
             if (subscribers) {
                 subscribers.forEach((socket) => {
                     const user = this.socketToUser.get(socket);
-                    if (user && excludeSet?.has(user.userId)) return;
+                    if (user !== undefined && (excludeSet !== null && excludeSet.has(user.userId))) return;
                     recipients.add(socket);
                 });
             }
         }
 
-        // 3. Exclude specific socket
         if (excludeWs) {
             recipients.delete(excludeWs);
         }
@@ -1080,7 +1131,7 @@ export class WsServer extends EventEmitter implements IWsServer {
         if (recipients.size > 0) {
             sendToMany(Array.from(recipients), event);
             logger.debug(
-                `[WsServer] Broadcast presence to ${recipients.size} unique sockets (${friendIds.length} friends, ${serverIds.length} servers, excluded: ${excludeUserIds?.length || 0})`,
+                `[WsServer] Broadcast presence to ${recipients.size} unique sockets (${friendIds.length} friends, ${serverIds.length} servers, excluded: ${excludeUserIds?.length ?? 0})`,
             );
         }
     }

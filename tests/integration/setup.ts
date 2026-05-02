@@ -1,3 +1,15 @@
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.PORT = '0';
+process.env.CHAT_PORT = '0';
+process.env.MONGO_URI = 'mongodb://localhost:27017/test';
+process.env.PROJ_LEVEL = 'development';
+process.env.LOGS_PATH = './logs-test';
+process.env.PUBLIC_FOLDER = './public';
+process.env.HTTPS = 'off';
+process.env.SERVER_URL = 'http://localhost';
+process.env.MAX_MESSAGE_LENGTH = '10000';
+
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import { createServer } from 'node:http';
@@ -17,15 +29,11 @@ import { AppModule } from '../../src/app.module';
 import type { IWsServer } from '../../src/ws/interfaces/IWsServer';
 import type { IRedisService } from '../../src/di/interfaces/IRedisService';
 
-process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-jwt-secret';
-process.env.PORT = '0';
-
-let mongoServer: MongoMemoryReplSet;
-let server: Server;
-let io: { close: () => void | Promise<void> } | null;
-let app: Express;
-let nextApp: INestApplication;
+let mongoServer: MongoMemoryReplSet | undefined;
+let server: Server | undefined;
+let io: { close: () => void | Promise<void> } | undefined;
+let app: Express | undefined;
+let nextApp: INestApplication | undefined;
 
 export async function setup() {
     mongoServer = await MongoMemoryReplSet.create({
@@ -67,6 +75,12 @@ export async function setup() {
             srem: () => ({ scard: () => ({ exec: async () => [[null, 0], [null, 0]] }) }),
             exec: async () => [[null, 0], [null, 0]],
         }),
+        scan: async () => ['0', []],
+        smembers: async () => [],
+        hgetall: async () => ({}),
+        hset: async () => 1,
+        hdel: async () => 1,
+        hlen: async () => 0,
     };
     container.bind(TYPES.RedisService).toConstantValue({
         getClient: () => mockRedisClient,
@@ -93,30 +107,34 @@ export async function setup() {
     server = createServer(app);
     const wsServer = container.get<IWsServer>(TYPES.WsServer);
     wsServer.initialize(server);
-    io = null;
+    io = undefined;
 
+    const srv = server;
     await new Promise<void>((resolve) => {
-        server.listen(0, () => resolve());
+        srv.listen(0, () => resolve());
     });
 
-    return { app, server, io, uri };
+    return { app: app as Express, server: server as Server, io, uri };
 }
 
 export async function teardown() {
     const wsServer = container.get<IWsServer>(TYPES.WsServer);
-    if (wsServer) await wsServer.shutdown();
+    await wsServer.shutdown();
 
     const redisService = container.get<IRedisService>(TYPES.RedisService);
-    if (redisService) await redisService.quit();
+    await redisService.quit();
 
-    if (server) await new Promise(resolve => server.close(resolve));
-    if (io) await io.close();
-    if (nextApp) await nextApp.close();
+    if (server !== undefined) {
+        const srv = server;
+        await new Promise(resolve => srv.close(resolve));
+    }
+    if (io !== undefined) await io.close();
+    if (nextApp !== undefined) await nextApp.close();
     await mongoose.disconnect();
-    if (mongoServer) await mongoServer.stop();
+    if (mongoServer !== undefined) await mongoServer.stop();
 }
 
-export const getApp = () => app;
-export const getServer = () => server;
+export const getApp = () => app as Express;
+export const getServer = () => server as Server;
 export const getIo = () => io;
 export const getMongoUri = () => process.env.MONGO_URI;

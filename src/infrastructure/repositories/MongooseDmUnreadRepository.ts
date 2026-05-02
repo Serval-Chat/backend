@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import type { ClientSession } from 'mongoose';
@@ -11,14 +12,15 @@ import { DmUnread } from '@/models/DmUnread';
 //
 // Implements IDmUnreadRepository using Mongoose DmUnread model
 @injectable()
+@Injectable()
 export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     // Find all unread counts for a specific user
-    async findByUser(userId: Types.ObjectId): Promise<IDmUnread[]> {
+    public async findByUser(userId: Types.ObjectId): Promise<IDmUnread[]> {
         return await DmUnread.find({ user: userId }).lean();
     }
 
     // Find unread count for a user from a specific peer
-    async findByUserAndPeer(
+    public async findByUserAndPeer(
         userId: Types.ObjectId,
         peerId: Types.ObjectId,
     ): Promise<IDmUnread | null> {
@@ -29,7 +31,7 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     //
     // Uses upsert to create the record if it doesn't exist
     // Returns the new count after increment (atomic operation)
-    async increment(
+    public async increment(
         userId: Types.ObjectId,
         peerId: Types.ObjectId,
         session?: ClientSession,
@@ -39,11 +41,11 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
             { $inc: { count: 1 } },
             { upsert: true, new: true, projection: { count: 1 }, session },
         );
-        return result?.count ?? 1;
+        return result.count;
     }
 
     // Reset the unread count for a user from a peer to zero
-    async reset(userId: Types.ObjectId, peerId: Types.ObjectId): Promise<void> {
+    public async reset(userId: Types.ObjectId, peerId: Types.ObjectId): Promise<void> {
         await DmUnread.findOneAndUpdate(
             { user: userId, peer: peerId },
             { $set: { count: 0 } },

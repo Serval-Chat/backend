@@ -30,7 +30,7 @@ import logger from '@/utils/logger';
 export class PresenceController {
     @inject(TYPES.WsServer) private wsServer!: IWsServer;
 
-    constructor(
+    public constructor(
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
@@ -79,26 +79,41 @@ export class PresenceController {
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
-        const { status } = payload;
+        const { status: statusText } = payload;
         const userId = authenticatedUser.userId;
 
-        await this.userRepo.update(new mongoose.Types.ObjectId(userId), {
-            status: status || '',
-        });
+        const newStatus = {
+            text: statusText,
+            expiresAt: null,
+            updatedAt: new Date(),
+        };
+
+        await this.userRepo.updateCustomStatus(
+            new mongoose.Types.ObjectId(userId),
+            newStatus.text !== '' ? newStatus : null,
+        );
 
         logger.debug(
-            `[PresenceController] User ${userId} set status: ${status}`,
+            `[PresenceController] User ${userId} set status text: ${statusText}`,
         );
 
         // broadcast status update to friends and server members.
         const broadcastPayload: IStatusUpdatedEvent['payload'] = {
             userId,
             username: authenticatedUser.username,
-            status: status || '',
+            status:
+                newStatus.text !== ''
+                    ? {
+                          ...newStatus,
+                          emoji: null,
+                          expiresAt: null,
+                          updatedAt: newStatus.updatedAt.toISOString(),
+                      }
+                    : null,
         };
 
         await this.broadcastToPresenceAudience(
@@ -160,12 +175,12 @@ export class PresenceController {
 
         const peopleADoesntWantToSee = new Set(
             blocksByA
-                .filter((b) => b.flags & BlockFlags.HIDE_THEIR_PRESENCE)
+                .filter((b) => (b.flags & BlockFlags.HIDE_THEIR_PRESENCE) !== 0)
                 .map((b) => b.targetId),
         );
         const peopleWhoHidFromA = new Set(
             blocksAgainstA
-                .filter((b) => b.flags & BlockFlags.HIDE_MY_PRESENCE)
+                .filter((b) => (b.flags & BlockFlags.HIDE_MY_PRESENCE) !== 0)
                 .map((b) => b.blockerId),
         );
 
@@ -195,8 +210,17 @@ export class PresenceController {
 
         const online = onlineUsers.map((u) => ({
             userId: u._id.toString(),
-            username: u.username || '',
-            status: u.customStatus?.text || undefined,
+            username: u.username ?? '',
+            status: u.customStatus
+                ? {
+                      text: u.customStatus.text,
+                      emoji: u.customStatus.emoji ?? null,
+                      expiresAt: u.customStatus.expiresAt
+                          ? u.customStatus.expiresAt.toISOString()
+                          : null,
+                      updatedAt: u.customStatus.updatedAt.toISOString(),
+                  }
+                : null,
         }));
 
         const syncPayload: IPresenceSyncEvent['payload'] = {
@@ -223,7 +247,16 @@ export class PresenceController {
         const user = await this.userRepo.findById(
             new mongoose.Types.ObjectId(userId),
         );
-        const status = user?.status || undefined;
+        const status = (user?.customStatus)
+            ? {
+                  text: user.customStatus.text,
+                  emoji: user.customStatus.emoji ?? null,
+                  expiresAt: user.customStatus.expiresAt
+                      ? user.customStatus.expiresAt.toISOString()
+                      : null,
+                  updatedAt: user.customStatus.updatedAt.toISOString(),
+              }
+            : null;
 
         const onlinePayload: IUserOnlineEvent['payload'] = {
             userId,
@@ -300,10 +333,10 @@ export class PresenceController {
 
         const hideFromUserIds = [
             ...blocksByA
-                .filter((b) => b.flags & BlockFlags.HIDE_MY_PRESENCE)
+                .filter((b) => (b.flags & BlockFlags.HIDE_MY_PRESENCE) !== 0)
                 .map((b) => b.targetId.toString()),
             ...blocksAgainstA
-                .filter((b) => b.flags & BlockFlags.HIDE_THEIR_PRESENCE)
+                .filter((b) => (b.flags & BlockFlags.HIDE_THEIR_PRESENCE) !== 0)
                 .map((b) => b.blockerId.toString()),
         ];
 

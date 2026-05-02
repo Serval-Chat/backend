@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { type FilterQuery, type PipelineStage, Types } from 'mongoose';
 import type {
@@ -16,10 +17,11 @@ import { ErrorMessages } from '@/constants/errorMessages';
 // - Custom emojis must exist in the Emoji collection
 
 @injectable()
+@Injectable()
 export class MongooseReactionRepository implements IReactionRepository {
     private readonly MAX_REACTIONS_PER_MESSAGE = 20;
 
-    async addReaction(
+    public async addReaction(
         messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
         userId: Types.ObjectId,
@@ -29,7 +31,7 @@ export class MongooseReactionRepository implements IReactionRepository {
     ): Promise<IReaction> {
         // Validate custom emoji exists
         if (emojiType === 'custom') {
-            if (!emojiId) {
+            if (emojiId === undefined || emojiId === '') {
                 throw new Error(ErrorMessages.REACTION.EMOJI_ID_REQUIRED);
             }
 
@@ -58,7 +60,7 @@ export class MongooseReactionRepository implements IReactionRepository {
             messageType,
         };
 
-        if (emojiId) {
+        if (emojiId !== undefined && emojiId !== '') {
             emojiExistsQuery.emojiId = new Types.ObjectId(emojiId);
         } else {
             emojiExistsQuery.emoji = emoji;
@@ -85,13 +87,13 @@ export class MongooseReactionRepository implements IReactionRepository {
             userId,
             emoji,
             emojiType,
-            emojiId: emojiId ? new Types.ObjectId(emojiId) : undefined,
+            emojiId: (emojiId !== undefined && emojiId !== '') ? new Types.ObjectId(emojiId) : undefined,
         });
 
         return await reaction.save();
     }
 
-    async removeReaction(
+    public async removeReaction(
         messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
         userId: Types.ObjectId,
@@ -106,9 +108,9 @@ export class MongooseReactionRepository implements IReactionRepository {
         };
 
         // Add emoji filter based on type
-        if (emojiId) {
+        if (emojiId !== undefined && emojiId !== '') {
             query.emojiId = new Types.ObjectId(emojiId);
-        } else if (emoji) {
+        } else if (emoji !== undefined && emoji !== '') {
             query.emoji = emoji;
             query.emojiType = 'unicode';
         } else {
@@ -119,7 +121,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         return result.deletedCount > 0;
     }
 
-    async getReactionsByMessage(
+    public async getReactionsByMessage(
         messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
         _currentUserId?: Types.ObjectId,
@@ -155,7 +157,7 @@ export class MongooseReactionRepository implements IReactionRepository {
 
         // Fetch custom emoji details
         const emojiIds = results
-            .filter((r) => r._id.emojiId)
+            .filter((r) => r._id.emojiId !== null)
             .map((r) => r._id.emojiId);
 
         const customEmojis =
@@ -175,7 +177,7 @@ export class MongooseReactionRepository implements IReactionRepository {
             const userIds = r.users.map((id: Types.ObjectId) => id.toString());
 
             if (r._id.emojiType === 'custom') {
-                const emojiIdStr = r._id.emojiId
+                const emojiIdStr = (r._id.emojiId !== undefined && r._id.emojiId !== null)
                     ? r._id.emojiId.toString()
                     : '';
                 const emojiInfo = emojiMap.get(emojiIdStr);
@@ -200,7 +202,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         });
     }
 
-    async getReactionsForMessages(
+    public async getReactionsForMessages(
         messageIds: Types.ObjectId[],
         messageType: 'dm' | 'server',
         _currentUserId?: Types.ObjectId,
@@ -236,7 +238,7 @@ export class MongooseReactionRepository implements IReactionRepository {
 
         // Fetch custom emoji details
         const emojiIds = results
-            .filter((r) => r._id.emojiId)
+            .filter((r) => r._id.emojiId !== null)
             .map((r) => r._id.emojiId);
 
         const customEmojis =
@@ -263,7 +265,7 @@ export class MongooseReactionRepository implements IReactionRepository {
             const userIds = r.users.map((id: Types.ObjectId) => id.toString());
 
             if (r._id.emojiType === 'custom') {
-                const emojiIdStr = r._id.emojiId
+                const emojiIdStr = (r._id.emojiId !== undefined && r._id.emojiId !== null)
                     ? r._id.emojiId.toString()
                     : '';
                 const emojiInfo = emojiMap.get(emojiIdStr);
@@ -290,7 +292,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         return reactionsByMessage;
     }
 
-    async getReactionCount(
+    public async getReactionCount(
         messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
     ): Promise<number> {
@@ -320,7 +322,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         return result.length > 0 ? result[0].uniqueEmojis : 0;
     }
 
-    async hasUserReacted(
+    public async hasUserReacted(
         messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
         userId: Types.ObjectId,
@@ -333,9 +335,9 @@ export class MongooseReactionRepository implements IReactionRepository {
             userId,
         };
 
-        if (emojiId) {
+        if (emojiId !== undefined && emojiId !== '') {
             query.emojiId = new Types.ObjectId(emojiId);
-        } else if (emoji) {
+        } else if (emoji !== undefined && emoji !== '') {
             query.emoji = emoji;
             query.emojiType = 'unicode';
         } else {
@@ -346,7 +348,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         return reaction !== null;
     }
 
-    async deleteAllForMessage(
+    public async deleteAllForMessage(
         messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
     ): Promise<number> {
@@ -355,18 +357,18 @@ export class MongooseReactionRepository implements IReactionRepository {
             messageType,
         });
 
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async deleteAllByUser(userId: Types.ObjectId): Promise<number> {
+    public async deleteAllByUser(userId: Types.ObjectId): Promise<number> {
         const result = await Reaction.deleteMany({
             userId,
         });
 
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async removeEmojiFromMessage(
+    public async removeEmojiFromMessage(
         messageId: Types.ObjectId,
         messageType: 'dm' | 'server',
         emoji?: string,
@@ -379,9 +381,9 @@ export class MongooseReactionRepository implements IReactionRepository {
         };
 
         // Add emoji filter based on type
-        if (emojiId) {
+        if (emojiId !== undefined && emojiId !== '') {
             query.emojiId = new Types.ObjectId(emojiId);
-        } else if (emoji) {
+        } else if (emoji !== undefined && emoji !== '') {
             query.emoji = emoji;
             query.emojiType = 'unicode';
         } else {
@@ -389,6 +391,6 @@ export class MongooseReactionRepository implements IReactionRepository {
         }
 
         const result = await Reaction.deleteMany(query);
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 }

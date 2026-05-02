@@ -76,7 +76,7 @@ import { notifyUser } from '@/services/pushService';
 export class ServerController {
     @inject(TYPES.WsServer) private wsServer!: IWsServer;
 
-    constructor(
+    public constructor(
         @inject(TYPES.ServerRepository) private serverRepo: IServerRepository,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.ServerMessageRepository)
@@ -94,7 +94,7 @@ export class ServerController {
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
         @inject(TYPES.RedisService) private redisService: IRedisService,
-    ) {}
+    ) { }
 
     @postConstruct()
     public setupEventListeners() {
@@ -110,11 +110,11 @@ export class ServerController {
     private async cleanupVoicePresence(userId: string) {
         const redis = this.redisService.getClient();
         const voiceRoom = await redis.get(`user_voice:${userId}`);
-        if (voiceRoom) {
+        if (voiceRoom !== null && voiceRoom !== '') {
             const parts = voiceRoom.split(':');
             if (parts.length === 2) {
                 const [sId, cId] = parts as [string, string];
-                if (sId && cId) {
+                if (sId !== '' && cId !== '') {
                     await this._internalLeaveVoice(userId, sId, cId);
                 }
             } else if (parts.length === 1) {
@@ -201,7 +201,7 @@ export class ServerController {
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
     ): Promise<IServerJoinedEvent['payload']> {
-        if (!authenticatedUser || !ws) {
+        if (authenticatedUser === undefined || ws === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -217,9 +217,9 @@ export class ServerController {
             this.serverRepo.findById(serverOid),
         ]);
 
-        const isOwner = server?.ownerId && server.ownerId.toString() === userId;
+        const isOwner = (server?.ownerId) && server.ownerId.toString() === userId;
 
-        if (!member && !isOwner) {
+        if (member === null && isOwner === false) {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
 
@@ -250,7 +250,7 @@ export class ServerController {
                     if (parts.length === 3) {
                         const [, , channelId] = parts;
                         const members = await redisClient.smembers(key);
-                        if (members.length > 0 && channelId) {
+                        if (members.length > 0 && channelId !== undefined && channelId !== '') {
                             voiceStates[channelId] = members;
                         }
                     }
@@ -363,7 +363,7 @@ export class ServerController {
         payload: IJoinVoiceEvent['payload'],
         authenticatedUser?: IWsUser,
     ): Promise<IJoinVoiceEvent['response']> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -410,11 +410,12 @@ export class ServerController {
         // ensure user leaves any previous voice channel before joining a new one.
         const existingVoiceRoom = await redis.get(userVoiceKey);
         if (
-            existingVoiceRoom &&
+            existingVoiceRoom !== null &&
+            existingVoiceRoom !== '' &&
             existingVoiceRoom !== `${serverId}:${channelId}`
         ) {
             const [oldServerId, oldChannelId] = existingVoiceRoom.split(':');
-            if (oldServerId && oldChannelId) {
+            if (oldServerId !== undefined && oldServerId !== '' && oldChannelId !== undefined && oldChannelId !== '') {
                 await this._internalLeaveVoice(
                     userId,
                     oldServerId,
@@ -480,7 +481,7 @@ export class ServerController {
         payload: ILeaveVoiceEvent['payload'],
         authenticatedUser?: IWsUser,
     ): Promise<{ success: boolean }> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             return { success: false };
         }
 
@@ -499,7 +500,7 @@ export class ServerController {
         payload: IUpdateVoiceStateEvent['payload'],
         authenticatedUser?: IWsUser,
     ): Promise<{ success: boolean }> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -542,7 +543,7 @@ export class ServerController {
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
     ): Promise<IMessageServerSentEvent['payload']> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -574,14 +575,14 @@ export class ServerController {
             new mongoose.Types.ObjectId(channelId),
             'sendMessages',
         );
-        if (!canSend) {
+        if (canSend === false) {
             throw new Error(
                 'FORBIDDEN: No permission to send messages in this channel',
             );
         }
 
 
-        if (channel?.slowMode && channel.slowMode > 0) {
+        if (channel !== null && (channel.slowMode ?? 0) > 0) {
             const hasBypass = await this.permissionService.hasChannelPermission(
                 new mongoose.Types.ObjectId(serverId),
                 new mongoose.Types.ObjectId(userId),
@@ -596,8 +597,8 @@ export class ServerController {
                         new mongoose.Types.ObjectId(userId),
                     );
 
-                if (lastMessage && lastMessage.createdAt) {
-                    const cooldownMs = channel.slowMode * 1000;
+                if (lastMessage) {
+                    const cooldownMs = (channel.slowMode ?? 0) * 1000;
                     const timeSinceLastMessage =
                         Date.now() - lastMessage.createdAt.getTime();
 
@@ -646,6 +647,7 @@ export class ServerController {
             }
         }
 
+
         const created = await this.transactionManager.runInTransaction(
             async (session) => {
                 const msg = await this.serverMessageRepo.create(
@@ -654,12 +656,12 @@ export class ServerController {
                         channelId: new mongoose.Types.ObjectId(channelId),
                         senderId: new mongoose.Types.ObjectId(userId),
                         text,
-                        ...(replyToId
+                        ...(replyToId !== undefined && replyToId !== ''
                             ? {
-                                  replyToId: new mongoose.Types.ObjectId(
-                                      replyToId,
-                                  ),
-                              }
+                                replyToId: new mongoose.Types.ObjectId(
+                                    replyToId,
+                                ),
+                            }
                             : {}),
                     },
                     session,
@@ -693,7 +695,7 @@ export class ServerController {
             senderUsername: authenticatedUser.username,
             text: created.text,
             createdAt:
-                created.createdAt?.toISOString() || new Date().toISOString(),
+                created.createdAt.toISOString(),
             replyToId: created.replyToId?.toString(),
             repliedTo: undefined,
             isEdited: false,
@@ -710,6 +712,22 @@ export class ServerController {
             },
             undefined,
             ws,
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'message_server',
+                payload: broadcastPayload,
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'viewChannels',
+            },
+            undefined,
+            ws,
+            { onlyBots: true },
         );
 
         this.handleMentions(
@@ -735,8 +753,7 @@ export class ServerController {
                     serverId,
                     channelId,
                     lastMessageAt:
-                        created.createdAt?.toISOString() ||
-                        new Date().toISOString(),
+                        created.createdAt.toISOString(),
                     senderId: userId,
                 },
             },
@@ -747,6 +764,7 @@ export class ServerController {
             },
             undefined,
             ws,
+            { excludeBots: true },
         );
 
         // notify all server members with view permission.
@@ -772,6 +790,9 @@ export class ServerController {
                     this.wsServer.broadcastToUser(
                         targetUserId,
                         serverUnreadEvent,
+                        undefined,
+                        undefined,
+                        { excludeBots: true },
                     );
                 }
             } catch (err) {
@@ -782,13 +803,13 @@ export class ServerController {
         }
 
         let slowModeNextMessageAllowedAt: string | null = null;
-        if (channel?.slowMode && channel.slowMode > 0) {
+        if (channel !== null && (channel.slowMode ?? 0) > 0) {
             const lastSentAt =
                 created.createdAt instanceof Date
                     ? created.createdAt
                     : new Date(created.createdAt);
             slowModeNextMessageAllowedAt = new Date(
-                lastSentAt.getTime() + channel.slowMode * 1000,
+                lastSentAt.getTime() + (channel.slowMode ?? 0) * 1000,
             ).toISOString();
         }
 
@@ -799,7 +820,7 @@ export class ServerController {
             senderId: userId,
             text: created.text,
             createdAt:
-                created.createdAt?.toISOString() || new Date().toISOString(),
+                created.createdAt.toISOString(),
             replyToId: created.replyToId?.toString(),
             slowModeNextMessageAllowedAt,
         };
@@ -817,18 +838,18 @@ export class ServerController {
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
     ): Promise<IMessageServerEditedEvent['payload']> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
         const { messageId, text } = payload;
         const userId = authenticatedUser.userId;
 
-
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
         );
-        if (!message) {
+
+        if (message === null) {
             throw new Error('NOT_FOUND: Message not found');
         }
 
@@ -861,7 +882,7 @@ export class ServerController {
             channelId: message.channelId.toString(),
             text: updated.text,
             editedAt:
-                updated.editedAt?.toISOString() || new Date().toISOString(),
+                updated.editedAt?.toISOString() ?? new Date().toISOString(),
             isEdited: true,
         };
 
@@ -873,6 +894,22 @@ export class ServerController {
             },
             undefined,
             ws,
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            message.serverId.toString(),
+            {
+                type: 'message_server_edited',
+                payload: broadcastPayload,
+            },
+            {
+                type: 'channel',
+                targetId: message.channelId.toString(),
+                permission: 'viewChannels',
+            },
+            undefined,
+            ws,
+            { onlyBots: true },
         );
 
         return broadcastPayload;
@@ -897,11 +934,11 @@ export class ServerController {
         const { serverId, messageId } = payload;
         const userId = authenticatedUser.userId;
 
-
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
         );
-        if (!message) {
+
+        if (message === null) {
             throw new Error('NOT_FOUND: Message not found');
         }
 
@@ -940,11 +977,32 @@ export class ServerController {
                 type: 'message_server_deleted',
                 payload: {
                     messageId,
+                    serverId,
                     channelId: message.channelId.toString(),
                 },
             },
             undefined,
             ws,
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            message.serverId.toString(),
+            {
+                type: 'message_server_deleted',
+                payload: {
+                    messageId,
+                    serverId: message.serverId.toString(),
+                    channelId: message.channelId.toString(),
+                },
+            },
+            {
+                type: 'channel',
+                targetId: message.channelId.toString(),
+                permission: 'viewChannels',
+            },
+            undefined,
+            ws,
+            { onlyBots: true },
         );
 
         return { success: true };
@@ -994,7 +1052,7 @@ export class ServerController {
             channelId,
             lastMessageAt: null,
             senderId: userId,
-            lastReadAt: updatedRead?.lastReadAt?.toISOString(),
+            lastReadAt: updatedRead.lastReadAt.toISOString(),
         };
 
         this.wsServer.broadcastToUser(userId, {
@@ -1014,10 +1072,10 @@ export class ServerController {
         );
         const hasUnread = channels.some((ch) => {
             const lastMessageAt = ch.lastMessageAt;
-            if (!lastMessageAt) return false;
+            if (lastMessageAt === undefined) return false;
             const lastReadAt = readMap.get(ch._id.toString());
             return (
-                !lastReadAt || new Date(lastMessageAt) > new Date(lastReadAt)
+                lastReadAt === undefined || new Date(lastMessageAt) > new Date(lastReadAt)
             );
         });
         this.wsServer.broadcastToUser(userId, {
@@ -1054,7 +1112,7 @@ export class ServerController {
             new mongoose.Types.ObjectId(channelId),
             'sendMessages',
         );
-        if (!canSend) {
+        if (canSend !== true) {
             return; // Silently ignore
         }
 
@@ -1095,7 +1153,7 @@ export class ServerController {
         const userMentionRegex = /<userid:'([^']+)'>/g;
         let match;
         while ((match = userMentionRegex.exec(text)) !== null) {
-            if (match[1]) {
+            if (match[1] !== undefined) {
                 if (mongoose.Types.ObjectId.isValid(match[1])) {
                     userIds.push(match[1]);
                     if (userIds.length >= MAX_USER_MENTIONS) {
@@ -1108,7 +1166,7 @@ export class ServerController {
         // Parse role mentions: <roleid:'roleId'>
         const roleMentionRegex = /<roleid:'([^']+)'>/g;
         while ((match = roleMentionRegex.exec(text)) !== null) {
-            if (match[1]) {
+            if (match[1] !== undefined) {
                 if (mongoose.Types.ObjectId.isValid(match[1])) {
                     roleIds.push(match[1]);
                     if (roleIds.length >= MAX_ROLE_MENTIONS) {
@@ -1189,7 +1247,7 @@ export class ServerController {
             const mentionedUser = await this.userRepo.findById(
                 new mongoose.Types.ObjectId(mentionedUserId),
             );
-            if (!mentionedUser?.username) continue;
+            if (!mentionedUser || mentionedUser.username === undefined) continue;
 
             // Check if mentioned user is a member
             const mentionedMember =
@@ -1199,7 +1257,7 @@ export class ServerController {
                 );
             if (!mentionedMember) continue;
 
-            if (!message.messageId) continue;
+            if (message.messageId === '') continue;
 
             // Store ping for ALL users (online and offline)
             const pingData = {

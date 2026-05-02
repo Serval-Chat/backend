@@ -28,6 +28,7 @@ import type {
     IServerMessage,
 } from '@/di/interfaces/IServerMessageRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
@@ -39,7 +40,6 @@ import type {
     IMessageServerEvent,
     IChannelUnreadUpdatedEvent,
     IMessageServerEditedEvent,
-    IMessageServerDeletedEvent,
     IMessageServerPinUpdatedEvent,
 } from '@/ws/protocol/events/messages';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
@@ -51,17 +51,16 @@ import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import {
     SendMessageRequestDTO,
     ServerEditMessageRequestDTO,
+    BulkDeleteMessagesRequestDTO,
 } from './dto/server-message.request.dto';
 
-// Controller for managing messages within server channels
-// Enforces server membership and channel-specific permission checks
 @injectable()
 @Controller('api/v1/servers/:serverId/channels/:channelId/messages')
 @ApiTags('Server Messages')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ServerMessageController {
-    constructor(
+    public constructor(
         @Inject(TYPES.ServerMessageRepository)
         private serverMessageRepo: IServerMessageRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -80,10 +79,10 @@ export class ServerMessageController {
         private auditLogRepo: IAuditLogRepository,
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
-    ) {}
+        @Inject(TYPES.ServerRepository)
+        private serverRepo: IServerRepository,
+    ) { }
 
-    // Retrieves messages for a specific channel with pagination
-    // Enforces server membership
     @Get()
     @ApiOperation({ summary: 'Get channel messages' })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -105,14 +104,14 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
         );
-        if (!channel || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {
@@ -127,20 +126,26 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(channelId),
             'viewChannels',
         );
-        if (!canView) {
+        if (canView !== true) {
             throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        // Fetch messages using cursor-based pagination (before / around)
+        const includeDeleted = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
+            'seeDeletedMessages',
+        );
+
         const msgs = await this.serverMessageRepo.findByChannelId(
             new mongoose.Types.ObjectId(channelId),
             limit,
             before,
             around,
             after,
+            includeDeleted,
         );
 
-        // Bulk fetch reactions for all retrieved messages with userId context
         const messageIds = msgs.map((m) => m._id);
         const reactionsMap = await this.reactionRepo.getReactionsForMessages(
             messageIds,
@@ -154,14 +159,12 @@ export class ServerMessageController {
                 ...msgObj,
                 reactions:
                     (reactionsMap as Record<string, unknown[]>)[
-                        msg._id.toString()
+                    msg._id.toString()
                     ] || [],
             } as IServerMessage;
         });
     }
 
-    // Sends a new message to a channel
-    // Enforces 'sendMessages' permission and updates channel activity
     @Post()
     @ApiOperation({ summary: 'Send a message' })
     @ApiResponse({ status: 201, description: 'Message sent' })
@@ -185,8 +188,15 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
+        }
+
+        const server = await this.serverRepo.findById(new mongoose.Types.ObjectId(serverId));
+        const isOwner = server !== null && server.ownerId.toString() === userId;
+
+        if (isOwner === false && (member.communicationDisabledUntil !== undefined) && new Date(member.communicationDisabledUntil) > new Date()) {
+            throw new ForbiddenException(`You are timed out until ${new Date(member.communicationDisabledUntil).toISOString()}. You cannot send messages.`);
         }
 
         const canSend = await this.permissionService.hasChannelPermission(
@@ -195,7 +205,7 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(channelId),
             'sendMessages',
         );
-        if (!canSend) {
+        if (canSend !== true) {
             throw new ForbiddenException(
                 ErrorMessages.CHANNEL.NO_PERMISSION_SEND,
             );
@@ -204,7 +214,7 @@ export class ServerMessageController {
         const channel = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
         );
-        if (!channel || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {
@@ -214,7 +224,7 @@ export class ServerMessageController {
         }
 
         // Check for slow mode
-        if (channel.slowMode && channel.slowMode > 0) {
+        if ((channel.slowMode !== undefined) && channel.slowMode > 0) {
             const hasBypass = await this.permissionService.hasChannelPermission(
                 new mongoose.Types.ObjectId(serverId),
                 new mongoose.Types.ObjectId(userId),
@@ -222,14 +232,14 @@ export class ServerMessageController {
                 'bypassSlowmode',
             );
 
-            if (!hasBypass) {
+            if (hasBypass !== true) {
                 const lastMessage =
                     await this.serverMessageRepo.findLastByChannelAndUser(
                         new mongoose.Types.ObjectId(channelId),
                         new mongoose.Types.ObjectId(userId),
                     );
 
-                if (lastMessage) {
+                if (lastMessage !== null) {
                     const now = new Date();
                     const lastSentAt =
                         lastMessage.createdAt instanceof Date
@@ -252,22 +262,33 @@ export class ServerMessageController {
             }
         }
 
-        const messageText = (body.content || body.text || '').trim();
-        if (!messageText) {
+        const messageText = (body.content ?? body.text ?? '').trim();
+        const embeds = body.embeds;
+
+        if ((embeds !== undefined) && embeds.length > 0) {
+            const isBot = (req as ExpressRequest & { user: JWTPayload }).user.isBot === true;
+            if (isBot === false) {
+                throw new ForbiddenException('Only bots can send messages with rich embeds');
+            }
+        }
+
+        if ((messageText === '') && ((embeds === undefined) || embeds.length === 0)) {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
+
 
         const message = await this.serverMessageRepo.create({
             serverId: new mongoose.Types.ObjectId(serverId),
             channelId: new mongoose.Types.ObjectId(channelId),
             senderId: new mongoose.Types.ObjectId(userId),
             text: messageText,
-            repliedToMessageId: body.replyToId
+            repliedToMessageId: (body.replyToId !== undefined && body.replyToId !== '')
                 ? new mongoose.Types.ObjectId(body.replyToId)
                 : undefined,
+            embeds,
+            interaction: body.interaction,
         });
 
-        // Update the channel's last activity timestamp for sorting and unread tracking
         await this.channelRepo.updateLastMessageAt(
             new mongoose.Types.ObjectId(channelId),
         );
@@ -292,16 +313,30 @@ export class ServerMessageController {
                         : new Date().toISOString(),
                 replyToId: message.repliedToMessageId?.toString(),
                 isEdited: false,
-                isPinned: message.isPinned || false,
-                isSticky: message.isSticky || false,
-                isWebhook: message.isWebhook || false,
+                isPinned: message.isPinned ?? false,
+                isSticky: message.isSticky ?? false,
+                isWebhook: message.isWebhook ?? false,
                 webhookUsername: message.webhookUsername,
                 webhookAvatarUrl: message.webhookAvatarUrl,
+                embeds: message.embeds || [],
+                interaction: message.interaction,
             },
         };
         this.wsServer.broadcastToChannel(channelId, messagePayload);
 
-        // Notify all server members about new activity in this channel
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            messagePayload,
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'viewChannels',
+            },
+            undefined,
+            undefined,
+            { onlyBots: true },
+        );
+
         const unreadPayload: IChannelUnreadUpdatedEvent = {
             type: 'channel_unread_updated',
             payload: {
@@ -314,12 +349,13 @@ export class ServerMessageController {
                 senderId: userId,
             },
         };
-        this.wsServer.broadcastToServer(serverId, unreadPayload);
+        this.wsServer.broadcastToServer(serverId, unreadPayload, undefined, undefined, {
+            excludeBots: true,
+        });
 
         return message;
     }
 
-    // Retrieves all pinned messages for a channel
     @Get('pins')
     @ApiOperation({ summary: 'Get all pinned messages' })
     @ApiResponse({ status: 200, description: 'Pinned messages retrieved' })
@@ -334,7 +370,7 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
@@ -344,15 +380,22 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(channelId),
             'viewChannels',
         );
-        if (!canView) {
+        if (canView !== true) {
             throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const pins = await this.serverMessageRepo.findPinnedByChannelId(
+        const includeDeleted = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
+            'seeDeletedMessages',
         );
 
-        // Bulk fetch reactions for pins
+        const pins = await this.serverMessageRepo.findPinnedByChannelId(
+            new mongoose.Types.ObjectId(channelId),
+            includeDeleted,
+        );
+
         const pinIds = pins.map((p) => p._id);
         if (pinIds.length === 0) return [];
 
@@ -366,13 +409,11 @@ export class ServerMessageController {
             ...pin,
             reactions:
                 (reactionsMap as Record<string, unknown[]>)[
-                    pin._id.toString()
+                pin._id.toString()
                 ] || [],
         })) as unknown as IServerMessage[];
     }
 
-    // Retrieves a specific message and its replied-to message, if any
-    // Enforces server membership
     @Get(':messageId')
     @ApiOperation({ summary: 'Get a message' })
     @ApiResponse({ status: 200, description: 'Message retrieved' })
@@ -392,14 +433,14 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
         );
-        if (!channel || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {
@@ -414,14 +455,22 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(channelId),
             'viewChannels',
         );
-        if (!canView) {
+        if (canView !== true) {
             throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
+        const includeDeleted = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
+            'seeDeletedMessages',
+        );
+
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
+            includeDeleted,
         );
-        if (!message || message.channelId.toString() !== channelId) {
+        if (message === null || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
@@ -430,15 +479,17 @@ export class ServerMessageController {
         if (message.replyToId) {
             const repliedMsg = await this.serverMessageRepo.findById(
                 message.replyToId,
+                includeDeleted,
             );
-            if (repliedMsg && repliedMsg.channelId.toString() === channelId) {
+            if (repliedMsg !== null && repliedMsg.channelId.toString() === channelId) {
                 repliedMessage = repliedMsg;
             }
         } else if (message.repliedToMessageId) {
             const repliedMsg = await this.serverMessageRepo.findById(
                 message.repliedToMessageId,
+                includeDeleted,
             );
-            if (repliedMsg && repliedMsg.channelId.toString() === channelId) {
+            if (repliedMsg !== null && repliedMsg.channelId.toString() === channelId) {
                 repliedMessage = repliedMsg;
             }
         }
@@ -452,7 +503,7 @@ export class ServerMessageController {
         return {
             message: {
                 ...('toObject' in message &&
-                typeof message.toObject === 'function'
+                    typeof message.toObject === 'function'
                     ? message.toObject()
                     : message),
                 reactions,
@@ -461,8 +512,6 @@ export class ServerMessageController {
         };
     }
 
-    // Edits an existing message
-    // Enforces that only the original sender can edit their message
     @Patch(':messageId')
     @ApiOperation({ summary: 'Edit a message' })
     @ApiResponse({ status: 200, description: 'Message updated' })
@@ -485,9 +534,14 @@ export class ServerMessageController {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
+            true,
         );
-        if (!message || message.channelId.toString() !== channelId) {
+        if (message === null || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        if (message.deletedAt) {
+            throw new BadRequestException("Cannot edit a deleted message");
         }
 
         if (message.senderId.toString() !== userId) {
@@ -496,8 +550,20 @@ export class ServerMessageController {
             );
         }
 
-        const messageText = (body.content || body.text || '').trim();
-        if (!messageText) {
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+        );
+
+        const serverObj = await this.serverRepo.findById(new mongoose.Types.ObjectId(serverId));
+        const isOwner = serverObj !== null && serverObj.ownerId.toString() === userId;
+
+        if (isOwner === false && (member !== null) && (member.communicationDisabledUntil !== undefined) && new Date(member.communicationDisabledUntil) > new Date()) {
+            throw new ForbiddenException("You cannot edit messages while timed out.");
+        }
+
+        const messageText = (body.content ?? body.text ?? '').trim();
+        if (messageText === '') {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
@@ -505,11 +571,11 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(messageId),
             {
                 text: messageText,
-                // Mark message as edited for client-side rendering
                 isEdited: true,
+                editedAt: new Date(),
             },
         );
-        if (!updatedMessage) {
+        if (updatedMessage === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
@@ -524,7 +590,21 @@ export class ServerMessageController {
                 isEdited: true,
             },
         };
+
         this.wsServer.broadcastToChannel(channelId, event);
+
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            event,
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'viewChannels',
+            },
+            undefined,
+            undefined,
+            { onlyBots: true },
+        );
 
         const channelObj = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
@@ -553,8 +633,92 @@ export class ServerMessageController {
         return updatedMessage;
     }
 
-    // Deletes a message
-    // Enforces that either the sender or a user with 'manageMessages' permission can delete
+    @Delete('bulk-delete')
+    @ApiOperation({ summary: 'Bulk delete messages' })
+    @ApiResponse({ status: 200, description: 'Messages deleted' })
+    public async bulkDeleteMessages(
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Body() body: BulkDeleteMessagesRequestDTO,
+        @Req() req: ExpressRequest,
+    ): Promise<{ message: string; deletedCount: number }> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+
+        const canManage = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
+            'manageMessages',
+        );
+        const canDeleteOthers =
+            await this.permissionService.hasChannelPermission(
+                new mongoose.Types.ObjectId(serverId),
+                new mongoose.Types.ObjectId(userId),
+                new mongoose.Types.ObjectId(channelId),
+                'deleteMessagesOfOthers',
+            );
+
+        if (canManage !== true && canDeleteOthers !== true) {
+            throw new ForbiddenException(
+                ErrorMessages.MESSAGE.NO_PERMISSION_DELETE,
+            );
+        }
+
+        const objectIds = body.messageIds.map(
+            (id) => new mongoose.Types.ObjectId(id),
+        );
+        const deletedCount = await this.serverMessageRepo.bulkDelete(
+            new mongoose.Types.ObjectId(channelId),
+            objectIds,
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'messages_server_bulk_deleted',
+                payload: { messageIds: body.messageIds, serverId, channelId, hard: true },
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'seeDeletedMessages',
+                negate: true,
+            },
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'messages_server_bulk_deleted',
+                payload: { messageIds: body.messageIds, serverId, channelId, hard: false },
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'seeDeletedMessages',
+                negate: false,
+            },
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'messages_server_bulk_deleted',
+                payload: { messageIds: body.messageIds, serverId, channelId, hard: true },
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'viewChannels',
+            },
+            undefined,
+            undefined,
+            { onlyBots: true },
+        );
+
+        return { message: 'Messages deleted', deletedCount };
+    }
+
     @Delete(':messageId')
     @ApiOperation({ summary: 'Delete a message' })
     @ApiResponse({ status: 200, description: 'Message deleted' })
@@ -572,15 +736,20 @@ export class ServerMessageController {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
+            true,
         );
-        if (!message || message.channelId.toString() !== channelId) {
+        if (message === null || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        if (message.deletedAt) {
+            return { message: "Message deleted" };
         }
 
         const channel = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
         );
-        if (!channel) {
+        if (channel === null) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
@@ -599,8 +768,8 @@ export class ServerMessageController {
             );
 
         if (
-            !canManage &&
-            !canDeleteOthers &&
+            canManage !== true &&
+            canDeleteOthers !== true &&
             message.senderId.toString() !== userId
         ) {
             throw new ForbiddenException(
@@ -608,18 +777,64 @@ export class ServerMessageController {
             );
         }
 
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+        );
+        const serverObj = await this.serverRepo.findById(new mongoose.Types.ObjectId(serverId));
+        const isOwner = serverObj !== null && serverObj.ownerId.toString() === userId;
+
+        if (isOwner === false && (member !== null) && (member.communicationDisabledUntil !== undefined) && new Date(member.communicationDisabledUntil) > new Date()) {
+            throw new ForbiddenException("You cannot delete messages while timed out.");
+        }
+
         await this.serverMessageRepo.delete(
             new mongoose.Types.ObjectId(messageId),
         );
 
-        const event: IMessageServerDeletedEvent = {
-            type: 'message_server_deleted',
-            payload: {
-                messageId,
-                channelId,
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'message_server_deleted',
+                payload: { messageId, serverId, channelId, hard: true },
             },
-        };
-        this.wsServer.broadcastToChannel(channelId, event);
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'seeDeletedMessages',
+                negate: true,
+            },
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'message_server_deleted',
+                payload: { messageId, serverId, channelId, hard: false },
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'seeDeletedMessages',
+                negate: false,
+            },
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'message_server_deleted',
+                payload: { messageId, serverId, channelId, hard: true },
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'viewChannels',
+            },
+            undefined,
+            undefined,
+            { onlyBots: true },
+        );
         this.logger.debug(
             `[ServerMessageController] deleteMessage: Internal broadcast sent to channel ${channelId}`,
         );
@@ -641,7 +856,6 @@ export class ServerMessageController {
         return { message: 'Message deleted' };
     }
 
-    // Toggles a regular pin on a message
     @Post(':messageId/pin')
     @ApiOperation({ summary: 'Toggle message pin' })
     @ApiResponse({ status: 200, description: 'Pin status toggled' })
@@ -662,33 +876,52 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(channelId),
             'pinMessages',
         );
-        if (!canPin) {
+        if (canPin !== true) {
             throw new ForbiddenException('No permission to pin messages');
         }
 
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
+            true,
         );
-        if (!message || message.channelId.toString() !== channelId) {
+        if ((message === null) || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
+        if (message.deletedAt) {
+            throw new BadRequestException("Cannot pin a deleted message");
+        }
+
         const updated = await this.serverMessageRepo.update(message._id, {
-            isPinned: !message.isPinned,
+            isPinned: message.isPinned === false,
         });
 
-        if (updated) {
+        if (updated !== null) {
             const event: IMessageServerPinUpdatedEvent = {
                 type: 'message_server_pin_updated',
                 payload: {
                     messageId,
                     serverId,
                     channelId,
-                    isPinned: updated.isPinned || false,
-                    isSticky: updated.isSticky || false,
+                    isPinned: updated.isPinned ?? false,
+                    isSticky: updated.isSticky ?? false,
                 },
             };
             this.wsServer.broadcastToChannel(channelId, event);
+
+            await this.wsServer.broadcastToServerWithPermission(
+                serverId,
+                event,
+                {
+                    type: 'channel',
+                    targetId: channelId,
+                    permission: 'viewChannels',
+                },
+                undefined,
+                undefined,
+                { onlyBots: true },
+            );
+
 
             const channelObj = await this.channelRepo.findById(
                 new mongoose.Types.ObjectId(channelId),
@@ -697,7 +930,7 @@ export class ServerMessageController {
             await this.serverAuditLogService.createAndBroadcast({
                 serverId: new mongoose.Types.ObjectId(serverId),
                 actorId: new mongoose.Types.ObjectId(userId),
-                actionType: updated.isPinned ? 'pin_message' : 'unpin_message',
+                actionType: (updated.isPinned === true) ? 'pin_message' : 'unpin_message',
                 targetId: message._id,
                 targetType: 'message',
                 targetUserId: message.senderId,
@@ -711,10 +944,12 @@ export class ServerMessageController {
             });
         }
 
-        return updated!;
+        if (updated === null) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+        return updated;
     }
 
-    // Toggles a sticky pin on a message
     @Post(':messageId/sticky')
     @ApiOperation({ summary: 'Toggle message sticky' })
     @ApiResponse({ status: 200, description: 'Sticky status toggled' })
@@ -735,33 +970,52 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(channelId),
             'pinMessages',
         );
-        if (!canPin) {
+        if (canPin !== true) {
             throw new ForbiddenException('No permission to pin messages');
         }
 
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
+            true, // Include soft-deleted messages
         );
-        if (!message || message.channelId.toString() !== channelId) {
+        if ((message === null) || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
+        if (message.deletedAt) {
+            throw new BadRequestException('Cannot sticky a deleted message');
+        }
+
         const updated = await this.serverMessageRepo.update(message._id, {
-            isSticky: !message.isSticky,
+            isSticky: message.isSticky === false,
         });
 
-        if (updated) {
+        if (updated !== null) {
             const event: IMessageServerPinUpdatedEvent = {
                 type: 'message_server_pin_updated',
                 payload: {
                     messageId,
                     serverId,
                     channelId,
-                    isPinned: updated.isPinned || false,
-                    isSticky: updated.isSticky || false,
+                    isPinned: updated.isPinned ?? false,
+                    isSticky: updated.isSticky ?? false,
                 },
             };
             this.wsServer.broadcastToChannel(channelId, event);
+
+            await this.wsServer.broadcastToServerWithPermission(
+                serverId,
+                event,
+                {
+                    type: 'channel',
+                    targetId: channelId,
+                    permission: 'viewChannels',
+                },
+                undefined,
+                undefined,
+                { onlyBots: true },
+            );
+
 
             const channelObj = await this.channelRepo.findById(
                 new mongoose.Types.ObjectId(channelId),
@@ -770,7 +1024,7 @@ export class ServerMessageController {
             await this.serverAuditLogService.createAndBroadcast({
                 serverId: new mongoose.Types.ObjectId(serverId),
                 actorId: new mongoose.Types.ObjectId(userId),
-                actionType: updated.isSticky
+                actionType: (updated.isSticky === true)
                     ? 'sticky_message'
                     : 'unsticky_message',
                 targetId: message._id,
@@ -785,6 +1039,9 @@ export class ServerMessageController {
             });
         }
 
-        return updated!;
+        if (updated === null) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+        return updated;
     }
 }

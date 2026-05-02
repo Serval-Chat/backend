@@ -24,6 +24,7 @@ import { MongooseExportJobRepository } from '@/infrastructure/repositories/Mongo
 import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
 import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseBlockRepository';
 import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/MongooseAdminNoteRepository';
+import { SlashCommandRepository } from '@/infrastructure/repositories/SlashCommandRepository';
 
 @Global()
 @Module({
@@ -124,6 +125,10 @@ import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/Mongo
             provide: TYPES.AdminNoteRepository,
             useClass: MongooseAdminNoteRepository,
         },
+        {
+            provide: TYPES.SlashCommandRepository,
+            useClass: SlashCommandRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -150,6 +155,7 @@ import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/Mongo
         TYPES.ExportJobRepository,
         TYPES.BlockRepository,
         TYPES.AdminNoteRepository,
+        TYPES.SlashCommandRepository,
     ],
 })
-export class RepositoryModule {}
+export class RepositoryModule { }

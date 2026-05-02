@@ -3,50 +3,50 @@ import { IsMongoId, IsString } from 'class-validator';
 
 export class InviteServerBannerDTO {
     @ApiProperty({ enum: ['image', 'gradient', 'color', 'gif'] })
-    type!: 'image' | 'gradient' | 'color' | 'gif';
+    public type!: 'image' | 'gradient' | 'color' | 'gif';
 
     @ApiProperty()
-    value!: string;
+    public value!: string;
 }
 
 export class InviteServerDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    id!: string;
+    public id!: string;
 
     @ApiProperty()
-    name!: string;
+    public name!: string;
 
     @ApiPropertyOptional()
-    icon?: string;
+    public icon?: string;
 
     @ApiPropertyOptional({ type: InviteServerBannerDTO })
-    banner?: InviteServerBannerDTO;
+    public banner?: InviteServerBannerDTO;
 
     @ApiPropertyOptional()
-    verified?: boolean;
+    public verified?: boolean;
 
     @ApiPropertyOptional({ type: [String] })
-    tags?: string[];
+    public tags?: string[];
 }
 
 export class InviteDetailsResponseDTO {
     @ApiProperty()
-    code!: string;
+    public code!: string;
 
     @ApiPropertyOptional()
-    expiresAt?: Date;
+    public expiresAt?: Date;
 
     @ApiPropertyOptional()
-    maxUses?: number;
+    public maxUses?: number;
 
     @ApiProperty()
-    uses!: number;
+    public uses!: number;
 
     @ApiProperty({ type: InviteServerDTO })
-    server!: InviteServerDTO;
+    public server!: InviteServerDTO;
 
     @ApiProperty()
-    memberCount!: number;
+    public memberCount!: number;
 }

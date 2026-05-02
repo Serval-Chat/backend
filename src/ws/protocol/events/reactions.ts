@@ -31,6 +31,8 @@ export interface IReactionAddedEvent
             emojiType: 'unicode' | 'custom';
             emojiId?: string;
             messageType: 'dm' | 'server';
+            serverId?: string;
+            channelId?: string;
         }
     > {}
 
@@ -64,5 +66,7 @@ export interface IReactionRemovedEvent
             emojiType: 'unicode' | 'custom';
             emojiId?: string;
             messageType: 'dm' | 'server';
+            serverId?: string;
+            channelId?: string;
         }
     > {}

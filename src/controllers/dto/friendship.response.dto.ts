@@ -1,67 +1,69 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMongoId, IsString } from 'class-validator';
 import { type SerializedCustomStatus } from '@/utils/status';
+import { FriendRequestDTO } from './types.dto';
+
 
 export class FriendResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
 
     @ApiProperty()
-    username!: string;
+    public username!: string;
 
     @ApiPropertyOptional()
-    displayName?: string;
+    public displayName?: string;
 
     @ApiProperty()
-    createdAt!: string | Date;
+    public createdAt!: string | Date;
 
     @ApiProperty({ nullable: true, type: String })
-    profilePicture!: string | null;
+    public profilePicture!: string | null;
 
     @ApiProperty({ nullable: true })
-    customStatus!: SerializedCustomStatus | null;
+    public customStatus!: SerializedCustomStatus | null;
 
     @ApiPropertyOptional({ nullable: true })
-    latestMessageAt?: string | null;
+    public latestMessageAt?: string | null;
 }
 
 export class IncomingFriendRequestResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
 
     @ApiPropertyOptional()
-    from?: string;
+    public from?: string;
 
     @ApiPropertyOptional()
     @IsMongoId()
     @IsString()
-    fromId?: string;
+    public fromId?: string;
 
     @ApiProperty()
-    createdAt!: Date;
+    public createdAt!: Date;
 }
 
 export class SendFriendRequestResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 
-    @ApiProperty()
-    request!: unknown;
+    @ApiProperty({ type: FriendRequestDTO })
+    public request!: FriendRequestDTO;
 }
 
 export class AcceptFriendRequestResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 
     @ApiProperty({ nullable: true, type: FriendResponseDTO })
-    friend!: FriendResponseDTO | null;
+    public friend!: FriendResponseDTO | null;
 }
 
 export class FriendshipMessageResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 }

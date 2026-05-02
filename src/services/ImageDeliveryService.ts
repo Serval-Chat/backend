@@ -15,7 +15,7 @@ export class ImageDeliveryService {
     private readonly CACHE_PREFIX = 'img_conv:webp:';
     private readonly CACHE_TTL = 86400; // 24 hours
 
-    constructor(
+    public constructor(
         @inject(TYPES.Logger) @Inject(TYPES.Logger) private logger: ILogger,
         @inject(TYPES.RedisService)
         @Inject(TYPES.RedisService)
@@ -162,6 +162,7 @@ export class ImageDeliveryService {
             '.gif': 'image/gif',
             '.webp': 'image/webp',
         };
-        return mimes[ext] || 'application/octet-stream';
+        const mime = mimes[ext];
+        return (mime !== undefined && mime !== '') ? mime : 'application/octet-stream';
     }
 }

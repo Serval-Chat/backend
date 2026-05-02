@@ -128,7 +128,7 @@ export async function processImage(
 
     let pipeline = sharp(input, { animated });
 
-    if (width || height) {
+    if (width !== undefined || height !== undefined) {
         const resizeOptions: sharp.ResizeOptions = { fit };
         if (background && fit === 'contain') {
             resizeOptions.background = background;
@@ -169,7 +169,7 @@ export async function processImage(
             break;
     }
 
-    if (stripMetadata) {
+    if (stripMetadata === true) {
         pipeline = pipeline.withMetadata({
             exif: {},
         });
@@ -212,7 +212,7 @@ export async function isAnimatedImage(
     input: string | Buffer,
 ): Promise<boolean> {
     const metadata = await sharp(input).metadata();
-    return !!(metadata.pages && metadata.pages > 1);
+    return (metadata.pages !== undefined && metadata.pages > 1);
 }
 
 /**
@@ -228,7 +228,7 @@ export async function stripMetadata(
         exif: {},
     });
 
-    if (outputPath) {
+    if (outputPath !== undefined) {
         await pipeline.toFile(outputPath);
     } else {
         return pipeline.toBuffer();

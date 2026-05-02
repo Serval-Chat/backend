@@ -18,9 +18,9 @@ import { injectable } from 'inversify';
 export class MongooseServerMemberRepository implements IServerMemberRepository {
     private serverMemberModel = ServerMember;
     private userModel = User;
-    constructor() {}
+    public constructor() {}
 
-    async findByServerAndUser(
+    public async findByServerAndUser(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<IServerMember | null> {
@@ -29,11 +29,11 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .lean();
     }
 
-    async findByServerId(serverId: Types.ObjectId): Promise<IServerMember[]> {
+    public async findByServerId(serverId: Types.ObjectId): Promise<IServerMember[]> {
         return await this.serverMemberModel.find({ serverId }).lean();
     }
 
-    async create(data: {
+    public async create(data: {
         serverId: Types.ObjectId;
         userId: Types.ObjectId;
         roles: Types.ObjectId[];
@@ -42,7 +42,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return (await member.save()).toObject();
     }
 
-    async updateRoles(
+    public async updateRoles(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         roles: Types.ObjectId[],
@@ -52,10 +52,24 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .lean();
     }
 
+    public async setTimeout(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        until: Date | null,
+    ): Promise<IServerMember | null> {
+        return await this.serverMemberModel
+            .findOneAndUpdate(
+                { serverId, userId },
+                { communicationDisabledUntil: until },
+                { new: true },
+            )
+            .lean();
+    }
+
     // Remove a member from a server
     //
     // Operation for leaving or kicking a member
-    async remove(
+    public async remove(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<boolean> {
@@ -63,10 +77,10 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             serverId,
             userId,
         });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async isMember(
+    public async isMember(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<boolean> {
@@ -77,15 +91,15 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return !!member;
     }
 
-    async findAllByUserId(userId: Types.ObjectId): Promise<IServerMember[]> {
+    public async findAllByUserId(userId: Types.ObjectId): Promise<IServerMember[]> {
         return await this.serverMemberModel.find({ userId }).lean();
     }
 
-    async findByUserId(userId: Types.ObjectId): Promise<IServerMember[]> {
+    public async findByUserId(userId: Types.ObjectId): Promise<IServerMember[]> {
         return await this.findAllByUserId(userId);
     }
 
-    async findServerIdsByUserId(
+    public async findServerIdsByUserId(
         userId: Types.ObjectId,
     ): Promise<Types.ObjectId[]> {
         const members = await this.serverMemberModel
@@ -95,7 +109,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return members.map((m) => m.serverId as Types.ObjectId);
     }
 
-    async findUserIdsInServerIds(
+    public async findUserIdsInServerIds(
         serverIds: Types.ObjectId[],
     ): Promise<Types.ObjectId[]> {
         if (serverIds.length === 0) return [];
@@ -105,23 +119,23 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return userIds as unknown as Types.ObjectId[];
     }
 
-    async countByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async countByServerId(serverId: Types.ObjectId): Promise<number> {
         return await this.serverMemberModel.countDocuments({ serverId });
     }
 
     // Delete a member record by its ID
     //
     // Low-level cleanup operation
-    async deleteById(id: Types.ObjectId): Promise<boolean> {
+    public async deleteById(id: Types.ObjectId): Promise<boolean> {
         const result = await this.serverMemberModel.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async deleteByServerId(serverId: Types.ObjectId): Promise<void> {
+    public async deleteByServerId(serverId: Types.ObjectId): Promise<void> {
         await this.serverMemberModel.deleteMany({ serverId });
     }
 
-    async removeRoleFromAllMembers(
+    public async removeRoleFromAllMembers(
         serverId: Types.ObjectId,
         roleId: Types.ObjectId,
     ): Promise<void> {
@@ -131,7 +145,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         );
     }
 
-    async removeRoleFromMember(
+    public async removeRoleFromMember(
         memberId: Types.ObjectId,
         roleId: Types.ObjectId,
     ): Promise<IServerMember | null> {
@@ -144,7 +158,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .lean();
     }
 
-    async deleteAllForUser(
+    public async deleteAllForUser(
         userId: Types.ObjectId,
     ): Promise<{ deletedCount: number }> {
         const result = await this.serverMemberModel.deleteMany({ userId });
@@ -154,7 +168,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     // Find all members of a server with user info populated
     //
     // Performs manual population by fetching users in a separate query
-    async findByServerIdWithUserInfo(
+    public async findByServerIdWithUserInfo(
         serverId: Types.ObjectId,
     ): Promise<(IServerMember & { user: MappedUser | null })[]> {
         const members = await this.serverMemberModel.find({ serverId }).lean();
@@ -186,7 +200,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         });
     }
 
-    async searchMembers(
+    public async searchMembers(
         serverId: Types.ObjectId,
         query: string,
     ): Promise<(IServerMember & { user: MappedUser | null })[]> {
@@ -233,7 +247,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         });
     }
 
-    async addRole(
+    public async addRole(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         roleId: Types.ObjectId,
@@ -249,7 +263,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return member;
     }
 
-    async removeRole(
+    public async removeRole(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         roleId: Types.ObjectId,
@@ -265,7 +279,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return member;
     }
 
-    async removeRoleFromAll(
+    public async removeRoleFromAll(
         serverId: Types.ObjectId,
         roleId: Types.ObjectId,
     ): Promise<void> {

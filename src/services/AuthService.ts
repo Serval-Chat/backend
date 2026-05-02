@@ -27,7 +27,8 @@ import {
     verifyTotp,
 } from '@/utils/totp';
 import { Types } from 'mongoose';
-
+import { isNonEmptyString } from '@/utils/typeGuards';
+import type { NonEmptyString } from '@/types/branded';
 // Authentication result
 export interface AuthResult {
     success: boolean;
@@ -61,7 +62,7 @@ import { injectable, inject } from 'inversify';
 export class AuthService {
     private readonly issuer = 'Serchat';
 
-    constructor(
+    public constructor(
         @inject(TYPES.Logger) @Inject(TYPES.Logger) private logger: ILogger,
         @inject(TYPES.UserRepository)
         @Inject(TYPES.UserRepository)
@@ -86,13 +87,7 @@ export class AuthService {
     // Authenticate a user with login credentials.
     //
     // Flow:
-    // 1. Normalize email to prevent plus-addressing bypass
-    // 2. Find user by login
-    // 3. Verify password hash
-    // 4. Check if user is soft-deleted (restore if so)
-    // 5. Check for active bans
-    // 6. Generate JWT and return auth result
-    async login(login: string, password: string): Promise<AuthResult> {
+    public async login(login: string, password: string): Promise<AuthResult> {
         // Normalize email to prevent plus-addressing bypass
         const normalizedLogin = normalizeEmail(login);
         this.logger.debug(`Login attempt for: ${normalizedLogin}`);
@@ -159,21 +154,21 @@ export class AuthService {
         };
     }
 
-    async setupTotp(
+    public async setupTotp(
         userId: string,
         username: string,
     ): Promise<{ otpauthUri: string }> {
         const oid = new Types.ObjectId(userId);
         const user = await this.userRepo.findById(oid);
         if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
-        if (user.totpEnabled) {
+        if (user.totpEnabled === true) {
             throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_ALREADY_ENABLED);
         }
 
         const secret = generateTotpSecret();
         const encryptedSecret = encryptSecret(secret);
         await this.userRepo.update(oid, {
-            totpSecret: encryptedSecret,
+            totpSecret: encryptedSecret as NonEmptyString,
             totpEnabled: false,
             totpVerifiedAt: null,
             backupCodes: [],
@@ -188,14 +183,14 @@ export class AuthService {
         };
     }
 
-    async confirmTotpSetup(
+    public async confirmTotpSetup(
         userId: string,
         code: string,
     ): Promise<{ backupCodes: string[] }> {
         const oid = new Types.ObjectId(userId);
         const user = await this.userRepo.findById(oid);
         if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
-        if (!user.totpSecret) {
+        if (!isNonEmptyString(user.totpSecret)) {
             throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_SETUP_REQUIRED);
         }
 
@@ -217,7 +212,7 @@ export class AuthService {
         return { backupCodes };
     }
 
-    verifyTempToken(tempToken: string): TempTokenPayload {
+    public verifyTempToken(tempToken: string): TempTokenPayload {
         try {
             const decoded = jwt.verify(
                 tempToken,
@@ -235,7 +230,7 @@ export class AuthService {
         }
     }
 
-    async verifyTwoFactorCode(input: {
+    public async verifyTwoFactorCode(input: {
         userId: string;
         code?: string;
         backupCode?: string;
@@ -244,7 +239,7 @@ export class AuthService {
         const oid = new Types.ObjectId(input.userId);
         const user = await this.userRepo.findById(oid);
         if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
-        if (input.requireEnabled && !user.totpEnabled) {
+        if (input.requireEnabled === true && user.totpEnabled !== true) {
             throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_NOT_ENABLED);
         }
 
@@ -258,7 +253,7 @@ export class AuthService {
         let replayExpiry = new Date(Date.now() + 120_000);
         let consumeBackupCodeHash: string | null = null;
 
-        if (input.backupCode) {
+        if (input.backupCode !== undefined && input.backupCode !== '') {
             const normalized = normalizeBackupCode(input.backupCode);
             const hashed = hashRecoveryCode(normalized);
             if ((user.backupCodes || []).includes(hashed)) {
@@ -267,8 +262,8 @@ export class AuthService {
                 replayKey = `backup:${hashed}`;
                 replayExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
             }
-        } else if (input.code) {
-            if (!user.totpSecret) {
+        } else if (input.code !== undefined && input.code !== '') {
+            if (!isNonEmptyString(user.totpSecret)) {
                 throw new ApiError(
                     400,
                     ErrorMessages.AUTH.TWO_FA_SETUP_REQUIRED,
@@ -287,7 +282,7 @@ export class AuthService {
         }
 
         if (!isValid || !replayKey) {
-            const failures = (user.totpVerifyFailures || 0) + 1;
+            const failures = (user.totpVerifyFailures ?? 0) + 1;
             const lock =
                 failures >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
             await this.userRepo.update(oid, {
@@ -323,7 +318,7 @@ export class AuthService {
             totpVerifyFailures: 0,
             totpLockedUntil: null,
         };
-        if (consumeBackupCodeHash) {
+        if (consumeBackupCodeHash !== null && consumeBackupCodeHash !== '') {
             updateData.backupCodes = (user.backupCodes || []).filter(
                 (x) => x !== consumeBackupCodeHash,
             );
@@ -331,7 +326,7 @@ export class AuthService {
         await this.userRepo.update(oid, updateData);
     }
 
-    async regenerateBackupCodes(
+    public async regenerateBackupCodes(
         userId: string,
         code?: string,
     ): Promise<{ backupCodes: string[] }> {
@@ -347,7 +342,7 @@ export class AuthService {
         return { backupCodes };
     }
 
-    async disableTwoFactor(
+    public async disableTwoFactor(
         userId: string,
         code?: string,
         backupCode?: string,
@@ -369,7 +364,7 @@ export class AuthService {
     }
 
     // Request a password reset
-    async requestPasswordReset(email: string, ip: string): Promise<string> {
+    public async requestPasswordReset(email: string, ip: string): Promise<string> {
         const requestId = crypto.randomBytes(8).toString('hex');
 
         // Normalize email to prevent plus-addressing bypass
@@ -454,7 +449,7 @@ export class AuthService {
     }
 
     // Confirm password reset
-    async confirmPasswordReset(
+    public async confirmPasswordReset(
         token: string,
         newPassword: string,
     ): Promise<string> {
@@ -512,7 +507,7 @@ export class AuthService {
         await this.passwordResetRepo.deleteByUser(resetRequest.userId);
 
         // Send confirmation email
-        if (user.login) {
+        if (user.login !== undefined && user.login !== '') {
             try {
                 await this.mailService.sendPasswordChangedNotification(
                     user.login,

@@ -63,13 +63,27 @@ import {
 
 import { injectable } from 'inversify';
 
-// Controller for user authentication and account management
-// Handles login, registration, and credential updates
+import { NoBot } from '@/modules/auth/bot.decorator';
+
+class Mutex {
+    private mutex = Promise.resolve();
+    public lock(): Promise<() => void> {
+        let begin: (unlock: () => void) => void = () => {};
+        this.mutex = this.mutex.then(() => {
+            return new Promise(begin);
+        });
+        return new Promise((res) => {
+            begin = res;
+        });
+    }
+}
+const registerMutex = new Mutex();
+
 @ApiTags('Authentication')
 @injectable()
 @Controller('api/v1/auth')
 export class AuthController {
-    constructor(
+    public constructor(
         @Inject(TYPES.Logger) private logger: ILogger,
         @Inject(TYPES.AuthService)
         private authService: AuthService,
@@ -77,7 +91,6 @@ export class AuthController {
         private userRepo: IUserRepository,
     ) {}
 
-    // Authenticates a user and returns a JWT
     @Post('login')
     @HttpCode(HttpStatus.OK)
     @ApiResponse({ status: 200, type: LoginResponseDTO })
@@ -91,7 +104,7 @@ export class AuthController {
 
         const authResult = await this.authService.login(login, password);
 
-        if (!authResult.success || !authResult.user) {
+        if (authResult.success === false || authResult.user === undefined) {
             loginAttemptsCounter.labels('failure').inc();
 
             if (authResult.ban) {
@@ -104,28 +117,21 @@ export class AuthController {
 
             res.status(HttpStatus.UNAUTHORIZED).json({
                 error:
-                    authResult.error || ErrorMessages.AUTH.INVALID_CREDENTIALS,
+                    authResult.error !== undefined && authResult.error !== '' ? authResult.error : ErrorMessages.AUTH.INVALID_CREDENTIALS,
             });
             return;
         }
 
         const user = authResult.user;
-        if (!user) {
-            this.logger.error('Auth success but user missing in result');
-            res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-                error: ErrorMessages.AUTH.INVALID_CREDENTIALS,
-            });
-            return;
-        }
 
         loginAttemptsCounter.labels('success').inc();
 
-        if (user.totpEnabled) {
+        if (user.totpEnabled === true) {
             const temp_token = generateTwoFactorTempToken({
                 id: user._id.toString(),
                 login: login,
                 username: user.username as string,
-                tokenVersion: user.tokenVersion || 0,
+                tokenVersion: user.tokenVersion ?? 0,
             });
 
             res.status(HttpStatus.OK).json({
@@ -140,8 +146,9 @@ export class AuthController {
             id: user._id.toString(),
             login: login,
             username: user.username as string,
-            tokenVersion: user.tokenVersion || 0,
+            tokenVersion: user.tokenVersion ?? 0,
             permissions: user.permissions,
+            isBot: user.isBot ?? false,
         });
 
         res.status(HttpStatus.OK).json({
@@ -153,6 +160,7 @@ export class AuthController {
     @Post('2fa/setup')
     @UseGuards(JwtAuthGuard)
     @ApiSecurity('jwt')
+    @NoBot()
     @ApiResponse({ status: 200, type: TotpSetupResponseDTO })
     public async setupTwoFactor(
         @Req() req: Request,
@@ -176,11 +184,12 @@ export class AuthController {
     @Post('2fa/verify')
     @HttpCode(HttpStatus.OK)
     @ApiResponse({ status: 200, type: LoginResponseDTO })
+    @NoBot()
     public async verifyTwoFactor(
         @Body() body: TotpVerifyRequestDTO,
         @Res() res: Response,
     ): Promise<void> {
-        if (!body.code && !body.backupCode) {
+        if ((body.code === undefined || body.code === '') && (body.backupCode === undefined || body.backupCode === '')) {
             res.status(HttpStatus.BAD_REQUEST).json({
                 error: ErrorMessages.AUTH.INVALID_TOTP_CODE,
             });
@@ -198,32 +207,34 @@ export class AuthController {
         const user = await this.userRepo.findById(
             new Types.ObjectId(payload.id),
         );
-        if (!user || user.deletedAt) {
+        if (user === null || user.deletedAt !== undefined) {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_TEMP_TOKEN);
         }
         const token = generateJWT({
             id: user._id.toString(),
-            login: user.login || payload.login,
-            username: user.username || payload.username,
-            tokenVersion: user.tokenVersion || 0,
+            login: user.login ?? payload.login,
+            username: user.username ?? payload.username,
+            tokenVersion: user.tokenVersion ?? 0,
             permissions: user.permissions,
+            isBot: user.isBot ?? false,
         });
 
         res.status(HttpStatus.OK).json({
             token,
-            username: user.username || payload.username,
+            username: user.username ?? payload.username,
         });
     }
 
     @Post('2fa/backup-codes/regenerate')
     @UseGuards(JwtAuthGuard)
     @ApiSecurity('jwt')
+    @NoBot()
     @ApiResponse({ status: 200, type: TotpSetupConfirmResponseDTO })
     public async regenerateBackupCodes(
         @Req() req: Request,
         @Body() body: TotpSensitiveActionRequestDTO,
     ): Promise<TotpSetupConfirmResponseDTO> {
-        if (!body.code) {
+        if (body.code === undefined || body.code === '') {
             throw new ApiError(400, ErrorMessages.AUTH.INVALID_TOTP_CODE);
         }
         const user = (req as unknown as RequestWithUser).user;
@@ -232,6 +243,7 @@ export class AuthController {
 
     @Post('2fa/disable')
     @UseGuards(JwtAuthGuard)
+    @NoBot()
     @ApiSecurity('jwt')
     @ApiResponse({ status: 200 })
     public async disableTwoFactor(
@@ -247,9 +259,9 @@ export class AuthController {
         return { message: 'Two-factor authentication disabled successfully' };
     }
 
-    // Registers a new user using an invite token
     @Post('register')
     @HttpCode(HttpStatus.OK)
+    @NoBot()
     @ApiResponse({ status: 200, type: RegisterResponseDTO })
     @ApiResponse({ status: 400, description: 'Validation Error' })
     @ApiResponse({ status: 403, description: 'Invalid invite token' })
@@ -271,75 +283,80 @@ export class AuthController {
         // Normalize email (lowercase and trim)
         const normalizedLogin = normalizeEmail(login);
 
-        let tokens: string[];
+        const unlock = await registerMutex.lock();
         try {
-            const file = fs.readFileSync(path.join('tokens.txt'), 'utf-8');
-            tokens = file
-                .split(/\r?\n/)
-                .map((t) => t.trim())
-                .filter(Boolean);
-        } catch {
-            registrationAttemptsCounter.labels('failure').inc();
-            res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-                error: ErrorMessages.SYSTEM.CANNOT_READ_TOKENS,
+            let tokens: string[];
+            try {
+                const file = fs.readFileSync(path.join('tokens.txt'), 'utf-8');
+                tokens = file
+                    .split(/\r?\n/)
+                    .map((t) => t.trim())
+                    .filter(Boolean);
+            } catch {
+                registrationAttemptsCounter.labels('failure').inc();
+                res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                    error: ErrorMessages.SYSTEM.CANNOT_READ_TOKENS,
+                });
+                return;
+            }
+
+            if (tokens.includes(invite) === false) {
+                registrationAttemptsCounter.labels('failure').inc();
+                res.status(HttpStatus.FORBIDDEN).json({
+                    error: ErrorMessages.INVITE.INVALID_TOKEN,
+                });
+                return;
+            }
+
+            const existingLogin = await this.userRepo.findByLogin(normalizedLogin);
+            if (existingLogin !== null) {
+                registrationAttemptsCounter.labels('failure').inc();
+                res.status(HttpStatus.BAD_REQUEST).json({
+                    error: ErrorMessages.AUTH.LOGIN_EXISTS,
+                });
+                return;
+            }
+
+            const existingUsername = await this.userRepo.findByUsername(username);
+            if (existingUsername !== null) {
+                registrationAttemptsCounter.labels('failure').inc();
+                res.status(HttpStatus.BAD_REQUEST).json({
+                    error: ErrorMessages.AUTH.USERNAME_EXISTS,
+                });
+                return;
+            }
+
+            await this.userRepo.create({
+                login: normalizedLogin,
+                username,
+                password,
             });
-            return;
-        }
 
-        if (!tokens.includes(invite)) {
-            registrationAttemptsCounter.labels('failure').inc();
-            res.status(HttpStatus.FORBIDDEN).json({
-                error: ErrorMessages.INVITE.INVALID_TOKEN,
+            registrationAttemptsCounter.labels('success').inc();
+            usersCreatedCounter.inc();
+
+            const updatedTokens = tokens.filter((t) => t !== invite);
+            fs.writeFileSync('tokens.txt', updatedTokens.join('\n'));
+
+            const newUser = await this.userRepo.findByLogin(normalizedLogin);
+            if (newUser === null)
+                throw new ApiError(500, 'User just created but not found');
+
+            const token = generateJWT({
+                id: newUser._id.toString(),
+            login: newUser.login ?? '',
+            username: newUser.username ?? '',
+            tokenVersion: newUser.tokenVersion ?? 0,
+                permissions: newUser.permissions,
+                isBot: newUser.isBot ?? false,
             });
-            return;
+
+            res.status(HttpStatus.OK).json({ token });
+        } finally {
+            unlock();
         }
-
-        const existingLogin = await this.userRepo.findByLogin(normalizedLogin);
-        if (existingLogin) {
-            registrationAttemptsCounter.labels('failure').inc();
-            res.status(HttpStatus.BAD_REQUEST).json({
-                error: ErrorMessages.AUTH.LOGIN_EXISTS,
-            });
-            return;
-        }
-
-        const existingUsername = await this.userRepo.findByUsername(username);
-        if (existingUsername) {
-            registrationAttemptsCounter.labels('failure').inc();
-            res.status(HttpStatus.BAD_REQUEST).json({
-                error: ErrorMessages.AUTH.USERNAME_EXISTS,
-            });
-            return;
-        }
-
-        await this.userRepo.create({
-            login: normalizedLogin,
-            username,
-            password,
-        });
-
-        registrationAttemptsCounter.labels('success').inc();
-        usersCreatedCounter.inc();
-
-        const updatedTokens = tokens.filter((t) => t !== invite);
-        fs.writeFileSync('tokens.txt', updatedTokens.join('\n'));
-
-        const newUser = await this.userRepo.findByLogin(normalizedLogin);
-        if (!newUser)
-            throw new ApiError(500, 'User just created but not found');
-
-        const token = generateJWT({
-            id: newUser._id.toString(),
-            login: newUser.login!,
-            username: newUser.username!,
-            tokenVersion: newUser.tokenVersion || 0,
-            permissions: newUser.permissions,
-        });
-
-        res.status(HttpStatus.OK).json({ token });
     }
 
-    // Updates the current user's login identifier
     @Patch('login')
     @UseGuards(JwtAuthGuard)
     @ApiSecurity('jwt')
@@ -347,6 +364,7 @@ export class AuthController {
     @ApiResponse({ status: 400, description: 'Invalid input' })
     @ApiResponse({ status: 401, description: 'Invalid password' })
     @ApiResponse({ status: 409, description: 'Login already taken' })
+    @NoBot()
     public async changeLogin(
         @Req() req: Request,
         @Body() body: ChangeLoginRequestDTO,
@@ -362,11 +380,11 @@ export class AuthController {
         const normalizedNewLogin = normalizeEmail(newLogin);
 
         const user = await this.userRepo.findById(userOid);
-        if (!user) {
+        if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        const normalizedCurrentLogin = normalizeEmail(user.login || '');
+        const normalizedCurrentLogin = normalizeEmail(user.login ?? '');
         if (normalizedNewLogin === normalizedCurrentLogin) {
             throw new ApiError(400, ErrorMessages.AUTH.NEW_LOGIN_SAME);
         }
@@ -375,20 +393,20 @@ export class AuthController {
             userOid,
             password,
         );
-        if (!passwordValid) {
+        if (passwordValid !== true) {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_PASSWORD);
         }
 
         const existingLogin =
             await this.userRepo.findByLogin(normalizedNewLogin);
-        if (existingLogin) {
+        if (existingLogin !== null) {
             throw new ApiError(409, ErrorMessages.AUTH.LOGIN_TAKEN);
         }
 
         await this.userRepo.updateLogin(userOid, normalizedNewLogin);
 
         const updatedUser = await this.userRepo.findById(userOid);
-        if (!updatedUser) {
+        if (updatedUser === null) {
             throw new ApiError(
                 500,
                 ErrorMessages.AUTH.FAILED_RETRIEVE_UPDATED_USER,
@@ -397,26 +415,27 @@ export class AuthController {
 
         const token = generateJWT({
             id: updatedUser._id.toString(),
-            login: updatedUser.login || '',
-            username: updatedUser.username || '',
-            tokenVersion: updatedUser.tokenVersion || 0,
+            login: updatedUser.login ?? '',
+            username: updatedUser.username ?? '',
+            tokenVersion: updatedUser.tokenVersion ?? 0,
             permissions: updatedUser.permissions,
+            isBot: updatedUser.isBot ?? false,
         });
 
         return {
             message: 'Login updated successfully',
-            login: updatedUser.login || '',
+            login: updatedUser.login ?? '',
             token,
         };
     }
 
-    // Updates the current user's password
     @Patch('password')
     @UseGuards(JwtAuthGuard)
     @ApiSecurity('jwt')
     @ApiResponse({ status: 200, type: ChangePasswordResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid input' })
     @ApiResponse({ status: 401, description: 'Invalid current password' })
+    @NoBot()
     public async changePassword(
         @Req() req: Request,
         @Body() body: ChangePasswordRequestDTO,
@@ -430,7 +449,7 @@ export class AuthController {
         }
 
         const user = await this.userRepo.findById(userOid);
-        if (!user) {
+        if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
@@ -438,7 +457,7 @@ export class AuthController {
             userOid,
             currentPassword,
         );
-        if (!passwordValid) {
+        if (passwordValid !== true) {
             throw new ApiError(
                 401,
                 ErrorMessages.AUTH.INVALID_CURRENT_PASSWORD,
@@ -449,10 +468,11 @@ export class AuthController {
 
         const token = generateJWT({
             id: user._id.toString(),
-            login: user.login || '',
-            username: user.username || '',
-            tokenVersion: user.tokenVersion || 0,
+            login: user.login ?? '',
+            username: user.username ?? '',
+            tokenVersion: user.tokenVersion ?? 0,
             permissions: user.permissions,
+            isBot: user.isBot ?? false,
         });
 
         return {
@@ -460,7 +480,6 @@ export class AuthController {
             token,
         };
     }
-    // Requests a password reset email
     @Post('password/reset')
     @HttpCode(HttpStatus.OK)
     @ApiResponse({ status: 200, type: PasswordResetResponseDTO })
@@ -483,7 +502,6 @@ export class AuthController {
         };
     }
 
-    // Confirms a password reset using a token
     @Post('password/reset/confirm')
     @HttpCode(HttpStatus.OK)
     @ApiResponse({ status: 200, type: PasswordResetResponseDTO })

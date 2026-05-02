@@ -16,7 +16,7 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 @injectable()
 @WsController()
 export class PingController {
-    constructor(@inject(TYPES.WsServer) private wsServer: IWsServer) {}
+    public constructor(@inject(TYPES.WsServer) private wsServer: IWsServer) {}
 
     /**
      * Handles the 'ping' event and returns a 'pong' event.

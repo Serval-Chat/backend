@@ -7,7 +7,7 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 export async function createTestUser(overrides: Record<string, unknown> = {}) {
-    const email = overrides.login || `test_${Date.now()}@example.com`;
+    const email = (overrides.login !== undefined && overrides.login !== null && overrides.login !== '') ? String(overrides.login) : `test_${Date.now()}@example.com`;
 
     const user = await User.create({
         username: `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -24,9 +24,10 @@ export function generateAuthToken(user: IUser) {
         {
             id: user._id,
             username: user.username,
-            tokenVersion: user.tokenVersion
+            tokenVersion: user.tokenVersion,
+            isBot: user.isBot
         },
-        process.env.JWT_SECRET || 'test-jwt-secret',
+        (process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET !== '') ? process.env.JWT_SECRET : 'test-jwt-secret',
         { expiresIn: '1h' }
     );
 }
@@ -45,7 +46,10 @@ export function createSocketClient(server: Server, token: string) {
 export async function clearDatabase() {
     const collections = mongoose.connection.collections;
     for (const key in collections) {
-        await collections[key]!.deleteMany({});
+        const collection = collections[key];
+        if (collection) {
+            await collection.deleteMany({});
+        }
     }
 }
 

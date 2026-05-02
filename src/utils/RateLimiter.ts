@@ -3,7 +3,7 @@
 export class RateLimiter {
     private hits = new Map<string, { count: number; expiresAt: number }>();
 
-    constructor(
+    public constructor(
         private limit: number,
         private windowMs: number,
     ) {}
@@ -13,7 +13,7 @@ export class RateLimiter {
     //
     // @param key - Unique identifier (e.g., user ID, IP address)
     // @returns true if request is allowed, false if rate limit exceeded
-    check(key: string): boolean {
+    public check(key: string): boolean {
         const now = Date.now();
         const record = this.hits.get(key);
 
@@ -28,7 +28,7 @@ export class RateLimiter {
 
     // Remove expired entries to prevent memory leaks
     // Should be called periodically if the limiter is long-lived
-    cleanup() {
+    public cleanup() {
         const now = Date.now();
         for (const [key, record] of this.hits.entries()) {
             if (now > record.expiresAt) {

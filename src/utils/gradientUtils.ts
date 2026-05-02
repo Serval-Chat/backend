@@ -1,8 +1,9 @@
 // Color interpolation utilities for role gradients
 
 export interface RoleGradientColors {
-    startColor: string;
-    endColor: string;
+    startColor?: string;
+    endColor?: string;
+    colors?: string[];
     gradientRepeat?: number; // Number of times to repeat the gradient (1 = no repeat)
 }
 
@@ -16,7 +17,7 @@ export function hexToRgb(
     hex: string,
 ): { r: number; g: number; b: number } | null {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!result || !result[1] || !result[2] || !result[3]) {
+    if (result === null || result[1] === undefined || result[2] === undefined || result[3] === undefined) {
         return null;
     }
     return {
@@ -36,7 +37,7 @@ export function hexToHsl(
     hex: string,
 ): { h: number; s: number; l: number } | null {
     const rgb = hexToRgb(hex);
-    if (!rgb) return null;
+    if (rgb === null) return null;
 
     const r = rgb.r / 255;
     const g = rgb.g / 255;
@@ -115,7 +116,7 @@ export function interpolateRgb(
     const rgb1 = hexToRgb(color1);
     const rgb2 = hexToRgb(color2);
 
-    if (!rgb1 || !rgb2) return color1;
+    if (rgb1 === null || rgb2 === null) return color1;
 
     const r = Math.round(rgb1.r + (rgb2.r - rgb1.r) * factor);
     const g = Math.round(rgb1.g + (rgb2.g - rgb1.g) * factor);
@@ -133,7 +134,7 @@ export function interpolateHsl(
     const hsl1 = hexToHsl(color1);
     const hsl2 = hexToHsl(color2);
 
-    if (!hsl1 || !hsl2) return color1;
+    if (hsl1 === null || hsl2 === null) return color1;
 
     // Handle hue interpolation (shortest path around the circle)
     const h = hsl1.h;
@@ -170,9 +171,9 @@ export function generateRoleGradientAssignments(
     const { interpolationMode = 'hsl', seed } = options;
 
     // Handle undefined colors by defaulting to startColor
-    const startColor = roleColors.startColor || '#99aab5';
-    const endColor = roleColors.endColor || startColor;
-    const gradientRepeat = roleColors.gradientRepeat || 1;
+    const startColor = roleColors.startColor ?? '#99aab5';
+    const endColor = roleColors.endColor ?? startColor;
+    const gradientRepeat = roleColors.gradientRepeat ?? 1;
 
     if (startColor === endColor) {
         // Solid color - all members get the same color
@@ -184,7 +185,7 @@ export function generateRoleGradientAssignments(
 
     // Sort user IDs for consistent assignment (or use seed for different ordering)
     const sortedUserIds = [...memberUserIds].sort((a, b) => {
-        if (seed) {
+        if (seed !== undefined) {
             // Use seeded comparison for consistent but different ordering
             return (a + seed).localeCompare(b + seed);
         }
@@ -217,7 +218,23 @@ export function generateRoleGradientAssignments(
             }
         }
 
-        const color = interpolate(startColor, endColor, factor);
+        let color: string;
+        if (roleColors.colors !== undefined && roleColors.colors.length >= 2) {
+
+            const colorCount = roleColors.colors.length;
+            const segment = factor * (colorCount - 1);
+            const lowIndex = Math.floor(segment);
+            const highIndex = Math.min(lowIndex + 1, colorCount - 1);
+            const segmentFactor = segment - lowIndex;
+
+            color = interpolate(
+                roleColors.colors[lowIndex] ?? '#99aab5',
+                roleColors.colors[highIndex] ?? '#99aab5',
+                segmentFactor,
+            );
+        } else {
+            color = interpolate(startColor, endColor, factor);
+        }
 
         return {
             userId,
@@ -243,14 +260,14 @@ export function getUserGradientColor(
     } = {},
 ): string {
     // Handle undefined colors by defaulting to startColor
-    const startColor = roleColors.startColor || '#99aab5';
-    const endColor = roleColors.endColor || startColor;
+    const startColor = roleColors.startColor ?? '#99aab5';
+    const endColor = roleColors.endColor ?? startColor;
 
     const assignments = generateRoleGradientAssignments(
         {
             startColor,
             endColor,
-            ...(roleColors.gradientRepeat && {
+            ...(roleColors.gradientRepeat !== undefined && {
                 gradientRepeat: roleColors.gradientRepeat,
             }),
         },
@@ -258,5 +275,5 @@ export function getUserGradientColor(
         options,
     );
     const userAssignment = assignments.find((a) => a.userId === userId);
-    return userAssignment?.color || startColor;
+    return userAssignment?.color ?? startColor;
 }

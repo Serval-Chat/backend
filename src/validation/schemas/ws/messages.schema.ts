@@ -1,15 +1,12 @@
 import { z } from 'zod';
-
-// ============================================================================
-// Direct Message Validation Schemas
-// ============================================================================
+import { MAX_MESSAGE_LENGTH } from '@/config/env';
 
 export const SendMessageDmSchema = z.object({
     receiverId: z.string().min(1, 'Receiver ID is required'),
     text: z
         .string()
         .min(1, 'Message text is required')
-        .max(2000, 'Message text too long (max 2000 characters)'),
+        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`),
     replyToId: z.string().optional(),
 });
 
@@ -18,7 +15,7 @@ export const EditMessageDmSchema = z.object({
     text: z
         .string()
         .min(1, 'Message text is required')
-        .max(2000, 'Message text too long (max 2000 characters)'),
+        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`),
 });
 
 export const DeleteMessageDmSchema = z.object({
@@ -32,10 +29,6 @@ export const MarkDmReadSchema = z.object({
 export const TypingDmSchema = z.object({
     receiverId: z.string().min(1, 'Receiver ID is required'),
 });
-
-// ============================================================================
-// Server Message Validation Schemas
-// ============================================================================
 
 export const JoinServerSchema = z.object({
     serverId: z.string().min(1, 'Server ID is required'),
@@ -77,7 +70,7 @@ export const SendMessageServerSchema = z.object({
     text: z
         .string()
         .min(1, 'Message text is required')
-        .max(2000, 'Message text too long (max 2000 characters)'),
+        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`),
     replyToId: z.string().optional(),
 });
 
@@ -86,7 +79,7 @@ export const EditMessageServerSchema = z.object({
     text: z
         .string()
         .min(1, 'Message text is required')
-        .max(2000, 'Message text too long (max 2000 characters)'),
+        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`),
 });
 
 export const DeleteMessageServerSchema = z.object({
@@ -104,17 +97,9 @@ export const TypingServerSchema = z.object({
     channelId: z.string().min(1, 'Channel ID is required'),
 });
 
-// ============================================================================
-// Presence & Status Validation Schemas
-// ============================================================================
-
 export const SetStatusSchema = z.object({
     status: z.string().max(100, 'Status text too long (max 100 characters)'),
 });
-
-// ============================================================================
-// Reaction Validation Schemas
-// ============================================================================
 
 export const AddReactionSchema = z
     .object({
@@ -126,7 +111,7 @@ export const AddReactionSchema = z
     })
     .refine(
         (data) => {
-            if (data.emojiType === 'custom' && !data.emojiId) {
+            if (data.emojiType === 'custom' && (data.emojiId === undefined || data.emojiId === '')) {
                 return false;
             }
             return true;

@@ -96,7 +96,7 @@ export class WsDispatcher {
 
     private cleanupInterval?: NodeJS.Timeout;
 
-    constructor(
+    public constructor(
         @inject(TYPES.Logger) private logger: ILogger,
         @inject(TYPES.RedisService) private redisService: IRedisService,
     ) {
@@ -115,10 +115,10 @@ export class WsDispatcher {
                 WS_CONTROLLER_METADATA,
                 ctrl.constructor,
             );
-            if (!isController) continue;
+            if (isController === false) continue;
 
             const events =
-                Reflect.getMetadata(WS_EVENT_METADATA, ctrl.constructor) || [];
+                Reflect.getMetadata(WS_EVENT_METADATA, ctrl.constructor) ?? [];
             for (const { type, method } of events) {
                 this.handlers.set(type, {
                     instance: ctrl as object,
@@ -177,12 +177,14 @@ export class WsDispatcher {
      */
     private getConnectionId(ws: WebSocket): string {
         const metadata = this.connectionMetadata.get(ws);
-        if (!metadata) {
-            // Fallback: auto-register if not already registered
-            this.registerConnection(ws);
-            return this.connectionMetadata.get(ws)!.id;
+        if (metadata !== undefined) {
+            return metadata.id;
         }
-        return metadata.id;
+
+
+        this.registerConnection(ws);
+        const newMetadata = this.connectionMetadata.get(ws);
+        return newMetadata?.id ?? 'unknown';
     }
 
     /**
@@ -200,7 +202,7 @@ export class WsDispatcher {
         });
 
         const handlerInfo = this.handlers.get(envelope.event.type);
-        if (!handlerInfo) {
+        if (handlerInfo === undefined) {
             this.logger.warn(
                 `[WsDispatcher] No handler for event: ${envelope.event.type}`,
             );
@@ -211,13 +213,12 @@ export class WsDispatcher {
         const target = instance.constructor.prototype;
 
         try {
-            // 1. Authentication check
             const needAuth = Reflect.getMetadata(
                 WS_NEED_AUTH_METADATA,
                 target,
                 method,
             );
-            if (needAuth && !authenticatedUser) {
+            if (needAuth === true && authenticatedUser === undefined) {
                 this.metrics.authErrors++;
                 this.sendError(
                     ws,
@@ -228,13 +229,12 @@ export class WsDispatcher {
                 return;
             }
 
-            // 2. Deduplication
             const dedup = Reflect.getMetadata(
                 WS_DEDUP_METADATA,
                 target,
                 method,
             );
-            if (dedup) {
+            if (dedup === true) {
                 if (this.isDuplicateMessage(ws, envelope.id)) {
                     this.metrics.duplicateMessages++;
                     this.logger.debug(
@@ -245,17 +245,16 @@ export class WsDispatcher {
                 this.recordMessageId(ws, envelope.id);
             }
 
-            // 3. Rate limiting
             const rateLimitConfig = Reflect.getMetadata(
                 WS_RATE_LIMIT_METADATA,
                 target,
                 method,
             );
-            if (rateLimitConfig) {
+            if (rateLimitConfig !== undefined) {
                 const { points, duration } = rateLimitConfig;
                 const connectionId = this.getConnectionId(ws);
                 const userId =
-                    authenticatedUser?.userId || `anon:${connectionId}`;
+                    authenticatedUser?.userId ?? `anon:${connectionId}`;
                 const rateLimitKey = `${userId}:${envelope.event.type}`;
 
                 const isAllowed = await this.checkRateLimit(
@@ -263,7 +262,7 @@ export class WsDispatcher {
                     points,
                     duration,
                 );
-                if (!isAllowed) {
+                if (isAllowed === false) {
                     this.metrics.rateLimitHits++;
                     this.sendError(
                         ws,
@@ -275,15 +274,14 @@ export class WsDispatcher {
                 }
             }
 
-            // 4. Payload validation
             const schema = Reflect.getMetadata(
                 WS_VALIDATE_METADATA,
                 target,
                 method,
             );
-            if (schema) {
+            if (schema !== undefined) {
                 const result = schema.safeParse(envelope.event.payload);
-                if (!result.success) {
+                if (result.success === false) {
                     this.metrics.validationErrors++;
                     this.sendError(
                         ws,
@@ -297,9 +295,8 @@ export class WsDispatcher {
                 envelope.event.payload = result.data;
             }
 
-            // 5. Before hooks
             const beforeHooks =
-                Reflect.getMetadata(WS_BEFORE_METADATA, target, method) || [];
+                Reflect.getMetadata(WS_BEFORE_METADATA, target, method) ?? [];
             for (const hook of beforeHooks) {
                 await hook.call(
                     instance,
@@ -308,7 +305,6 @@ export class WsDispatcher {
                 );
             }
 
-            // 6. Check cache
             const cacheConfig = Reflect.getMetadata(
                 WS_CACHE_METADATA,
                 target,
@@ -316,7 +312,7 @@ export class WsDispatcher {
             );
             let result: unknown;
 
-            if (cacheConfig) {
+            if (cacheConfig !== undefined) {
                 const cacheKey = this.getCacheKey(envelope, authenticatedUser);
                 const cached = this.getFromCache(cacheKey);
 
@@ -347,14 +343,12 @@ export class WsDispatcher {
                 );
             }
 
-            // 7. After hooks
             const afterHooks =
-                Reflect.getMetadata(WS_AFTER_METADATA, target, method) || [];
+                Reflect.getMetadata(WS_AFTER_METADATA, target, method) ?? [];
             for (const hook of afterHooks) {
                 await hook.call(instance, result, authenticatedUser);
             }
 
-            // 8. Send response
             if (result !== undefined) {
                 this.sendResponse(ws, envelope, result);
             }
@@ -373,7 +367,7 @@ export class WsDispatcher {
 
             // OnError hooks
             const onErrorHooks =
-                Reflect.getMetadata(WS_ON_ERROR_METADATA, target, method) || [];
+                Reflect.getMetadata(WS_ON_ERROR_METADATA, target, method) ?? [];
             for (const hook of onErrorHooks) {
                 try {
                     await hook.call(instance, err, authenticatedUser);
@@ -452,7 +446,7 @@ export class WsDispatcher {
 
         const abortController = new AbortController();
 
-        if (timeoutMs) {
+        if (timeoutMs !== undefined) {
             let timeoutTimer: NodeJS.Timeout | undefined;
             const timeoutPromise = new Promise((_, reject) => {
                 timeoutTimer = setTimeout(() => {
@@ -473,7 +467,7 @@ export class WsDispatcher {
                     timeoutPromise,
                 ]);
             } finally {
-                if (timeoutTimer) {
+                if (timeoutTimer !== undefined) {
                     clearTimeout(timeoutTimer);
                 }
             }
@@ -501,15 +495,15 @@ export class WsDispatcher {
      */
     private recordMessageId(ws: WebSocket, messageId: string): void {
         let messageMap = this.dedupCache.get(ws);
-        if (!messageMap) {
+        if (messageMap === undefined) {
             messageMap = new Map();
             this.dedupCache.set(ws, messageMap);
         }
 
         // Evict oldest entry if cache is full
         if (messageMap.size >= MAX_DEDUP_CACHE_SIZE) {
-            const firstKey = messageMap.keys().next().value;
-            if (firstKey) {
+            const firstKey = messageMap.keys().next().value as string | undefined;
+            if (firstKey !== undefined) {
                 messageMap.delete(firstKey);
             }
         }
@@ -564,7 +558,7 @@ export class WsDispatcher {
         envelope: IWsEnvelope,
         authenticatedUser?: IWsUser,
     ): string {
-        const userId = authenticatedUser?.userId || 'anonymous';
+        const userId = authenticatedUser?.userId ?? 'anonymous';
         const eventType = envelope.event.type;
 
         const payloadHash = crypto
@@ -580,7 +574,7 @@ export class WsDispatcher {
      */
     private getFromCache(key: string): unknown | undefined {
         const entry = this.responseCache.get(key);
-        if (!entry) return undefined;
+        if (entry === undefined) return undefined;
 
         if (Date.now() > entry.expiresAt) {
             this.responseCache.delete(key);
@@ -661,8 +655,9 @@ export class WsDispatcher {
             remove_reaction: 'reaction_removed',
         };
 
-        if (typeMap[requestType]) {
-            return typeMap[requestType];
+        const val = typeMap[requestType];
+        if (val !== undefined) {
+            return val;
         }
 
         return `${requestType}_response`;
@@ -735,7 +730,7 @@ export class WsDispatcher {
      * Stops the cleanup interval and releases resources.
      */
     public destroy(): void {
-        if (this.cleanupInterval) {
+        if (this.cleanupInterval !== undefined) {
             clearInterval(this.cleanupInterval);
             this.cleanupInterval = undefined;
         }

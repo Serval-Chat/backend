@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import {
@@ -10,27 +11,28 @@ import { Webhook } from '@/models/Webhook';
 //
 // Implements IWebhookRepository using Mongoose Webhook model
 @injectable()
+@Injectable()
 export class MongooseWebhookRepository implements IWebhookRepository {
-    async findById(id: Types.ObjectId): Promise<IWebhook | null> {
+    public async findById(id: Types.ObjectId): Promise<IWebhook | null> {
         return await Webhook.findById(id).lean();
     }
 
     // Find webhook by its secret token
     //
     // Used to authenticate incoming webhook execution requests */
-    async findByToken(token: string): Promise<IWebhook | null> {
+    public async findByToken(token: string): Promise<IWebhook | null> {
         return await Webhook.findOne({ token }).lean();
     }
 
-    async findByServerId(serverId: Types.ObjectId): Promise<IWebhook[]> {
+    public async findByServerId(serverId: Types.ObjectId): Promise<IWebhook[]> {
         return await Webhook.find({ serverId }).lean();
     }
 
-    async findByChannelId(channelId: Types.ObjectId): Promise<IWebhook[]> {
+    public async findByChannelId(channelId: Types.ObjectId): Promise<IWebhook[]> {
         return await Webhook.find({ channelId }).lean();
     }
 
-    async create(data: {
+    public async create(data: {
         serverId: Types.ObjectId;
         channelId: Types.ObjectId;
         name: string;
@@ -42,15 +44,15 @@ export class MongooseWebhookRepository implements IWebhookRepository {
         return await webhook.save();
     }
 
-    async update(
+    public async update(
         id: Types.ObjectId,
         data: Partial<IWebhook>,
     ): Promise<IWebhook | null> {
         return await Webhook.findByIdAndUpdate(id, data, { new: true }).lean();
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Webhook.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 }

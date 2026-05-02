@@ -33,7 +33,7 @@ import {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class KlipyController {
-    constructor(
+    public constructor(
         @Inject(TYPES.KlipyService)
         private klipyService: KlipyService,
     ) {}

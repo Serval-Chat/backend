@@ -1,56 +1,63 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMongoId, IsOptional, IsString } from 'class-validator';
+import { PingMentionMessageDTO, PingExportMessageDTO } from './types.dto';
+
 
 export class PingNotificationDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    id!: string;
+    public id!: string;
 
     @ApiProperty({ enum: ['mention', 'export_status'] })
-    type!: 'mention' | 'export_status';
+    public type!: 'mention' | 'export_status';
 
     @ApiProperty()
-    sender!: string;
+    public sender!: string;
 
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    senderId!: string;
+    public senderId!: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsMongoId()
     @IsString()
-    serverId?: string;
+    public serverId?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsMongoId()
     @IsString()
-    channelId?: string;
+    public channelId?: string;
 
-    @ApiProperty({ type: 'object', additionalProperties: true })
-    message!: Record<string, unknown>;
+    @ApiProperty({ 
+        oneOf: [
+            { $ref: '#/components/schemas/PingMentionMessageDTO' },
+            { $ref: '#/components/schemas/PingExportMessageDTO' }
+        ]
+    })
+    public message!: PingMentionMessageDTO | PingExportMessageDTO;
 
     @ApiProperty()
-    timestamp!: number;
+    public timestamp!: number;
 }
 
 export class GetPingsResponseDTO {
     @ApiProperty({ type: [PingNotificationDTO] })
-    pings!: PingNotificationDTO[];
+    public pings!: PingNotificationDTO[];
 }
 
 export class DeletePingResponseDTO {
     @ApiProperty()
-    success!: boolean;
+    public success!: boolean;
 }
 
 export class ClearChannelPingsResponseDTO {
     @ApiProperty()
-    success!: boolean;
+    public success!: boolean;
 
     @ApiProperty()
-    clearedCount!: number;
+    public clearedCount!: number;
 }

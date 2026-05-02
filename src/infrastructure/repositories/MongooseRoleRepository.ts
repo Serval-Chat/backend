@@ -14,18 +14,18 @@ import { Role } from '@/models/Server';
 @injectable()
 @Injectable()
 export class MongooseRoleRepository implements IRoleRepository {
-    async findById(id: Types.ObjectId): Promise<IRole | null> {
+    public async findById(id: Types.ObjectId): Promise<IRole | null> {
         return await Role.findById(id).lean();
     }
 
-    async findByServerId(serverId: Types.ObjectId): Promise<IRole[]> {
+    public async findByServerId(serverId: Types.ObjectId): Promise<IRole[]> {
         return await Role.find({ serverId }).sort({ position: -1 }).lean();
     }
 
     // Create a new role
     //
     // Sets default color and empty permissions if not provided
-    async create(data: {
+    public async create(data: {
         serverId: Types.ObjectId;
         name: string;
         color?: string;
@@ -36,40 +36,46 @@ export class MongooseRoleRepository implements IRoleRepository {
         separateFromOtherRoles?: boolean;
         position?: number;
         permissions?: Partial<IRolePermissions>;
+        managed?: boolean;
+        managedBotId?: Types.ObjectId;
+        glowEnabled?: boolean;
     }): Promise<IRole> {
         const role = new Role({
             serverId: data.serverId,
             name: data.name,
             // Default color is a grey if none specified
-            color: data.color || '#99aab5',
+            color: (data.color !== undefined && data.color !== '') ? data.color : '#99aab5',
             startColor: data.startColor,
             endColor: data.endColor,
             colors: data.colors,
             gradientRepeat: data.gradientRepeat,
             separateFromOtherRoles: data.separateFromOtherRoles,
-            position: data.position || 0,
-            permissions: data.permissions || {},
+            position: data.position ?? 0,
+            permissions: data.permissions ?? {},
+            managed: data.managed ?? false,
+            managedBotId: data.managedBotId,
+            glowEnabled: data.glowEnabled,
         });
         return await role.save();
     }
 
-    async update(
+    public async update(
         id: Types.ObjectId,
         data: Partial<IRole>,
     ): Promise<IRole | null> {
         return await Role.findByIdAndUpdate(id, data, { new: true }).lean();
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Role.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async findEveryoneRole(serverId: Types.ObjectId): Promise<IRole | null> {
+    public async findEveryoneRole(serverId: Types.ObjectId): Promise<IRole | null> {
         return await Role.findOne({ serverId, name: '@everyone' }).lean();
     }
 
-    async updatePosition(
+    public async updatePosition(
         id: Types.ObjectId,
         position: number,
     ): Promise<IRole | null> {
@@ -80,19 +86,19 @@ export class MongooseRoleRepository implements IRoleRepository {
         ).lean();
     }
 
-    async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
         const result = await Role.deleteMany({ serverId });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async findByServerIdAndName(
+    public async findByServerIdAndName(
         serverId: Types.ObjectId,
         name: string,
     ): Promise<IRole | null> {
         return await Role.findOne({ serverId, name }).lean();
     }
 
-    async findMaxPositionByServerId(
+    public async findMaxPositionByServerId(
         serverId: Types.ObjectId,
     ): Promise<IRole | null> {
         return await Role.findOne({ serverId }).sort({ position: -1 }).lean();

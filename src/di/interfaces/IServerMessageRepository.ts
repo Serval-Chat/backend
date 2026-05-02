@@ -1,4 +1,9 @@
 import type { Types, ClientSession } from 'mongoose';
+import type { IEmbed } from '@/models/Embed';
+import type { InteractionValue } from '@/types/interactions';
+import type { ReactionData } from './IReactionRepository';
+
+
 
 // Server Message interface (domain model)
 //
@@ -17,78 +22,92 @@ export interface IServerMessage {
     isEdited?: boolean;
     isPinned?: boolean;
     isSticky?: boolean;
+    deletedAt?: Date;
     isWebhook?: boolean;
     webhookUsername?: string;
     webhookAvatarUrl?: string;
-    reactions?: unknown[];
+    embeds?: IEmbed[];
+    reactions?: ReactionData[];
+    interaction?: {
+        command: string;
+        options: { name: string; value: InteractionValue }[];
+        user: { id: string; username: string };
+    };
 }
 
 // Server Message Repository Interface
 //
 // Encapsulates server message operations
 export interface IServerMessageRepository {
-    // Create a new server message
     create(
         data: {
-            serverId: Types.ObjectId;
-            channelId: Types.ObjectId;
-            senderId: Types.ObjectId;
+            serverId: string | Types.ObjectId;
+            channelId: string | Types.ObjectId;
+            senderId: string | Types.ObjectId;
             text: string;
             isWebhook?: boolean;
             webhookUsername?: string;
             webhookAvatarUrl?: string;
-            replyToId?: Types.ObjectId;
+            replyToId?: string | Types.ObjectId;
             repliedToMessageId?: Types.ObjectId;
+            embeds?: IEmbed[];
+            interaction?: {
+                command: string;
+                options: { name: string; value: InteractionValue }[];
+                user: { id: string; username: string };
+            };
         },
         session?: ClientSession,
     ): Promise<IServerMessage>;
 
-    // Delete message by ID
     delete(id: Types.ObjectId): Promise<boolean>;
 
-    // Delete all messages for a server (bulk delete)
     deleteByServerId(serverId: Types.ObjectId): Promise<number>;
 
-    // Delete all messages for a channel (bulk delete)
     deleteByChannelId(channelId: Types.ObjectId): Promise<number>;
+    
+    bulkDelete(channelId: Types.ObjectId, ids: Types.ObjectId[]): Promise<number>;
 
-    // Find message by ID
-    findById(id: Types.ObjectId): Promise<IServerMessage | null>;
+    findById(
+        id: Types.ObjectId,
+        includeDeleted?: boolean,
+    ): Promise<IServerMessage | null>;
 
-    // Update a server message
     update(
         id: Types.ObjectId,
         data: Partial<IServerMessage>,
     ): Promise<IServerMessage | null>;
 
-    // Find messages by channel ID with pagination
     findByChannelId(
         channelId: Types.ObjectId,
         limit?: number,
         before?: string,
         around?: string,
         after?: string,
+        includeDeleted?: boolean,
     ): Promise<IServerMessage[]>;
 
     findCursorByChannelId(
         channelId: Types.ObjectId,
     ): AsyncIterable<IServerMessage>;
 
-    // Count messages in a channel
-    countByChannelId(channelId: Types.ObjectId): Promise<number>;
+    countByChannelId(
+        channelId: Types.ObjectId,
+        includeDeleted?: boolean,
+    ): Promise<number>;
 
-    // Count messages in a server
     countByServerId(serverId: Types.ObjectId): Promise<number>;
 
-    // Find last message by channel and user
     findLastByChannelAndUser(
         channelId: Types.ObjectId,
         userId: Types.ObjectId,
+        includeDeleted?: boolean,
     ): Promise<IServerMessage | null>;
-    // Find all pinned messages in a channel
-    findPinnedByChannelId(channelId: Types.ObjectId): Promise<IServerMessage[]>;
+    findPinnedByChannelId(
+        channelId: Types.ObjectId,
+        includeDeleted?: boolean,
+    ): Promise<IServerMessage[]>;
 
-    // Count total keys
     count(): Promise<number>;
 
     // Count messages created after a certain date

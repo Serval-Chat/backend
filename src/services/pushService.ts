@@ -16,7 +16,7 @@ const vapidConfigs: Record<string, { publicKey: string; privateKey: string }> =
     {};
 
 export function initWebPush() {
-    if (process.env.VAPID_KEY_VERSION && VAPID_PUB && VAPID_PRI) {
+    if (process.env.VAPID_KEY_VERSION !== undefined && VAPID_PUB !== '' && VAPID_PRI !== '') {
         vapidConfigs[process.env.VAPID_KEY_VERSION] = {
             publicKey: VAPID_PUB,
             privateKey: VAPID_PRI,
@@ -26,11 +26,11 @@ export function initWebPush() {
 
 let _fcmAdmin: typeof admin | null = null;
 async function getFCM() {
-    if (_fcmAdmin) return _fcmAdmin;
-    if (!process.env.FIREBASE_SERVICE_ACCOUNT) return null;
+    if (_fcmAdmin !== null) return _fcmAdmin;
+    if (process.env.FIREBASE_SERVICE_ACCOUNT === undefined) return null;
 
     const admin = await import('firebase-admin');
-    if (!admin.apps.length) {
+    if (admin.apps.length === 0) {
         admin.initializeApp({
             credential: admin.credential.cert(
                 JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT),
@@ -76,7 +76,7 @@ const templates: {
 } = {
     mention: ({ senderName, channelName, preview }) => ({
         title: `${senderName} mentioned you`,
-        body: channelName ? `#${channelName}: ${preview}` : preview,
+        body: (channelName !== undefined && channelName !== '') ? `#${channelName}: ${preview}` : preview,
         tag: 'mention',
         data: { type: 'mention' },
     }),
@@ -108,7 +108,7 @@ async function sendToSubscription(
         const version = sub.vapidKeyVersion ?? 'v1';
         const config = vapidConfigs[version];
 
-        if (!config) {
+        if (config === undefined) {
             logger.warn(
                 `[PushService] Key version ${version} no longer loaded - removing subscription ${sub._id}`,
             );
@@ -116,7 +116,7 @@ async function sendToSubscription(
             return;
         }
 
-        if (!sub.endpointData) {
+        if (sub.endpointData === undefined) {
             logger.warn(
                 `[PushService] Webpush subscription missing endpoint data for sub ${sub._id}. Removing.`,
             );
@@ -134,7 +134,7 @@ async function sendToSubscription(
                 {
                     TTL: 86400, // 24h
                     vapidDetails: {
-                        subject: `mailto:${process.env.VAPID_EMAIL || 'admin@localhost'}`,
+                        subject: `mailto:${(process.env.VAPID_EMAIL !== undefined && process.env.VAPID_EMAIL !== '') ? process.env.VAPID_EMAIL : 'admin@localhost'}`,
                         publicKey: config.publicKey,
                         privateKey: config.privateKey,
                     },
@@ -161,13 +161,13 @@ async function sendToSubscription(
         }
     } else {
         const admin = await getFCM();
-        if (!admin) {
+        if (admin === null) {
             logger.debug(
                 `[PushService] FCM skipped (no credentials) for sub ${sub._id}`,
             );
             return;
         }
-        if (!sub.fcmToken) {
+        if (sub.fcmToken === undefined || sub.fcmToken === '') {
             logger.warn(
                 `[PushService] FCM subscription missing token for sub ${sub._id}. Removing.`,
             );
@@ -191,7 +191,7 @@ async function sendToSubscription(
                 'messaging/registration-token-not-registered',
                 'messaging/invalid-registration-token',
             ];
-            if (error.code && expired.includes(error.code)) {
+            if (error.code !== undefined && expired.includes(error.code)) {
                 logger.info(
                     `[PushService] FCM token expired for sub ${sub._id}. Removing.`,
                 );
@@ -228,7 +228,7 @@ async function isAllowedByPreferences(
     const user = await User.findById(userId)
         .select('notificationPreferences')
         .lean();
-    if (!user?.notificationPreferences) return true;
+    if (user === null || user.notificationPreferences === undefined) return true;
     const prefs = user.notificationPreferences as Record<string, boolean>;
     return prefs[type] !== false;
 }

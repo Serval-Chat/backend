@@ -61,7 +61,9 @@ describe('Blocking Unfriend Integration', () => {
 
         const profiles = await container.get<IBlockRepository>(TYPES.BlockRepository).findProfilesByOwner(blocker._id);
         const req = { user: { id: blocker._id.toString() } } as unknown as Request;
-        await blockController.blockUser(req, target._id.toString(), { profileId: profiles[0]!._id.toString() });
+        const profileId = profiles[0]?._id.toString();
+        assert.ok(profileId !== undefined && profileId !== '', 'Profile ID should exist');
+        await blockController.blockUser(req, target._id.toString(), { profileId });
 
         // verify they are no longer friends.
         areFriends = await friendshipRepo.areFriends(blocker._id, target._id);
@@ -77,7 +79,9 @@ describe('Blocking Unfriend Integration', () => {
 
         const profiles = await container.get<IBlockRepository>(TYPES.BlockRepository).findProfilesByOwner(blocker._id);
         const req = { user: { id: blocker._id.toString() } } as unknown as Request;
-        await blockController.blockUser(req, target._id.toString(), { profileId: profiles[0]!._id.toString() });
+        const profileId2 = profiles[0]?._id.toString();
+        assert.ok(profileId2 !== undefined && profileId2 !== '', 'Profile ID should exist');
+        await blockController.blockUser(req, target._id.toString(), { profileId: profileId2 });
 
         // verify request is gone.
         request = await friendshipRepo.findRequestBetweenUsers(blocker._id, target._id);

@@ -14,13 +14,13 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseBanRepository implements IBanRepository {
     private banModel = Ban;
-    constructor() {}
+    public constructor() {}
 
-    async findActiveByUserId(userId: Types.ObjectId): Promise<IBan | null> {
+    public async findActiveByUserId(userId: Types.ObjectId): Promise<IBan | null> {
         return await this.banModel.findOne({ userId, active: true }).lean();
     }
 
-    async create(
+    public async create(
         userId: Types.ObjectId,
         reason: string,
         expirationTimestamp?: Date,
@@ -34,26 +34,26 @@ export class MongooseBanRepository implements IBanRepository {
         return await ban.save();
     }
 
-    async expire(banId: Types.ObjectId): Promise<boolean> {
+    public async expire(banId: Types.ObjectId): Promise<boolean> {
         const result = await this.banModel.updateOne(
             { _id: banId },
             { active: false },
         );
-        return result.modifiedCount ? result.modifiedCount > 0 : false;
+        return result.modifiedCount > 0;
     }
 
-    async checkExpired(userId: Types.ObjectId): Promise<void> {
+    public async checkExpired(userId: Types.ObjectId): Promise<void> {
         await this.banModel.checkExpired(userId);
     }
 
-    async findAllActive(): Promise<IBan[]> {
+    public async findAllActive(): Promise<IBan[]> {
         return await this.banModel
             .find({ active: true })
             .select('userId')
             .lean();
     }
 
-    async findByUserIdWithHistory(
+    public async findByUserIdWithHistory(
         userId: Types.ObjectId,
     ): Promise<IBan | null> {
         return await this.banModel
@@ -66,7 +66,7 @@ export class MongooseBanRepository implements IBanRepository {
     //
     // If a ban already exists for the user, it is updated and the new ban
     // Is added to the history array. If no ban exists, a new one is created.
-    async createOrUpdateWithHistory(data: {
+    public async createOrUpdateWithHistory(data: {
         userId: Types.ObjectId;
         reason: string;
         issuedBy: Types.ObjectId;
@@ -92,14 +92,14 @@ export class MongooseBanRepository implements IBanRepository {
 
             if (ban.history.length > 0) {
                 const lastEntry = ban.history[ban.history.length - 1];
-                if (lastEntry && !lastEntry.endedAt) {
+                if (lastEntry && lastEntry.endedAt === undefined) {
                     lastEntry.endedAt = now;
                 }
             }
 
             ban.history.push(historyEntry as unknown as IBanHistoryEntry); // historyEntry doesn't have endedAt yet, which is optional in IBanHistoryEntry but Mongoose might be strict
             ban.reason = historyEntry.reason;
-            if (historyEntry.expirationTimestamp) {
+            if (historyEntry.expirationTimestamp !== undefined) {
                 ban.expirationTimestamp = historyEntry.expirationTimestamp;
             }
             ban.issuedBy = issuedById;
@@ -121,7 +121,7 @@ export class MongooseBanRepository implements IBanRepository {
         }
     }
 
-    async deactivateAllForUser(
+    public async deactivateAllForUser(
         userId: Types.ObjectId,
     ): Promise<{ modifiedCount: number }> {
         const result = await this.banModel.updateMany(
@@ -131,14 +131,14 @@ export class MongooseBanRepository implements IBanRepository {
         return { modifiedCount: result.modifiedCount };
     }
 
-    async deleteAllForUser(
+    public async deleteAllForUser(
         userId: Types.ObjectId,
     ): Promise<{ deletedCount: number }> {
         const result = await this.banModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }
 
-    async findAll(options: {
+    public async findAll(options: {
         limit?: number;
         offset?: number;
     }): Promise<IBan[]> {
@@ -146,8 +146,8 @@ export class MongooseBanRepository implements IBanRepository {
             return await this.banModel
                 .find({})
                 .sort({ timestamp: -1 })
-                .limit(options.limit || 50)
-                .skip(options.offset || 0)
+                .limit(options.limit ?? 50)
+                .skip(options.offset ?? 0)
                 .populate([
                     {
                         path: 'userId',
@@ -173,21 +173,21 @@ export class MongooseBanRepository implements IBanRepository {
             return await this.banModel
                 .find({})
                 .sort({ timestamp: -1 })
-                .limit(options.limit || 50)
-                .skip(options.offset || 0)
+                .limit(options.limit ?? 50)
+                .skip(options.offset ?? 0)
                 .lean();
         }
     }
 
-    async countActive(): Promise<number> {
+    public async countActive(): Promise<number> {
         return await this.banModel.countDocuments({ active: true });
     }
 
-    async countCreatedAfter(date: Date): Promise<number> {
+    public async countCreatedAfter(date: Date): Promise<number> {
         return await this.banModel.countDocuments({ timestamp: { $gt: date } });
     }
 
-    async countByHour(since: Date, hours: number): Promise<number[]> {
+    public async countByHour(since: Date, hours: number): Promise<number[]> {
         const msPerHour = 1000 * 60 * 60;
         const buckets = await this.banModel.aggregate<{
             _id: number;
@@ -216,7 +216,7 @@ export class MongooseBanRepository implements IBanRepository {
         return result;
     }
 
-    async countByDay(since: Date, days: number): Promise<number[]> {
+    public async countByDay(since: Date, days: number): Promise<number[]> {
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await this.banModel.aggregate<{
             _id: number;
@@ -245,12 +245,12 @@ export class MongooseBanRepository implements IBanRepository {
         return result;
     }
 
-    async countAllByDay(): Promise<number[]> {
+    public async countAllByDay(): Promise<number[]> {
         const oldestBan = await this.banModel
             .findOne()
             .sort({ timestamp: 1 })
             .lean();
-        if (!oldestBan || !oldestBan.timestamp) return [];
+        if (oldestBan === null) return [];
 
         const now = new Date();
         const startOfOldestDay = new Date(oldestBan.timestamp);

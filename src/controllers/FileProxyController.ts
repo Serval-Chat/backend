@@ -43,7 +43,7 @@ import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 @injectable()
 @Controller('api/v1/file-proxy')
 export class FileProxyController {
-    constructor(
+    public constructor(
         @Inject(TYPES.Logger)
         private logger: ILogger,
         @Inject(TYPES.RedisService)
@@ -81,7 +81,7 @@ export class FileProxyController {
                 .getClient()
                 .get(`proxy:dl:${cacheKey}`);
             let cached: CacheEntry | null = null;
-            if (cacheStr) {
+            if (cacheStr !== null && cacheStr !== '') {
                 try {
                     const parsed = JSON.parse(cacheStr);
                     cached = {
@@ -95,7 +95,7 @@ export class FileProxyController {
 
             targetUrl = this.rewriteKbityUrl(targetUrl);
 
-            if (cached) {
+            if (cached !== null) {
                 for (const [header, value] of Object.entries(cached.headers)) {
                     res.setHeader(header, value);
                 }
@@ -113,7 +113,7 @@ export class FileProxyController {
                     method: 'GET',
                 });
 
-                if (!response.ok) {
+                if (response.ok !== true) {
                     res.status(response.status).json({
                         error: `${ErrorMessages.FILE.FAILED_FETCH_RESOURCE} (status ${response.status})`,
                     });
@@ -123,7 +123,7 @@ export class FileProxyController {
                 const contentLengthHeader =
                     response.headers.get('content-length');
                 // ... rest of logic
-                if (contentLengthHeader) {
+                if (contentLengthHeader !== null && contentLengthHeader !== '') {
                     const parsed = Number(contentLengthHeader);
                     if (!Number.isNaN(parsed) && parsed > MAX_FILE_SIZE_BYTES) {
                         await response.body?.cancel();
@@ -161,7 +161,7 @@ export class FileProxyController {
 
                 const headerRecord = sanitizeHeaders(response.headers);
                 const originalMimeType =
-                    headerRecord['content-type'] || 'application/octet-stream';
+                    (headerRecord['content-type'] !== undefined && headerRecord['content-type'] !== '') ? headerRecord['content-type'] : 'application/octet-stream';
 
                 // Try to convert to WebP on the fly if it's an image and client supports it
                 const {
@@ -219,7 +219,7 @@ export class FileProxyController {
                     }
                 }
                 this.logger.error('Failed to proxy file:', err);
-                if (!res.headersSent) {
+                if (res.headersSent !== true) {
                     res.status(502).json({
                         error: ErrorMessages.FILE.FAILED_PROXY,
                     });
@@ -240,7 +240,7 @@ export class FileProxyController {
                 }
             }
             this.logger.error('Failed to proxy file:', err);
-            if (!res.headersSent) {
+            if (res.headersSent !== true) {
                 res.status(502).json({
                     error: ErrorMessages.FILE.FAILED_PROXY,
                 });
@@ -263,7 +263,7 @@ export class FileProxyController {
                 .getClient()
                 .get(`proxy:meta:${cacheKey}`);
             let cached: MetaCacheEntry | null = null;
-            if (cacheStr) {
+            if (cacheStr !== null && cacheStr !== '') {
                 try {
                     cached = JSON.parse(cacheStr);
                 } catch (e) {
@@ -271,7 +271,7 @@ export class FileProxyController {
                 }
             }
 
-            if (cached) {
+            if (cached !== null) {
                 return {
                     status: cached.status,
                     headers: cached.headers,
@@ -285,7 +285,7 @@ export class FileProxyController {
 
             const headerRecord = sanitizeHeaders(response.headers);
             const contentLength = response.headers.get('content-length');
-            const parsedLength = contentLength
+            const parsedLength = (contentLength !== null && contentLength !== '')
                 ? Number(contentLength)
                 : undefined;
 

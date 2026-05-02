@@ -19,7 +19,7 @@ import logger from '@/utils/logger';
 export class FilesystemAvatarStorage implements IAvatarStorage {
     private baseDir: string;
 
-    constructor(
+    public constructor(
         baseDir: string = path.join(
             process.cwd(),
             'public',
@@ -30,7 +30,7 @@ export class FilesystemAvatarStorage implements IAvatarStorage {
         this.baseDir = baseDir;
     }
 
-    async deleteAvatar(avatarPath: string): Promise<void> {
+    public async deleteAvatar(avatarPath: string): Promise<void> {
         if (!avatarPath || avatarPath.includes('deleted-user-avatar')) {
             return; // Don't delete system avatar
         }
@@ -43,7 +43,7 @@ export class FilesystemAvatarStorage implements IAvatarStorage {
         }
     }
 
-    async uploadAvatar(file: Buffer | string, userId: string): Promise<string> {
+    public async uploadAvatar(file: Buffer | string, userId: string): Promise<string> {
         const filename = `${userId}-${Date.now()}.png`;
         const fullPath = path.join(this.baseDir, filename);
 
@@ -58,10 +58,10 @@ export class FilesystemAvatarStorage implements IAvatarStorage {
 }
 
 // Get the configured avatar storage driver
-let storageDriver: IAvatarStorage;
+let storageDriver: IAvatarStorage | undefined;
 
 export function getAvatarStorage(): IAvatarStorage {
-    if (!storageDriver) {
+    if (storageDriver === undefined) {
         storageDriver = new FilesystemAvatarStorage();
     }
 

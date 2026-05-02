@@ -66,8 +66,8 @@ describe('Presence Blocking Integration', () => {
             await presenceController.sendPresenceSync(wsUserB);
 
             // check what was sent to user B.
-            const call = mockWsServer.broadcastToUser!.mock.calls.find((c: unknown[]) => c[0] === wsUserB.userId);
-            assert.ok(call, 'Should have sent presence sync');
+            const call = (mockWsServer.broadcastToUser as jest.Mock).mock.calls.find((c: unknown[]) => c[0] === wsUserB.userId);
+            assert.ok(call !== undefined && call !== null, 'Should have sent presence sync');
             const syncPayload = call[1].payload;
             
             const foundBlocker = syncPayload.online.find((u: { userId: string }) => u.userId === blocker._id.toString());
@@ -82,8 +82,8 @@ describe('Presence Blocking Integration', () => {
             
             await presenceController.sendPresenceSync(wsUserA);
 
-            const call = mockWsServer.broadcastToUser!.mock.calls.find((c: unknown[]) => c[0] === wsUserA.userId);
-            assert.ok(call, 'Should have sent presence sync');
+            const call = (mockWsServer.broadcastToUser as jest.Mock).mock.calls.find((c: unknown[]) => c[0] === wsUserA.userId);
+            assert.ok(call !== undefined && call !== null, 'Should have sent presence sync');
             const syncPayload = call[1].payload;
             
             const foundBlocked = syncPayload.online.find((u: { userId: string }) => u.userId === blocked._id.toString());
@@ -98,10 +98,10 @@ describe('Presence Blocking Integration', () => {
             // trigger some broadcast (e.g. status update).
             await (presenceController as unknown as { broadcastToPresenceAudience: (userId: string, data: unknown) => Promise<void> }).broadcastToPresenceAudience(blocker._id.toString(), { type: 'user_online', payload: {} });
 
-            const call = mockWsServer.broadcastToPresenceAudience!.mock.calls[0];
-            assert.ok(call, 'Should have called broadcastToPresenceAudience');
+            const call = (mockWsServer.broadcastToPresenceAudience as jest.Mock).mock.calls[0];
+            assert.ok(call !== undefined && call !== null, 'Should have called broadcastToPresenceAudience');
             const excludedUserIds = call[4]; // 5th argument
-            assert.ok(excludedUserIds.includes(blocked._id.toString()), 'Blocked user should be in exclusion list');
+            assert.ok((excludedUserIds as string[]).includes(blocked._id.toString()), 'Blocked user should be in exclusion list');
         });
 
         it('should add blocker to excluded list when recipient has HIDE_THEIR_PRESENCE set', async () => {
@@ -112,10 +112,10 @@ describe('Presence Blocking Integration', () => {
             // user B (blocked) comes online.
             await (presenceController as unknown as { broadcastToPresenceAudience: (userId: string, data: unknown) => Promise<void> }).broadcastToPresenceAudience(blocked._id.toString(), { type: 'user_online', payload: {} });
 
-            const call = mockWsServer.broadcastToPresenceAudience!.mock.calls[0];
-            assert.ok(call, 'Should have called broadcastToPresenceAudience');
+            const call = (mockWsServer.broadcastToPresenceAudience as jest.Mock).mock.calls[0];
+            assert.ok(call !== undefined && call !== null, 'Should have called broadcastToPresenceAudience');
             const excludedUserIds = call[4];
-            assert.ok(excludedUserIds.includes(blocker._id.toString()), 'Blocker should be in exclusion list because they hide the blocked user');
+            assert.ok((excludedUserIds as string[]).includes(blocker._id.toString()), 'Blocker should be in exclusion list because they hide the blocked user');
         });
     });
 

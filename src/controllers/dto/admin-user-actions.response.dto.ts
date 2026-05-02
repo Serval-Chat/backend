@@ -1,92 +1,94 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMongoId, IsString } from 'class-validator';
+import { AdminBanHistoryItemDTO } from './types.dto';
+
 
 export class AdminResetProfileResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
     @ApiProperty()
-    fields!: string[];
+    public fields!: string[];
 }
 
 export class AdminSoftDeleteUserResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
     @ApiProperty()
-    anonymizedUsername!: string;
+    public anonymizedUsername!: string;
     @ApiProperty()
-    offlineFriends!: number;
+    public offlineFriends!: number;
 }
 
 export class AdminDeleteUserResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
     @ApiProperty()
-    anonymizedUsername!: string;
+    public anonymizedUsername!: string;
 }
 
 export class AdminHardDeleteUserResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
     @ApiProperty()
-    sentMessagesAnonymized!: number;
+    public sentMessagesAnonymized!: number;
     @ApiProperty()
-    receivedMessagesAnonymized!: number;
+    public receivedMessagesAnonymized!: number;
     @ApiProperty()
-    offlineFriends!: number;
+    public offlineFriends!: number;
 }
 
 export class AdminUpdateUserPermissionsResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 }
 
 export class AdminBanUserResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    userId!: string;
+    public userId!: string;
     @ApiProperty()
-    reason!: string;
+    public reason!: string;
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    issuedBy!: string;
+    public issuedBy!: string;
     @ApiProperty()
-    expirationTimestamp!: Date;
+    public expirationTimestamp!: Date;
     @ApiProperty()
-    active!: boolean;
-    @ApiPropertyOptional({ type: [Object] })
-    history?: unknown[];
+    public active!: boolean;
+    @ApiPropertyOptional({ type: [AdminBanHistoryItemDTO] })
+    public history?: AdminBanHistoryItemDTO[];
 }
 
 export class AdminUnbanUserResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 }
 
 export class AdminWarnUserResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    userId!: string;
+    public userId!: string;
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    issuedBy!: string;
+    public issuedBy!: string;
     @ApiProperty()
-    message!: string;
+    public message!: string;
     @ApiProperty()
-    timestamp!: Date;
+    public timestamp!: Date;
     @ApiProperty()
-    acknowledged!: boolean;
+    public acknowledged!: boolean;
     @ApiPropertyOptional()
-    acknowledgedAt?: Date;
+    public acknowledgedAt?: Date;
 }

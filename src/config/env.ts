@@ -7,52 +7,53 @@ dotenv.config();
 
 // Resolves a path against the current working directory
 function ensureAbsolute(p: string): string {
-    if (!p) return '';
+    if (p === '') return '';
     return path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || '';
-const APP_ENCRYPTION_KEY = process.env.APP_ENCRYPTION_KEY || JWT_SECRET;
-const PORT = Number(process.env.CHAT_PORT || -1);
-const MONGO_URI = process.env.MONGO_URI || '';
-const PROJECT_LEVEL = process.env.PROJ_LEVEL || '';
-const LOGS_PATH = ensureAbsolute(process.env.LOGS_PATH || '');
-const PUBLIC_FOLDER_PATH = ensureAbsolute(process.env.PUBLIC_FOLDER || '');
-const USE_HTTPS = process.env.HTTPS || '';
-const CERTS_PATH = ensureAbsolute(process.env.CERTS_PATH || '');
-const VAPID_PUB = process.env.VAPID_PUBLIC_KEY || '';
-const VAPID_PRI = process.env.VAPID_PRIVATE_KEY || '';
-const SERVER_URL = process.env.SERVER_URL || '';
-const GRAFANA_USER = process.env.GRAFANA_USER || '';
-const GRAFANA_PASSWORD = process.env.GRAFANA_PASSWORD || '';
-const WS_AUTH_TIMEOUT = Number(process.env.WS_AUTH_TIMEOUT || 10000);
-const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY || '';
-const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN || '';
+const JWT_SECRET = process.env.JWT_SECRET ?? '';
+const APP_ENCRYPTION_KEY = process.env.APP_ENCRYPTION_KEY ?? JWT_SECRET;
+const PORT = Number(process.env.CHAT_PORT ?? -1);
+const MONGO_URI = process.env.MONGO_URI ?? '';
+const PROJECT_LEVEL = process.env.PROJ_LEVEL ?? '';
+const LOGS_PATH = ensureAbsolute(process.env.LOGS_PATH ?? '');
+const PUBLIC_FOLDER_PATH = ensureAbsolute(process.env.PUBLIC_FOLDER ?? '');
+const USE_HTTPS = process.env.HTTPS ?? '';
+const CERTS_PATH = ensureAbsolute(process.env.CERTS_PATH ?? '');
+const VAPID_PUB = process.env.VAPID_PUBLIC_KEY ?? '';
+const VAPID_PRI = process.env.VAPID_PRIVATE_KEY ?? '';
+const SERVER_URL = process.env.SERVER_URL ?? '';
+const GRAFANA_USER = process.env.GRAFANA_USER ?? '';
+const GRAFANA_PASSWORD = process.env.GRAFANA_PASSWORD ?? '';
+const WS_AUTH_TIMEOUT = Number(process.env.WS_AUTH_TIMEOUT ?? 10000);
+const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY ?? '';
+const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN ?? '';
 const MAILGUN_BASE_URL =
-    process.env.MAILGUN_BASE_URL || 'https://api.mailgun.net';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-const METRICS_TOKEN = process.env.METRICS_TOKEN || '';
-const KLIPY_API_KEY = process.env.KLIPY_API_KEY || '';
+    process.env.MAILGUN_BASE_URL ?? 'https://api.mailgun.net';
+const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+const METRICS_TOKEN = process.env.METRICS_TOKEN ?? '';
+const KLIPY_API_KEY = process.env.KLIPY_API_KEY ?? '';
+const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH ?? 2000);
 
 const OTEL_ENDPOINT =
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'grpc://otel-collector:4317';
 const LOKI_HOST = process.env.LOKI_HOST ?? 'http://loki:3100';
 const APP_VERSION = process.env.APP_VERSION ?? '0.0.0';
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 const INSTANCE_NAME =
-    process.env.INSTANCE_NAME || `node-${crypto.randomUUID().split('-')[0]}`;
+    process.env.INSTANCE_NAME ?? `node-${crypto.randomUUID().split('-')[0]}`;
 
-if (!MAILGUN_API_KEY)
+if (MAILGUN_API_KEY === '')
     console.warn('MAILGUN_API_KEY not set. Password reset will fail.');
-if (!MAILGUN_DOMAIN)
+if (MAILGUN_DOMAIN === '')
     console.warn('MAILGUN_DOMAIN not set. Password reset will fail.');
 
-if (MAILGUN_API_KEY && !FRONTEND_URL) {
+if (MAILGUN_API_KEY !== '' && FRONTEND_URL === '') {
     throw new Error('FRONTEND_URL must be set when MAILGUN is configured');
 }
 
-if (FRONTEND_URL) {
+if (FRONTEND_URL !== '') {
     try {
         new URL(FRONTEND_URL);
     } catch {
@@ -61,14 +62,14 @@ if (FRONTEND_URL) {
 }
 
 if (PORT === -1) throw new Error('CHAT_PORT not set.');
-if (!JWT_SECRET) throw new Error('JWT_SECRET not set.');
-if (!APP_ENCRYPTION_KEY) throw new Error('APP_ENCRYPTION_KEY not set.');
-if (!MONGO_URI) throw new Error('MONGO_URI not set.');
-if (!PROJECT_LEVEL) throw new Error('PROJ_LEVEL not set.');
-if (!LOGS_PATH) throw new Error('LOGS_PATH not set.');
-if (!PUBLIC_FOLDER_PATH) throw new Error('PUBLIC_FOLDER not set.');
-if (!USE_HTTPS) throw new Error('HTTPS not set.');
-if (!SERVER_URL) throw new Error('SERVER_URL not set.');
+if (JWT_SECRET === '') throw new Error('JWT_SECRET not set.');
+if (APP_ENCRYPTION_KEY === '') throw new Error('APP_ENCRYPTION_KEY not set.');
+if (MONGO_URI === '') throw new Error('MONGO_URI not set.');
+if (PROJECT_LEVEL === '') throw new Error('PROJ_LEVEL not set.');
+if (LOGS_PATH === '') throw new Error('LOGS_PATH not set.');
+if (PUBLIC_FOLDER_PATH === '') throw new Error('PUBLIC_FOLDER not set.');
+if (USE_HTTPS === '') throw new Error('HTTPS not set.');
+if (SERVER_URL === '') throw new Error('SERVER_URL not set.');
 
 if (!['production', 'development'].includes(PROJECT_LEVEL)) {
     throw new Error(
@@ -86,7 +87,7 @@ try {
     }
 
     if (USE_HTTPS === 'on') {
-        if (!CERTS_PATH) throw new Error('CERTS_PATH not set.');
+        if (CERTS_PATH === '') throw new Error('CERTS_PATH not set.');
         if (!fs.existsSync(CERTS_PATH)) {
             console.error(`Certificates folder doesn't exist at ${CERTS_PATH}`);
             process.exit(1);
@@ -129,4 +130,5 @@ export {
     KLIPY_API_KEY,
     REDIS_URL,
     INSTANCE_NAME,
+    MAX_MESSAGE_LENGTH,
 };

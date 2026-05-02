@@ -20,13 +20,13 @@ import { IUser } from '@/models/User';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-    constructor(
+    public constructor(
         @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @Inject(TYPES.BanRepository) private banRepo: IBanRepository,
         private reflector: Reflector,
     ) {}
 
-    async canActivate(context: ExecutionContext): Promise<boolean> {
+    public async canActivate(context: ExecutionContext): Promise<boolean> {
         const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
             context.getHandler(),
             context.getClass(),
@@ -36,10 +36,9 @@ export class JwtAuthGuard implements CanActivate {
             return true;
         }
 
-        const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
-            PERMISSIONS_KEY,
-            [context.getHandler(), context.getClass()],
-        );
+        const requiredPermissions = this.reflector.getAllAndOverride<
+            string[] | undefined
+        >(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
 
         const request = context.switchToHttp().getRequest();
         const authHeader = request.headers['authorization'];
@@ -48,7 +47,7 @@ export class JwtAuthGuard implements CanActivate {
                 ? authHeader.slice('Bearer '.length).trim()
                 : undefined;
 
-        if (!token) {
+        if (token === undefined) {
             throw new UnauthorizedException('No token provided');
         }
 
@@ -68,7 +67,7 @@ export class JwtAuthGuard implements CanActivate {
             }
 
             // Validate tokenVersion
-            if ((user.tokenVersion || 0) !== (decoded.tokenVersion || 0)) {
+            if (user.tokenVersion !== decoded.tokenVersion) {
                 throw new UnauthorizedException('Token expired');
             }
 
@@ -90,7 +89,7 @@ export class JwtAuthGuard implements CanActivate {
             }
 
             // Check permissions if required
-            if (requiredPermissions && requiredPermissions.length > 0) {
+            if (requiredPermissions !== undefined && requiredPermissions.length > 0) {
                 const userPermissions = (user as IUser).permissions;
                 if (!userPermissions) {
                     throw new ForbiddenException('Insufficient permissions');
@@ -108,7 +107,7 @@ export class JwtAuthGuard implements CanActivate {
                 }
             }
 
-            if (!request.user) {
+            if (request.user === undefined) {
                 request.user = decoded;
             }
             return true;

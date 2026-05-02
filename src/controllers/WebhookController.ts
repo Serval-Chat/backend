@@ -11,7 +11,6 @@ import {
     UseInterceptors,
     UploadedFile,
     Res,
-    BadRequestException,
     NotFoundException,
     ForbiddenException,
     InternalServerErrorException,
@@ -61,7 +60,6 @@ import {
 import { storage } from '@/config/multer';
 import { processAndSaveImage, ImagePresets } from '@/utils/imageProcessing';
 
-// Controller for managing and executing webhooks
 @injectable()
 @Controller('api/v1')
 @ApiTags('Webhooks')
@@ -72,7 +70,7 @@ export class WebhookController {
         'webhooks',
     );
 
-    constructor(
+    public constructor(
         @Inject(TYPES.WebhookRepository)
         private webhookRepo: IWebhookRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -94,7 +92,6 @@ export class WebhookController {
         }
     }
 
-    // List all webhooks for a channel
     @Get('servers/:serverId/channels/:channelId/webhooks')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
@@ -115,16 +112,16 @@ export class WebhookController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageWebhooks',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
         }
@@ -133,7 +130,7 @@ export class WebhookController {
             channelOid,
             serverOid,
         );
-        if (!channel) {
+        if (channel === null) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
@@ -148,7 +145,6 @@ export class WebhookController {
         }));
     }
 
-    // Create a new webhook for a channel
     @Post('servers/:serverId/channels/:channelId/webhooks')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
@@ -171,16 +167,16 @@ export class WebhookController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageWebhooks',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
         }
@@ -189,14 +185,14 @@ export class WebhookController {
             channelOid,
             serverOid,
         );
-        if (!channel) {
+        if (channel === null) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         let token: string;
         do {
             token = generateWebhookToken();
-            if (!token) {
+            if (token === '') {
                 throw new InternalServerErrorException(
                     ErrorMessages.WEBHOOK.TOKEN_GENERATION_FAILED,
                 );
@@ -208,14 +204,13 @@ export class WebhookController {
             channelId: channelOid,
             name: body.name.trim(),
             token,
-            avatarUrl: body.avatarUrl?.trim() || undefined,
+            avatarUrl: body.avatarUrl?.trim() ?? undefined,
             createdBy: userOid,
         });
 
         return webhook;
     }
 
-    // Delete a webhook
     @Delete('servers/:serverId/channels/:channelId/webhooks/:webhookId')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
@@ -238,23 +233,23 @@ export class WebhookController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageWebhooks',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
         }
 
         const webhook = await this.webhookRepo.findById(webhookOid);
         if (
-            !webhook ||
+            webhook === null ||
             !webhook.serverId.equals(serverOid) ||
             !webhook.channelId.equals(channelOid)
         ) {
@@ -266,7 +261,6 @@ export class WebhookController {
         return { message: 'Webhook deleted successfully' };
     }
 
-    // Upload webhook avatar
     @Post('servers/:serverId/channels/:channelId/webhooks/:webhookId/avatar')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
@@ -303,7 +297,7 @@ export class WebhookController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
@@ -315,32 +309,23 @@ export class WebhookController {
 
         const webhook = await this.webhookRepo.findById(webhookOid);
         if (
-            !webhook ||
+            webhook === null ||
             !webhook.serverId.equals(serverOid) ||
             !webhook.channelId.equals(channelOid)
         ) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        if (!canManage) {
+        if (canManage !== true) {
             throw new ForbiddenException(
                 ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
             );
-        }
-
-        if (!avatar) {
-            throw new BadRequestException(ErrorMessages.FILE.NO_FILE_UPLOADED);
         }
 
         const filename = `${webhookId}-${Date.now()}.png`;
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
         const input = avatar.path || avatar.buffer;
-        if (!input) {
-            throw new InternalServerErrorException(
-                ErrorMessages.FILE.DATA_MISSING,
-            );
-        }
 
         await processAndSaveImage(
             input,
@@ -358,7 +343,6 @@ export class WebhookController {
         return { avatarUrl };
     }
 
-    // Get webhook avatar
     @Get('webhooks/avatar/:filename')
     @ApiOperation({ summary: 'Get webhook avatar' })
     @ApiResponse({ status: 200, description: 'Avatar retrieved' })
@@ -393,8 +377,6 @@ export class WebhookController {
         return new StreamableFile(file);
     }
 
-    // Execute a webhook (public endpoint)
-    // Uses a 128-character token for authentication instead of JWT
     @Post('webhooks/:token')
     @ApiOperation({ summary: 'Execute webhook' })
     @ApiResponse({ status: 201, description: 'Webhook executed' })
@@ -410,14 +392,14 @@ export class WebhookController {
         const { token } = params;
 
         const webhook = await this.webhookRepo.findByToken(token);
-        if (!webhook) {
+        if (webhook === null) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        const { content, username, avatarUrl } = body;
+        const { content, username, avatarUrl, embeds } = body;
 
-        const webhookUsername = username || webhook.name;
-        const webhookAvatarUrl = avatarUrl || webhook.avatarUrl;
+        const webhookUsername = username ?? webhook.name;
+        const webhookAvatarUrl = avatarUrl ?? webhook.avatarUrl;
 
         const webhookSystemUserId = new mongoose.Types.ObjectId(
             '000000000000000000000000',
@@ -427,10 +409,11 @@ export class WebhookController {
             serverId: webhook.serverId,
             channelId: webhook.channelId,
             senderId: webhookSystemUserId,
-            text: content,
+            text: content ?? '',
             isWebhook: true,
             webhookUsername,
-            webhookAvatarUrl: webhookAvatarUrl || undefined,
+            webhookAvatarUrl: webhookAvatarUrl ?? undefined,
+            embeds,
         });
 
         await this.channelRepo.updateLastMessageAt(webhook.channelId);
@@ -445,7 +428,7 @@ export class WebhookController {
                 channelId: webhook.channelId.toString(),
                 senderId: webhookSystemUserId.toHexString(),
                 senderUsername: webhookUsername,
-                text: content,
+                text: content ?? '',
                 createdAt:
                     message.createdAt instanceof Date
                         ? message.createdAt.toISOString()
@@ -455,12 +438,26 @@ export class WebhookController {
                 isSticky: false,
                 isWebhook: true,
                 webhookUsername,
-                webhookAvatarUrl: webhookAvatarUrl || undefined,
+                webhookAvatarUrl: webhookAvatarUrl ?? undefined,
+                embeds,
             },
         };
         this.wsServer.broadcastToChannel(
             webhook.channelId.toString(),
             messagePayload,
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            webhook.serverId.toString(),
+            messagePayload,
+            {
+                type: 'channel',
+                targetId: webhook.channelId.toString(),
+                permission: 'viewChannels',
+            },
+            undefined,
+            undefined,
+            { onlyBots: true },
         );
 
         const unreadPayload: IChannelUnreadUpdatedEvent = {

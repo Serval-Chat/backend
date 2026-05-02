@@ -9,7 +9,7 @@ export class AdminListAuditLogsRequestDTO {
      */
     @ApiPropertyOptional()
     @IsLimit()
-    limit?: number;
+    public limit?: number;
 
     /**
      * Offset for pagination
@@ -17,7 +17,7 @@ export class AdminListAuditLogsRequestDTO {
      */
     @ApiPropertyOptional()
     @IsOffset()
-    offset?: number;
+    public offset?: number;
 
     /**
      * Filter by actor ID
@@ -26,7 +26,7 @@ export class AdminListAuditLogsRequestDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    actorId?: string;
+    public actorId?: string;
 
     /**
      * Filter by action type
@@ -34,7 +34,7 @@ export class AdminListAuditLogsRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    actionType?: string;
+    public actionType?: string;
 
     /**
      * Filter by target user ID
@@ -43,7 +43,7 @@ export class AdminListAuditLogsRequestDTO {
     @IsOptional()
     @IsString()
     @IsMongoId()
-    targetUserId?: string;
+    public targetUserId?: string;
 
     /**
      * Filter logs after this date
@@ -51,7 +51,7 @@ export class AdminListAuditLogsRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    startDate?: string;
+    public startDate?: string;
 
     /**
      * Filter logs before this date
@@ -59,5 +59,5 @@ export class AdminListAuditLogsRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    endDate?: string;
+    public endDate?: string;
 }

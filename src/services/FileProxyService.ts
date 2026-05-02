@@ -2,15 +2,16 @@ import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import ipaddr from 'ipaddr.js';
+import { Agent } from 'undici';
+import net from 'node:net';
+import tls from 'node:tls';
 import { ErrorMessages } from '@/constants/errorMessages';
 import logger from '@/utils/logger';
 
 const MAX_REDIRECTS = 3;
 
-// Exact hostnames to block (normalized, without trailing dot)
 const BLOCKED_HOSTNAMES = new Set(['localhost', 'metadata.google.internal']);
 
-// Suffixes that should be considered internal/reserved for hostname checks
 const BLOCKED_HOSTNAME_SUFFIXES = new Set(['.local', '.internal', '.lan']);
 
 const DISALLOWED_RANGES = new Set([
@@ -36,30 +37,25 @@ const ALLOWED_HEADERS = new Set([
     'cache-control',
 ]);
 
-// Normalize a hostname: lowercase and strip trailing dot.
 function normalizeHostname(hostname: string): string {
     return hostname.trim().toLowerCase().replace(/\.$/, '');
 }
 
-// Generate SHA256 cache key from URL.
 export function getCacheKey(url: string): string {
     return crypto.createHash('sha256').update(url).digest('hex');
 }
-// Sanitize HTTP headers to allowed list. Preserves the first seen value for each header.
+
 export function sanitizeHeaders(headers: Headers): HeaderRecord {
     const result: HeaderRecord = {};
-    // Iterate over actual headers (handles multi-value ones too)
     headers.forEach((value, key) => {
         const lower = key.toLowerCase();
-        if (ALLOWED_HEADERS.has(lower) && value) {
-            // Keep first occurrence
+        if (ALLOWED_HEADERS.has(lower) && value !== '') {
             if (!(lower in result)) result[lower] = value;
         }
     });
     return result;
 }
 
-// Extract URL string from request parameter (string or string[]).
 export function extractUrl(rawUrl: unknown): string {
     if (typeof rawUrl === 'string') return rawUrl;
     if (Array.isArray(rawUrl)) {
@@ -69,7 +65,6 @@ export function extractUrl(rawUrl: unknown): string {
     throw new Error(ErrorMessages.FILE.URL_REQUIRED);
 }
 
-// Validate URL format and scheme.
 export function validateUrl(rawUrl: unknown): URL {
     const normalized = extractUrl(rawUrl);
     let target: URL;
@@ -83,16 +78,14 @@ export function validateUrl(rawUrl: unknown): URL {
         throw new Error(ErrorMessages.FILE.ONLY_HTTP_HTTPS);
     }
 
-    if (!target.hostname) {
+    if (target.hostname === '') {
         throw new Error(ErrorMessages.FILE.HOSTNAME_REQUIRED);
     }
 
-    // Normalize hostname in-place
     target.hostname = normalizeHostname(target.hostname);
     return target;
 }
 
-// Check if hostname is blocked either by exact match or by blocked suffix.
 export function isBlockedHostname(hostname: string): boolean {
     const h = normalizeHostname(hostname);
     if (BLOCKED_HOSTNAMES.has(h)) return true;
@@ -102,7 +95,6 @@ export function isBlockedHostname(hostname: string): boolean {
     return false;
 }
 
-// Check if IP address is in disallowed ranges.
 export function isDisallowedAddress(address: string): boolean {
     try {
         const parsed = ipaddr.parse(address);
@@ -116,20 +108,17 @@ export function isDisallowedAddress(address: string): boolean {
         const range = normalized.range();
         return DISALLOWED_RANGES.has(range);
     } catch {
-        // If parsing fails, treat as disallowed to be safe
         return true;
     }
 }
 
-// Perform a DNS lookup with verbatim results and validate all resolved addresses.
-// Throws on any resolution error or if any resolved address is disallowed.
 export async function resolveAndCheck(hostname: string) {
     try {
         const records = await dns.lookup(hostname, {
             all: true,
             verbatim: true,
         });
-        if (!records || records.length === 0) throw new Error('no records');
+        if (records.length === 0) throw new Error('no records');
 
         for (const rec of records) {
             if (isDisallowedAddress(rec.address)) {
@@ -139,32 +128,71 @@ export async function resolveAndCheck(hostname: string) {
 
         return records.map((r) => r.address);
     } catch (err) {
+        if (err instanceof Error && err.message === ErrorMessages.FILE.DISALLOWED_ADDRESS) {
+            throw err;
+        }
         logger.error('Failed to resolve hostname:', err);
-        throw new Error(ErrorMessages.FILE.FAILED_RESOLVE_HOSTNAME);
+        throw new Error(`${ErrorMessages.FILE.FAILED_RESOLVE_HOSTNAME}: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
-// Ensure URL is allowed
 export async function ensureUrlAllowed(url: URL): Promise<void> {
     const hostname = normalizeHostname(url.hostname);
 
     if (isBlockedHostname(hostname))
         throw new Error(ErrorMessages.FILE.HOST_NOT_ALLOWED);
 
-    // If user supplied an IP literal, validate directly
     if (ipaddr.isValid(hostname)) {
         if (isDisallowedAddress(hostname))
             throw new Error(ErrorMessages.FILE.DISALLOWED_ADDRESS);
         return;
     }
 
-    // Resolve and validate addresses
     await resolveAndCheck(hostname);
 }
 
-// Fetch URL with manual redirect handling and validation.
-// Note: This re-resolves DNS before each request/redirect to reduce TOCTOU risk.
-// For stricter pinning, consider using a custom agent and pinned lookup.
+const proxyAgent = new Agent({
+    connect(opts, cb) {
+        if (opts.host === undefined) {
+            return cb(new Error('Missing host'), null);
+        }
+        resolveAndCheck(opts.host)
+            .then((ips) => {
+                const port = opts.port ? Number(opts.port) : (opts.protocol === 'https:' ? 443 : 80);
+                
+                let currentIpIndex = 0;
+
+                function attempt() {
+                    const ip = ips[currentIpIndex];
+                    const socket = opts.protocol === 'https:' 
+                        ? tls.connect({ host: ip, servername: opts.host, port })
+                        : net.connect({ host: ip, port });
+                    
+                    const errorHandler = (err: Error) => {
+                        socket.destroy();
+                        currentIpIndex++;
+                        if (currentIpIndex >= ips.length) {
+                            cb(err, null);
+                        } else {
+                            attempt();
+                        }
+                    };
+
+                    socket.once('error', errorHandler);
+                    
+                    const connectEvent = opts.protocol === 'https:' ? 'secureConnect' : 'connect';
+                    socket.once(connectEvent, () => {
+                        socket.removeListener('error', errorHandler);
+                        cb(null, socket);
+                    });
+                }
+                
+                attempt();
+            })
+            .catch((err) => cb(err, null));
+    },
+});
+
 export async function fetchWithRedirects(
     url: URL,
     init: RequestInit = {},
@@ -172,57 +200,61 @@ export async function fetchWithRedirects(
     let currentUrl = new URL(url.toString());
     let redirects = 0;
 
-    // Validate initial URL
     await ensureUrlAllowed(currentUrl);
 
-    while (true) {
-        // Re-resolve current host right before the request to reduce DNS TOCTOU window
-        await resolveAndCheck(currentUrl.hostname);
+    for (;;) {
+        const ac = new AbortController();
+        const timeoutId = setTimeout(() => ac.abort(), 10000);
 
-        const response = await fetch(currentUrl, {
-            ...init,
-            headers: {
-                ...init.headers,
-                'User-Agent': 'Serchat/0.7.5',
-            },
-            redirect: 'manual',
-        });
+        try {
+            const fetchOptions: RequestInit & { dispatcher: Agent } = {
+                ...init,
+                headers: {
+                    ...init.headers,
+                    'User-Agent': 'Serchat/0.7.5',
+                },
+                redirect: 'manual',
+                dispatcher: proxyAgent,
+                signal: ac.signal as unknown as AbortSignal,
+            };
 
-        const location = response.headers.get('location');
-        if (location && response.status >= 300 && response.status < 400) {
-            redirects += 1;
-            if (redirects > MAX_REDIRECTS)
-                throw new Error(ErrorMessages.FILE.TOO_MANY_REDIRECTS);
+            const response = await fetch(currentUrl, fetchOptions);
 
-            const nextUrl = new URL(location, currentUrl);
-            // Normalize hostname and re-validate
-            nextUrl.hostname = normalizeHostname(nextUrl.hostname);
-            await ensureUrlAllowed(nextUrl);
+            const location = response.headers.get('location');
+            if (location !== null && response.status >= 300 && response.status < 400) {
+                redirects += 1;
+                if (redirects > MAX_REDIRECTS)
+                    throw new Error(ErrorMessages.FILE.TOO_MANY_REDIRECTS);
 
-            currentUrl = nextUrl;
-            continue;
+                const nextUrl = new URL(location, currentUrl);
+                nextUrl.hostname = normalizeHostname(nextUrl.hostname);
+                await ensureUrlAllowed(nextUrl);
+
+                currentUrl = nextUrl;
+                continue;
+            }
+
+            return response;
+        } finally {
+            clearTimeout(timeoutId);
         }
-
-        return response;
     }
 }
 
-// Read response body stream with size limit. Returns a Buffer.
 export async function readBodyWithLimit(
     stream: WebReadableStream<Uint8Array> | null,
     maxBytes: number,
 ): Promise<Buffer> {
-    if (!stream) return Buffer.alloc(0);
+    if (stream === null) return Buffer.alloc(0);
 
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
     let total = 0;
 
     try {
-        while (true) {
+        for (;;) {
             const { value, done } = await reader.read();
-            if (done) break;
-            if (!value) continue;
+            if (done === true) break;
 
             total += value.length;
             if (total > maxBytes) {
@@ -233,7 +265,6 @@ export async function readBodyWithLimit(
             chunks.push(value);
         }
     } finally {
-        // Best-effort cancel / release
         try {
             await reader.cancel();
         } catch {}

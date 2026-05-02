@@ -11,9 +11,9 @@ import { injectable } from 'inversify';
 @Injectable()
 export class MongooseWarningRepository implements IWarningRepository {
     private warningModel = Warning;
-    constructor() {}
+    public constructor() {}
 
-    async findByUserId(
+    public async findByUserId(
         userId: Types.ObjectId,
         acknowledged?: boolean,
     ): Promise<IWarning[]> {
@@ -31,14 +31,14 @@ export class MongooseWarningRepository implements IWarningRepository {
             .lean()) as unknown as IWarning[];
     }
 
-    async findById(id: Types.ObjectId): Promise<IWarning | null> {
+    public async findById(id: Types.ObjectId): Promise<IWarning | null> {
         return (await this.warningModel
             .findById(id)
             .lean()) as unknown as IWarning | null;
     }
 
     // Mark a warning as acknowledged by the user */
-    async acknowledge(id: Types.ObjectId): Promise<IWarning | null> {
+    public async acknowledge(id: Types.ObjectId): Promise<IWarning | null> {
         return (await this.warningModel
             .findByIdAndUpdate(
                 id,
@@ -51,11 +51,11 @@ export class MongooseWarningRepository implements IWarningRepository {
             .lean()) as unknown as IWarning | null;
     }
 
-    async countByUserId(userId: Types.ObjectId): Promise<number> {
+    public async countByUserId(userId: Types.ObjectId): Promise<number> {
         return await this.warningModel.countDocuments({ userId });
     }
 
-    async create(data: {
+    public async create(data: {
         userId: Types.ObjectId;
         message: string;
         issuedBy: Types.ObjectId;
@@ -71,22 +71,22 @@ export class MongooseWarningRepository implements IWarningRepository {
         return (await warning.save()) as unknown as IWarning;
     }
 
-    async deleteAllForUser(
+    public async deleteAllForUser(
         userId: Types.ObjectId,
     ): Promise<{ deletedCount: number }> {
         const result = await this.warningModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }
 
-    async findAll(options: {
+    public async findAll(options: {
         limit?: number;
         offset?: number;
     }): Promise<IWarning[]> {
         return (await this.warningModel
             .find({})
             .sort({ timestamp: -1 })
-            .limit(options.limit || 50)
-            .skip(options.offset || 0)
+            .limit(options.limit ?? 50)
+            .skip(options.offset ?? 0)
             .populate('userId', 'username')
             .populate('issuedBy', 'username')
             .lean()) as unknown as IWarning[];
