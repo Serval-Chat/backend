@@ -9,7 +9,7 @@ export class ServerAuditLogRequestDTO {
      */
     @ApiPropertyOptional()
     @IsLimit()
-    limit?: number;
+    public limit?: number;
 
     /**
      * Cursor for pagination (ObjectId string of last seen entry)
@@ -17,7 +17,7 @@ export class ServerAuditLogRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    cursor?: string;
+    public cursor?: string;
 
     /**
      * Filter by action type (e.g. 'user_ban', 'delete_channel')
@@ -25,7 +25,7 @@ export class ServerAuditLogRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    action?: string;
+    public action?: string;
 
     /**
      * Filter by moderator (actor) ID
@@ -34,7 +34,7 @@ export class ServerAuditLogRequestDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    moderatorId?: string;
+    public moderatorId?: string;
 
     /**
      * Filter by target ID (user, channel, role, or message)
@@ -42,7 +42,7 @@ export class ServerAuditLogRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    targetId?: string;
+    public targetId?: string;
 
     /**
      * Filter entries after this ISO date
@@ -50,7 +50,7 @@ export class ServerAuditLogRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    after?: string;
+    public after?: string;
 
     /**
      * Filter entries before this ISO date
@@ -58,7 +58,7 @@ export class ServerAuditLogRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    before?: string;
+    public before?: string;
 
     /**
      * Search reason field (substring match)
@@ -66,5 +66,5 @@ export class ServerAuditLogRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    reason?: string;
+    public reason?: string;
 }

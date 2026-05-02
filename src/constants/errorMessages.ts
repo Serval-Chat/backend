@@ -161,6 +161,7 @@ export const ErrorMessages = {
         NOT_FOUND: 'Friend request not found',
         REQUEST_NOT_FOUND: 'Friend request not found',
         CANNOT_ADD_SELF: 'Cannot add yourself',
+        CANNOT_ADD_BOT: 'Cannot add bots as friends',
         ALREADY_FRIENDS: 'Already friends',
         REQUEST_ALREADY_SENT: 'Friend request already sent',
         NOT_ALLOWED: 'Not allowed',

@@ -57,7 +57,7 @@ import { Types } from 'mongoose';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class ReactionController {
-    constructor(
+    public constructor(
         @Inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
         @Inject(TYPES.MessageRepository)
@@ -99,7 +99,7 @@ export class ReactionController {
         const message = await this.messageRepo.findById(
             new Types.ObjectId(messageId),
         );
-        if (!message) {
+        if (message === null) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
@@ -148,7 +148,7 @@ export class ReactionController {
         const message = await this.messageRepo.findById(
             new Types.ObjectId(messageId),
         );
-        if (!message) {
+        if (message === null) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
@@ -162,7 +162,7 @@ export class ReactionController {
             new Types.ObjectId(userId),
         );
 
-        if (blockFlags & BlockFlags.BLOCK_REACTIONS) {
+        if ((blockFlags & BlockFlags.BLOCK_REACTIONS) !== 0) {
             const reactions = await this.reactionRepo.getReactionsByMessage(
                 new Types.ObjectId(messageId),
                 'dm',
@@ -183,8 +183,8 @@ export class ReactionController {
         } catch (err: unknown) {
             const error = err as Error;
             if (
-                error.message?.includes('already reacted') ||
-                error.message?.includes('Maximum')
+                error.message.includes('already reacted') ||
+                error.message.includes('Maximum')
             ) {
                 throw new ApiError(400, error.message);
             }
@@ -196,7 +196,7 @@ export class ReactionController {
             new Types.ObjectId(message.receiverId.toString()),
         );
 
-        if (!areFriends) {
+        if (areFriends !== true) {
             await this.reactionRepo.removeReaction(
                 new Types.ObjectId(messageId),
                 'dm',
@@ -219,7 +219,7 @@ export class ReactionController {
             payload: {
                 messageId,
                 userId,
-                username: (req as Request & { user: JWTPayload }).user.username,
+                username: (req as Request & { user: JWTPayload }).user.username || '',
                 emoji,
                 emojiType,
                 emojiId,
@@ -262,7 +262,7 @@ export class ReactionController {
         const message = await this.messageRepo.findById(
             new Types.ObjectId(messageId),
         );
-        if (!message) {
+        if (message === null) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
@@ -280,7 +280,7 @@ export class ReactionController {
             emoji,
             emojiId,
         );
-        if (!removed) {
+        if (removed !== true) {
             throw new ApiError(404, ErrorMessages.REACTION.REACTION_NOT_FOUND);
         }
 
@@ -301,9 +301,9 @@ export class ReactionController {
             payload: {
                 messageId,
                 userId,
-                emoji: emoji!,
-                emojiType: emojiId ? 'custom' : 'unicode',
-                emojiId,
+                emoji: emoji ?? '',
+                emojiType: (emojiId !== undefined && emojiId !== '') ? 'custom' : 'unicode',
+                emojiId: emojiId ?? undefined,
                 messageType: 'dm',
             },
         };
@@ -348,14 +348,14 @@ export class ReactionController {
             new Types.ObjectId(serverId),
             new Types.ObjectId(userId),
         );
-        if (!member) {
+        if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(
             new Types.ObjectId(channelId),
         );
-        if (!channel || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
@@ -366,7 +366,7 @@ export class ReactionController {
                 new Types.ObjectId(channelId),
                 'addReactions',
             );
-        if (!canAddReactions) {
+        if (canAddReactions !== true) {
             throw new ApiError(
                 403,
                 ErrorMessages.REACTION.MISSING_PERMISSION_ADD,
@@ -376,7 +376,7 @@ export class ReactionController {
         const message = await this.serverMessageRepo.findById(
             new Types.ObjectId(messageId),
         );
-        if (!message || message.channelId.toString() !== channelId) {
+        if (message === null || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
@@ -385,7 +385,7 @@ export class ReactionController {
             new Types.ObjectId(userId),
         );
 
-        if (blockFlags & BlockFlags.BLOCK_REACTIONS) {
+        if ((blockFlags & BlockFlags.BLOCK_REACTIONS) !== 0) {
             const reactions = await this.reactionRepo.getReactionsByMessage(
                 new Types.ObjectId(messageId),
                 'server',
@@ -406,8 +406,8 @@ export class ReactionController {
         } catch (err: unknown) {
             const error = err as Error;
             if (
-                error.message?.includes('already reacted') ||
-                error.message?.includes('Maximum')
+                error.message.includes('already reacted') ||
+                error.message.includes('Maximum')
             ) {
                 throw new ApiError(400, error.message);
             }
@@ -430,6 +430,8 @@ export class ReactionController {
                 emojiType,
                 emojiId,
                 messageType: 'server',
+                serverId,
+                channelId,
             },
         };
 
@@ -472,21 +474,21 @@ export class ReactionController {
             new Types.ObjectId(serverId),
             new Types.ObjectId(userId),
         );
-        if (!member) {
+        if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(
             new Types.ObjectId(channelId),
         );
-        if (!channel || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const message = await this.serverMessageRepo.findById(
             new Types.ObjectId(messageId),
         );
-        if (!message || message.channelId.toString() !== channelId) {
+        if (message === null || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
@@ -530,7 +532,7 @@ export class ReactionController {
             );
         }
 
-        if (!removed) {
+        if (removed !== true) {
             throw new ApiError(404, ErrorMessages.REACTION.REACTION_NOT_FOUND);
         }
 
@@ -545,10 +547,12 @@ export class ReactionController {
             payload: {
                 messageId,
                 userId,
-                emoji: emoji!,
-                emojiType: emojiId ? 'custom' : 'unicode',
+                emoji: emoji ?? '',
+                emojiType: (emojiId !== undefined && emojiId !== '') ? 'custom' : 'unicode',
                 emojiId,
                 messageType: 'server',
+                serverId,
+                channelId,
             },
         };
 
@@ -566,7 +570,7 @@ export class ReactionController {
                 targetId: messageOid,
                 targetType: 'message',
                 metadata: {
-                    channelId: message.channelId?.toString(),
+                    channelId: message.channelId.toString(),
                 },
             });
         }
@@ -594,21 +598,21 @@ export class ReactionController {
             new Types.ObjectId(serverId),
             new Types.ObjectId(userId),
         );
-        if (!member) {
+        if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_SERVER_MEMBER);
         }
 
         const channel = await this.channelRepo.findById(
             new Types.ObjectId(channelId),
         );
-        if (!channel || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const message = await this.serverMessageRepo.findById(
             new Types.ObjectId(messageId),
         );
-        if (!message || message.channelId.toString() !== channelId) {
+        if (message === null || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
 

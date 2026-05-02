@@ -17,7 +17,7 @@ import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 @injectable()
 @Controller('api/v1')
 export class FileCompatibilityController {
-    constructor(
+    public constructor(
         @Inject(TYPES.Logger)
         private logger: ILogger,
         @Inject(TYPES.ImageDeliveryService)
@@ -93,6 +93,7 @@ export class FileCompatibilityController {
             '.pdf': 'application/pdf',
             '.txt': 'text/plain',
         };
-        return mimeTypes[ext] || 'application/octet-stream';
+        const mime = mimeTypes[ext];
+        return (mime !== undefined && mime !== '') ? mime : 'application/octet-stream';
     }
 }

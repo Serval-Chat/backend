@@ -11,7 +11,12 @@ export interface IPresenceSyncEvent
             online: Array<{
                 userId: string;
                 username: string;
-                status?: string; // Custom status text
+                status?: {
+                    text: string;
+                    emoji: string | null;
+                    expiresAt: string | null;
+                    updatedAt: string;
+                } | null;
             }>;
         }
     > {}
@@ -26,7 +31,12 @@ export interface IUserOnlineEvent
         {
             userId: string;
             username: string;
-            status?: string;
+            status?: {
+                text: string;
+                emoji: string | null;
+                expiresAt: string | null;
+                updatedAt: string;
+            } | null;
         }
     > {}
 
@@ -65,7 +75,12 @@ export interface IStatusUpdatedEvent
         {
             userId: string;
             username: string;
-            status: string;
+            status: {
+                text: string;
+                emoji: string | null;
+                expiresAt: string | null;
+                updatedAt: string;
+            } | null;
         }
     > {}
 

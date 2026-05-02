@@ -9,45 +9,51 @@ import {
     IsFilename,
 } from '@/validation/schemas/common';
 import { Transform } from 'class-transformer';
+import { IEmbed } from '@/models/Embed';
 
 export class CreateWebhookRequestDTO {
     @ApiProperty()
     @IsName()
-    name!: string;
+    public name!: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsUrlField()
-    avatarUrl?: string;
+    public avatarUrl?: string;
 }
 
 export class ExecuteWebhookRequestDTO {
-    @ApiProperty()
+    @ApiPropertyOptional({ description: 'Message content' })
+    @IsOptional()
     @IsMessageContent()
-    content!: string;
+    public content?: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ description: 'Custom username for the webhook' })
     @IsOptional()
     @IsUsername()
     @Transform(({ value }) =>
         typeof value === 'string' ? value.substring(0, 100) : value,
     )
-    username?: string;
+    public username?: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ description: 'Custom avatar URL for the webhook' })
     @IsOptional()
     @IsUrlField()
-    avatarUrl?: string;
+    public avatarUrl?: string;
+
+    @ApiPropertyOptional({ description: 'Rich embeds for the message' })
+    @IsOptional()
+    public embeds?: IEmbed[];
 }
 
 export class WebhookTokenParamDTO {
     @ApiProperty()
     @IsWebhookToken()
-    token!: string;
+    public token!: string;
 }
 
 export class FilenameParamDTO {
     @ApiProperty()
     @IsFilename()
-    filename!: string;
+    public filename!: string;
 }

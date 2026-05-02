@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import { IEmojiRepository, IEmoji } from '@/di/interfaces/IEmojiRepository';
@@ -7,16 +8,17 @@ import { Emoji } from '@/models/Emoji';
 //
 // Implements IEmojiRepository using Mongoose Emoji model
 @injectable()
+@Injectable()
 export class MongooseEmojiRepository implements IEmojiRepository {
-    async findById(id: Types.ObjectId): Promise<IEmoji | null> {
+    public async findById(id: Types.ObjectId): Promise<IEmoji | null> {
         return await Emoji.findById(id).lean();
     }
 
-    async findByServerId(serverId: Types.ObjectId): Promise<IEmoji[]> {
+    public async findByServerId(serverId: Types.ObjectId): Promise<IEmoji[]> {
         return await Emoji.find({ serverId }).lean();
     }
 
-    async create(data: {
+    public async create(data: {
         name: string;
         imageUrl: string;
         serverId: Types.ObjectId;
@@ -26,13 +28,13 @@ export class MongooseEmojiRepository implements IEmojiRepository {
         return await emoji.save();
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Emoji.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
     // Find all emojis for a server with creator info populated
-    async findByServerIdWithCreator(
+    public async findByServerIdWithCreator(
         serverId: Types.ObjectId,
     ): Promise<IEmoji[]> {
         return await Emoji.find({ serverId })
@@ -42,20 +44,20 @@ export class MongooseEmojiRepository implements IEmojiRepository {
     }
 
     // Find emoji by ID with creator info populated
-    async findByIdWithCreator(id: Types.ObjectId): Promise<IEmoji | null> {
+    public async findByIdWithCreator(id: Types.ObjectId): Promise<IEmoji | null> {
         return await Emoji.findById(id)
             .populate('createdBy', 'username')
             .lean();
     }
 
-    async findByServerAndName(
+    public async findByServerAndName(
         serverId: Types.ObjectId,
         name: string,
     ): Promise<IEmoji | null> {
         return await Emoji.findOne({ serverId, name }).lean();
     }
 
-    async findByServerIds(serverIds: Types.ObjectId[]): Promise<IEmoji[]> {
+    public async findByServerIds(serverIds: Types.ObjectId[]): Promise<IEmoji[]> {
         return await Emoji.find({ serverId: { $in: serverIds } })
             .select('_id name imageUrl serverId createdBy createdAt')
             .sort({ name: 1 })

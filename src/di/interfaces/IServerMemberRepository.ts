@@ -12,6 +12,7 @@ export interface IServerMember {
     roles: Types.ObjectId[];
     // Timestamp of when the user joined the server
     joinedAt?: Date;
+    communicationDisabledUntil?: Date;
 }
 
 // Server Member Repository Interface
@@ -39,6 +40,13 @@ export interface IServerMemberRepository {
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         roles: Types.ObjectId[],
+    ): Promise<IServerMember | null>;
+
+    // Timeout (wow really?)
+    setTimeout(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        until: Date | null,
     ): Promise<IServerMember | null>;
 
     // Remove member from server

@@ -21,57 +21,62 @@ import {
 export class CreateRoleRequestDTO {
     @ApiProperty()
     @IsName()
-    name!: string;
+    public name!: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsColor()
-    color?: string;
+    public color?: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ deprecated: true, description: 'Use colors array instead' })
     @IsOptional()
     @IsColor()
-    startColor?: string;
+    public startColor?: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ deprecated: true, description: 'Use colors array instead' })
     @IsOptional()
     @IsColor()
-    endColor?: string;
+    public endColor?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsArray()
     @ArrayMaxSize(15)
     @IsColor({ each: true })
-    colors?: string[];
+    public colors?: string[];
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsInt()
     @Min(1)
     @Max(10)
-    gradientRepeat?: number;
+    public gradientRepeat?: number;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    separateFromOtherRoles?: boolean;
+    public separateFromOtherRoles?: boolean;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsPermissions()
-    permissions?: Record<string, boolean>;
+    public permissions?: Record<string, boolean>;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public glowEnabled?: boolean;
 }
 
 export class RolePositionDTO {
     @ApiProperty()
     @IsMongoId()
     @IsRoleId()
-    roleId!: string;
+    public roleId!: string;
 
     @ApiProperty()
     @IsInt()
-    position!: number;
+    public position!: number;
 }
 
 export class ReorderRolesRequestDTO {
@@ -79,56 +84,61 @@ export class ReorderRolesRequestDTO {
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => RolePositionDTO)
-    rolePositions!: RolePositionDTO[];
+    public rolePositions!: RolePositionDTO[];
 }
 
 export class UpdateRoleRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsName()
-    name?: string;
+    public name?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsColor()
-    color?: string;
+    public color?: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ deprecated: true, description: 'Use colors array instead' })
     @IsOptional()
     @IsColor()
-    startColor?: string;
+    public startColor?: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ deprecated: true, description: 'Use colors array instead' })
     @IsOptional()
     @IsColor()
-    endColor?: string;
+    public endColor?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsArray()
     @ArrayMaxSize(15)
     @IsColor({ each: true })
-    colors?: string[];
+    public colors?: string[];
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsInt()
     @Min(1)
     @Max(10)
-    gradientRepeat?: number;
+    public gradientRepeat?: number;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsBoolean()
-    separateFromOtherRoles?: boolean;
+    public separateFromOtherRoles?: boolean;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsPermissions()
-    permissions?: Record<string, boolean>;
+    public permissions?: Record<string, boolean>;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsInt()
-    position?: number;
+    public position?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public glowEnabled?: boolean;
 }

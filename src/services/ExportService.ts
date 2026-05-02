@@ -34,7 +34,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         'exports',
     );
 
-    constructor(
+    public constructor(
         @inject(TYPES.ExportJobRepository)
         @Inject(TYPES.ExportJobRepository)
         private exportJobRepo: IExportJobRepository,
@@ -62,7 +62,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         private wsServer: WsServer,
     ) {}
 
-    async onModuleInit() {
+    public async onModuleInit() {
         if (
             !(await fs
                 .access(this.EXPORT_DIR)
@@ -74,16 +74,17 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         this.startBackgroundTasks();
     }
 
-    onModuleDestroy() {
+    public onModuleDestroy() {
         this.stopBackgroundTasks();
     }
 
     private startBackgroundTasks() {
-        this.jobInterval = setInterval(() => this.processJobs(), 60 * 1000);
-        this.cleanupInterval = setInterval(
-            () => this.cleanupExpiredExports(),
-            3600 * 1000,
-        );
+        this.jobInterval = setInterval(() => {
+            void this.processJobs();
+        }, 60 * 1000);
+        this.cleanupInterval = setInterval(() => {
+            void this.cleanupExpiredExports();
+        }, 3600 * 1000);
 
         this.processJobs().catch((err) =>
             this.logger.error(
@@ -101,7 +102,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         if (this.cleanupInterval) clearInterval(this.cleanupInterval);
     }
 
-    async getExportState(channelId: Types.ObjectId) {
+    public async getExportState(channelId: Types.ObjectId) {
         const channel = await this.channelRepo.findById(channelId);
         if (!channel) return 'unknown';
 
@@ -128,7 +129,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         return { state: 'available' };
     }
 
-    async requestExport(
+    public async requestExport(
         serverId: Types.ObjectId,
         channelId: Types.ObjectId,
         userId: Types.ObjectId,
@@ -158,7 +159,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         return job;
     }
 
-    async processJobs() {
+    public async processJobs() {
         const jobs = await this.exportJobRepo.findPendingJobs();
         for (const job of jobs) {
             try {
@@ -246,7 +247,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
             await this.sendFailureNotifications(job);
         } else {
             const delays = [5, 15, 30, 60];
-            const delayInMinutes = delays[attempts - 1] || 60;
+            const delayInMinutes = delays[attempts - 1] ?? 60;
             const nextAttemptAt = new Date(
                 Date.now() + delayInMinutes * 60 * 1000,
             );
@@ -269,7 +270,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
 
         const downloadUrl = `${SERVER_URL}/api/v1/exports/download/${token}`;
 
-        if (user.login && this.isValidEmail(user.login)) {
+        if (user.login !== undefined && user.login !== '' && this.isValidEmail(user.login)) {
             await this.mailService.sendExportSuccessEmail(
                 user.login,
                 channel.name,
@@ -304,7 +305,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
 
         if (!user || !server || !channel) return;
 
-        if (user.login && this.isValidEmail(user.login)) {
+        if (user.login !== undefined && user.login !== '' && this.isValidEmail(user.login)) {
             await this.mailService.sendExportFailureEmail(
                 user.login,
                 channel.name,
@@ -326,7 +327,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         });
     }
 
-    async handleChannelDeletion(
+    public async handleChannelDeletion(
         channelId: Types.ObjectId,
         channelNameAtDeletion: string,
         serverNameAtDeletion: string,
@@ -343,7 +344,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
 
             const user = await this.userRepo.findById(job.requestedBy);
             if (user) {
-                if (user.login && this.isValidEmail(user.login)) {
+                if (user.login !== undefined && user.login !== '' && this.isValidEmail(user.login)) {
                     await this.mailService.sendExportCancelledEmail(
                         user.login,
                         channelNameAtDeletion,
@@ -373,10 +374,10 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         );
     }
 
-    async cleanupExpiredExports() {
+    public async cleanupExpiredExports() {
         const expiredJobs = await this.exportJobRepo.findExpiredJobs();
         for (const job of expiredJobs) {
-            if (job.filePath) {
+            if (job.filePath !== undefined && job.filePath !== '') {
                 await fs
                     .unlink(job.filePath)
                     .catch((err) =>

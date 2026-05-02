@@ -31,7 +31,7 @@ import { VAPID_PUB } from '@/config/env';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class PushController {
-    constructor() {}
+    public constructor() {}
 
     @Get('vapid-public-key')
     @SetMetadata('isPublic', true)
@@ -45,7 +45,7 @@ export class PushController {
     @ApiOperation({ summary: 'Get VAPID status' })
     public vapidStatus() {
         return {
-            currentVersion: process.env.VAPID_KEY_VERSION || 'v1',
+            currentVersion: process.env.VAPID_KEY_VERSION ?? 'v1',
             currentPublicKey: VAPID_PUB,
         };
     }
@@ -64,7 +64,7 @@ export class PushController {
                     userId,
                     type: 'webpush',
                     endpointData: body.subscription,
-                    vapidKeyVersion: process.env.VAPID_KEY_VERSION || 'v1',
+                    vapidKeyVersion: process.env.VAPID_KEY_VERSION ?? 'v1',
                     userAgent: req.headers['user-agent'],
                 },
             },
@@ -157,7 +157,7 @@ export class PushController {
                     userId,
                     type: 'webpush',
                     endpointData: body.newSubscription,
-                    vapidKeyVersion: process.env.VAPID_KEY_VERSION || 'v1',
+                    vapidKeyVersion: process.env.VAPID_KEY_VERSION ?? 'v1',
                     userAgent: req.headers['user-agent'],
                 },
             },

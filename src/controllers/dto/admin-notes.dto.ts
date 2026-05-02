@@ -1,20 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { MAX_MESSAGE_LENGTH } from '@/config/env';
 
 export class CreateAdminNoteRequestDTO {
     @ApiProperty()
     @IsString()
     @IsNotEmpty()
-    @MaxLength(2000)
-    content!: string;
+    @MaxLength(MAX_MESSAGE_LENGTH)
+    public content!: string;
 }
 
 export class UpdateAdminNoteRequestDTO {
     @ApiProperty()
     @IsString()
     @IsNotEmpty()
-    @MaxLength(2000)
-    content!: string;
+    @MaxLength(MAX_MESSAGE_LENGTH)
+    public content!: string;
 }
 
 export class SoftDeleteAdminNoteRequestDTO {
@@ -22,65 +23,65 @@ export class SoftDeleteAdminNoteRequestDTO {
     @IsString()
     @IsNotEmpty()
     @MaxLength(500)
-    reason!: string;
+    public reason!: string;
 }
 
 export class AdminNoteAdminInfoDTO {
     @ApiProperty()
-    _id!: string;
+    public _id!: string;
 
     @ApiProperty()
-    username!: string;
+    public username!: string;
 
     @ApiPropertyOptional()
-    displayName?: string;
+    public displayName?: string;
 
     @ApiPropertyOptional()
-    profilePicture?: string;
+    public profilePicture?: string;
 }
 
 export class AdminNoteHistoryDTO {
     @ApiProperty()
-    content!: string;
+    public content!: string;
 
     @ApiProperty({ type: AdminNoteAdminInfoDTO })
-    editorId!: AdminNoteAdminInfoDTO;
+    public editorId!: AdminNoteAdminInfoDTO;
 
     @ApiProperty()
-    editedAt!: Date;
+    public editedAt!: Date;
 }
 
 export class AdminNoteResponseDTO {
     @ApiProperty()
-    _id!: string;
+    public _id!: string;
 
     @ApiProperty()
-    targetId!: string;
+    public targetId!: string;
 
     @ApiProperty()
-    targetType!: string;
+    public targetType!: string;
 
     @ApiProperty({ type: AdminNoteAdminInfoDTO })
-    adminId!: AdminNoteAdminInfoDTO;
+    public adminId!: AdminNoteAdminInfoDTO;
 
     @ApiProperty()
-    content!: string;
+    public content!: string;
 
     @ApiProperty({ type: [AdminNoteHistoryDTO], default: [] })
-    history!: AdminNoteHistoryDTO[];
+    public history!: AdminNoteHistoryDTO[];
 
     @ApiPropertyOptional()
-    deletedAt?: Date;
+    public deletedAt?: Date;
 
     @ApiPropertyOptional({ type: AdminNoteAdminInfoDTO })
-    deletedBy?: AdminNoteAdminInfoDTO;
+    public deletedBy?: AdminNoteAdminInfoDTO;
 
     @ApiPropertyOptional()
-    deleteReason?: string;
+    public deleteReason?: string;
 
     @ApiProperty()
-    createdAt!: Date;
+    public createdAt!: Date;
 
     @ApiProperty()
-    updatedAt!: Date;
+    public updatedAt!: Date;
 }

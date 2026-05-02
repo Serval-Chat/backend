@@ -32,19 +32,21 @@ interface RequestWithUser extends Request {
     user: JWTPayload;
 }
 
-// Controller for managing user pings (mentions and notifications)
+import { NoBot } from '@/modules/auth/bot.decorator';
+
 @ApiTags('Pings')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@NoBot()
 @injectable()
 @Controller('api/v1/pings')
 export class UserPingController {
-    constructor(
+    public constructor(
         @Inject(TYPES.PingService)
         private pingService: PingService,
         @Inject(TYPES.Logger)
         private logger: ILogger,
-    ) {}
+    ) { }
 
     @Get()
     @ApiOperation({ summary: 'Get all pings for the current user' })
@@ -72,7 +74,7 @@ export class UserPingController {
         const userId = (req as unknown as RequestWithUser).user.id;
         const userOid = new Types.ObjectId(userId);
 
-        if (!id) {
+        if (id === '') {
             throw new ApiError(400, 'Ping ID is required');
         }
 
@@ -97,7 +99,7 @@ export class UserPingController {
         const userId = (req as unknown as RequestWithUser).user.id;
         const userOid = new Types.ObjectId(userId);
 
-        if (!channelId) {
+        if (channelId === '') {
             throw new ApiError(400, 'Channel ID is required');
         }
 

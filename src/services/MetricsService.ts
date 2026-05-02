@@ -8,7 +8,7 @@ import * as metrics from '@/utils/metrics';
 @injectable()
 @Injectable()
 export class MetricsService implements IMetricsService {
-    constructor(
+    public constructor(
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,

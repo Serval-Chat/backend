@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import type { FilterQuery } from 'mongoose';
 
@@ -13,16 +14,17 @@ import { Invite } from '@/models/Server';
 //
 // Implements IInviteRepository using Mongoose Invite model
 @injectable()
+@Injectable()
 export class MongooseInviteRepository implements IInviteRepository {
-    async findByCode(code: string): Promise<IInvite | null> {
+    public async findByCode(code: string): Promise<IInvite | null> {
         return (await Invite.findOne({ code }).lean()) as IInvite | null;
     }
 
-    async findById(id: Types.ObjectId): Promise<IInvite | null> {
+    public async findById(id: Types.ObjectId): Promise<IInvite | null> {
         return (await Invite.findById(id).lean()) as IInvite | null;
     }
 
-    async findByCustomPath(customPath: string): Promise<IInvite | null> {
+    public async findByCustomPath(customPath: string): Promise<IInvite | null> {
         return (await Invite.findOne({ customPath }).lean()) as IInvite | null;
     }
 
@@ -30,14 +32,13 @@ export class MongooseInviteRepository implements IInviteRepository {
     //
     // Query that checks 'code', 'customPath', and optionally '_id'
     // If the input is a valid ObjectId
-    async findByCodeOrCustomPath(codeOrPath: string): Promise<IInvite | null> {
+    public async findByCodeOrCustomPath(codeOrPath: string): Promise<IInvite | null> {
         const query: FilterQuery<IInvite> = {
             $or: [{ code: codeOrPath }, { customPath: codeOrPath }],
         };
 
-        // If it's a valid ObjectId, also check by _id
         if (codeOrPath.match(/^[0-9a-fA-F]{24}$/)) {
-            query.$or!.push({
+            query.$or?.push({
                 _id: codeOrPath as unknown as FilterQuery<IInvite>,
             });
         }
@@ -45,11 +46,11 @@ export class MongooseInviteRepository implements IInviteRepository {
         return (await Invite.findOne(query).lean()) as IInvite | null;
     }
 
-    async findByServerId(serverId: Types.ObjectId): Promise<IInvite[]> {
+    public async findByServerId(serverId: Types.ObjectId): Promise<IInvite[]> {
         return (await Invite.find({ serverId }).lean()) as unknown as IInvite[];
     }
 
-    async create(data: CreateInviteDTO): Promise<IInvite> {
+    public async create(data: CreateInviteDTO): Promise<IInvite> {
         const invite = new Invite({
             ...data,
             uses: 0,
@@ -57,7 +58,7 @@ export class MongooseInviteRepository implements IInviteRepository {
         return (await invite.save()) as unknown as IInvite;
     }
 
-    async incrementUses(id: Types.ObjectId): Promise<IInvite | null> {
+    public async incrementUses(id: Types.ObjectId): Promise<IInvite | null> {
         return (await Invite.findByIdAndUpdate(
             id,
             { $inc: { uses: 1 } },
@@ -65,13 +66,13 @@ export class MongooseInviteRepository implements IInviteRepository {
         ).lean()) as IInvite | null;
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Invite.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
         const result = await Invite.deleteMany({ serverId });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 }

@@ -48,7 +48,7 @@ import { notifyUser } from '@/services/pushService';
 export class ChatController {
     @inject(TYPES.WsServer) private wsServer!: IWsServer;
 
-    constructor(
+    public constructor(
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
@@ -58,7 +58,7 @@ export class ChatController {
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
-    ) {}
+    ) { }
 
     /**
      * Handles 'send_message_dm' event.
@@ -74,7 +74,7 @@ export class ChatController {
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
     ): Promise<IMessageDmSentEvent['payload']> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -88,13 +88,13 @@ export class ChatController {
             throw new Error('NOT_FOUND: Receiver not found');
         }
 
-        const receiverUsername = receiverUser.username || '';
+        const receiverUsername = receiverUser.username ?? '';
 
         if (
-            !(await this.friendshipRepo.areFriends(
+            (await this.friendshipRepo.areFriends(
                 new Types.ObjectId(senderId),
                 new Types.ObjectId(receiverId),
-            ))
+            )) === false
         ) {
             throw new Error('FORBIDDEN: Not friends with receiver');
         }
@@ -104,7 +104,7 @@ export class ChatController {
         }
 
         let repliedToMessage = null;
-        if (replyToId) {
+        if (replyToId !== undefined && replyToId !== '') {
             repliedToMessage = await this.messageRepo.findById(
                 new Types.ObjectId(replyToId),
             );
@@ -117,7 +117,7 @@ export class ChatController {
                         senderId: new Types.ObjectId(senderId),
                         receiverId: new Types.ObjectId(receiverId),
                         text,
-                        ...(replyToId
+                        ...(replyToId !== undefined && replyToId !== ''
                             ? { replyToId: new Types.ObjectId(replyToId) }
                             : {}),
                     },
@@ -145,15 +145,15 @@ export class ChatController {
             receiverUsername,
             text: created.text,
             createdAt:
-                created.createdAt?.toISOString() || new Date().toISOString(),
+                created.createdAt?.toISOString() ?? new Date().toISOString(),
             replyToId: created.replyToId?.toString(),
             repliedTo: repliedToMessage
                 ? {
-                      messageId: repliedToMessage._id.toString(),
-                      senderId: repliedToMessage.senderId.toString(),
-                      senderUsername: '', // Will be populated in broadcast
-                      text: repliedToMessage.text,
-                  }
+                    messageId: repliedToMessage._id.toString(),
+                    senderId: repliedToMessage.senderId.toString(),
+                    senderUsername: '', // Will be populated in broadcast
+                    text: repliedToMessage.text,
+                }
                 : undefined,
             isEdited: false,
         };
@@ -199,14 +199,14 @@ export class ChatController {
             receiverId,
             text: created.text,
             createdAt:
-                created.createdAt?.toISOString() || new Date().toISOString(),
+                created.createdAt?.toISOString() ?? new Date().toISOString(),
             replyToId: created.replyToId?.toString(),
             repliedTo: repliedToMessage
                 ? {
-                      messageId: repliedToMessage._id.toString(),
-                      senderId: repliedToMessage.senderId.toString(),
-                      text: repliedToMessage.text,
-                  }
+                    messageId: repliedToMessage._id.toString(),
+                    senderId: repliedToMessage.senderId.toString(),
+                    text: repliedToMessage.text,
+                }
                 : undefined,
         };
     }
@@ -222,7 +222,7 @@ export class ChatController {
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
     ): Promise<IMessageDmEditedEvent['payload']> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -259,7 +259,7 @@ export class ChatController {
             messageId,
             text: updated.text,
             editedAt:
-                updated.editedAt?.toISOString() || new Date().toISOString(),
+                updated.editedAt?.toISOString() ?? new Date().toISOString(),
             isEdited: true,
         };
 
@@ -292,7 +292,7 @@ export class ChatController {
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -349,7 +349,7 @@ export class ChatController {
         payload: IMarkDmReadEvent['payload'],
         authenticatedUser?: IWsUser,
     ): Promise<{ success: boolean }> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -366,7 +366,7 @@ export class ChatController {
         const peerUser = await this.userRepo.findById(
             new Types.ObjectId(peerId),
         );
-        const peerUsername = peerUser?.username || '';
+        const peerUsername = peerUser ? (peerUser.username ?? '') : '';
 
         logger.debug(
             `[ChatController] User ${userId} marked DM with ${peerId} as read`,
@@ -398,7 +398,7 @@ export class ChatController {
         payload: ITypingDmEvent['payload'],
         authenticatedUser?: IWsUser,
     ): Promise<void> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             return;
         }
 
@@ -406,10 +406,10 @@ export class ChatController {
         const senderId = authenticatedUser.userId;
 
         if (
-            !(await this.friendshipRepo.areFriends(
+            (await this.friendshipRepo.areFriends(
                 new Types.ObjectId(senderId),
                 new Types.ObjectId(receiverId),
-            ))
+            )) === false
         ) {
             return;
         }

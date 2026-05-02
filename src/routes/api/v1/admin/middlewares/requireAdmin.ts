@@ -19,12 +19,10 @@ export const requireAdmin = (requiredPermission: keyof AdminPermissions) => {
         next: express.NextFunction,
     ) => {
         try {
-            // @ts-ignore
             if (!req.user) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
-            // @ts-ignore
             const username = req.user.username;
 
             // Fetch user from database to get permissions
@@ -41,20 +39,20 @@ export const requireAdmin = (requiredPermission: keyof AdminPermissions) => {
             }
 
             // Check for adminAccess (super admin)
-            if (!(user.permissions as AdminPermissions).adminAccess) {
+            if ((user.permissions as AdminPermissions).adminAccess !== true) {
                 return res
                     .status(403)
                     .json({ error: 'Access denied - admin access required' });
             }
 
             // Check specific permission
-            if (!(user.permissions as AdminPermissions)[requiredPermission]) {
+            if ((user.permissions as AdminPermissions)[requiredPermission] !== true) {
                 return res
                     .status(403)
                     .json({ error: 'Insufficient permissions' });
             }
 
-            // @ts-ignore - Store user._id for later use
+            // @ts-expect-error - Store user._id for later use
             req.user._id = user._id;
             next();
         } catch (error) {

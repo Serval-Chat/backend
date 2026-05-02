@@ -20,6 +20,11 @@ export interface IWsUser {
     socket: WebSocket;
 
     /**
+     * Whether this user is a bot.
+     */
+    isBot: boolean;
+
+    /**
      * Timestamp of when the user was authenticated.
      */
     authenticatedAt: Date;

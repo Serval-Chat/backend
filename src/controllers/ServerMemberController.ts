@@ -42,23 +42,24 @@ import { JWTPayload } from '@/utils/jwt';
 import { MappedUser } from '@/utils/user';
 import { IServerBan } from '@/di/interfaces/IServerBanRepository';
 import { IUser } from '@/models/User';
+import { Bot } from '@/models/Bot';
+import { Role } from '@/models/Server';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import {
     KickMemberRequestDTO,
     BanMemberRequestDTO,
     TransferOwnershipRequestDTO,
+    TimeoutMemberRequestDTO,
 } from './dto/server-member.request.dto';
 
-// Controller for managing server members, including kicks, bans, and role assignments
-// Enforces permission checks and prevents actions against server owners
 @injectable()
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Members')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class ServerMemberController {
-    constructor(
+    public constructor(
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @Inject(TYPES.ServerRepository)
@@ -79,10 +80,8 @@ export class ServerMemberController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
-    ) {}
+    ) { }
 
-    // Retrieves all members of a server
-    // Enforces server membership
     @Get('members')
     @ApiOperation({ summary: 'Get all server members' })
     @ApiResponse({ status: 200, description: 'Server members retrieved' })
@@ -100,7 +99,7 @@ export class ServerMemberController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
@@ -151,8 +150,6 @@ export class ServerMemberController {
         );
     }
 
-    // Searches for members in a server by username or display name
-    // Enforces server membership
     @Get('members/search')
     @ApiOperation({ summary: 'Search server members' })
     @ApiResponse({ status: 200, description: 'Search results' })
@@ -171,7 +168,7 @@ export class ServerMemberController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
@@ -221,8 +218,6 @@ export class ServerMemberController {
         );
     }
 
-    // Retrieves details for a specific server member
-    // Enforces server membership
     @Get('members/:userId')
     @ApiOperation({ summary: 'Get server member details' })
     @ApiResponse({ status: 200, description: 'Member details retrieved' })
@@ -242,7 +237,7 @@ export class ServerMemberController {
             serverOid,
             currentOid,
         );
-        if (!currentMember) {
+        if (currentMember === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
@@ -250,7 +245,7 @@ export class ServerMemberController {
             serverOid,
             targetOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
@@ -258,7 +253,6 @@ export class ServerMemberController {
         return { ...member, user: user ? mapUser(user as IUser) : null };
     }
 
-    // Removes the current user from the server
     @Delete('members/me')
     @ApiOperation({ summary: 'Leave the server' })
     @ApiResponse({ status: 200, description: 'Left server' })
@@ -274,13 +268,14 @@ export class ServerMemberController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const server = await this.serverRepo.findById(serverOid);
-        if (server?.ownerId.equals(userOid)) {
+        if (server && server.ownerId.equals(userOid)) {
             throw new ForbiddenException(
                 ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
             );
         }
 
         await this.serverMemberRepo.remove(serverOid, userOid);
+        await this.cleanupManagedRole(serverOid, userOid);
         this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
@@ -300,8 +295,6 @@ export class ServerMemberController {
         return { message: 'Left server' };
     }
 
-    // Kicks a member from the server
-    // Enforces 'kickMembers' permission and prevents actions against server owner
     @Delete('members/:userId')
     @ApiOperation({ summary: 'Kick a member from the server' })
     @ApiResponse({ status: 200, description: 'Member kicked' })
@@ -322,11 +315,11 @@ export class ServerMemberController {
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 currentOid,
                 'kickMembers',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_KICK,
@@ -337,19 +330,17 @@ export class ServerMemberController {
             serverOid,
             targetOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        // Prevent kicking the server owner, even by users with administrative permissions
         const server = await this.serverRepo.findById(serverOid);
-        if (server?.ownerId.equals(targetOid)) {
+        if (server && server.ownerId.equals(targetOid)) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.CANNOT_KICK_OWNER,
             );
         }
 
-        // Enforce role hierarchy: cannot kick someone with equal or higher role
         const currentUserHighest =
             await this.permissionService.getHighestRolePosition(
                 serverOid,
@@ -368,6 +359,7 @@ export class ServerMemberController {
         }
 
         await this.serverMemberRepo.remove(serverOid, targetOid);
+        await this.cleanupManagedRole(serverOid, targetOid);
         this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
@@ -388,8 +380,6 @@ export class ServerMemberController {
         return { message: 'Member kicked' };
     }
 
-    // Bans a member from the server
-    // Enforces 'banMembers' permission and prevents banning the server owner
     @Post('bans')
     @ApiOperation({ summary: 'Ban a member from the server' })
     @ApiResponse({ status: 200, description: 'Member banned' })
@@ -421,13 +411,11 @@ export class ServerMemberController {
             );
         }
 
-        // Prevent banning the server owner, even by users with administrative permissions
         const server = await this.serverRepo.findById(serverOid);
-        if (server?.ownerId.equals(targetOid)) {
+        if (server && server.ownerId.equals(targetOid)) {
             throw new ForbiddenException(ErrorMessages.MEMBER.CANNOT_BAN_OWNER);
         }
 
-        // Enforce role hierarchy: cannot ban someone with equal or higher role
         const currentUserHighest =
             await this.permissionService.getHighestRolePosition(
                 serverOid,
@@ -445,16 +433,15 @@ export class ServerMemberController {
             );
         }
 
-        // Ban workflow: record ban, remove member, notify clients
         await this.serverBanRepo.create({
             serverId: serverOid,
             userId: targetOid,
-            reason: reason || 'No reason provided',
+            reason: (reason !== undefined && reason !== '') ? reason : 'No reason provided',
             bannedBy: currentOid,
         });
 
-        // Automatically remove the member from the server upon banning
         await this.serverMemberRepo.remove(serverOid, targetOid);
+        await this.cleanupManagedRole(serverOid, targetOid);
         this.permissionService.invalidateCache(serverOid);
 
         this.wsServer.broadcastToServer(serverId, {
@@ -479,8 +466,103 @@ export class ServerMemberController {
         return { message: 'Member banned' };
     }
 
-    // Unbans a user from the server
-    // Enforces 'banMembers' permission
+    @Post('members/:userId/timeout')
+    @ApiOperation({ summary: 'Timeout a member' })
+    @ApiResponse({ status: 200, description: 'Member timed out' })
+    @ApiResponse({
+        status: 403,
+        description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
+    })
+    public async timeoutMember(
+        @Param('serverId') serverId: string,
+        @Param('userId') userId: string,
+        @Req() req: ExpressRequest,
+        @Body() body: TimeoutMemberRequestDTO,
+    ): Promise<{ message: string; communicationDisabledUntil: string | null }> {
+        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
+            .user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const currentOid = new Types.ObjectId(currentUserId);
+        const targetOid = new Types.ObjectId(userId);
+        const { duration, reason } = body;
+
+        if (
+            (await this.permissionService.hasPermission(
+                serverOid,
+                currentOid,
+                'moderateMembers',
+            )) !== true
+        ) {
+            throw new ForbiddenException(
+                'You do not have permission to timeout members',
+            );
+        }
+
+        const server = await this.serverRepo.findById(serverOid);
+        if (server !== null && server.ownerId.equals(targetOid)) {
+            throw new ForbiddenException('You cannot timeout the server owner');
+        }
+
+        const currentUserHighest =
+            await this.permissionService.getHighestRolePosition(
+                serverOid,
+                currentOid,
+            );
+        const targetHighest =
+            await this.permissionService.getHighestRolePosition(
+                serverOid,
+                targetOid,
+            );
+
+        if (currentUserHighest <= targetHighest) {
+            throw new ForbiddenException(
+                'You cannot timeout a member with a role equal to or higher than your own',
+            );
+        }
+
+        const until = (duration !== undefined && duration > 0) 
+            ? new Date(Date.now() + duration * 1000) 
+            : null;
+
+        const updatedMember = await this.serverMemberRepo.setTimeout(
+            serverOid,
+            targetOid,
+            until,
+        );
+
+        if (updatedMember === null) {
+            throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
+        }
+
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_updated',
+            payload: {
+                serverId,
+                userId,
+                member: updatedMember,
+            },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: currentOid,
+            actionType: until ? 'user_timeout' : 'user_timeout_remove',
+            targetId: targetOid,
+            targetType: 'user',
+            targetUserId: targetOid,
+            reason: (reason !== undefined && reason !== '') ? reason : 'No reason provided',
+            metadata: {
+                durationSeconds: duration,
+                until: until ? until.toISOString() : undefined,
+            },
+        });
+
+        return { 
+            message: until ? 'Member timed out' : 'Timeout removed', 
+            communicationDisabledUntil: until ? until.toISOString() : null 
+        };
+    }
+
     @Delete('bans/:userId')
     @ApiOperation({ summary: 'Unban a user from the server' })
     @ApiResponse({ status: 200, description: 'Member unbanned' })
@@ -499,11 +581,11 @@ export class ServerMemberController {
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 currentOid,
                 'banMembers',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_UNBAN,
@@ -529,8 +611,6 @@ export class ServerMemberController {
         return { message: 'Member unbanned' };
     }
 
-    // Retrieves all active bans for a server
-    // Enforces 'banMembers' permission
     @Get('bans')
     @ApiOperation({ summary: 'Get all server bans' })
     @ApiResponse({ status: 200, description: 'Server bans retrieved' })
@@ -547,11 +627,11 @@ export class ServerMemberController {
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 currentOid,
                 'banMembers',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_VIEW_BANS,
@@ -561,7 +641,6 @@ export class ServerMemberController {
         return await this.serverBanRepo.findByServerIdWithUserInfo(serverOid);
     }
 
-    // Add a role to a member
     @Post('members/:userId/roles/:roleId')
     @ApiOperation({ summary: 'Add a role to a member' })
     @ApiResponse({ status: 200, description: 'Role added' })
@@ -583,11 +662,11 @@ export class ServerMemberController {
         const targetOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 currentOid,
                 'manageRoles',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -598,13 +677,29 @@ export class ServerMemberController {
             serverOid,
             targetOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         const role = await this.roleRepo.findById(roleOid);
-        if (!role || !role.serverId.equals(serverOid)) {
+        if (role === null || role.serverId.equals(serverOid) === false) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
+        }
+
+        const server = await this.serverRepo.findById(serverOid);
+        const isOwner = server !== null && server.ownerId.equals(currentOid);
+
+        if (isOwner !== true) {
+            const currentUserHighest = await this.permissionService.getHighestRolePosition(serverOid, currentOid);
+            const targetHighest = await this.permissionService.getHighestRolePosition(serverOid, targetOid);
+
+            if (currentUserHighest <= targetHighest) {
+                throw new ForbiddenException('You cannot manage roles for a member with a role equal to or higher than your own');
+            }
+
+            if (currentUserHighest <= role.position) {
+                throw new ForbiddenException('You cannot assign a role equal to or higher than your own highest role');
+            }
         }
 
         if (member.roles.some((r) => r.equals(roleOid))) {
@@ -641,7 +736,6 @@ export class ServerMemberController {
         return updatedMember;
     }
 
-    // Remove a role from a member
     @Delete('members/:userId/roles/:roleId')
     @ApiOperation({ summary: 'Remove a role from a member' })
     @ApiResponse({ status: 200, description: 'Role removed' })
@@ -663,11 +757,11 @@ export class ServerMemberController {
         const targetOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 currentOid,
                 'manageRoles',
-            ))
+            )) !== true
         ) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -678,8 +772,32 @@ export class ServerMemberController {
             serverOid,
             targetOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
+        }
+
+        const role = await this.roleRepo.findById(roleOid);
+        if (role === null || role.serverId.equals(serverOid) === false) {
+            throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
+        }
+        if (role.managed === true) {
+            throw new ForbiddenException('Cannot remove a managed role from a member');
+        }
+
+        const server = await this.serverRepo.findById(serverOid);
+        const isOwner = server !== null && server.ownerId.equals(currentOid);
+
+        if (isOwner !== true) {
+            const currentUserHighest = await this.permissionService.getHighestRolePosition(serverOid, currentOid);
+            const targetHighest = await this.permissionService.getHighestRolePosition(serverOid, targetOid);
+
+            if (currentUserHighest <= targetHighest) {
+                throw new ForbiddenException('You cannot manage roles for a member with a role equal to or higher than your own');
+            }
+
+            if (currentUserHighest <= role.position) {
+                throw new ForbiddenException('You cannot remove a role equal to or higher than your own highest role');
+            }
         }
 
         const updatedMember = await this.serverMemberRepo.removeRole(
@@ -699,7 +817,7 @@ export class ServerMemberController {
             },
         });
 
-        const role = await this.roleRepo.findById(roleOid);
+
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverOid,
@@ -708,14 +826,12 @@ export class ServerMemberController {
             targetId: roleOid,
             targetType: 'role',
             targetUserId: targetOid,
-            metadata: { roleName: role?.name },
+            metadata: { roleName: role.name },
         });
 
         return updatedMember;
     }
 
-    // Transfers server ownership to another member
-    // Enforces that only the current owner can perform this action
     @Post('transfer-ownership')
     @ApiOperation({ summary: 'Transfer server ownership' })
     @ApiResponse({ status: 200, description: 'Ownership transferred' })
@@ -740,7 +856,7 @@ export class ServerMemberController {
             throw new NotFoundException('Server not found');
         }
 
-        if (!server.ownerId.equals(userOid)) {
+        if (server.ownerId.equals(userOid) === false) {
             throw new ForbiddenException(
                 ErrorMessages.SERVER.TRANSFER_OWNERSHIP_ONLY_OWNER,
             );
@@ -777,5 +893,28 @@ export class ServerMemberController {
         });
 
         return { message: 'Ownership transferred' };
+    }
+
+    private async cleanupManagedRole(serverId: Types.ObjectId, userId: Types.ObjectId) {
+        try {
+            const bot = await Bot.findOne({ userId }).lean();
+            if (bot) {
+                const managedRole = await Role.findOne({
+                    serverId,
+                    managed: true,
+                    managedBotId: bot._id
+                }).lean();
+
+                if (managedRole) {
+                    await this.roleRepo.delete(managedRole._id as Types.ObjectId);
+                    this.wsServer.broadcastToServer(serverId.toString(), {
+                        type: 'role_deleted',
+                        payload: { serverId: serverId.toString(), roleId: managedRole._id.toString() },
+                    });
+                }
+            }
+        } catch (err) {
+            this.logger.error('Failed to cleanup managed role', err);
+        }
     }
 }

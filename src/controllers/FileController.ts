@@ -38,7 +38,6 @@ import {
 import { injectable } from 'inversify';
 import { isText } from 'istextorbinary';
 
-// Controller for file uploads, metadata retrieval, and downloads
 @ApiTags('Files')
 @injectable()
 @Controller('api/v1/files')
@@ -49,7 +48,7 @@ export class FileController {
         'uploads',
     );
 
-    constructor(
+    public constructor(
         @Inject(TYPES.Logger)
         private logger: ILogger,
         @Inject(TYPES.ImageDeliveryService)
@@ -78,10 +77,6 @@ export class FileController {
         @UploadedFile() file: Express.Multer.File,
         @Req() _req: Request,
     ): Promise<FileUploadResponseDTO> {
-        if (!file) {
-            throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
-        }
-
         const fileUrl = `${SERVER_URL}/api/v1/files/download/${file.filename}`;
         return { url: fileUrl };
     }
@@ -104,7 +99,7 @@ export class FileController {
             const handle = await fsPromises.open(filePath, 'r');
             await handle.read(buffer, 0, buffer.length, 0);
             await handle.close();
-            isBinary = !isText(filename, buffer);
+            isBinary = isText(filename, buffer) === false;
         } catch (err: unknown) {
             this.logger.error('Error detecting binary:', err);
             isBinary = true;
@@ -197,7 +192,7 @@ export class FileController {
     private async getMimeType(filename: string): Promise<string> {
         const mimeType = mime.lookup(filename);
 
-        if (mimeType) {
+        if (typeof mimeType === 'string' && mimeType !== '') {
             return mimeType;
         }
 
@@ -211,7 +206,7 @@ export class FileController {
             await handle.read(buffer, 0, buffer.length, 0);
             await handle.close();
 
-            return isText(filename, buffer)
+            return isText(filename, buffer) === true
                 ? 'text/plain'
                 : 'application/octet-stream';
         } catch (err: unknown) {
@@ -226,6 +221,7 @@ export class FileController {
      * @returns Content-Type string, defaults to 'application/octet-stream'
      */
     private getContentType(filename: string): string {
-        return mime.contentType(filename) || 'application/octet-stream';
+        const contentType = mime.contentType(filename);
+        return (typeof contentType === 'string' && contentType !== '') ? contentType : 'application/octet-stream';
     }
 }

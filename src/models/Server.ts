@@ -1,5 +1,7 @@
-import type { Document, Model } from 'mongoose';
+import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
+import type { IEmbed } from './Embed';
+import type { InteractionValue } from '@/types/interactions';
 
 // Server interface
 //
@@ -49,6 +51,7 @@ export interface ICategory extends Document {
             addReactions?: boolean;
             viewChannels?: boolean;
             pinMessages?: boolean;
+            seeDeletedMessages?: boolean;
             connect?: boolean;
         };
     };
@@ -74,6 +77,7 @@ export interface IChannel extends Document {
             addReactions?: boolean;
             viewChannels?: boolean;
             pinMessages?: boolean;
+            seeDeletedMessages?: boolean;
             connect?: boolean;
         };
     };
@@ -95,6 +99,7 @@ export interface IServerMember extends Document {
     userId: mongoose.Types.ObjectId;
     roles: mongoose.Types.ObjectId[];
     joinedAt: Date;
+    communicationDisabledUntil?: Date;
 }
 
 // Role interface
@@ -127,10 +132,15 @@ export interface IRole extends Document {
         addReactions: boolean;
         viewChannels: boolean;
         pinMessages: boolean;
+        seeDeletedMessages: boolean;
         connect: boolean;
+        moderateMembers: boolean;
     };
     separateFromOtherRoles?: boolean;
     icon?: string;
+    managed: boolean;
+    managedBotId?: mongoose.Types.ObjectId;
+    glowEnabled: boolean;
     createdAt: Date;
 }
 
@@ -152,22 +162,35 @@ export interface IInvite extends Document {
 // Server message interface
 //
 // Represents a message sent in a server channel
-export interface IServerMessage extends Document {
-    _id: mongoose.Types.ObjectId;
-    serverId: mongoose.Types.ObjectId;
-    channelId: mongoose.Types.ObjectId;
-    senderId: mongoose.Types.ObjectId;
+export interface IServerMessage {
+    _id: Types.ObjectId;
     text: string;
-    createdAt: Date;
-    replyToId?: mongoose.Types.ObjectId;
-    repliedToMessageId?: mongoose.Types.ObjectId;
-    editedAt?: Date;
+    senderId: Types.ObjectId;
+    serverId: Types.ObjectId;
+    channelId: Types.ObjectId;
+    replyToId?: Types.ObjectId;
+    repliedToMessageId?: Types.ObjectId;
+    repliedTo?: {
+        messageId: Types.ObjectId;
+        senderId: Types.ObjectId;
+        senderUsername?: string;
+        text: string;
+    };
     isEdited?: boolean;
+    editedAt?: Date;
     isPinned?: boolean;
     isSticky?: boolean;
+    deletedAt?: Date;
+    createdAt: Date;
     isWebhook?: boolean;
     webhookUsername?: string;
     webhookAvatarUrl?: string;
+    embeds?: IEmbed[];
+    interaction?: {
+        command: string;
+        options: { name: string; value: InteractionValue }[];
+        user: { id: string; username: string };
+    };
 }
 
 // Server ban interface
@@ -244,6 +267,7 @@ const categorySchema = new Schema<ICategory>({
                 addReactions: { type: Boolean },
                 viewChannels: { type: Boolean },
                 pinMessages: { type: Boolean },
+                seeDeletedMessages: { type: Boolean },
                 connect: { type: Boolean },
             },
             { _id: false },
@@ -284,6 +308,7 @@ const channelSchema = new Schema<IChannel>({
                 addReactions: { type: Boolean },
                 viewChannels: { type: Boolean },
                 pinMessages: { type: Boolean },
+                seeDeletedMessages: { type: Boolean },
                 connect: { type: Boolean },
             },
             { _id: false },
@@ -306,6 +331,7 @@ const serverMemberSchema = new Schema<IServerMember>({
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     roles: [{ type: Schema.Types.ObjectId, ref: 'Role' }],
     joinedAt: { type: Date, default: Date.now },
+    communicationDisabledUntil: { type: Date, default: null },
 });
 serverMemberSchema.index({ serverId: 1, userId: 1 }, { unique: true });
 
@@ -335,10 +361,15 @@ const roleSchema = new Schema<IRole>({
         addReactions: { type: Boolean, default: true },
         viewChannels: { type: Boolean, default: true },
         pinMessages: { type: Boolean, default: false },
+        seeDeletedMessages: { type: Boolean, default: false },
         connect: { type: Boolean, default: true },
+        moderateMembers: { type: Boolean, default: false },
     },
     separateFromOtherRoles: { type: Boolean, default: false },
     icon: { type: String, required: false },
+    managed: { type: Boolean, default: false },
+    managedBotId: { type: Schema.Types.ObjectId, ref: 'Bot', required: false },
+    glowEnabled: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },
 });
 roleSchema.index({ serverId: 1, position: 1 });
@@ -363,22 +394,38 @@ const serverMessageSchema = new Schema<IServerMessage>({
     serverId: { type: Schema.Types.ObjectId, ref: 'Server', required: true },
     channelId: { type: Schema.Types.ObjectId, ref: 'Channel', required: true },
     senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    text: { type: String, required: true },
+    text: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
     replyToId: { type: Schema.Types.ObjectId, required: false },
-    repliedToMessageId: {
-        type: Schema.Types.ObjectId,
-        ref: 'ServerMessage',
-        required: false,
+    repliedToMessageId: { type: Schema.Types.ObjectId, ref: 'ServerMessage', required: false },
+    repliedTo: {
+        messageId: { type: Schema.Types.ObjectId, required: false },
+        senderId: { type: Schema.Types.ObjectId, required: false },
+        senderUsername: { type: String, required: false },
+        text: { type: String, required: false },
     },
     editedAt: { type: Date, required: false },
     isEdited: { type: Boolean, default: false },
     isPinned: { type: Boolean, default: false },
     isSticky: { type: Boolean, default: false },
+    deletedAt: { type: Date, required: false },
     isWebhook: { type: Boolean, default: false },
     webhookUsername: { type: String, required: false },
     webhookAvatarUrl: { type: String, required: false },
+    embeds: { type: [Schema.Types.Mixed], default: [] },
+    interaction: {
+        command: { type: String, required: false },
+        options: [{
+            name: { type: String, required: false },
+            value: { type: Schema.Types.Mixed, required: false },
+        }],
+        user: {
+            id: { type: String, required: false },
+            username: { type: String, required: false },
+        },
+    },
 });
+serverMessageSchema.index({ channelId: 1, deletedAt: 1, createdAt: -1 });
 serverMessageSchema.index({ channelId: 1, createdAt: -1 });
 
 const serverBanSchema = new Schema<IServerBan>({

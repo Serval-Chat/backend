@@ -27,7 +27,7 @@ const webhookSchema = new Schema<IWebhook>({
 });
 
 webhookSchema.index({ serverId: 1, channelId: 1 });
-webhookSchema.index({ token: 1 }, { unique: true });
+
 
 // Webhook model
 export const Webhook: Model<IWebhook> = mongoose.model(

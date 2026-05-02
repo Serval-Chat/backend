@@ -21,11 +21,20 @@
  * normalizeEmail('simple@example.com') // Returns 'simple@example.com'
  */
 export function normalizeEmail(email: string): string {
-    if (!email || typeof email !== 'string') {
+    if (email === '' || typeof email !== 'string') {
         return email;
     }
 
-    return email.toLowerCase().trim();
+    const parts = email.toLowerCase().trim().split('@');
+    const local = parts[0];
+    const domain = parts[1];
+
+    if (local === undefined || local === '' || domain === undefined || domain === '') {
+        return email.toLowerCase().trim();
+    }
+
+    const baseLocal = local.split('+')[0];
+    return `${baseLocal}@${domain}`;
 }
 
 /**

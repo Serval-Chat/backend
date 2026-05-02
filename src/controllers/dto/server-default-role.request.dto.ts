@@ -6,5 +6,5 @@ export class UpdateDefaultRoleRequestDTO {
     @ApiProperty({ description: 'The ID of the role to set as default' })
     @IsMongoId()
     @IsRoleId()
-    roleId!: string;
+    public roleId!: string;
 }

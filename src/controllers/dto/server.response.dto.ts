@@ -4,39 +4,39 @@ import { ServerBannerDTO } from './server.request.dto';
 
 export class ServerStatsResponseDTO {
     @ApiProperty()
-    onlineCount!: number;
+    public onlineCount!: number;
 
     @ApiProperty()
-    totalCount!: number;
+    public totalCount!: number;
 
     @ApiProperty()
-    bannedUserCount!: number;
+    public bannedUserCount!: number;
 
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    serverId!: string;
+    public serverId!: string;
 
     @ApiProperty()
-    serverName!: string;
+    public serverName!: string;
 
     @ApiProperty()
-    ownerName!: string;
+    public ownerName!: string;
 
     @ApiProperty()
-    createdAt!: string;
+    public createdAt!: string;
 
     @ApiProperty()
-    allTimeHigh!: number;
+    public allTimeHigh!: number;
 
     @ApiProperty()
-    newestMember!: string;
+    public newestMember!: string;
 
     @ApiProperty()
-    channelCount!: number;
+    public channelCount!: number;
 
     @ApiProperty()
-    emojiCount!: number;
+    public emojiCount!: number;
 }
 
 export class ServerResponseDTO {
@@ -44,48 +44,51 @@ export class ServerResponseDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    _id?: string;
+    public _id?: string;
 
     @ApiProperty()
-    name!: string;
+    public name!: string;
 
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    ownerId!: string;
+    public ownerId!: string;
 
     @ApiProperty({ required: false })
-    icon?: string;
+    public icon?: string;
 
     @ApiProperty({ required: false, type: ServerBannerDTO })
-    banner?: ServerBannerDTO;
+    public banner?: ServerBannerDTO;
 
     @ApiProperty({ required: false })
-    description?: string;
+    public description?: string;
 
     @ApiProperty({ required: false })
     @IsOptional()
     @IsMongoId()
     @IsString()
-    defaultRoleId?: string;
+    public defaultRoleId?: string;
 
     @ApiProperty({ required: false })
-    memberCount?: number;
+    public memberCount?: number;
 
     @ApiProperty({ required: false })
-    allTimeHigh?: number;
+    public allTimeHigh?: number;
 
     @ApiProperty({ required: false })
-    disableCustomFonts?: boolean;
+    public disableCustomFonts?: boolean;
 
     @ApiProperty({ required: false })
-    disableUsernameGlowAndCustomColor?: boolean;
+    public disableUsernameGlowAndCustomColor?: boolean;
 
     @ApiProperty({ required: false })
-    createdAt?: Date;
+    public createdAt?: Date;
 
     @ApiProperty({ required: false })
-    updatedAt?: Date;
+    public updatedAt?: Date;
+
+    @ApiProperty({ required: false })
+    public canManage?: boolean;
 }
 
 export class SetDefaultRoleResponseDTO {
@@ -93,15 +96,15 @@ export class SetDefaultRoleResponseDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    defaultRoleId!: string | null;
+    public defaultRoleId!: string | null;
 }
 
 export class UploadIconResponseDTO {
     @ApiProperty()
-    icon!: string;
+    public icon!: string;
 }
 
 export class UploadBannerResponseDTO {
     @ApiProperty()
-    banner!: string;
+    public banner!: string;
 }

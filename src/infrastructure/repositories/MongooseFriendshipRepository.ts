@@ -19,14 +19,12 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
     private friendshipModel = Friendship;
     private friendRequestModel = FriendRequest;
     private userModel = User;
-    constructor() {}
+    public constructor() {}
 
-    async areFriends(
+    public async areFriends(
         user1: Types.ObjectId,
         user2: Types.ObjectId,
     ): Promise<boolean> {
-        if (!user1 || !user2) return false;
-
         // Do not allow users to message themselves
         if (user1.equals(user2)) return false;
 
@@ -36,10 +34,10 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
                 { userId: user2, friendId: user1 },
             ],
         });
-        return !!friendship;
+        return friendship !== null;
     }
 
-    async findByUserId(userId: Types.ObjectId): Promise<IFriendship[]> {
+    public async findByUserId(userId: Types.ObjectId): Promise<IFriendship[]> {
         return await this.friendshipModel
             .find({
                 $or: [{ userId }, { friendId: userId }],
@@ -51,7 +49,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
     //
     // Populates legacy 'user' and 'friend' fields (usernames) to satisfy
     // Unique indexes and maintain backward compatibility    */
-    async create(
+    public async create(
         userId: Types.ObjectId,
         friendId: Types.ObjectId,
     ): Promise<IFriendship> {
@@ -71,7 +69,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         return await friendship.save();
     }
 
-    async remove(
+    public async remove(
         userId: Types.ObjectId,
         friendId: Types.ObjectId,
     ): Promise<boolean> {
@@ -81,10 +79,10 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
                 { userId: friendId, friendId: userId },
             ],
         });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async acceptRequest(
+    public async acceptRequest(
         requestId: Types.ObjectId,
     ): Promise<IFriendRequest | null> {
         return await this.friendRequestModel
@@ -92,20 +90,20 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
             .lean();
     }
 
-    async rejectRequest(requestId: Types.ObjectId): Promise<boolean> {
+    public async rejectRequest(requestId: Types.ObjectId): Promise<boolean> {
         const result = await this.friendRequestModel.deleteOne({
             _id: requestId,
         });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async findRequestById(
+    public async findRequestById(
         requestId: Types.ObjectId,
     ): Promise<IFriendRequest | null> {
         return await this.friendRequestModel.findById(requestId).lean();
     }
 
-    async findRequestBetweenUsers(
+    public async findRequestBetweenUsers(
         fromId: Types.ObjectId,
         toId: Types.ObjectId,
     ): Promise<IFriendRequest | null> {
@@ -119,7 +117,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
             .lean();
     }
 
-    async findPendingRequestsFor(
+    public async findPendingRequestsFor(
         userId: Types.ObjectId,
     ): Promise<IFriendRequest[]> {
         return await this.friendRequestModel
@@ -130,7 +128,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
             .lean();
     }
 
-    async findExistingRequest(
+    public async findExistingRequest(
         fromId: Types.ObjectId,
         toId: Types.ObjectId,
     ): Promise<IFriendRequest | null> {
@@ -147,7 +145,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
     // Create a new friend request
     //
     // Populates legacy 'from' and 'to' fields (usernames)    */
-    async createRequest(
+    public async createRequest(
         fromId: Types.ObjectId,
         toId: Types.ObjectId,
     ): Promise<IFriendRequest> {
@@ -168,7 +166,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         return await request.save();
     }
 
-    async findAllByUserId(userId: Types.ObjectId): Promise<IFriendship[]> {
+    public async findAllByUserId(userId: Types.ObjectId): Promise<IFriendship[]> {
         return await this.friendshipModel
             .find({
                 $or: [{ userId: userId }, { friendId: userId }],
@@ -176,7 +174,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
             .lean();
     }
 
-    async deleteAllForUser(
+    public async deleteAllForUser(
         userId: Types.ObjectId,
     ): Promise<{ deletedCount: number }> {
         const result = await this.friendshipModel.deleteMany({
@@ -185,16 +183,16 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         return { deletedCount: result.deletedCount };
     }
 
-    async deleteAllRequestsForUser(
+    public async deleteAllRequestsForUser(
         userId: Types.ObjectId,
     ): Promise<{ deletedCount: number }> {
         const result = await this.friendRequestModel.deleteMany({
             $or: [{ fromId: userId }, { toId: userId }],
         });
-        return { deletedCount: result.deletedCount || 0 };
+        return { deletedCount: result.deletedCount };
     }
 
-    async removeRequestBetweenUsers(
+    public async removeRequestBetweenUsers(
         user1: Types.ObjectId,
         user2: Types.ObjectId,
     ): Promise<boolean> {
@@ -204,6 +202,6 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
                 { fromId: user2, toId: user1 },
             ],
         });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 }

@@ -5,7 +5,7 @@ import { Role } from '../models/Server';
  * Parse gobblygook to readable text
  */
 export async function parseNotificationText(text: string): Promise<string> {
-    if (!text || typeof text !== 'string') return text;
+    if (text === '' || typeof text !== 'string') return text;
 
     let parsedText = text;
 
@@ -28,7 +28,7 @@ export async function parseNotificationText(text: string): Promise<string> {
                 /<userid:'([^']+)'>/g,
                 (match, id) => {
                     const username = userMap.get(id);
-                    return username ? `@${username}` : '@Unknown';
+                    return (username !== undefined && username !== '') ? `@${username}` : '@Unknown';
                 },
             );
         } catch {
@@ -55,7 +55,7 @@ export async function parseNotificationText(text: string): Promise<string> {
                 /<roleid:'([^']+)'>/g,
                 (match, id) => {
                     const roleName = roleMap.get(id);
-                    return roleName ? `@${roleName}` : '@UnknownRole';
+                    return (roleName !== undefined && roleName !== '') ? `@${roleName}` : '@UnknownRole';
                 },
             );
         } catch {

@@ -34,21 +34,19 @@ interface RequestWithUser extends Request {
     user: JWTPayload;
 }
 
-// Controller for managing user warnings
 @ApiTags('Warnings')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @injectable()
 @Controller('api/v1/warnings')
 export class UserWarningController {
-    constructor(
+    public constructor(
         @Inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
         @Inject(TYPES.Logger)
         private logger: ILogger,
     ) {}
 
-    // Sanitizes warning data for the current user
     // Hides the specific issuer identity for privacy, labeling all warnings as issued by 'System'
     private sanitizeWarning(warning: IWarning): UserWarningResponseDTO {
         return {
@@ -103,7 +101,7 @@ export class UserWarningController {
 
         const warningOid = new Types.ObjectId(id);
         const warning = await this.warningRepo.findById(warningOid);
-        if (!warning) {
+        if (warning === null) {
             throw new ApiError(404, ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
         }
 
@@ -111,12 +109,12 @@ export class UserWarningController {
             throw new ApiError(403, ErrorMessages.AUTH.FORBIDDEN);
         }
 
-        if (warning.acknowledged) {
+        if (warning.acknowledged === true) {
             return this.sanitizeWarning(warning);
         }
 
         const updatedWarning = await this.warningRepo.acknowledge(warningOid);
-        if (!updatedWarning) {
+        if (updatedWarning === null) {
             throw new ApiError(404, ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
         }
 

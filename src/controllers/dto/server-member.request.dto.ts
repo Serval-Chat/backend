@@ -6,31 +6,45 @@ export class KickMemberRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsReason()
-    reason?: string;
+    public reason?: string;
 }
 
 export class BanMemberRequestDTO {
     @ApiProperty()
     @IsMongoId()
     @IsUserId()
-    userId!: string;
+    public userId!: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsReason()
-    reason?: string;
+    public reason?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsInt()
     @Min(0)
     @Max(7)
-    deleteMessageDays?: number;
+    public deleteMessageDays?: number;
 }
 
 export class TransferOwnershipRequestDTO {
     @ApiProperty()
     @IsMongoId()
     @IsUserId()
-    newOwnerId!: string;
+    public newOwnerId!: string;
+}
+
+export class TimeoutMemberRequestDTO {
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsInt()
+    @Min(0)
+    @Max(2419200) // 28 days in seconds
+    public duration?: number;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsReason()
+    public reason?: string;
 }

@@ -40,6 +40,10 @@ import { SettingsController } from './controllers/SettingsController';
 import { PushController } from './controllers/PushController';
 import { KlipyController } from './controllers/KlipyController';
 import { ServerAuditLogController } from './controllers/ServerAuditLogController';
+import { BotController } from './controllers/BotController';
+import { WebhookController } from './controllers/WebhookController';
+import { InteractionController } from './controllers/InteractionController';
+import { ApplicationController } from './controllers/ApplicationController';
 
 @Module({
     imports: [
@@ -63,28 +67,28 @@ import { ServerAuditLogController } from './controllers/ServerAuditLogController
                     PROJECT_LEVEL !== 'production'
                         ? { target: 'pino-pretty' }
                         : {
-                              targets: [
-                                  {
-                                      target: 'pino-pretty',
-                                      options: { colorize: false },
-                                      level: LOG_LEVEL,
-                                  },
-                                  {
-                                      target: 'pino-loki',
-                                      options: {
-                                          host: LOKI_HOST,
-                                          labels: {
-                                              app: 'serval-backend',
-                                              env: 'production',
-                                          },
-                                          batching: true,
-                                          interval: 5,
-                                          silenceErrors: true,
-                                      },
-                                      level: 'info',
-                                  },
-                              ],
-                          },
+                            targets: [
+                                {
+                                    target: 'pino-pretty',
+                                    options: { colorize: false },
+                                    level: LOG_LEVEL,
+                                },
+                                {
+                                    target: 'pino-loki',
+                                    options: {
+                                        host: LOKI_HOST,
+                                        labels: {
+                                            app: 'serval-backend',
+                                            env: 'production',
+                                        },
+                                        batching: true,
+                                        interval: 5,
+                                        silenceErrors: true,
+                                    },
+                                    level: 'info',
+                                },
+                            ],
+                        },
             },
         }),
 
@@ -123,6 +127,10 @@ import { ServerAuditLogController } from './controllers/ServerAuditLogController
         ExportController,
         KlipyController,
         ServerAuditLogController,
+        BotController,
+        WebhookController,
+        InteractionController,
+        ApplicationController,
     ],
     providers: [
         {
@@ -132,5 +140,5 @@ import { ServerAuditLogController } from './controllers/ServerAuditLogController
     ],
 })
 export class AppModule {
-    configure(_consumer: MiddlewareConsumer) {}
+    public configure(_consumer: MiddlewareConsumer) { }
 }

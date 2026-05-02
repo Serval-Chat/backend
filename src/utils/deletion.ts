@@ -5,7 +5,7 @@ import logger from '@/utils/logger';
 // Generate an anonymized username for deleted users
 // Uses userId for consistency if available, otherwise generates random suffix
 export function generateAnonymizedUsername(userId?: string): string {
-    if (userId) {
+    if (userId !== undefined) {
         return `deleted_user_${userId}`;
     }
     const suffix = crypto.randomInt(10000, 99999);
@@ -20,7 +20,7 @@ export const DELETED_AVATAR_PATH = '/assets/deleted-user-avatar.png';
 export async function deleteAvatarFile(
     avatarPath: string | undefined,
 ): Promise<void> {
-    if (!avatarPath || avatarPath === DELETED_AVATAR_PATH) {
+    if (avatarPath === undefined || avatarPath === '' || avatarPath === DELETED_AVATAR_PATH) {
         return;
     }
 

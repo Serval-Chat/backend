@@ -47,15 +47,13 @@ interface UserSettings {
     };
 }
 
-// Controller for managing user-specific application settings
-// Enforces JWT authentication
 @injectable()
 @Controller('api/v1/settings')
 @ApiTags('Settings')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class SettingsController {
-    constructor(
+    public constructor(
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
         @Inject(TYPES.Logger)
@@ -64,8 +62,6 @@ export class SettingsController {
         private wsServer: WsServer,
     ) {}
 
-    // Retrieves the current user's settings
-    // Returns default values if no custom settings are configured
     @Get()
     @ApiOperation({ summary: 'Get user settings' })
     @ApiResponse({ status: 200, description: 'Settings retrieved' })
@@ -80,11 +76,10 @@ export class SettingsController {
         const userOid = new Types.ObjectId(userId);
         const user = await this.userRepo.findById(userOid);
 
-        if (!user) {
+        if (user === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        // @ts-ignore
         const settings: UserSettings = user.settings || {
             muteNotifications: false,
             useDiscordStyleMessages: false,
@@ -102,8 +97,6 @@ export class SettingsController {
         return settings;
     }
 
-    // Updates the current user's settings
-    // Performs a partial update of the settings object
     @Post()
     @ApiOperation({ summary: 'Update user settings' })
     @ApiResponse({ status: 201, description: 'Settings updated' })
@@ -119,7 +112,7 @@ export class SettingsController {
         const userOid = new Types.ObjectId(userId);
 
         const user = await this.userRepo.findById(userOid);
-        if (!user) {
+        if (user === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 

@@ -27,12 +27,12 @@ const transformCategory = (
 @injectable()
 @Injectable()
 export class MongooseCategoryRepository implements ICategoryRepository {
-    async findById(id: Types.ObjectId): Promise<ICategory | null> {
+    public async findById(id: Types.ObjectId): Promise<ICategory | null> {
         const result = await Category.findById(id).lean();
         return transformCategory(result);
     }
 
-    async findByIdAndServer(
+    public async findByIdAndServer(
         id: Types.ObjectId,
         serverId: Types.ObjectId,
     ): Promise<ICategory | null> {
@@ -40,14 +40,14 @@ export class MongooseCategoryRepository implements ICategoryRepository {
         return transformCategory(result);
     }
 
-    async findByServerId(serverId: Types.ObjectId): Promise<ICategory[]> {
+    public async findByServerId(serverId: Types.ObjectId): Promise<ICategory[]> {
         const results = await Category.find({ serverId })
             .sort({ position: 1 })
             .lean();
         return results.map(transformCategory).filter(Boolean) as ICategory[];
     }
 
-    async findMaxPositionByServerId(
+    public async findMaxPositionByServerId(
         serverId: Types.ObjectId,
     ): Promise<ICategory | null> {
         const result = await Category.findOne({ serverId })
@@ -56,15 +56,17 @@ export class MongooseCategoryRepository implements ICategoryRepository {
         return transformCategory(result);
     }
 
-    async create(data: CreateCategoryDTO): Promise<ICategory> {
+    public async create(data: CreateCategoryDTO): Promise<ICategory> {
         const category = new Category(data);
         const result = await category.save();
-        return transformCategory(
+        const transformed = transformCategory(
             result.toObject() as unknown as Record<string, unknown>,
-        )!;
+        );
+        if (transformed === null) throw new Error('Failed to create category');
+        return transformed;
     }
 
-    async update(
+    public async update(
         id: Types.ObjectId,
         data: Partial<ICategory>,
     ): Promise<ICategory | null> {
@@ -74,12 +76,12 @@ export class MongooseCategoryRepository implements ICategoryRepository {
         return transformCategory(result);
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await Category.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async updatePosition(
+    public async updatePosition(
         id: Types.ObjectId,
         position: number,
     ): Promise<ICategory | null> {
@@ -91,12 +93,12 @@ export class MongooseCategoryRepository implements ICategoryRepository {
         return transformCategory(result);
     }
 
-    async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
         const result = await Category.deleteMany({ serverId });
-        return result.deletedCount || 0;
+        return result.deletedCount;
     }
 
-    async updatePositions(
+    public async updatePositions(
         updates: { id: Types.ObjectId; position: number }[],
     ): Promise<boolean> {
         try {

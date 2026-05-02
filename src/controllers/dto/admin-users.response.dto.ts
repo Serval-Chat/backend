@@ -6,73 +6,73 @@ export class AdminUserListItemDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
     @ApiProperty()
-    username!: string;
+    public username!: string;
     @ApiProperty()
-    login!: string;
+    public login!: string;
     @ApiProperty({ nullable: true })
-    displayName!: string | null;
+    public displayName!: string | null;
     @ApiProperty({ nullable: true })
-    profilePicture!: string | null;
+    public profilePicture!: string | null;
     @ApiProperty()
-    permissions!: string | AdminPermissions;
+    public permissions!: string | AdminPermissions;
     @ApiProperty()
-    createdAt!: Date;
+    public createdAt!: Date;
     @ApiPropertyOptional()
-    banExpiry?: Date;
+    public banExpiry?: Date;
     @ApiProperty()
-    warningCount!: number;
+    public warningCount!: number;
     @ApiProperty({ type: [String] })
-    badges!: string[];
+    public badges!: string[];
 }
 
 export class AdminUserDetailsDTO extends AdminUserListItemDTO {
     @ApiProperty()
-    bio!: string;
+    public bio!: string;
     @ApiProperty()
-    pronouns!: string;
+    public pronouns!: string;
     @ApiProperty({ nullable: true })
-    banner!: string | null;
+    public banner!: string | null;
     @ApiPropertyOptional()
-    deletedAt?: Date;
+    public deletedAt?: Date;
     @ApiPropertyOptional()
-    deletedReason?: string;
+    public deletedReason?: string;
 }
 
 export class AdminUserServerInfoDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
     @ApiProperty()
-    name!: string;
+    public name!: string;
     @ApiProperty({ nullable: true })
-    icon!: string | null;
+    public icon!: string | null;
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    ownerId!: string;
+    public ownerId!: string;
     @ApiPropertyOptional()
-    joinedAt?: Date;
+    public joinedAt?: Date;
     @ApiProperty()
-    isOwner!: boolean;
+    public isOwner!: boolean;
     @ApiProperty()
-    memberCount!: number;
+    public memberCount!: number;
 }
 
 export class AdminExtendedUserDetailsDTO extends AdminUserDetailsDTO {
     @ApiProperty({ type: [AdminUserServerInfoDTO] })
-    servers!: AdminUserServerInfoDTO[];
+    public servers!: AdminUserServerInfoDTO[];
 }
 
 export class AdminUserShortDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
     @ApiProperty()
-    username!: string;
+    public username!: string;
     @ApiProperty({ nullable: true })
-    displayName!: string | null;
+    public displayName!: string | null;
 }

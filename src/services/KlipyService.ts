@@ -20,7 +20,7 @@ import type {
 export class KlipyService {
     private readonly baseUrl = 'https://api.klipy.com/api/v1';
 
-    constructor(
+    public constructor(
         @InjectModel('KlipyCache') private klipyCacheModel: Model<IKlipyCache>,
         @InjectModel('FavoriteGif')
         private favoriteGifModel: Model<IFavoriteGif>,
@@ -62,9 +62,16 @@ export class KlipyService {
             const response = await axios.get(
                 this.getApiUrl(`/gifs/${klipyId}`),
             );
-            const data = response.data.data;
+            const data = response.data.data as {
+                file?: {
+                    hd?: { gif?: { url: string; width: number; height: number } };
+                    md?: { gif?: { url: string; width: number; height: number } };
+                    sm?: { gif?: { url: string; width: number; height: number } };
+                    xs?: { gif?: { url: string; width: number; height: number } };
+                };
+            };
 
-            if (!data || !data.file) {
+            if (data.file === undefined) {
                 this.logger.error(
                     `Invalid Klipy response for ${klipyId}: ${JSON.stringify(response.data)}`,
                 );
@@ -74,14 +81,15 @@ export class KlipyService {
             const metadata = {
                 klipyId,
                 url:
-                    data.file.hd?.gif?.url ||
-                    data.file.md?.gif?.url ||
-                    data.file.sm?.gif?.url,
-                previewUrl: data.file.sm?.gif?.url || data.file.xs?.gif?.url,
+                    (data.file.hd?.gif?.url as string | undefined) ??
+                    (data.file.md?.gif?.url as string | undefined) ??
+                    (data.file.sm?.gif?.url as string | undefined) ??
+                    '',
+                previewUrl: (data.file.sm?.gif?.url as string | undefined) ?? (data.file.xs?.gif?.url as string | undefined) ?? '',
                 width:
-                    data.file.hd?.gif?.width || data.file.md?.gif?.width || 0,
+                    (data.file.hd?.gif?.width as number | undefined) ?? (data.file.md?.gif?.width as number | undefined) ?? 0,
                 height:
-                    data.file.hd?.gif?.height || data.file.md?.gif?.height || 0,
+                    (data.file.hd?.gif?.height as number | undefined) ?? (data.file.md?.gif?.height as number | undefined) ?? 0,
                 expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
             };
 

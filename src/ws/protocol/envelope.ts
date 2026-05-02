@@ -36,6 +36,7 @@ import type {
     IMessageServerEditedEvent,
     IDeleteMessageServerEvent,
     IMessageServerDeletedEvent,
+    IMessagesServerBulkDeletedEvent,
     IMessageServerPinUpdatedEvent,
     IMarkChannelReadEvent,
     IChannelUnreadUpdatedEvent,
@@ -48,6 +49,7 @@ import type {
     IUserLeftVoiceEvent,
     IUpdateVoiceStateEvent,
     IVoiceStateUpdatedEvent,
+    IInteractionCreateServerEvent,
 } from './events/messages';
 import type {
     IPresenceSyncEvent,
@@ -95,6 +97,8 @@ import type {
     IEmojiUpdatedEvent,
     IAuditLogEntryCreatedEvent,
     IWarningEvent,
+    IServerInviteCreatedEvent,
+    IServerInviteDeletedEvent,
 } from './events/server_notifications';
 import type {
     IIncomingRequestAddedEvent,
@@ -150,6 +154,7 @@ export type AnyResponseWsEvent =
     | IMessageServerEvent
     | IMessageServerEditedEvent
     | IMessageServerDeletedEvent
+    | IMessagesServerBulkDeletedEvent
     | IMessageServerPinUpdatedEvent
     | IChannelUnreadUpdatedEvent
     | IServerUnreadUpdatedEvent
@@ -157,6 +162,7 @@ export type AnyResponseWsEvent =
     | IUserJoinedVoiceEvent
     | IUserLeftVoiceEvent
     | IVoiceStateUpdatedEvent
+    | IInteractionCreateServerEvent
     // Server Notifications
     | IServerUpdatedEvent
     | IServerDeletedEvent
@@ -185,6 +191,8 @@ export type AnyResponseWsEvent =
     | IEmojiUpdatedEvent
     | IAuditLogEntryCreatedEvent
     | IWarningEvent
+    | IServerInviteCreatedEvent
+    | IServerInviteDeletedEvent
     // Friendship
     | IIncomingRequestAddedEvent
     | IIncomingRequestRemovedEvent

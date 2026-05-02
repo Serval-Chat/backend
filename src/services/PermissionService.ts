@@ -15,7 +15,7 @@ import type { IRole, IRolePermissions } from '@/di/interfaces/IRoleRepository';
 @injectable()
 @Injectable()
 export class PermissionService {
-    constructor(
+    public constructor(
         @inject(TYPES.ServerRepository)
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
@@ -49,7 +49,7 @@ export class PermissionService {
     // - Checks all roles assigned to the user
     // - Returns the highest position value found
     // - Returns -1 if user is not a member
-    async getHighestRolePosition(
+    public async getHighestRolePosition(
         serverId: string,
         userId: string,
     ): Promise<number> {
@@ -72,7 +72,7 @@ export class PermissionService {
         if (!member) return -1;
 
         const roles = await Promise.all(
-            (member.roles || []).map((roleId) =>
+            member.roles.map((roleId) =>
                 this.roleRepo.findById(
                     new mongoose.Types.ObjectId(roleId.toString()),
                 ),
@@ -95,11 +95,7 @@ export class PermissionService {
     // Returns true if permission is granted, false otherwise
     //
     // Hierarchy (highest to lowest priority):
-    // 1. Server Owner (Always has all permissions)
-    // 2. Administrator Role (Always has all permissions)
-    // 3. Role Hierarchy (Higher position roles override lower ones)
-    // 4. @everyone Role
-    async hasPermission(
+    public async hasPermission(
         serverId: string,
         userId: string,
         permission: keyof IRolePermissions,
@@ -124,7 +120,7 @@ export class PermissionService {
 
         // Get all roles with their details
         const roles = await Promise.all(
-            (member.roles || []).map((roleId) =>
+            member.roles.map((roleId) =>
                 this.roleRepo.findById(
                     new mongoose.Types.ObjectId(roleId.toString()),
                 ),
@@ -172,12 +168,7 @@ export class PermissionService {
     // Returns true if permission is granted, false otherwise
     //
     // Hierarchy (highest to lowest priority):
-    // 1. Server Owner
-    // 2. Administrator Role
-    // 3. Channel Overrides (Specific to channel)
-    // 4. Category Overrides (Inherited from category)
-    // 5. Role Permissions (Base server permissions)
-    async hasChannelPermission(
+    public async hasChannelPermission(
         serverId: string,
         userId: string,
         channelId: string,
@@ -208,7 +199,7 @@ export class PermissionService {
 
         // Get all roles with their details
         const roles = await Promise.all(
-            (member.roles || []).map((roleId) =>
+            member.roles.map((roleId) =>
                 this.roleRepo.findById(
                     new mongoose.Types.ObjectId(roleId.toString()),
                 ),
@@ -219,7 +210,6 @@ export class PermissionService {
         // Sort by position (highest first) - higher position = higher priority
         validRoles.sort((a, b) => b.position - a.position);
 
-        // Step 1: Check role permissions (base permissions)
         let rolePermissionValue: boolean | undefined;
         for (const role of validRoles) {
             // Administrator has all permissions
@@ -259,9 +249,6 @@ export class PermissionService {
             }
         }
 
-        // Step 2: Check category overrides (if any)
-        if (!channel) return rolePermissionValue || false;
-
         let categoryPermissionValue: boolean | undefined;
         if (channel.categoryId) {
             const category = await this.categoryRepo.findById(
@@ -273,7 +260,7 @@ export class PermissionService {
                     ? [...validRoles, everyoneRole]
                     : validRoles;
                 for (const role of rolesForOverride) {
-                    const roleId = role._id?.toString();
+                    const roleId = role._id.toString();
                     if (roleId) {
                         let rolePerms: Partial<IRolePermissions> | undefined;
                         if (category.permissions instanceof Map) {
@@ -308,7 +295,6 @@ export class PermissionService {
             }
         }
 
-        // Step 3: Check channel overrides (if any)
         let channelPermissionValue: boolean | undefined;
         if (channel.permissions) {
             // Check channel permissions for user's roles
@@ -316,7 +302,7 @@ export class PermissionService {
                 ? [...validRoles, everyoneRole]
                 : validRoles;
             for (const role of rolesForOverride) {
-                const roleId = role._id?.toString();
+                const roleId = role._id.toString();
                 if (roleId) {
                     let rolePerms: Partial<IRolePermissions> | undefined;
                     if (channel.permissions instanceof Map) {

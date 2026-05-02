@@ -6,73 +6,73 @@ export class ChannelResponseDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    _id?: string;
+    public _id?: string;
 
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    serverId!: string;
+    public serverId!: string;
 
     @ApiProperty()
-    name!: string;
+    public name!: string;
 
     @ApiProperty({ enum: ['text', 'voice', 'link'] })
-    type!: 'text' | 'voice' | 'link';
+    public type!: 'text' | 'voice' | 'link';
 
     @ApiProperty({ required: false })
-    description?: string;
+    public description?: string;
 
     @ApiProperty()
-    position!: number;
+    public position!: number;
 
     @ApiProperty({ required: false, nullable: true, type: String })
     @IsOptional()
     @IsMongoId()
     @IsString()
-    categoryId?: string | null;
+    public categoryId?: string | null;
 
     @ApiProperty({ required: false })
-    lastMessageAt?: Date;
+    public lastMessageAt?: Date;
 
     @ApiProperty({ required: false })
-    permissions?: Record<string, Record<string, boolean>>;
+    public permissions?: Record<string, Record<string, boolean>>;
 
     @ApiProperty({ required: false })
-    createdAt?: Date;
+    public createdAt?: Date;
 
     @ApiProperty({ required: false })
-    updatedAt?: Date;
+    public updatedAt?: Date;
 
     @ApiProperty({ required: false })
-    slowMode?: number;
+    public slowMode?: number;
 
     @ApiProperty({ required: false, nullable: true, type: String })
-    slowModeNextMessageAllowedAt?: string | null;
+    public slowModeNextMessageAllowedAt?: string | null;
 }
 
 export class ChannelWithReadResponseDTO extends ChannelResponseDTO {
     @ApiProperty({ required: false, nullable: true, type: String })
-    // @ts-ignore - Override generic type to string | null for JSON response
-    declare lastMessageAt?: string | null;
+    // @ts-expect-error - Override generic type to string | null for JSON response
+    public declare lastMessageAt?: string | null;
 
     @ApiProperty({ required: false, nullable: true, type: String })
-    lastReadAt!: string | null;
+    public lastReadAt!: string | null;
 }
 
 export class ChannelStatsResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    channelId!: string;
+    public channelId!: string;
 
     @ApiProperty()
-    channelName!: string;
+    public channelName!: string;
 
     @ApiProperty()
-    createdAt!: string;
+    public createdAt!: string;
 
     @ApiProperty()
-    messageCount!: number;
+    public messageCount!: number;
 }
 
 export class CategoryResponseDTO {
@@ -80,25 +80,25 @@ export class CategoryResponseDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    _id?: string;
+    public _id?: string;
 
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    serverId!: string;
+    public serverId!: string;
 
     @ApiProperty()
-    name!: string;
+    public name!: string;
 
     @ApiProperty()
-    position!: number;
+    public position!: number;
 
     @ApiProperty({ required: false })
-    permissions?: Record<string, Record<string, boolean>>;
+    public permissions?: Record<string, Record<string, boolean>>;
 
     @ApiProperty({ required: false })
-    createdAt?: Date;
+    public createdAt?: Date;
 
     @ApiProperty({ required: false })
-    updatedAt?: Date;
+    public updatedAt?: Date;
 }

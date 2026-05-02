@@ -42,11 +42,16 @@ interface RequestWithUser extends Request {
     user: JWTPayload;
 }
 
+import { NoBot } from '@/modules/auth/bot.decorator';
+
 @ApiTags('Blocks')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@NoBot()
 @injectable()
 @Controller('api/v1/blocks')
 export class BlockController {
-    constructor(
+    public constructor(
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
         @Inject(TYPES.UserRepository)
@@ -126,7 +131,7 @@ export class BlockController {
             body,
         );
 
-        if (!profile) {
+        if (profile === null) {
             throw new ApiError(404, 'Block profile not found');
         }
 
@@ -205,7 +210,7 @@ export class BlockController {
         }
 
         const profile = await this.blockRepo.findProfileById(profileOid);
-        if (!profile || profile.ownerId.toString() !== userId) {
+        if (profile === null || profile.ownerId.toString() !== userId) {
             throw new ApiError(400, 'Invalid block profile');
         }
 
@@ -224,7 +229,7 @@ export class BlockController {
 
         return {
             targetUserId,
-            targetUsername: targetUser?.username || 'Unknown User',
+            targetUsername: targetUser?.username ?? 'Unknown User',
             profileId: body.profileId,
             flags: profile.flags,
         };

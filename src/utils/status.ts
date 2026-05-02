@@ -24,14 +24,14 @@ type CustomStatusValue = ActiveCustomStatus | null;
 
 // Check if a custom status has expired
 const isExpired = (expiresAt: Date | null | undefined): boolean => {
-    if (!expiresAt) return false;
+    if (expiresAt === null || expiresAt === undefined) return false;
     return expiresAt.getTime() <= Date.now();
 };
 
 // Clear expired custom status from the database
 const clearExpiredStatus = async (user: MutableUser): Promise<void> => {
     // Only attempt to save if the user has Mongoose methods
-    if (!user.save || !user.markModified) {
+    if (user.save === undefined || user.markModified === undefined) {
         return;
     }
 
@@ -48,7 +48,7 @@ const clearExpiredStatus = async (user: MutableUser): Promise<void> => {
 // Automatically clears expired statuses from the database
 export const getActiveCustomStatus = (user: MutableUser): CustomStatusValue => {
     const status = user.customStatus as ActiveCustomStatus | null | undefined;
-    if (!status || (!status.text && !status.emoji)) {
+    if (status === null || status === undefined || (status.text === '' && (status.emoji === undefined || status.emoji === ''))) {
         return null;
     }
 
@@ -60,10 +60,10 @@ export const getActiveCustomStatus = (user: MutableUser): CustomStatusValue => {
     const normalized: ActiveCustomStatus = {
         text: status.text,
         expiresAt: status.expiresAt ?? null,
-        updatedAt: status.updatedAt ?? new Date(),
+        updatedAt: status.updatedAt,
     };
 
-    if (status.emoji) {
+    if (status.emoji !== undefined && status.emoji !== '') {
         normalized.emoji = status.emoji;
     }
 
@@ -73,12 +73,12 @@ export const getActiveCustomStatus = (user: MutableUser): CustomStatusValue => {
 export const serializeCustomStatus = (
     status: CustomStatusValue,
 ): SerializedCustomStatus | null => {
-    if (!status) return null;
+    if (status === null) return null;
 
     return {
         text: status.text,
         emoji: status.emoji ?? null,
-        expiresAt: status.expiresAt ? status.expiresAt.toISOString() : null,
+        expiresAt: status.expiresAt !== null ? status.expiresAt.toISOString() : null,
         updatedAt: status.updatedAt.toISOString(),
     };
 };
@@ -94,14 +94,14 @@ export const getSerializedCustomStatus = (
 export const resolveSerializedCustomStatus = (
     rawStatus: Record<string, unknown> | null | undefined,
 ): SerializedCustomStatus | null => {
-    if (!rawStatus) return null;
+    if (rawStatus === null || rawStatus === undefined) return null;
 
     const hasContent = Boolean(
         (typeof rawStatus.text === 'string' &&
             rawStatus.text.trim().length > 0) ||
-            rawStatus.emoji,
+            (rawStatus.emoji !== undefined && rawStatus.emoji !== '')
     );
-    if (!hasContent) return null;
+    if (hasContent === false) return null;
 
     const expiresAt =
         typeof rawStatus.expiresAt === 'string' ||
@@ -119,9 +119,9 @@ export const resolveSerializedCustomStatus = (
             : new Date();
 
     return {
-        text: (rawStatus.text as string) ?? '',
-        emoji: (rawStatus.emoji as string) ?? null,
-        expiresAt: expiresAt ? expiresAt.toISOString() : null,
+        text: rawStatus.text as string,
+        emoji: (rawStatus.emoji as string | null) ?? null,
+        expiresAt: expiresAt !== null ? expiresAt.toISOString() : null,
         updatedAt: updatedAt.toISOString(),
     };
 };

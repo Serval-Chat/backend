@@ -2,25 +2,25 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class FileUploadResponseDTO {
     @ApiProperty()
-    url!: string;
+    public url!: string;
 }
 
 export class FileMetadataResponseDTO {
     @ApiProperty()
-    filename!: string;
+    public filename!: string;
 
     @ApiProperty()
-    size!: number;
+    public size!: number;
 
     @ApiProperty()
-    isBinary!: boolean;
+    public isBinary!: boolean;
 
     @ApiProperty()
-    mimeType!: string;
+    public mimeType!: string;
 
     @ApiProperty()
-    createdAt!: Date;
+    public createdAt!: Date;
 
     @ApiProperty()
-    modifiedAt!: Date;
+    public modifiedAt!: Date;
 }

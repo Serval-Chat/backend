@@ -1,4 +1,6 @@
 import type { Types } from 'mongoose';
+import type { PingMentionMessageDTO, PingExportMessageDTO } from '@/controllers/dto/types.dto';
+
 
 // Ping interface (domain model)
 //
@@ -12,7 +14,7 @@ export interface IPing {
     serverId?: Types.ObjectId;
     channelId?: Types.ObjectId;
     messageId: Types.ObjectId;
-    message: Record<string, unknown>;
+    message: PingMentionMessageDTO | PingExportMessageDTO;
     timestamp: Date;
     createdAt?: Date;
 }
@@ -36,7 +38,7 @@ export interface IPingRepository {
         serverId?: Types.ObjectId;
         channelId?: Types.ObjectId;
         messageId: Types.ObjectId;
-        message: Record<string, unknown>;
+        message: PingMentionMessageDTO | PingExportMessageDTO;
         timestamp?: Date;
     }): Promise<IPing>;
 

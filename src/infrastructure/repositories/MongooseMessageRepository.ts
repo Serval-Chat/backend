@@ -20,7 +20,7 @@ type PopulatedMessageDoc = Omit<
 @Injectable()
 export class MongooseMessageRepository implements IMessageRepository {
     private messageModel = Message;
-    constructor() {}
+    public constructor() {}
 
     private transformMessage(msg: PopulatedMessageDoc): IMessage {
         const transformed = { ...msg } as unknown as IMessage;
@@ -48,8 +48,8 @@ export class MongooseMessageRepository implements IMessageRepository {
         const transformed = messages.map((msg) => this.transformMessage(msg));
 
         const replyToIds = transformed
-            .filter((m) => !m.referenced_message && m.replyToId)
-            .map((m) => m.replyToId!);
+            .filter((m) => m.referenced_message === undefined && m.replyToId !== undefined)
+            .map((m) => m.replyToId as Types.ObjectId);
 
         // Skip legacy replyToId lookup if all messages are modern (populated via repliedToMessageId)
         if (replyToIds.length === 0) return transformed;
@@ -61,7 +61,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         const replyMap = new Map(replyDocs.map((d) => [d._id.toString(), d]));
 
         return transformed.map((m) => {
-            if (!m.referenced_message && m.replyToId) {
+            if (m.referenced_message === undefined && m.replyToId !== undefined) {
                 const ref = replyMap.get(m.replyToId.toString());
                 if (ref) {
                     return {
@@ -74,7 +74,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         });
     }
 
-    async findById(id: Types.ObjectId): Promise<IMessage | null> {
+    public async findById(id: Types.ObjectId): Promise<IMessage | null> {
         const msg = (await this.messageModel
             .findById(id)
             .populate({
@@ -86,7 +86,7 @@ export class MongooseMessageRepository implements IMessageRepository {
     }
 
     // Find messages between two users with pagination
-    async findByConversation(
+    public async findByConversation(
         user1Id: Types.ObjectId,
         user2Id: Types.ObjectId,
         limit = 50,
@@ -101,7 +101,7 @@ export class MongooseMessageRepository implements IMessageRepository {
             ],
         };
 
-        if (around) {
+        if (around !== undefined && around !== '') {
             // Fetch context around a specific message
             const targetMessage = (await this.messageModel
                 .findById(around)
@@ -141,15 +141,15 @@ export class MongooseMessageRepository implements IMessageRepository {
             // Combine and sort chronologically
             const combined = [...beforeMessages, ...afterMessages].sort(
                 (a, b) =>
-                    (a.createdAt?.getTime() || 0) -
-                    (b.createdAt?.getTime() || 0),
+                    (a.createdAt?.getTime() ?? 0) -
+                    (b.createdAt?.getTime() ?? 0),
             );
             return await this.transformMessages(combined);
         }
 
         const query = { ...baseQuery };
 
-        if (before) {
+        if (before !== undefined && before !== '') {
             const isValidObjectId = /^[a-f\d]{24}$/i.test(before);
 
             if (isValidObjectId) {
@@ -157,7 +157,7 @@ export class MongooseMessageRepository implements IMessageRepository {
             } else {
                 query.createdAt = { $lt: new Date(before) };
             }
-        } else if (after) {
+        } else if (after !== undefined && after !== '') {
             const isValidObjectId = /^[a-f\d]{24}$/i.test(after);
 
             if (isValidObjectId) {
@@ -169,7 +169,7 @@ export class MongooseMessageRepository implements IMessageRepository {
 
         const messages = (await this.messageModel
             .find(query)
-            .sort({ createdAt: after ? 1 : -1 })
+            .sort({ createdAt: (after !== undefined && after !== '') ? 1 : -1 })
             .limit(limit)
             .populate({
                 path: 'repliedToMessageId',
@@ -177,14 +177,14 @@ export class MongooseMessageRepository implements IMessageRepository {
             })
             .lean()) as unknown as PopulatedMessageDoc[];
 
-        if (!after) {
+        if (after === undefined || after === '') {
             messages.reverse();
         }
 
         return await this.transformMessages(messages);
     }
 
-    async create(
+    public async create(
         data: {
             senderId: Types.ObjectId;
             receiverId: Types.ObjectId;
@@ -211,7 +211,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         return this.transformMessage(msgObj);
     }
 
-    async update(id: Types.ObjectId, text: string): Promise<IMessage | null> {
+    public async update(id: Types.ObjectId, text: string): Promise<IMessage | null> {
         const msg = (await this.messageModel
             .findByIdAndUpdate(
                 id,
@@ -230,12 +230,12 @@ export class MongooseMessageRepository implements IMessageRepository {
         return msg ? this.transformMessage(msg) : null;
     }
 
-    async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await this.messageModel.deleteOne({ _id: id });
-        return result.deletedCount ? result.deletedCount > 0 : false;
+        return result.deletedCount > 0;
     }
 
-    async updateManyBySenderId(
+    public async updateManyBySenderId(
         senderId: Types.ObjectId,
         update: {
             senderDeleted?: boolean;
@@ -249,7 +249,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         return { modifiedCount: result.modifiedCount };
     }
 
-    async updateManyByReceiverId(
+    public async updateManyByReceiverId(
         receiverId: Types.ObjectId,
         update: { receiverDeleted?: boolean; anonymizedReceiver?: string },
     ): Promise<{ modifiedCount: number }> {
@@ -260,17 +260,17 @@ export class MongooseMessageRepository implements IMessageRepository {
         return { modifiedCount: result.modifiedCount };
     }
 
-    async count(): Promise<number> {
+    public async count(): Promise<number> {
         return await this.messageModel.countDocuments();
     }
 
-    async countCreatedAfter(date: Date): Promise<number> {
+    public async countCreatedAfter(date: Date): Promise<number> {
         return await this.messageModel.countDocuments({
             createdAt: { $gt: date },
         });
     }
 
-    async countByHour(since: Date, hours: number): Promise<number[]> {
+    public async countByHour(since: Date, hours: number): Promise<number[]> {
         const msPerHour = 1000 * 60 * 60;
         const buckets = await this.messageModel.aggregate<{
             _id: number;
@@ -299,7 +299,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         return result;
     }
 
-    async countByDay(since: Date, days: number): Promise<number[]> {
+    public async countByDay(since: Date, days: number): Promise<number[]> {
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await this.messageModel.aggregate<{
             _id: number;
@@ -328,12 +328,12 @@ export class MongooseMessageRepository implements IMessageRepository {
         return result;
     }
 
-    async countAllByDay(): Promise<number[]> {
+    public async countAllByDay(): Promise<number[]> {
         const oldestMessage = await this.messageModel
             .findOne()
             .sort({ createdAt: 1 })
             .lean();
-        if (!oldestMessage || !oldestMessage.createdAt) return [];
+        if (!oldestMessage) return [];
 
         const now = new Date();
         const startOfOldestDay = new Date(oldestMessage.createdAt);

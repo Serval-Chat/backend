@@ -5,24 +5,24 @@ export class EmojiResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
 
     @ApiProperty()
-    name!: string;
+    public name!: string;
 
     @ApiProperty()
-    imageUrl!: string;
-
-    @ApiProperty()
-    @IsMongoId()
-    @IsString()
-    serverId!: string;
+    public imageUrl!: string;
 
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    createdBy!: string;
+    public serverId!: string;
+
+    @ApiProperty()
+    @IsMongoId()
+    @IsString()
+    public createdBy!: string;
 
     @ApiPropertyOptional()
-    createdAt?: Date;
+    public createdAt?: Date;
 }

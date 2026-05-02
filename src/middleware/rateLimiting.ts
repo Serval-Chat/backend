@@ -39,7 +39,7 @@ export const loginLimiter = rateLimit({
             typeof req.body?.login === 'string'
                 ? req.body.login.toLowerCase()
                 : '';
-        const ip = req.ip || req.socket.remoteAddress || 'ip';
+        const ip = req.ip ?? req.socket.remoteAddress ?? 'ip';
         return `${ip}:${login}`;
     },
     standardHeaders: 'draft-7',
@@ -61,7 +61,7 @@ export const registrationLimiter = rateLimit({
                 : '';
         const inviteCode =
             typeof req.body?.inviteCode === 'string' ? req.body.inviteCode : '';
-        const ip = req.ip || req.socket.remoteAddress || 'ip';
+        const ip = req.ip ?? req.socket.remoteAddress ?? 'ip';
         return `${ip}:${login}:${inviteCode}`;
     },
     standardHeaders: 'draft-7',
@@ -76,7 +76,7 @@ export const sensitiveOperationLimiter = rateLimit({
     max: 3,
     keyGenerator: (req: Request) => {
         const userId = (req as Request & { user?: JWTPayload }).user?.id;
-        return userId || req.ip || 'unknown';
+        return userId ?? req.ip ?? 'unknown';
     },
     standardHeaders: 'draft-7',
     legacyHeaders: false,

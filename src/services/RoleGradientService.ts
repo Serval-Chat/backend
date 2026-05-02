@@ -16,17 +16,21 @@ export class RoleGradientService {
     // - if role has start/end colors, calculates interpolated color
     // - uses HSL interpolation for smoother transitions
     // - falls back to solid role color if no gradient defined
-    getUserRoleColor(
+    public getUserRoleColor(
         role: IRole,
         userId: string,
         allMemberUserIds: string[],
     ): string {
         // If role has gradient colors, use gradient interpolation
-        if (role.startColor && role.endColor) {
+        if (
+            (role.colors !== undefined && role.colors.length >= 2) ||
+            (role.startColor !== undefined && role.startColor !== '' && role.endColor !== undefined && role.endColor !== '')
+        ) {
             const roleColors: RoleGradientColors = {
-                startColor: role.startColor,
-                endColor: role.endColor,
-                ...(role.gradientRepeat && {
+                startColor: role.startColor ?? undefined,
+                endColor: role.endColor ?? undefined,
+                colors: role.colors,
+                ...((role.gradientRepeat !== undefined && role.gradientRepeat !== 0) && {
                     gradientRepeat: role.gradientRepeat,
                 }),
             };
@@ -40,20 +44,24 @@ export class RoleGradientService {
         }
 
         // Fallback to solid color
-        return role.color || '#99aab5';
+        return role.color ?? '#99aab5';
     }
 
     // Generate color assignments for all members of a role
-    generateRoleColorAssignments(
+    public generateRoleColorAssignments(
         role: IRole,
         memberUserIds: string[],
     ): InterpolatedColorAssignment[] {
         // If role has gradient colors, generate gradient assignments
-        if (role.startColor && role.endColor) {
+        if (
+            (role.colors !== undefined && role.colors.length >= 2) ||
+            (role.startColor !== undefined && role.startColor !== '' && role.endColor !== undefined && role.endColor !== '')
+        ) {
             const roleColors: RoleGradientColors = {
-                startColor: role.startColor,
-                endColor: role.endColor,
-                ...(role.gradientRepeat && {
+                startColor: role.startColor ?? undefined,
+                endColor: role.endColor ?? undefined,
+                colors: role.colors,
+                ...((role.gradientRepeat !== undefined && role.gradientRepeat !== 0) && {
                     gradientRepeat: role.gradientRepeat,
                 }),
             };
@@ -66,29 +74,39 @@ export class RoleGradientService {
         // Fallback to solid color for all members
         return memberUserIds.map((userId) => ({
             userId,
-            color: role.color || '#99aab5',
+            color: role.color ?? '#99aab5',
         }));
     }
 
     // Check if a role uses gradient colors
-    isGradientRole(role: IRole): boolean {
-        return !!(role.startColor && role.endColor);
+    public isGradientRole(role: IRole): boolean {
+        return (
+            (role.colors !== undefined && role.colors.length >= 2) ||
+            (role.startColor !== undefined && role.startColor !== '' && role.endColor !== undefined && role.endColor !== '')
+        );
     }
 
     // Get the effective colors for a role (gradient or solid)
-    getRoleColors(role: IRole): {
+    public getRoleColors(role: IRole): {
         startColor: string;
         endColor: string;
+        colors?: string[];
         isGradient: boolean;
         gradientRepeat?: number;
     } {
         const isGradient = this.isGradientRole(role);
 
         return {
-            startColor: role.startColor || role.color || '#99aab5',
-            endColor: role.endColor || role.color || '#99aab5',
+            startColor:
+                role.colors?.[0] ?? role.startColor ?? role.color ?? '#99aab5',
+            endColor:
+                role.colors?.[role.colors.length - 1] ??
+                role.endColor ??
+                role.color ??
+                '#99aab5',
+            colors: role.colors,
             isGradient,
-            ...(role.gradientRepeat && { gradientRepeat: role.gradientRepeat }),
+            ...((role.gradientRepeat !== undefined && role.gradientRepeat !== 0) && { gradientRepeat: role.gradientRepeat }),
         };
     }
 }

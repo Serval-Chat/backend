@@ -8,6 +8,7 @@ import type {
 import type { WebSocket } from 'ws';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '@/config/env';
 import type { JWTPayload } from '@/utils/jwt';
@@ -27,8 +28,9 @@ const AuthenticateSchema = z.object({
 export class AuthController {
     @inject(TYPES.WsServer) private wsServer!: IWsServer;
 
-    constructor(
+    public constructor(
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
+        @inject(TYPES.ServerMemberRepository) private serverMemberRepo: IServerMemberRepository,
     ) {}
 
     /**
@@ -76,8 +78,8 @@ export class AuthController {
         }
 
         // Validate token version
-        const currentTokenVersion = user.tokenVersion || 0;
-        const payloadTokenVersion = decoded.tokenVersion || 0;
+        const currentTokenVersion = user.tokenVersion ?? 0;
+        const payloadTokenVersion = decoded.tokenVersion;
 
         if (currentTokenVersion !== payloadTokenVersion) {
             throw new Error('AUTHENTICATION_FAILED: Token expired');
@@ -96,20 +98,29 @@ export class AuthController {
         const wsUser: IWsUser = {
             userId: decoded.id,
             username: decoded.username,
+            isBot: decoded.isBot ?? false,
             socket: ws,
             authenticatedAt: new Date(),
         };
 
         await this.wsServer.authenticateConnection(ws, wsUser);
 
-        // Return user profile
+        if (wsUser.isBot === true) {
+            const memberships = await this.serverMemberRepo.findByUserId(
+                new mongoose.Types.ObjectId(decoded.id),
+            );
+            for (const membership of memberships) {
+                this.wsServer.subscribeToServer(ws, membership.serverId.toString());
+            }
+        }
+
         return {
             user: {
                 id: user._id.toString(),
-                username: user.username || '',
+                username: user.username ?? '',
                 displayName: user.displayName ?? null,
                 profilePicture: user.profilePicture ?? null,
-                status: user.status || undefined,
+                status: user.status ?? undefined,
             },
             instanceId: this.wsServer.instanceId,
         };

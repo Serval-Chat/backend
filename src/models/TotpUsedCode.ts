@@ -15,7 +15,7 @@ const schema = new Schema<ITotpUsedCode>({
         index: true,
     },
     code: { type: String, required: true },
-    expiresAt: { type: Date, required: true, index: true },
+    expiresAt: { type: Date, required: true },
     createdAt: { type: Date, default: Date.now },
 });
 

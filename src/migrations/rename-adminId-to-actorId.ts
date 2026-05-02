@@ -1,13 +1,6 @@
 import mongoose from 'mongoose';
 import { connectDB } from '@/config/db';
 
-/**
- * Migration: Rename adminId to actorId in AuditLog collection
- *
- * This migration renames the 'adminId' field to 'actorId' to maintain
- * consistency with the updated IAuditLog interface and AuditLog model.
- */
-
 export async function up() {
     const db = mongoose.connection.db;
     if (!db) {
@@ -47,7 +40,7 @@ export async function down() {
 if (require.main === module) {
     const action = process.argv[2];
 
-    (async () => {
+    void (async () => {
         try {
             await connectDB();
 

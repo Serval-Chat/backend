@@ -4,5 +4,5 @@ import { IsUsername } from '@/validation/schemas/common';
 export class SendFriendRequestDTO {
     @ApiProperty()
     @IsUsername()
-    username!: string;
+    public username!: string;
 }

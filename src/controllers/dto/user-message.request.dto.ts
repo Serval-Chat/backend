@@ -10,46 +10,46 @@ import { IsOptional } from 'class-validator';
 export class UserEditMessageRequestDTO {
     @ApiProperty()
     @IsMessageContent()
-    content!: string;
+    public content!: string;
 }
 
 export class GetMessagesQueryDTO {
     @ApiProperty()
     @IsUserId()
-    userId!: string;
+    public userId!: string;
 
     @ApiPropertyOptional()
     @IsLimit()
-    limit: number = 50;
+    public limit: number = 50;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsMessageId()
-    before?: string;
+    public before?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsMessageId()
-    around?: string;
+    public around?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsMessageId()
-    after?: string;
+    public after?: string;
 }
 
 export class MessageIdParamDTO {
     @ApiProperty()
     @IsMessageId()
-    id!: string;
+    public id!: string;
 }
 
 export class UserMessageParamsDTO {
     @ApiProperty()
     @IsUserId()
-    userId!: string;
+    public userId!: string;
 
     @ApiProperty()
     @IsMessageId()
-    messageId!: string;
+    public messageId!: string;
 }

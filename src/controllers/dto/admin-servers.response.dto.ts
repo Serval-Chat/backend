@@ -5,63 +5,63 @@ export class AdminServerOwnerDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
     @ApiProperty()
-    username!: string;
+    public username!: string;
     @ApiProperty({ nullable: true })
-    displayName!: string | null;
+    public displayName!: string | null;
     @ApiProperty({ nullable: true })
-    profilePicture!: string | null;
+    public profilePicture!: string | null;
 }
 
 export class AdminServerBannerDTO {
     @ApiProperty({ enum: ['color', 'image', 'gif', 'gradient'] })
-    type!: 'color' | 'image' | 'gif' | 'gradient';
+    public type!: 'color' | 'image' | 'gif' | 'gradient';
     @ApiProperty()
-    value!: string;
+    public value!: string;
 }
 
 export class AdminServerListItemDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    _id!: string;
+    public _id!: string;
     @ApiProperty()
-    name!: string;
+    public name!: string;
     @ApiProperty({ nullable: true })
-    icon!: string | null;
+    public icon!: string | null;
     @ApiPropertyOptional({ type: AdminServerBannerDTO })
-    banner?: AdminServerBannerDTO;
+    public banner?: AdminServerBannerDTO;
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    ownerId!: string;
+    public ownerId!: string;
     @ApiProperty()
-    memberCount!: number;
+    public memberCount!: number;
     @ApiProperty()
-    createdAt!: Date;
+    public createdAt!: Date;
     @ApiPropertyOptional()
-    deletedAt?: Date;
+    public deletedAt?: Date;
     @ApiProperty({ type: AdminServerOwnerDTO, nullable: true })
-    owner!: AdminServerOwnerDTO | null;
+    public owner!: AdminServerOwnerDTO | null;
     @ApiProperty({ default: false })
-    verified!: boolean;
+    public verified!: boolean;
     @ApiProperty({ default: false })
-    verificationRequested!: boolean;
+    public verificationRequested!: boolean;
     @ApiPropertyOptional()
-    realMessageCount?: number;
+    public realMessageCount?: number;
     @ApiPropertyOptional()
-    weightScore?: number;
+    public weightScore?: number;
 }
 
 export type AdminServerListResponseDTO = AdminServerListItemDTO[];
 
 export class AdminDeleteServerResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 }
 
 export class AdminRestoreServerResponseDTO {
     @ApiProperty()
-    message!: string;
+    public message!: string;
 }

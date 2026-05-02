@@ -24,7 +24,7 @@ import type {
     Category as ResolverCategory,
     ServerMember as ResolverMember,
 } from '@/permissions/types';
-import { isPermissionKey } from '@/permissions/types';
+import { isPermissionKey, PERMISSION_KEYS } from '@/permissions/types';
 
 type PermissionOverrideSource =
     | Map<string, unknown>
@@ -35,7 +35,7 @@ function remapEveryoneOverrideKey(
     overrides: Map<string, Permissions> | undefined,
     everyoneRoleId: string | undefined,
 ): Map<string, Permissions> | undefined {
-    if (!overrides || !everyoneRoleId) return overrides;
+    if (overrides === undefined || everyoneRoleId === undefined || everyoneRoleId === '') return overrides;
 
     const everyoneOverride = overrides.get('everyone');
     if (!everyoneOverride) return overrides;
@@ -106,7 +106,7 @@ export class PermissionService {
 
     private readonly cacheTtlMs: number;
 
-    constructor(
+    public constructor(
         @inject(TYPES.ServerRepository)
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
@@ -129,11 +129,11 @@ export class PermissionService {
         this.cacheTtlMs = 5 * 60 * 1000;
     }
 
-    invalidateCache(serverId: Types.ObjectId): void {
+    public invalidateCache(serverId: Types.ObjectId): void {
         this.resolverCache.delete(serverId.toString());
     }
 
-    async getHighestRolePosition(
+    public async getHighestRolePosition(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<number> {
@@ -142,7 +142,7 @@ export class PermissionService {
         return resolver.getHighestRolePosition(userId.toString());
     }
 
-    async normalizePermissionMap(
+    public async normalizePermissionMap(
         serverId: Types.ObjectId,
         permissions: Record<string, Record<string, boolean>> | undefined,
     ): Promise<Record<string, Record<string, boolean>>> {
@@ -167,7 +167,7 @@ export class PermissionService {
         return normalized;
     }
 
-    async hasPermission(
+    public async hasPermission(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         permission: string,
@@ -178,7 +178,21 @@ export class PermissionService {
         return resolver.hasServerPermission(userId.toString(), permission);
     }
 
-    async hasChannelPermission(
+    public async getAllServerPermissions(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+    ): Promise<Permissions> {
+        const resolver = await this.getResolver(serverId);
+        if (!resolver) return {};
+        
+        const perms: Permissions = {};
+        for (const key of PERMISSION_KEYS) {
+            perms[key] = resolver.hasServerPermission(userId.toString(), key);
+        }
+        return perms;
+    }
+
+    public async hasChannelPermission(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         channelId: Types.ObjectId,
@@ -195,7 +209,7 @@ export class PermissionService {
         return result;
     }
 
-    async hasChannelPermissions(
+    public async hasChannelPermissions(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         channelIds: Types.ObjectId[],
@@ -215,8 +229,6 @@ export class PermissionService {
     private async getResolver(
         serverId: Types.ObjectId,
     ): Promise<PermissionResolver | null> {
-        if (!serverId) return null;
-
         const now = Date.now();
         const serverIdStr = serverId.toString();
         const cached = this.resolverCache.get(serverIdStr);
@@ -313,7 +325,8 @@ export class PermissionService {
             id: member._id,
             serverId: member.serverId,
             userId: member.userId,
-            roleIds: member.roles ?? [],
+            roleIds: member.roles,
+            communicationDisabledUntil: member.communicationDisabledUntil,
         };
     }
 }

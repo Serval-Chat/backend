@@ -30,7 +30,7 @@ export const authenticateToken = async (
             ? authHeader.slice('Bearer '.length).trim()
             : undefined;
 
-    if (!token) {
+    if (token === undefined || token === '') {
         // Return JSON error for API requests, redirect for web requests
         if (req.path.startsWith('/api/')) {
             return res.status(401).json({ error: 'No token provided' });
@@ -40,7 +40,7 @@ export const authenticateToken = async (
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-        if (decoded.type && decoded.type !== 'access') {
+        if (decoded.type !== 'access') {
             return res.status(401).json({ error: 'Invalid token' });
         }
 
@@ -58,8 +58,8 @@ export const authenticateToken = async (
         }
 
         // Validate tokenVersion to invalidate old JWTs
-        const currentTokenVersion = user.tokenVersion || 0;
-        const payloadTokenVersion = decoded.tokenVersion || 0;
+        const currentTokenVersion = user.tokenVersion ?? 0;
+        const payloadTokenVersion = decoded.tokenVersion;
 
         if (currentTokenVersion !== payloadTokenVersion) {
             return res.status(401).json({ error: 'Token expired' });

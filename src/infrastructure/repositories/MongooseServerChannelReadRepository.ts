@@ -15,7 +15,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 export class MongooseServerChannelReadRepository
     implements IServerChannelReadRepository
 {
-    async findByServerAndUser(
+    public async findByServerAndUser(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<IServerChannelRead[]> {
@@ -25,14 +25,14 @@ export class MongooseServerChannelReadRepository
         }).lean()) as unknown as IServerChannelRead[];
     }
 
-    async findByUserId(userId: Types.ObjectId): Promise<IServerChannelRead[]> {
+    public async findByUserId(userId: Types.ObjectId): Promise<IServerChannelRead[]> {
         return (await ServerChannelRead.find({
             userId,
         }).lean()) as unknown as IServerChannelRead[];
     }
 
     // Update or create a read record for a channel
-    async upsert(
+    public async upsert(
         serverId: Types.ObjectId,
         channelId: Types.ObjectId,
         userId: Types.ObjectId,
@@ -42,9 +42,9 @@ export class MongooseServerChannelReadRepository
             { serverId, channelId, userId },
             { lastReadAt: new Date() },
             { new: true, upsert: true, session },
-        ).lean()) as unknown as IServerChannelRead;
+        ).lean()) as unknown as IServerChannelRead | null;
 
-        if (!result) {
+        if (result === null) {
             throw new Error(ErrorMessages.SERVER.FAILED_UPSERT_READ);
         }
 
@@ -52,7 +52,7 @@ export class MongooseServerChannelReadRepository
     }
 
     // Mark all channels in a server as read for a user
-    async markServerAsRead(
+    public async markServerAsRead(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<void> {

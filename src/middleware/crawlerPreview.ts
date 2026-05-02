@@ -14,7 +14,7 @@ export const discordCrawlerPreview = async (
     res: Response,
     next: NextFunction,
 ) => {
-    const userAgent = req.headers['user-agent'] || '';
+    const userAgent = typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : '';
     const isDiscordBot =
         userAgent.includes('Discordbot') ||
         userAgent.includes('Discord-ExternalFetcher') ||
@@ -23,7 +23,7 @@ export const discordCrawlerPreview = async (
     // Intercept if it's a Discord bot or testing and matching the invite path
     if (isDiscordBot && req.path.startsWith('/invite/')) {
         const inviteCode = req.path.split('/')[2];
-        if (!inviteCode) {
+        if (inviteCode === undefined || inviteCode === '') {
             return next();
         }
 
@@ -54,7 +54,7 @@ export const discordCrawlerPreview = async (
 
             const title = `Join ${server.name}`;
             const description = `You've been invited to join ${server.name} on Serchat. Current members: ${memberCount}.`;
-            const imageUrl = server.icon
+            const imageUrl = (server.icon !== undefined && server.icon !== '')
                 ? `${SERVER_URL}/api/v1/file-proxy?url=${encodeURIComponent(server.icon)}`
                 : `${SERVER_URL}/logo.png`;
             const url = `${SERVER_URL}/invite/${inviteCode}`;

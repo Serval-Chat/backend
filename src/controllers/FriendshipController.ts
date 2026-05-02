@@ -46,13 +46,16 @@ interface RequestWithUser extends Request {
     user: JWTPayload;
 }
 
-// Controller for managing user friendships and friend requests
-// Enforces boundaries via ownership checks on requests and friendships
+import { NoBot } from '@/modules/auth/bot.decorator';
+
 @ApiTags('Friends')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@NoBot()
 @injectable()
 @Controller('api/v1/friends')
 export class FriendshipController {
-    constructor(
+    public constructor(
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
         @Inject(TYPES.FriendshipRepository)
@@ -65,17 +68,16 @@ export class FriendshipController {
         private logger: ILogger,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
-    ) {}
+    ) { }
 
-    // Maps a user document to a public friend payload
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
         const mapped = mapUser(user);
-        if (!mapped) return null;
+        if (mapped === null) return null;
 
         return {
             _id: mapped.id,
             username: mapped.username,
-            displayName: mapped.displayName || undefined,
+            displayName: (mapped.displayName !== null && mapped.displayName !== '') ? mapped.displayName : undefined,
             createdAt: mapped.createdAt,
             profilePicture: mapped.profilePicture,
             customStatus: mapped.customStatus as SerializedCustomStatus | null,
@@ -92,7 +94,7 @@ export class FriendshipController {
         const userOid = new Types.ObjectId(userId);
 
         const me = await this.userRepo.findById(userOid);
-        if (!me) {
+        if (me === null) {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
@@ -100,15 +102,14 @@ export class FriendshipController {
         const friendIds = new Set<string>();
         const legacyUsernames = new Set<string>();
 
-        // Extract friend identifiers from both modern (ID-based) and legacy (username-based) friendships
         friendships.forEach((rel) => {
-            const userIdStr = rel.userId?.toString();
-            const friendIdStr = rel.friendId?.toString();
+            const userIdStr = rel.userId.toString();
+            const friendIdStr = rel.friendId.toString();
             const otherId = userIdStr === userId ? friendIdStr : userIdStr;
 
-            if (otherId && otherId !== userId) {
+            if (otherId !== '' && otherId !== userId) {
                 friendIds.add(otherId);
-            } else if (rel.friend) {
+            } else if (rel.friend !== undefined && rel.friend !== '') {
                 legacyUsernames.add(rel.friend);
             }
         });
@@ -118,11 +119,11 @@ export class FriendshipController {
             const friend = await this.userRepo.findById(
                 new Types.ObjectId(friendId),
             );
-            if (friend) friendsById.push(friend);
+            if (friend !== null) friendsById.push(friend);
         }
 
         friendsById.forEach((doc) => {
-            if (doc.username) {
+            if (doc.username !== undefined && doc.username !== '') {
                 legacyUsernames.delete(doc.username);
             }
         });
@@ -130,16 +131,15 @@ export class FriendshipController {
         const friendsByUsername = [];
         for (const username of Array.from(legacyUsernames)) {
             const friend = await this.userRepo.findByUsername(username);
-            if (friend) friendsByUsername.push(friend);
+            if (friend !== null) friendsByUsername.push(friend);
         }
 
         const combinedFriends = [...friendsById, ...friendsByUsername];
 
-        // Enrichment with latest message timestamp for sorting
         const friendsWithLatestMessage = await Promise.all(
             combinedFriends.map(async (friend) => {
-                const friendId = friend._id?.toString();
-                if (!friendId) {
+                const friendId = friend._id.toString();
+                if (friendId === '') {
                     return { friend, latestMessageAt: null };
                 }
                 const conversationMessages =
@@ -155,8 +155,8 @@ export class FriendshipController {
 
                 return {
                     friend,
-                    latestMessageAt: latestMessage
-                        ? latestMessage.createdAt
+                    latestMessageAt: (latestMessage !== undefined && latestMessage !== null)
+                        ? (latestMessage.createdAt !== undefined)
                             ? new Date(latestMessage.createdAt).toISOString()
                             : null
                         : null,
@@ -164,7 +164,6 @@ export class FriendshipController {
             }),
         );
 
-        // Sorting by activity: most recent messages first
         friendsWithLatestMessage.sort((a, b) => {
             if (a.latestMessageAt === null && b.latestMessageAt === null)
                 return 0;
@@ -179,17 +178,16 @@ export class FriendshipController {
         return friendsWithLatestMessage
             .map(({ friend, latestMessageAt }) => {
                 const payload = this.mapUserToFriendPayload(friend);
-                if (payload) {
+                if (payload !== null) {
                     payload.latestMessageAt = latestMessageAt;
 
-                    // Handling deleted user profile picture
-                    if (friend.deletedAt) {
+                    if (friend.deletedAt !== undefined) {
                         payload.profilePicture = '/images/deleted-cat.jpg';
                     }
                 }
-                return payload as FriendResponseDTO;
+                return payload;
             })
-            .filter((p) => p !== null);
+            .filter((p): p is FriendResponseDTO => p !== null);
     }
 
     @Get('profiles')
@@ -206,13 +204,13 @@ export class FriendshipController {
         const legacyUsernames = new Set<string>();
 
         friendships.forEach((rel) => {
-            const userIdStr = rel.userId?.toString();
-            const friendIdStr = rel.friendId?.toString();
+            const userIdStr = rel.userId.toString();
+            const friendIdStr = rel.friendId.toString();
             const otherId = userIdStr === userId ? friendIdStr : userIdStr;
 
-            if (otherId && otherId !== userId) {
+            if (otherId !== '' && otherId !== userId) {
                 friendIds.add(otherId);
-            } else if (rel.friend) {
+            } else if (rel.friend !== undefined && rel.friend !== '') {
                 legacyUsernames.add(rel.friend);
             }
         });
@@ -236,19 +234,19 @@ export class FriendshipController {
                 .filter((u): u is NonNullable<typeof u> => u !== null)
                 .map(async (user) => {
                     const mapped = mapUser(user) as Record<string, unknown> | null;
-                    if (!mapped) return null;
+                    if (mapped === null) return null;
 
                     const blockFlags = await this.blockRepo.getActiveBlockFlags(
                         user._id,
                         userOid,
                     );
 
-                    if (blockFlags & HIDE_PRONOUNS) mapped.pronouns = undefined;
-                    if (blockFlags & HIDE_BIO) mapped.bio = undefined;
-                    if (blockFlags & HIDE_DISPLAY_NAME) mapped.displayName = null;
-                    if (blockFlags & HIDE_AVATAR) mapped.profilePicture = null;
+                    if ((blockFlags & HIDE_PRONOUNS) !== 0) mapped.pronouns = undefined;
+                    if ((blockFlags & HIDE_BIO) !== 0) mapped.bio = undefined;
+                    if ((blockFlags & HIDE_DISPLAY_NAME) !== 0) mapped.displayName = null;
+                    if ((blockFlags & HIDE_AVATAR) !== 0) mapped.profilePicture = null;
 
-                    if (user.deletedAt) {
+                    if (user.deletedAt !== undefined) {
                         mapped.profilePicture = '/images/deleted-cat.jpg';
                     }
 
@@ -275,15 +273,15 @@ export class FriendshipController {
         return await Promise.all(
             incoming.map(async (r) => {
                 let fromUsername = r.from;
-                if (!fromUsername && r.fromId) {
+                if (fromUsername === undefined || fromUsername === '') {
                     const fromUser = await this.userRepo.findById(r.fromId);
-                    fromUsername = fromUser?.username;
+                    fromUsername = (fromUser !== null) ? fromUser.username : undefined;
                 }
 
                 return {
                     _id: r._id.toString(),
                     from: fromUsername,
-                    fromId: r.fromId?.toString(),
+                    fromId: r.fromId.toString(),
                     createdAt: r.createdAt || new Date(),
                 };
             }),
@@ -307,15 +305,18 @@ export class FriendshipController {
         const meId = (req as unknown as RequestWithUser).user.id;
         const meOid = new Types.ObjectId(meId);
         const meUser = await this.userRepo.findById(meOid);
-        if (!meUser) {
+        if (meUser === null) {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         const { username: friendUsername } = body;
 
         const friendUser = await this.userRepo.findByUsername(friendUsername);
-        if (!friendUser) {
+        if (friendUser === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+        if (friendUser.isBot === true) {
+            throw new ApiError(400, ErrorMessages.FRIENDSHIP.CANNOT_ADD_BOT);
         }
 
         const friendId = friendUser._id;
@@ -332,7 +333,7 @@ export class FriendshipController {
             meOid,
             friendId,
         );
-        if (existingRequest) {
+        if (existingRequest !== null) {
             if (existingRequest.status === 'pending') {
                 throw new ApiError(
                     400,
@@ -364,13 +365,13 @@ export class FriendshipController {
                 type: 'incoming_request_added',
                 payload: {
                     ...requestPayload,
-                    from: requestPayload.from || '',
+                    from: requestPayload.from ?? '',
                 },
             });
 
             await notifyUser(friendIdStr, 'friend_request', {
                 type: 'friend_request',
-                senderName: meUser.username || '',
+                senderName: meUser.username ?? '',
                 senderId: meId,
             }).catch((err) =>
                 this.logger.error('Failed to send push notification:', err),
@@ -384,7 +385,13 @@ export class FriendshipController {
 
         return {
             message: 'friend request sent',
-            request: reqDoc,
+            request: {
+                _id: reqDoc._id.toString(),
+                from: reqDoc.fromId.toString(),
+                to: reqDoc.toId.toString(),
+                status: reqDoc.status,
+                createdAt: reqDoc.createdAt || new Date(),
+            },
         };
     }
 
@@ -402,18 +409,17 @@ export class FriendshipController {
         const meId = (req as unknown as RequestWithUser).user.id;
         const meOid = new Types.ObjectId(meId);
         const meUser = await this.userRepo.findById(meOid);
-        if (!meUser) {
+        if (meUser === null) {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
         const requestOid = new Types.ObjectId(id);
         const fr = await this.friendshipRepo.findRequestById(requestOid);
-        if (!fr) {
+        if (fr === null) {
             throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
         }
 
-        // Verification of the recipient
-        if (fr.toId?.toString() !== meId) {
+        if (fr.toId.toString() !== meId) {
             throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_ALLOWED);
         }
 
@@ -427,16 +433,14 @@ export class FriendshipController {
         const fromId = fr.fromId;
         const toId = fr.toId;
 
-        if (!fromId || !toId) {
-            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
-        }
+
 
         const [fromUser, toUser] = await Promise.all([
             this.userRepo.findById(fromId),
             this.userRepo.findById(toId),
         ]);
 
-        if (!fromUser || !toUser) {
+        if (fromUser === null || toUser === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
@@ -447,16 +451,14 @@ export class FriendshipController {
         const toFriendPayload = this.mapUserToFriendPayload(toUser);
 
         try {
-            if (fromFriendPayload && toFriendPayload) {
+            if (fromFriendPayload !== null && toFriendPayload !== null) {
                 const fromIdStr = fromId.toString();
                 const toIdStr = toId.toString();
-                // Notify sender (fromUser)
                 this.wsServer.broadcastToUser(fromIdStr, {
                     type: 'friend_added',
                     payload: { friend: toFriendPayload },
                 });
 
-                // Notify recipient (toUser)
                 this.wsServer.broadcastToUser(toIdStr, {
                     type: 'friend_added',
                     payload: { friend: fromFriendPayload },
@@ -464,7 +466,7 @@ export class FriendshipController {
                 this.wsServer.broadcastToUser(toIdStr, {
                     type: 'incoming_request_removed',
                     payload: {
-                        from: fromUser.username || '',
+                        from: fromUser.username ?? '',
                         fromId: fromFriendPayload._id,
                     },
                 });
@@ -496,12 +498,11 @@ export class FriendshipController {
         const requestOid = new Types.ObjectId(id);
         const fr = await this.friendshipRepo.findRequestById(requestOid);
 
-        if (!fr) {
+        if (fr === null) {
             throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
         }
 
-        // Verification of the recipient
-        if (fr.toId?.toString() !== meId) {
+        if (fr.toId.toString() !== meId) {
             throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_ALLOWED);
         }
 
@@ -539,7 +540,7 @@ export class FriendshipController {
             this.userRepo.findById(meOid),
         ]);
 
-        if (!friend) {
+        if (friend === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
         if (!meUser) {
@@ -552,7 +553,7 @@ export class FriendshipController {
             this.wsServer.broadcastToUser(meId, {
                 type: 'friend_removed',
                 payload: {
-                    username: friend.username || '',
+                    username: friend.username ?? '',
                     userId: friendId,
                 },
             });
@@ -560,7 +561,7 @@ export class FriendshipController {
             this.wsServer.broadcastToUser(friendId, {
                 type: 'friend_removed',
                 payload: {
-                    username: meUser.username || '',
+                    username: meUser.username ?? '',
                     userId: meId,
                 },
             });

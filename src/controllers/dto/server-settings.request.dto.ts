@@ -15,7 +15,7 @@ export class UpdateServerSettingsRequestDTO {
         ],
     })
     @IsArray()
-    order!: (
+    public order!: (
         | string
         | { id: string; name: string; color: string; serverIds: string[] }
     )[];

@@ -25,7 +25,7 @@ import fs from 'fs';
 @Controller('api/v1')
 @ApiTags('Export')
 export class ExportController {
-    constructor(
+    public constructor(
         @Inject(TYPES.ExportService)
         private exportService: ExportService,
         @Inject(TYPES.PermissionService)
@@ -49,11 +49,11 @@ export class ExportController {
         const userOid = new Types.ObjectId(userId);
 
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'export_channel_messages',
-            ))
+            )) !== true
         ) {
             throw new ApiError(
                 403,
@@ -79,11 +79,11 @@ export class ExportController {
         const userOid = new Types.ObjectId(userId);
 
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'export_channel_messages',
-            ))
+            )) !== true
         ) {
             throw new ApiError(
                 403,
@@ -114,15 +114,15 @@ export class ExportController {
     ) {
         const job = await this.exportJobRepo.findByDownloadToken(token);
 
-        if (!job || job.status !== 'completed' || !job.filePath) {
+        if (job === null || job.status !== 'completed' || job.filePath === undefined || job.filePath === '') {
             return this.sendExpiredResponse(res, 404);
         }
 
-        if (job.expiresAt && new Date() > job.expiresAt) {
+        if (job.expiresAt !== undefined && new Date() > job.expiresAt) {
             return this.sendExpiredResponse(res, 410);
         }
 
-        if (!fs.existsSync(job.filePath)) {
+        if (fs.existsSync(job.filePath) === false) {
             return res.status(404).send('File not found');
         }
 

@@ -12,6 +12,7 @@ export interface JWTPayload {
     profilePicture?: string;
     tokenVersion: number; // For token invalidation (like when you change password or login tokenVersion changes).
     permissions?: AdminPermissions;
+    isBot?: boolean;
 }
 
 // Helper to check if user has a specific permission

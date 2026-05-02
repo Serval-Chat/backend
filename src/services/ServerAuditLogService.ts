@@ -16,7 +16,7 @@ import { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 @injectable()
 @Injectable()
 export class ServerAuditLogService implements IServerAuditLogService {
-    constructor(
+    public constructor(
         @Inject(TYPES.AuditLogRepository)
         private auditLogRepo: IAuditLogRepository,
         @Inject(TYPES.WsServer)
@@ -60,7 +60,7 @@ export class ServerAuditLogService implements IServerAuditLogService {
             this.logger.debug(
                 `[ServerAuditLogService] Broadcasting audit_log_entry_created for ${data.actionType}`,
             );
-            this.wsServer.broadcastToServerWithPermission(
+            void this.wsServer.broadcastToServerWithPermission(
                 serverIdStr,
                 {
                     type: 'audit_log_entry_created',

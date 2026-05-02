@@ -6,22 +6,22 @@ export function extractClientIp(req: Request): string {
     const forwardedFor = req.headers['x-forwarded-for'];
     const realIp = req.headers['x-real-ip'];
 
-    if (cfIp) {
+    if (cfIp !== undefined) {
         const ip = Array.isArray(cfIp) ? cfIp[0] : cfIp;
-        if (ip) return ip.trim();
+        if (ip !== undefined && ip !== '') return ip.trim();
     }
 
-    if (forwardedFor) {
+    if (forwardedFor !== undefined) {
         const ip = Array.isArray(forwardedFor)
             ? forwardedFor[0]
             : forwardedFor.split(',')[0];
-        if (ip) return ip.trim();
+        if (ip !== undefined && ip !== '') return ip.trim();
     }
 
-    if (realIp) {
+    if (realIp !== undefined) {
         const ip = Array.isArray(realIp) ? realIp[0] : realIp;
-        if (ip) return ip;
+        if (ip !== undefined && ip !== '') return ip;
     }
 
-    return req.ip || req.socket.remoteAddress || 'unknown';
+    return req.ip ?? req.socket.remoteAddress ?? 'unknown';
 }

@@ -5,7 +5,7 @@ import { PROJECT_LEVEL } from '@/config/env';
 
 @Catch(ApiError)
 export class ApiErrorFilter implements ExceptionFilter {
-    catch(exception: ApiError, host: ArgumentsHost) {
+    public catch(exception: ApiError, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
         const status = exception.status;

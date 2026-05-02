@@ -49,7 +49,7 @@ async function setupBlock(app: Application, blockerToken: string, targetId: stri
     const profile = await api(app, blockerToken)
         .post('/api/v1/blocks/profiles', { name: `Profile-${flags}`, flags })
         .then((r: Response) => r.body);
-    await api(app, blockerToken).put(`/api/v1/blocks/${targetId}`, { profileId: profile.id || profile._id });
+    await api(app, blockerToken).put(`/api/v1/blocks/${targetId}`, { profileId: (profile.id !== undefined && profile.id !== null && profile.id !== '') ? profile.id : profile._id });
     return profile;
 }
 
@@ -83,7 +83,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
             flags: BlockFlags.BLOCK_REACTIONS,
         });
         assert.equal(res.status, 201);
-        assert.ok(res.body.id || res.body._id);
+        assert.ok((res.body.id !== undefined && res.body.id !== null && res.body.id !== '') || (res.body._id !== undefined && res.body._id !== null && res.body._id !== ''));
         assert.equal(res.body.name, 'Strict Block');
     });
 
@@ -92,7 +92,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
             name: 'Old Name',
             flags: BlockFlags.BLOCK_REACTIONS,
         });
-        const profileId = create.body.id || create.body._id;
+        const profileId = (create.body.id !== undefined && create.body.id !== null && create.body.id !== '') ? create.body.id : create.body._id;
 
         const res = await api(app, userToken).patch(`/api/v1/blocks/profiles/${profileId}`, {
             name: 'New Name',
@@ -110,7 +110,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
             name: 'Cascade Test',
             flags: BlockFlags.BLOCK_REACTIONS,
         }).then((r: Response) => r.body);
-        const profileId = profile.id || profile._id;
+        const profileId = (profile.id !== undefined && profile.id !== null && profile.id !== '') ? profile.id : profile._id;
 
         // create a block relationship attached to this profile.
         await api(app, userToken).put(`/api/v1/blocks/${other._id.toString()}`, { profileId });
@@ -121,7 +121,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
         // delete profile - must return 200, not 204.
         const del = await api(app, userToken).delete(`/api/v1/blocks/profiles/${profileId}`);
         assert.equal(del.status, 200);
-        assert.ok(del.body.message);
+        assert.ok(del.body.message !== undefined && del.body.message !== null && del.body.message !== '');
 
         // cascade: block relationship should be gone.
         const after = await api(app, userToken).get('/api/v1/blocks').then((r: Response) => r.body);
@@ -171,9 +171,10 @@ describe('Advanced Blocking - Block Lifecycle', () => {
             name: 'Test',
             flags: BlockFlags.BLOCK_REACTIONS,
         }).then((r: Response) => r.body);
-        const profileId = profile.id || profile._id;
+        const profileId = (profile.id !== undefined && profile.id !== null && profile.id !== '') ? profile.id : profile._id;
 
         const res = await api(app, blockerToken).put(`/api/v1/blocks/${blocked._id.toString()}`, { profileId });
+        if (res.status !== 200) console.error("BLOCK PUT FAIL", res.status, res.body);
         assert.equal(res.status, 200);
         assert.equal(res.body.targetUserId, blocked._id.toString());
     });
@@ -196,7 +197,7 @@ describe('Advanced Blocking - Block Lifecycle', () => {
         assert.equal(res.status, 200);
         assert.ok(Array.isArray(res.body));
         assert.ok(res.body.length >= 1);
-        assert.ok(res.body[0].targetUserId);
+        assert.ok(res.body[0].targetUserId !== undefined && res.body[0].targetUserId !== null && res.body[0].targetUserId !== '');
         assert.ok(typeof res.body[0].flags === 'number');
     });
 });
@@ -220,10 +221,10 @@ describe('Advanced Blocking - Flag 1: BLOCK_REACTIONS (HTTP)', () => {
         otherToken = r3.body.token;
 
         const serverRes = await api(app, blockerToken).post('/api/v1/servers', { name: 'Reaction Test Server' });
-        serverId = serverRes.body.server?._id || serverRes.body._id || serverRes.body.id;
+        serverId = (serverRes.body.server?._id !== undefined && serverRes.body.server?._id !== null && serverRes.body.server?._id !== '') ? serverRes.body.server?._id : (serverRes.body._id !== undefined && serverRes.body._id !== null && serverRes.body._id !== '') ? serverRes.body._id : serverRes.body.id;
 
         const serverDetails = await api(app, blockerToken).get(`/api/v1/servers/${serverId}`);
-        channelId = serverDetails.body.channels?.[0]?._id || serverRes.body.channel?._id;
+        channelId = (serverDetails.body.channels?.[0]?._id !== undefined && serverDetails.body.channels?.[0]?._id !== null && serverDetails.body.channels?.[0]?._id !== '') ? serverDetails.body.channels?.[0]?._id : serverRes.body.channel?._id;
 
         const invite = await api(app, blockerToken).post(`/api/v1/servers/${serverId}/invites`).then((r: Response) => r.body);
         await api(app, blockedToken).post(`/api/v1/invites/${invite.code}/join`);
@@ -264,8 +265,9 @@ describe('Advanced Blocking - Flag 1: BLOCK_REACTIONS (HTTP)', () => {
 
         const msg = await api(app, blockerToken).get(`/api/v1/servers/${serverId}/channels/${channelId}/messages/${messageId}`);
         if (msg.status !== 200) return;
-        const blocked_reaction = (msg.body.reactions || []).find((r: { emoji: string }) => r.emoji === '👍');
-        assert.ok(!blocked_reaction, 'Reaction should not be stored when BLOCK_REACTIONS is active');
+        const reactions = (msg.body.reactions !== undefined && msg.body.reactions !== null) ? msg.body.reactions : [];
+        const blocked_reaction = (reactions as { emoji: string }[]).find((r: { emoji: string }) => r.emoji === '👍');
+        assert.ok(blocked_reaction === undefined, 'Reaction should not be stored when BLOCK_REACTIONS is active');
     });
 
     it('Other user (not blocked) can still react normally', async () => {
@@ -304,7 +306,7 @@ describe('Advanced Blocking - Flag 3: HIDE_FROM_MEMBER_LIST', () => {
         blockedToken = r2.body.token;
 
         const serverRes = await api(app, blockerToken).post('/api/v1/servers', { name: 'Member List Server' });
-        serverId = serverRes.body.server?._id || serverRes.body._id || serverRes.body.id;
+        serverId = (serverRes.body.server?._id !== undefined && serverRes.body.server?._id !== null && serverRes.body.server?._id !== '') ? serverRes.body.server?._id : (serverRes.body._id !== undefined && serverRes.body._id !== null && serverRes.body._id !== '') ? serverRes.body._id : serverRes.body.id;
 
         const invite = await api(app, blockerToken).post(`/api/v1/servers/${serverId}/invites`).then((r: Response) => r.body);
         await api(app, blockedToken).post(`/api/v1/invites/${invite.code}/join`);
@@ -325,8 +327,8 @@ describe('Advanced Blocking - Flag 3: HIDE_FROM_MEMBER_LIST', () => {
 
         const res = await api(app, blockerToken).get(`/api/v1/servers/${serverId}/members`);
         assert.equal(res.status, 200);
-        const members = Array.isArray(res.body) ? res.body : (res.body.members || []);
-        const found = members.find((m: { userId?: string; _id?: string }) => (m.userId || m._id) === blocked._id.toString());
+        const members = Array.isArray(res.body) ? res.body : ((res.body.members !== undefined && res.body.members !== null) ? res.body.members : []);
+        const found = (members as { userId?: string; _id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m._id) === blocked._id.toString());
         assert.equal(found, undefined, 'Blocked user should be hidden from blocker\'s member list');
     });
 
@@ -335,8 +337,8 @@ describe('Advanced Blocking - Flag 3: HIDE_FROM_MEMBER_LIST', () => {
 
         const res = await api(app, blockedToken).get(`/api/v1/servers/${serverId}/members`);
         assert.equal(res.status, 200);
-        const members = Array.isArray(res.body) ? res.body : (res.body.members || []);
-        const found = members.find((m: { userId?: string; _id?: string }) => (m.userId || m._id) === blocker._id.toString());
+        const members = Array.isArray(res.body) ? res.body : ((res.body.members !== undefined && res.body.members !== null) ? res.body.members : []);
+        const found = (members as { userId?: string; _id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m._id) === blocker._id.toString());
         assert.ok(found !== undefined, 'Blocker should still appear in blocked user\'s member list');
     });
 });
@@ -434,7 +436,7 @@ describe('Advanced Blocking - Flags 12a-12d: Profile Field Visibility', () => {
         const isNullOrEmpty = (v: unknown) => v === null || v === undefined || v === ''; assert.ok(isNullOrEmpty(profile.bio), 'bio hidden');
         assert.ok(isNullOrEmpty(profile.pronouns), 'pronouns hidden');
         assert.ok(isNullOrEmpty(profile.displayName), 'displayName hidden');
-        assert.ok(profile.username, 'username must always be present');
+        assert.ok(profile.username !== undefined && profile.username !== null && profile.username !== '', 'username must always be present');
     });
 });
 

@@ -27,7 +27,7 @@ export async function updateDatabaseMetrics() {
 export function startMetricsUpdater(
     intervalMs: number = defaultUpdateInterval,
 ) {
-    updateDatabaseMetrics();
-    setInterval(updateDatabaseMetrics, intervalMs).unref();
+    void updateDatabaseMetrics();
+    setInterval(() => { void updateDatabaseMetrics(); }, intervalMs).unref();
     logger.info(`Metrics updater started (interval: ${intervalMs}ms)`);
 }

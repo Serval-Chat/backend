@@ -6,23 +6,23 @@ import { AdminUserFilterDTO } from './common.request.dto';
 export class AdminListUsersRequestDTO {
     @ApiPropertyOptional()
     @IsLimit()
-    limit?: number;
+    public limit?: number;
 
     @ApiPropertyOptional()
     @IsOffset()
-    offset?: number;
+    public offset?: number;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    search?: string;
+    public search?: string;
 
     @ApiPropertyOptional({ enum: AdminUserFilterDTO })
     @IsOptional()
     @IsEnum(AdminUserFilterDTO)
-    filter?: AdminUserFilterDTO;
+    public filter?: AdminUserFilterDTO;
 
     @ApiPropertyOptional()
     @IsBooleanQuery()
-    includeDeleted?: boolean;
+    public includeDeleted?: boolean;
 }

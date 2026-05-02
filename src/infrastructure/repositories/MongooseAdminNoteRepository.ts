@@ -7,7 +7,7 @@ import type { IAdminNoteRepository } from '@/di/interfaces/IAdminNoteRepository'
 @injectable()
 @Injectable()
 export class MongooseAdminNoteRepository implements IAdminNoteRepository {
-    async create(data: {
+    public async create(data: {
         targetId: Types.ObjectId;
         targetType: 'User' | 'Server';
         adminId: Types.ObjectId;
@@ -17,7 +17,7 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
         return await note.save();
     }
 
-    async findById(id: Types.ObjectId): Promise<IAdminNote | null> {
+    public async findById(id: Types.ObjectId): Promise<IAdminNote | null> {
         return await AdminNote.findById(id)
             .populate('adminId', 'username displayName profilePicture')
             .populate('deletedBy', 'username displayName profilePicture')
@@ -25,7 +25,7 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
             .exec();
     }
 
-    async findByTarget(
+    public async findByTarget(
         targetId: Types.ObjectId,
         targetType: 'User' | 'Server',
     ): Promise<IAdminNote[]> {
@@ -37,7 +37,7 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
             .exec();
     }
 
-    async update(
+    public async update(
         id: Types.ObjectId,
         adminId: Types.ObjectId,
         content: string,
@@ -53,7 +53,7 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
         currentNote.history.push({
             content: currentNote.content,
             editorId: currentNote.adminId, // Previous author/editor
-            editedAt: currentNote.updatedAt || currentNote.createdAt,
+            editedAt: currentNote.updatedAt,
         });
 
         // Update with new content and set new primary adminId (last editor)
@@ -70,7 +70,7 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
             );
     }
 
-    async softDelete(data: {
+    public async softDelete(data: {
         id: Types.ObjectId;
         deletedBy: Types.ObjectId;
         deleteReason: string;

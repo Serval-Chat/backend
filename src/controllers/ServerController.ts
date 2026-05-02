@@ -68,6 +68,7 @@ import { PingService } from '@/services/PingService';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
+import { NoBot } from '@/modules/auth/bot.decorator';
 @injectable()
 @Controller('api/v1/servers')
 @ApiTags('Servers')
@@ -80,7 +81,7 @@ export class ServerController {
         'servers',
     );
 
-    constructor(
+    public constructor(
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -114,7 +115,7 @@ export class ServerController {
         @Inject(TYPES.RedisService)
         private redisService: IRedisService,
     ) {
-        if (!fs.existsSync(this.UPLOADS_DIR)) {
+        if (fs.existsSync(this.UPLOADS_DIR) === false) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
         }
     }
@@ -134,15 +135,24 @@ export class ServerController {
                 const memberCount = await this.serverMemberRepo.countByServerId(
                     server._id,
                 );
+                const canManage = (await this.permissionService.hasPermission(
+                    server._id as Types.ObjectId,
+                    userOid,
+                    'manageServer',
+                )) === true;
                 return {
                     ...server,
                     memberCount,
+                    canManage,
                 };
             }),
         );
     }
 
     @Post()
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @NoBot()
     @ApiOperation({ summary: 'Create server' })
     @ApiResponse({ status: 201, description: 'Server created' })
     @ApiResponse({ status: 400, description: 'Invalid name' })
@@ -222,8 +232,8 @@ export class ServerController {
 
         const pingCounts: Record<string, number> = {};
         pings.forEach((p) => {
-            if (p.serverId) {
-                pingCounts[p.serverId] = (pingCounts[p.serverId] || 0) + 1;
+            if (p.serverId !== undefined) {
+                pingCounts[p.serverId] = (pingCounts[p.serverId] ?? 0) + 1;
             }
         });
 
@@ -251,19 +261,19 @@ export class ServerController {
         // A server is unread if any of its channels have a message newer than the user's last read timestamp
         for (const channel of channels) {
             const serverIdStr = channel.serverId.toString();
-            if (unreadMap[serverIdStr]) continue;
+            if (unreadMap[serverIdStr] === true) continue;
             if (channel.type === 'link') continue;
 
             const hasPerm = permissionMapsByServer
                 .get(serverIdStr)
                 ?.get(channel._id.toString());
-            if (!hasPerm) continue;
+            if (hasPerm !== true) continue;
 
             const lastMessageAt = channel.lastMessageAt;
-            if (!lastMessageAt) continue;
+            if (lastMessageAt === undefined) continue;
 
             const lastReadAt = readMap.get(channel._id.toString());
-            if (!lastReadAt || new Date(lastMessageAt) > new Date(lastReadAt)) {
+            if (lastReadAt === undefined || new Date(lastMessageAt) > new Date(lastReadAt)) {
                 unreadMap[serverIdStr] = true;
             }
         }
@@ -275,8 +285,8 @@ export class ServerController {
         serverIds.forEach((id) => {
             const serverIdStr = id.toString();
             result[serverIdStr] = {
-                hasUnread: unreadMap[serverIdStr] || false,
-                pingCount: pingCounts[serverIdStr] || 0,
+                hasUnread: unreadMap[serverIdStr] ?? false,
+                pingCount: pingCounts[serverIdStr] ?? 0,
             };
         });
 
@@ -308,8 +318,8 @@ export class ServerController {
             _id: e._id.toString(),
             name: e.name,
             imageUrl: e.imageUrl,
-            serverId: e.serverId?.toString(),
-            createdBy: e.createdBy?.toString(),
+            serverId: (e.serverId !== undefined && e.serverId !== null) ? e.serverId.toString() : undefined,
+            createdBy: (e.createdBy !== undefined && e.createdBy !== null) ? e.createdBy.toString() : undefined,
             createdAt: e.createdAt,
         }));
     }
@@ -330,7 +340,7 @@ export class ServerController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
@@ -373,12 +383,12 @@ export class ServerController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        if (!server) {
+        if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -407,12 +417,12 @@ export class ServerController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        if (!server) {
+        if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -436,7 +446,7 @@ export class ServerController {
         const bannedUserCount = bannedUsers.length;
 
         const owner = await this.userRepo.findById(server.ownerId);
-        const ownerName = owner?.displayName || owner?.username || 'Unknown';
+        const ownerName = (owner !== null) ? (owner.displayName ?? owner.username ?? 'Unknown') : 'Unknown';
 
         // Identify the most recent member by join date
         const sortedMembers = [...members].sort((a, b) => {
@@ -445,12 +455,12 @@ export class ServerController {
             return dateB - dateA;
         });
         const newestMemberId = sortedMembers[0]?.userId.toString();
-        const newestMemberUser = newestMemberId
+        const newestMemberUser = (newestMemberId !== undefined)
             ? userMap.get(newestMemberId)
             : null;
         const newestMember =
-            newestMemberUser?.displayName ||
-            newestMemberUser?.username ||
+            newestMemberUser?.displayName ??
+            newestMemberUser?.username ??
             'Unknown';
 
         const channels = await this.channelRepo.findByServerId(serverOid);
@@ -462,7 +472,7 @@ export class ServerController {
         }).exec();
 
         // Update all-time high if current online count exceeds previous record
-        let allTimeHigh = server.allTimeHigh || 0;
+        let allTimeHigh = server.allTimeHigh ?? 0;
         if (onlineCount > allTimeHigh) {
             allTimeHigh = onlineCount;
             await this.serverRepo.update(serverOid, { allTimeHigh });
@@ -499,18 +509,18 @@ export class ServerController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageServer',
-            ))
+            )) !== true
         ) {
             throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
         const updates: Record<string, unknown> = {};
-        if (body.name) updates.name = body.name;
-        if (body.banner) updates.banner = body.banner;
+        if (body.name !== undefined && body.name !== '') updates.name = body.name;
+        if (body.banner !== undefined) updates.banner = body.banner;
         if (body.disableCustomFonts !== undefined)
             updates.disableCustomFonts = body.disableCustomFonts;
             updates.disableUsernameGlowAndCustomColor =
@@ -520,20 +530,17 @@ export class ServerController {
 
         if (body.defaultRoleId !== undefined) {
             const roleId = body.defaultRoleId;
-            if (roleId) {
+            if (roleId !== null && roleId !== '') {
                 const role = await this.roleRepo.findById(
                     new Types.ObjectId(roleId),
                 );
-                if (!role) {
+                if (role === null) {
                     throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
                 }
                 if (role.serverId.toString() !== serverId) {
                     throw new ApiError(400, ErrorMessages.ROLE.NOT_IN_SERVER);
                 }
-                if (
-                    role.name &&
-                    role.name.trim().toLowerCase() === '@everyone'
-                ) {
+                if (role.name.trim().toLowerCase() === '@everyone') {
                     throw new ApiError(
                         400,
                         ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT,
@@ -547,7 +554,7 @@ export class ServerController {
 
         const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, updates);
-        if (!server) {
+        if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -563,14 +570,14 @@ export class ServerController {
         });
 
         const changes = [];
-        if (existingServer) {
-            if (body.name && body.name !== existingServer.name)
+        if (existingServer !== null) {
+            if (body.name !== undefined && body.name !== '' && body.name !== existingServer.name)
                 changes.push({
                     field: 'name',
                     before: existingServer.name,
                     after: body.name,
                 });
-            if (body.banner)
+            if (body.banner !== undefined)
                 changes.push({
                     field: 'banner',
                     before: existingServer.banner,
@@ -579,13 +586,13 @@ export class ServerController {
             if (body.defaultRoleId !== undefined)
                 changes.push({
                     field: 'defaultRoleId',
-                    before: existingServer.defaultRoleId?.toString() || null,
-                    after: body.defaultRoleId || null,
+                    before: existingServer.defaultRoleId?.toString() ?? null,
+                    after: body.defaultRoleId ?? null,
                 });
             if (body.tags !== undefined && JSON.stringify(body.tags) !== JSON.stringify(existingServer.tags))
                 changes.push({
                     field: 'tags',
-                    before: existingServer.tags || [],
+                    before: existingServer.tags,
                     after: body.tags,
                 });
         }
@@ -621,26 +628,26 @@ export class ServerController {
         const { roleId } = body;
 
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageServer',
-            ))
+            )) !== true
         ) {
             throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
-        if (roleId) {
+        if (roleId !== null && roleId !== '') {
             const role = await this.roleRepo.findById(
                 new Types.ObjectId(roleId),
             );
-            if (!role) {
+            if (role === null) {
                 throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
             }
             if (role.serverId.toString() !== serverId) {
                 throw new ApiError(400, ErrorMessages.ROLE.NOT_IN_SERVER);
             }
-            if (role.name && role.name.trim().toLowerCase() === '@everyone') {
+            if (role.name.trim().toLowerCase() === '@everyone') {
                 throw new ApiError(
                     400,
                     ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT,
@@ -650,10 +657,10 @@ export class ServerController {
 
         const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, {
-            defaultRoleId: roleId ? new Types.ObjectId(roleId) : undefined,
+            defaultRoleId: (roleId !== null && roleId !== '') ? new Types.ObjectId(roleId) : undefined,
         });
 
-        if (server) {
+        if (server !== null) {
             this.permissionService.invalidateCache(serverOid);
             this.wsServer.broadcastToServer(serverId.toString(), {
                 type: 'server_updated',
@@ -674,14 +681,14 @@ export class ServerController {
                     {
                         field: 'defaultRoleId',
                         before:
-                            existingServer?.defaultRoleId?.toString() || null,
-                        after: roleId || null,
+                            existingServer?.defaultRoleId ? existingServer.defaultRoleId.toString() : null,
+                        after: roleId,
                     },
                 ],
             });
         }
 
-        return { defaultRoleId: roleId || null };
+        return { defaultRoleId: roleId };
     }
 
     @Post(':serverId/verification-request')
@@ -697,7 +704,7 @@ export class ServerController {
         const serverOid = new Types.ObjectId(serverId);
         
         const server = await this.serverRepo.findById(serverOid);
-        if (!server) {
+        if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
         
@@ -705,7 +712,7 @@ export class ServerController {
             throw new ApiError(403, 'Only the server owner can apply for verification.');
         }
 
-        if (server.verified || server.verificationRequested) {
+        if (server.verified === true || server.verificationRequested === true) {
             return { message: 'Already verified or request pending.' };
         }
 
@@ -734,7 +741,7 @@ export class ServerController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const server = await this.serverRepo.findById(serverOid);
-        if (!server) {
+        if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -787,22 +794,22 @@ export class ServerController {
     public async uploadServerIcon(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-        @UploadedFile() icon: Express.Multer.File,
+        @UploadedFile() icon: Express.Multer.File | undefined,
     ): Promise<{ icon: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageServer',
-            ))
+            )) !== true
         ) {
             throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
-        if (!icon) {
+        if (icon === undefined) {
             throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
         }
 
@@ -810,7 +817,7 @@ export class ServerController {
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
         const input = icon.path || icon.buffer;
-        if (!input) {
+        if (input === '') {
             throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
         }
 
@@ -821,7 +828,7 @@ export class ServerController {
         );
 
         // Cleanup temporary Multer file if it was written to disk
-        if (icon.path && fs.existsSync(icon.path)) {
+        if (icon.path !== '' && fs.existsSync(icon.path) === true) {
             fs.unlinkSync(icon.path);
         }
 
@@ -830,7 +837,7 @@ export class ServerController {
         const updatedServer = await this.serverRepo.update(serverOid, {
             icon: iconUrl,
         });
-        if (!updatedServer) {
+        if (updatedServer === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -852,7 +859,7 @@ export class ServerController {
             changes: [
                 {
                     field: 'icon',
-                    before: existingServer?.icon || null,
+                    before: existingServer?.icon ?? null,
                     after: iconUrl,
                 },
             ],
@@ -882,22 +889,22 @@ export class ServerController {
     public async uploadServerBanner(
         @Param('serverId') serverId: string,
         @Req() req: Request,
-        @UploadedFile() banner: Express.Multer.File,
+        @UploadedFile() banner: Express.Multer.File | undefined,
     ): Promise<{ banner: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageServer',
-            ))
+            )) !== true
         ) {
             throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
-        if (!banner) {
+        if (banner === undefined) {
             throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
         }
 
@@ -906,7 +913,7 @@ export class ServerController {
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
         const input = banner.path || banner.buffer;
-        if (!input) {
+        if (input === '') {
             throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
         }
 
@@ -917,7 +924,7 @@ export class ServerController {
         );
 
         // Cleanup temporary Multer file if it was written to disk
-        if (banner.path && fs.existsSync(banner.path)) {
+        if (banner.path !== '' && fs.existsSync(banner.path) === true) {
             fs.unlinkSync(banner.path);
         }
 
@@ -926,7 +933,7 @@ export class ServerController {
         const updatedServer = await this.serverRepo.update(serverOid, {
             banner: { type: 'image', value: bannerUrl },
         });
-        if (!updatedServer) {
+        if (updatedServer === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -948,7 +955,7 @@ export class ServerController {
             changes: [
                 {
                     field: 'banner',
-                    before: existingServer?.banner || null,
+                    before: existingServer?.banner ?? null,
                     after: bannerUrl,
                 },
             ],
@@ -973,26 +980,26 @@ export class ServerController {
         const { roleId } = body;
 
         if (
-            !(await this.permissionService.hasPermission(
+            (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
                 'manageServer',
-            ))
+            )) !== true
         ) {
             throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
         }
 
-        if (roleId) {
+        if (roleId !== '') {
             const role = await this.roleRepo.findById(
                 new Types.ObjectId(roleId),
             );
-            if (!role) {
+            if (role === null) {
                 throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
             }
             if (role.serverId.toString() !== serverId) {
                 throw new ApiError(400, ErrorMessages.ROLE.NOT_IN_SERVER);
             }
-            if (role.name && role.name.trim().toLowerCase() === '@everyone') {
+            if (role.name.trim().toLowerCase() === '@everyone') {
                 throw new ApiError(
                     400,
                     ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT,
@@ -1002,10 +1009,10 @@ export class ServerController {
 
         const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, {
-            defaultRoleId: roleId ? new Types.ObjectId(roleId) : undefined,
+            defaultRoleId: (roleId !== '') ? new Types.ObjectId(roleId) : undefined,
         });
 
-        if (server) {
+        if (server !== null) {
             this.wsServer.broadcastToServer(serverId, {
                 type: 'server_updated',
                 payload: {
@@ -1024,14 +1031,14 @@ export class ServerController {
                     {
                         field: 'defaultRoleId',
                         before:
-                            existingServer?.defaultRoleId?.toString() || null,
-                        after: roleId || null,
+                            existingServer?.defaultRoleId ? existingServer.defaultRoleId.toString() : null,
+                        after: roleId,
                     },
                 ],
             });
         }
 
-        return { defaultRoleId: roleId || null };
+        return { defaultRoleId: roleId };
     }
 
     @Get(':serverId/voice-states')
@@ -1050,7 +1057,7 @@ export class ServerController {
             serverOid,
             userOid,
         );
-        if (!member) {
+        if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
@@ -1075,7 +1082,7 @@ export class ServerController {
                     if (parts.length === 3) {
                         const [, , channelId] = parts;
                         const members = await redisClient.smembers(key);
-                        if (members.length > 0 && channelId) {
+                        if (members.length > 0 && channelId !== undefined && channelId !== '') {
                             voiceStates[channelId] = members;
                         }
                     }

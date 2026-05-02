@@ -24,7 +24,7 @@ export async function expressAuthentication(
                 ? authHeader.slice('Bearer '.length).trim()
                 : undefined;
 
-        if (!token) {
+        if (token === undefined) {
             return Promise.reject(new Error('No token provided'));
         }
 
@@ -35,16 +35,16 @@ export async function expressAuthentication(
                 .select('deletedAt tokenVersion username permissions')
                 .lean();
 
-            if (!user) {
+            if (user === null) {
                 return Promise.reject(new Error('Invalid token'));
             }
 
-            if (user.deletedAt) {
+            if (user.deletedAt !== undefined) {
                 return Promise.reject(new Error('Invalid token'));
             }
 
-            const currentTokenVersion = user.tokenVersion || 0;
-            const payloadTokenVersion = decoded.tokenVersion || 0;
+            const currentTokenVersion = user.tokenVersion;
+            const payloadTokenVersion = decoded.tokenVersion;
 
             if (currentTokenVersion !== payloadTokenVersion) {
                 return Promise.reject(new Error('Token expired'));
@@ -63,7 +63,7 @@ export async function expressAuthentication(
                 userId: userObjectId,
                 active: true,
             });
-            if (activeBan) {
+            if (activeBan !== null) {
                 return Promise.reject({
                     status: 403,
                     message: 'Account banned',
@@ -76,7 +76,7 @@ export async function expressAuthentication(
 
             if (scopes && scopes.length > 0) {
                 const userPermissions = user.permissions;
-                if (!userPermissions) {
+                if (userPermissions === undefined) {
                     return Promise.reject({
                         status: 403,
                         message: 'Insufficient permissions',
@@ -98,7 +98,7 @@ export async function expressAuthentication(
 
             return Promise.resolve(decoded);
         } catch (err) {
-            if (err && typeof err === 'object' && 'status' in err) {
+            if (err !== null && typeof err === 'object' && 'status' in (err as object)) {
                 return Promise.reject(err);
             }
             return Promise.reject(new Error('Invalid token'));

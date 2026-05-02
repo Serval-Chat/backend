@@ -19,6 +19,7 @@ export interface IRolePermissions {
     viewChannels: boolean;
     pinMessages: boolean;
     connect: boolean;
+    seeDeletedMessages: boolean;
 }
 
 // Role interface (domain model)
@@ -43,6 +44,9 @@ export interface IRole {
     position: number;
     permissions: IRolePermissions;
     icon?: string;
+    managed: boolean;
+    managedBotId?: Types.ObjectId;
+    glowEnabled: boolean;
     createdAt?: Date;
 }
 
@@ -50,13 +54,10 @@ export interface IRole {
 //
 // Encapsulates role operations
 export interface IRoleRepository {
-    // Find role by ID
     findById(id: Types.ObjectId): Promise<IRole | null>;
 
-    // Find all roles for a server
     findByServerId(serverId: Types.ObjectId): Promise<IRole[]>;
 
-    // Create a new role
     create(data: {
         serverId: Types.ObjectId;
         name: string;
@@ -69,15 +70,15 @@ export interface IRoleRepository {
         position?: number;
         permissions?: Partial<IRolePermissions>;
         icon?: string;
+        managed?: boolean;
+        managedBotId?: Types.ObjectId;
+        glowEnabled?: boolean;
     }): Promise<IRole>;
 
-    // Update role
     update(id: Types.ObjectId, data: Partial<IRole>): Promise<IRole | null>;
 
-    // Delete role by ID
     delete(id: Types.ObjectId): Promise<boolean>;
 
-    // Find @everyone role for a server
     findEveryoneRole(serverId: Types.ObjectId): Promise<IRole | null>;
 
     // Find role by server ID and name
@@ -86,10 +87,8 @@ export interface IRoleRepository {
         name: string,
     ): Promise<IRole | null>;
 
-    // Update role position
     updatePosition(id: Types.ObjectId, position: number): Promise<IRole | null>;
 
-    // Delete all roles for a server (bulk delete)
     deleteByServerId(serverId: Types.ObjectId): Promise<number>;
 
     // Find role with maximum position for a server

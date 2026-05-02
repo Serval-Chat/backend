@@ -3,61 +3,61 @@ import { AdminServerOwnerDTO, AdminServerBannerDTO } from './admin-servers.respo
 
 export class AdminChannelShortDTO {
     @ApiProperty()
-    _id!: string;
+    public _id!: string;
 
     @ApiProperty()
-    name!: string;
+    public name!: string;
 
     @ApiProperty({ enum: ['text', 'voice', 'link'] })
-    type!: 'text' | 'voice' | 'link';
+    public type!: 'text' | 'voice' | 'link';
 
     @ApiProperty()
-    position!: number;
+    public position!: number;
 }
 
 export class AdminServerDetailsDTO {
     @ApiProperty()
-    _id!: string;
+    public _id!: string;
 
     @ApiProperty()
-    name!: string;
+    public name!: string;
 
     @ApiProperty({ nullable: true })
-    icon!: string | null;
+    public icon!: string | null;
 
     @ApiPropertyOptional({ type: AdminServerBannerDTO })
-    banner?: AdminServerBannerDTO;
+    public banner?: AdminServerBannerDTO;
 
     @ApiProperty()
-    ownerId!: string;
+    public ownerId!: string;
 
     @ApiProperty()
-    memberCount!: number;
+    public memberCount!: number;
 
     @ApiProperty()
-    messageVolume!: number;
+    public messageVolume!: number;
 
     @ApiProperty()
-    createdAt!: Date;
+    public createdAt!: Date;
 
     @ApiPropertyOptional()
-    deletedAt?: Date;
+    public deletedAt?: Date;
 
     @ApiProperty({ type: AdminServerOwnerDTO, nullable: true })
-    owner!: AdminServerOwnerDTO | null;
+    public owner!: AdminServerOwnerDTO | null;
 
     @ApiProperty({ type: [AdminChannelShortDTO] })
-    channels!: AdminChannelShortDTO[];
+    public channels!: AdminChannelShortDTO[];
 
     @ApiProperty()
-    recentBanCount!: number;
+    public recentBanCount!: number;
 
     @ApiProperty()
-    recentKickCount!: number;
+    public recentKickCount!: number;
 
     @ApiProperty({ default: false })
-    verified!: boolean;
+    public verified!: boolean;
 
     @ApiProperty({ default: false })
-    verificationRequested!: boolean;
+    public verificationRequested!: boolean;
 }

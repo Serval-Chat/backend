@@ -33,7 +33,7 @@ import logger from '@/utils/logger';
 export class ReactionController {
     @inject(TYPES.WsServer) private wsServer!: IWsServer;
 
-    constructor(
+    public constructor(
         @inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
         @inject(TYPES.ServerMessageRepository)
@@ -58,7 +58,7 @@ export class ReactionController {
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -69,7 +69,7 @@ export class ReactionController {
             const message = await this.messageRepo.findById(
                 new mongoose.Types.ObjectId(messageId),
             );
-            if (!message) {
+            if (message === null) {
                 throw new Error('NOT_FOUND: Message not found');
             }
 
@@ -89,7 +89,7 @@ export class ReactionController {
                 receiverId,
                 new mongoose.Types.ObjectId(userId),
             );
-            if (blockFlags & BlockFlags.BLOCK_REACTIONS) {
+            if ((blockFlags & BlockFlags.BLOCK_REACTIONS) !== 0) {
                 return { success: true };
             }
 
@@ -155,18 +155,14 @@ export class ReactionController {
                         message: {
                             messageId: messageId,
                             senderId: authorId,
-                            senderUsername: author.username || 'Unknown User',
+                            senderUsername: author.username ?? 'Unknown User',
                             receiverId: message.receiverId.toString(),
                             receiverUsername:
-                                receiver.username || 'Unknown User',
+                                receiver.username ?? 'Unknown User',
                             text: message.text,
-                            createdAt:
-                                message.createdAt instanceof Date
-                                    ? message.createdAt.toISOString()
-                                    : (message.createdAt as unknown as string) ||
-                                      new Date().toISOString(),
+                            createdAt: (message.createdAt ?? new Date()).toISOString(),
                             replyToId: message.replyToId?.toString(),
-                            isEdited: message.isEdited || false,
+                            isEdited: message.isEdited ?? false,
                         },
                     };
 
@@ -176,11 +172,11 @@ export class ReactionController {
                     });
                 }
             }
-        } else if (messageType === 'server') {
+        } else {
             const message = await this.serverMessageRepo.findById(
                 new mongoose.Types.ObjectId(messageId),
             );
-            if (!message) {
+            if (message === null) {
                 throw new Error('NOT_FOUND: Message not found');
             }
 
@@ -203,7 +199,7 @@ export class ReactionController {
                 message.senderId,
                 new mongoose.Types.ObjectId(userId),
             );
-            if (serverBlockFlags & BlockFlags.BLOCK_REACTIONS) {
+            if ((serverBlockFlags & BlockFlags.BLOCK_REACTIONS) !== 0) {
                 return { success: true };
             }
 
@@ -230,6 +226,8 @@ export class ReactionController {
                 emojiType,
                 emojiId,
                 messageType: 'server',
+                serverId,
+                channelId,
             };
 
             this.wsServer.broadcastToChannel(
@@ -240,6 +238,22 @@ export class ReactionController {
                 },
                 undefined,
                 ws,
+            );
+
+            await this.wsServer.broadcastToServerWithPermission(
+                serverId,
+                {
+                    type: 'reaction_added',
+                    payload: broadcastPayload,
+                },
+                {
+                    type: 'channel',
+                    targetId: channelId,
+                    permission: 'viewChannels',
+                },
+                undefined,
+                ws,
+                { onlyBots: true },
             );
 
             // Send notification to message author if they are not the reactor
@@ -260,18 +274,14 @@ export class ReactionController {
                             serverId,
                             channelId,
                             senderId: authorId,
-                            senderUsername: author.username || 'Unknown User',
+                            senderUsername: author.username ?? 'Unknown User',
                             text: message.text,
-                            createdAt:
-                                message.createdAt instanceof Date
-                                    ? message.createdAt.toISOString()
-                                    : (message.createdAt as unknown as string) ||
-                                      new Date().toISOString(),
+                            createdAt: message.createdAt.toISOString(),
                             replyToId: message.replyToId?.toString(),
-                            isEdited: message.isEdited || false,
-                            isPinned: message.isPinned || false,
-                            isSticky: message.isSticky || false,
-                            isWebhook: message.isWebhook || false,
+                            isEdited: message.isEdited ?? false,
+                            isPinned: message.isPinned ?? false,
+                            isSticky: message.isSticky ?? false,
+                            isWebhook: message.isWebhook ?? false,
                         },
                     };
 
@@ -281,8 +291,6 @@ export class ReactionController {
                     });
                 }
             }
-        } else {
-            throw new Error('INVALID_REQUEST: Invalid message type');
         }
 
         return { success: true };
@@ -300,7 +308,7 @@ export class ReactionController {
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
-        if (!authenticatedUser) {
+        if (authenticatedUser === undefined) {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
@@ -312,7 +320,7 @@ export class ReactionController {
             const message = await this.messageRepo.findById(
                 new mongoose.Types.ObjectId(messageId),
             );
-            if (!message) {
+            if (message === null) {
                 throw new Error('NOT_FOUND: Message not found');
             }
 
@@ -367,11 +375,11 @@ export class ReactionController {
                 undefined,
                 ws,
             );
-        } else if (messageType === 'server') {
+        } else {
             const message = await this.serverMessageRepo.findById(
                 new mongoose.Types.ObjectId(messageId),
             );
-            if (!message) {
+            if (message === null) {
                 throw new Error('NOT_FOUND: Message not found');
             }
 
@@ -398,6 +406,8 @@ export class ReactionController {
                 emojiType,
                 emojiId,
                 messageType: 'server',
+                serverId: message.serverId.toString(),
+                channelId,
             };
 
             this.wsServer.broadcastToChannel(
@@ -409,8 +419,22 @@ export class ReactionController {
                 undefined,
                 ws,
             );
-        } else {
-            throw new Error('INVALID_REQUEST: Invalid message type');
+
+            await this.wsServer.broadcastToServerWithPermission(
+                message.serverId.toString(),
+                {
+                    type: 'reaction_removed',
+                    payload: broadcastPayload,
+                },
+                {
+                    type: 'channel',
+                    targetId: channelId,
+                    permission: 'viewChannels',
+                },
+                undefined,
+                ws,
+                { onlyBots: true },
+            );
         }
 
         return { success: true };
