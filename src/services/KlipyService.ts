@@ -28,14 +28,13 @@ export class KlipyService {
     ) {}
 
     private getApiUrl(endpoint: string) {
-        return `${this.baseUrl}${endpoint}`;
+        return `${this.baseUrl}/${KLIPY_API_KEY}${endpoint}`;
     }
 
     public async searchGifs(query: string) {
         try {
             const response = await axios.get(this.getApiUrl('/gifs/search'), {
-                params: { q: query },
-                headers: { 'Authorization': `Bearer ${KLIPY_API_KEY}` }
+                params: { q: query }
             });
             return response.data;
         } catch (error) {
@@ -46,9 +45,7 @@ export class KlipyService {
 
     public async getTrendingGifs() {
         try {
-            const response = await axios.get(this.getApiUrl('/gifs/trending'), {
-                headers: { 'Authorization': `Bearer ${KLIPY_API_KEY}` }
-            });
+            const response = await axios.get(this.getApiUrl('/gifs/trending'));
             return response.data;
         } catch (error) {
             this.logger.error(`Failed to get trending Klipy GIFs: ${error}`);
@@ -63,8 +60,7 @@ export class KlipyService {
 
             this.logger.info(`Resolving Klipy GIF ${klipyId}`);
             const response = await axios.get(
-                this.getApiUrl(`/gifs/${klipyId}`),
-                { headers: { 'Authorization': `Bearer ${KLIPY_API_KEY}` } }
+                this.getApiUrl(`/gifs/${klipyId}`)
             );
             const data = response.data.data as {
                 file?: {
