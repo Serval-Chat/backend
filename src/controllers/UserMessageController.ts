@@ -38,6 +38,7 @@ import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JWTPayload } from '@/utils/jwt';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { WsServer } from '@/ws/server';
 import {
     UserEditMessageRequestDTO,
     GetMessagesQueryDTO,
@@ -78,6 +79,8 @@ export class UserMessageController {
         private reactionRepo: IReactionRepository,
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @Inject(TYPES.WsServer)
+        private wsServer: WsServer,
     ) {}
 
     @Get('unread')
@@ -325,6 +328,21 @@ export class UserMessageController {
             );
         }
 
+        const broadcastPayload = {
+            messageId: updated._id.toString(),
+            text: updated.text,
+            editedAt: updated.editedAt ? updated.editedAt.toISOString() : new Date().toISOString(),
+            isEdited: true as const,
+        };
+        this.wsServer.broadcastToUser(message.senderId.toString(), {
+            type: 'message_dm_edited',
+            payload: broadcastPayload,
+        });
+        this.wsServer.broadcastToUser(message.receiverId.toString(), {
+            type: 'message_dm_edited',
+            payload: broadcastPayload,
+        });
+
         return updated;
     }
 
@@ -350,6 +368,16 @@ export class UserMessageController {
         }
 
         const deleted = await this.messageRepo.delete(new Types.ObjectId(id));
+        if (deleted) {
+            this.wsServer.broadcastToUser(message.senderId.toString(), {
+                type: 'message_dm_deleted',
+                payload: { messageId: id },
+            });
+            this.wsServer.broadcastToUser(message.receiverId.toString(), {
+                type: 'message_dm_deleted',
+                payload: { messageId: id },
+            });
+        }
         return { success: deleted };
     }
 }

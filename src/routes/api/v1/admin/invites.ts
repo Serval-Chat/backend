@@ -7,7 +7,11 @@ import logger from '@/utils/logger';
 
 const router = express.Router();
 
-const TOKENS_FILE = path.join('tokens.txt');
+const DATA_DIR = path.join(process.cwd(), '.data');
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+const TOKENS_FILE = path.join(DATA_DIR, 'tokens.txt');
 
 // Helper to read tokens
 const readTokens = (): string[] => {

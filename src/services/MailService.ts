@@ -61,24 +61,52 @@ export class MailService implements IMailService, OnModuleInit {
         }
     }
 
+    private escapeHtml(s: string): string {
+        return s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    private maskEmail(email: string): string {
+        const [user, domain] = email.split('@');
+        if (user === undefined || domain === undefined) return '***';
+        if (user.length <= 2) return `${user[0]}***@${domain}`;
+        return `${user[0]}${'*'.repeat(user.length - 2)}${user.slice(-1)}@${domain}`;
+    }
+
     private async getTemplate(
         templateName: string,
         placeholders: Record<string, string> = {},
     ): Promise<string> {
+        if (!/^[a-zA-Z0-9_-]+$/.test(templateName)) {
+            throw new Error(`Invalid template name: ${templateName}`);
+        }
+
         try {
             const TEMPLATE_DIR =
                 (process.env.TEMPLATE_DIR !== undefined && process.env.TEMPLATE_DIR !== '') ? process.env.TEMPLATE_DIR :
                 path.join(process.cwd(), 'templates');
+            
+            const resolvedDir = path.resolve(TEMPLATE_DIR);
             const templatePath = path.join(
                 TEMPLATE_DIR,
                 `${templateName}.html`,
             );
+            const resolvedPath = path.resolve(templatePath);
+
+            if (!resolvedPath.startsWith(resolvedDir)) {
+                throw new Error(`Template path traversal detected: ${templateName}`);
+            }
+
             let template = await fs.readFile(templatePath, 'utf-8');
 
             for (const [key, value] of Object.entries(placeholders)) {
                 template = template.replace(
                     new RegExp(`{{${key}}}`, 'g'),
-                    value,
+                    this.escapeHtml(value),
                 );
             }
 
@@ -103,9 +131,10 @@ export class MailService implements IMailService, OnModuleInit {
         resetLink: string,
         requestId: string,
     ): Promise<void> {
+        const maskedTo = this.maskEmail(to);
         if (!this.client) {
             this.logger.error(
-                `[MailService] Mailgun not configured. Cannot send email to ${to}`,
+                `[MailService] Mailgun not configured. Cannot send email to ${maskedTo}`,
             );
             throw new Error('Email service not configured');
         }
@@ -124,12 +153,12 @@ export class MailService implements IMailService, OnModuleInit {
                 html,
             });
             this.logger.info(
-                `[MailService] Password reset email sent to ${to}`,
+                `[MailService] Password reset email sent to ${maskedTo}`,
             );
         } catch (error: unknown) {
             const mailgunError = error as unknown;
             this.logger.error(
-                `[MailService] Failed to send password reset email to ${to}`,
+                `[MailService] Failed to send password reset email to ${maskedTo}`,
                 {
                     message: mailgunError,
                 },
@@ -141,6 +170,7 @@ export class MailService implements IMailService, OnModuleInit {
     public async sendPasswordChangedNotification(to: string): Promise<void> {
         if (!this.client) return;
 
+        const maskedTo = this.maskEmail(to);
         try {
             const html = await this.getTemplate('password-changed');
 
@@ -152,16 +182,12 @@ export class MailService implements IMailService, OnModuleInit {
                 html,
             });
             this.logger.info(
-                `[MailService] Password change notification sent to ${to}`,
+                `[MailService] Password changed notification sent to ${maskedTo}`,
             );
-        } catch (error) {
-            const mailgunError = error as Error;
+        } catch (error: unknown) {
             this.logger.error(
-                `[MailService] Failed to send password change notification to ${to}`,
-                {
-                    error: mailgunError.message,
-                    stack: mailgunError.stack,
-                },
+                `[MailService] Failed to send password changed notification to ${maskedTo}`,
+                error,
             );
         }
     }

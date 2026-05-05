@@ -15,6 +15,7 @@ import {
     ConflictException,
     InternalServerErrorException,
     HttpCode,
+    HttpException,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -29,7 +30,7 @@ import {
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
 import { injectable } from 'inversify';
-import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
+import type { IStickerRepository } from '@/di/interfaces/IStickerRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/permissions/PermissionService';
@@ -38,7 +39,6 @@ import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogServ
 
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
-import { IEmoji } from '@/di/interfaces/IEmojiRepository';
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
@@ -46,30 +46,29 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { storage } from '@/config/multer';
-import {
-    processAndSaveImage,
-    ImagePresets,
-    isAnimatedImage,
-    getImageMetadata,
-} from '@/utils/imageProcessing';
-import { UploadEmojiRequestDTO } from './dto/emoji.request.dto';
-import { EmojiValidationPipe } from '@/validation/EmojiValidationPipe';
+import { 
+    STICKER_MAX_SIZE_BYTES 
+} from '@/constants/stickers';
+import { StickerResponseDTO } from './dto/sticker.response.dto';
+import { UploadStickerRequestDTO } from './dto/sticker.request.dto';
+import { StickerValidationPipe } from '@/validation/StickerValidationPipe';
+
 
 @injectable()
-@Controller('api/v1/servers/:serverId/emojis')
-@ApiTags('Server Emojis')
+@Controller('api/v1/servers/:serverId/stickers')
+@ApiTags('Server Stickers')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-export class ServerEmojiController {
+export class ServerStickerController {
     private readonly UPLOADS_DIR = path.join(
         process.cwd(),
         'uploads',
-        'emojis',
+        'stickers',
     );
 
     public constructor(
-        @Inject(TYPES.EmojiRepository)
-        private emojiRepo: IEmojiRepository,
+        @Inject(TYPES.StickerRepository)
+        private stickerRepo: IStickerRepository,
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -83,21 +82,21 @@ export class ServerEmojiController {
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
     ) {
-        // Ensure emoji upload directory exists at startup to avoid runtime write failures
+        // Ensure sticker upload directory exists at startup to avoid runtime write failures
         if (!fs.existsSync(this.UPLOADS_DIR)) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
         }
     }
 
     @Get()
-    @ApiOperation({ summary: 'Get all server emojis' })
-    @ApiResponse({ status: 200, description: 'Server emojis retrieved' })
+    @ApiOperation({ summary: 'Get all server stickers' })
+    @ApiResponse({ status: 200, description: 'Server stickers retrieved', type: [StickerResponseDTO] })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     @ApiResponse({ status: 404, description: ErrorMessages.SERVER.NOT_FOUND })
-    public async getServerEmojis(
+    public async getServerStickers(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
-    ): Promise<IEmoji[]> {
+    ): Promise<StickerResponseDTO[]> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
@@ -109,39 +108,50 @@ export class ServerEmojiController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        return await this.emojiRepo.findByServerIdWithCreator(serverOid);
+        const stickers = await this.stickerRepo.findByServerIdWithCreator(serverOid);
+        return stickers.map((s) => ({
+            id: s._id.toString(),
+            name: s.name,
+            imageUrl: s.imageUrl,
+            serverId: s.serverId.toString(),
+            createdBy: s.createdBy.toString(),
+            createdAt: s.createdAt,
+        }));
     }
 
     @Post()
-    @UseInterceptors(FileInterceptor('emoji', { storage }))
-    @ApiOperation({ summary: 'Upload a server emoji' })
+    @UseInterceptors(FileInterceptor('sticker', { 
+        storage,
+        limits: { fileSize: STICKER_MAX_SIZE_BYTES }
+    }))
+    @ApiOperation({ summary: 'Upload a server sticker' })
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {
             type: 'object',
             properties: {
-                emoji: { type: 'string', format: 'binary' },
+                sticker: { type: 'string', format: 'binary' },
                 name: { type: 'string' },
             },
         },
     })
-    @ApiResponse({ status: 201, description: 'Emoji uploaded' })
+    @ApiResponse({ status: 201, description: 'Sticker uploaded', type: StickerResponseDTO })
     @ApiResponse({
         status: 400,
-        description: ErrorMessages.EMOJI.FILE_REQUIRED,
+        description: 'File required or invalid name',
     })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
     })
-    @ApiResponse({ status: 409, description: ErrorMessages.EMOJI.NAME_EXISTS })
+    @ApiResponse({ status: 409, description: 'Name exists' })
     @HttpCode(201)
-    public async uploadEmoji(
+    public async uploadSticker(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
-        @UploadedFile(EmojiValidationPipe) emoji: Express.Multer.File,
-        @Body() body: UploadEmojiRequestDTO,
-    ): Promise<IEmoji> {
+        @UploadedFile(StickerValidationPipe) sticker: Express.Multer.File,
+        @Body() body: UploadStickerRequestDTO,
+    ): Promise<StickerResponseDTO> {
         const { name } = body;
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
@@ -150,7 +160,7 @@ export class ServerEmojiController {
 
 
         const server = await this.serverRepo.findById(serverOid);
-        if (server === null || !server.ownerId.equals(userOid)) {
+        if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -160,7 +170,7 @@ export class ServerEmojiController {
             !(await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
-                'manageServer',
+                'manageStickers',
             ))
         ) {
             throw new ForbiddenException(
@@ -168,94 +178,91 @@ export class ServerEmojiController {
             );
         }
 
-        const existingEmoji = await this.emojiRepo.findByServerAndName(
+        const existingSticker = await this.stickerRepo.findByServerAndName(
             serverOid,
             name,
         );
-        if (existingEmoji !== null) {
-            throw new ConflictException(ErrorMessages.EMOJI.NAME_EXISTS);
+        if (existingSticker !== null) {
+            throw new ConflictException(ErrorMessages.STICKER.NAME_EXISTS);
         }
 
-        const emojiId = new mongoose.Types.ObjectId();
-        const input = emoji.path || emoji.buffer;
+        const stickerId = new mongoose.Types.ObjectId();
 
         try {
-            const isAnimated = await isAnimatedImage(input);
-            const metadata = await getImageMetadata(input);
-            const format =
-                metadata.format === 'gif' ? 'gif' : isAnimated ? 'webp' : 'png';
-
-            const fileName = `${emojiId}.${format}`;
+            const fileName = `${stickerId}.webp`;
             const filePath = path.join(this.UPLOADS_DIR, fileName);
 
-            await processAndSaveImage(
-                input,
-                filePath,
-                ImagePresets.emoji(isAnimated, format),
-            );
-
-            // Cleanup temporary Multer file if it was written to disk
-            if (emoji.path && fs.existsSync(emoji.path)) {
-                fs.unlinkSync(emoji.path);
+            if ('path' in sticker && typeof sticker.path === 'string' && sticker.path !== '') {
+                fs.copyFileSync(sticker.path, filePath);
+                fs.unlinkSync(sticker.path);
+            } else {
+                fs.writeFileSync(filePath, sticker.buffer);
             }
 
-            const imageUrl = `/uploads/emojis/${fileName}`;
+            const imageUrl = `/uploads/stickers/${fileName}`;
 
-            const newEmoji = await this.emojiRepo.create({
+            const newSticker = await this.stickerRepo.create({
                 name,
                 imageUrl,
                 serverId: serverOid,
                 createdBy: userOid,
             });
 
-            const populatedEmoji = await this.emojiRepo.findByIdWithCreator(
-                newEmoji._id,
+            const populatedSticker = await this.stickerRepo.findByIdWithCreator(
+                newSticker._id,
             );
 
-            if (populatedEmoji === null) {
+            if (populatedSticker === null) {
                 throw new InternalServerErrorException(
-                    ErrorMessages.EMOJI.NOT_FOUND,
+                    'Sticker not found after creation',
                 );
             }
 
             this.wsServer.broadcastToServer(serverId, {
-                type: 'emoji_updated',
+                type: 'sticker_updated',
                 payload: { serverId, senderId: userId },
             });
 
             await this.serverAuditLogService.createAndBroadcast({
                 serverId: serverOid,
                 actorId: userOid,
-                actionType: 'emoji_create',
-                targetId: newEmoji._id as Types.ObjectId,
+                actionType: 'sticker_create',
+                targetId: newSticker._id as Types.ObjectId,
                 targetType: 'server',
-                metadata: { emojiName: name },
+                metadata: { stickerName: name },
             });
 
-            return populatedEmoji;
+            return {
+                id: populatedSticker._id.toString(),
+                name: populatedSticker.name,
+                imageUrl: populatedSticker.imageUrl,
+                serverId: populatedSticker.serverId.toString(),
+                createdBy: populatedSticker.createdBy.toString(),
+                createdAt: populatedSticker.createdAt,
+            };
         } catch (error) {
-            this.logger.error('Error adding emoji:', error);
-            if (error instanceof ApiError) throw error;
+            this.logger.error('Error adding sticker:', error);
+            if (error instanceof ApiError || error instanceof HttpException) throw error;
             throw new InternalServerErrorException(
                 ErrorMessages.SYSTEM.INTERNAL_ERROR,
             );
         }
     }
 
-    @Get(':emojiId')
-    @ApiOperation({ summary: 'Get a specific emoji' })
-    @ApiResponse({ status: 200, description: 'Emoji retrieved' })
+    @Get(':stickerId')
+    @ApiOperation({ summary: 'Get a specific sticker' })
+    @ApiResponse({ status: 200, description: 'Sticker retrieved', type: StickerResponseDTO })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
-    @ApiResponse({ status: 404, description: ErrorMessages.EMOJI.NOT_FOUND })
-    public async getEmoji(
+    @ApiResponse({ status: 404, description: ErrorMessages.STICKER.NOT_FOUND })
+    public async getSticker(
         @Param('serverId') serverId: string,
-        @Param('emojiId') emojiId: string,
+        @Param('stickerId') stickerId: string,
         @Req() req: ExpressRequest,
-    ): Promise<IEmoji> {
+    ): Promise<StickerResponseDTO> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        const emojiOid = new Types.ObjectId(emojiId);
+        const stickerOid = new Types.ObjectId(stickerId);
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverOid,
             userOid,
@@ -264,68 +271,83 @@ export class ServerEmojiController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const emoji = await this.emojiRepo.findById(emojiOid);
-        if (emoji === null || !emoji.serverId.equals(serverOid)) {
-            throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
+        const sticker = await this.stickerRepo.findById(stickerOid);
+        if (sticker === null || !sticker.serverId.equals(serverOid)) {
+            throw new NotFoundException(ErrorMessages.STICKER.NOT_FOUND);
         }
 
-        return emoji;
+        return {
+            id: sticker._id.toString(),
+            name: sticker.name,
+            imageUrl: sticker.imageUrl,
+            serverId: sticker.serverId.toString(),
+            createdBy: sticker.createdBy.toString(),
+            createdAt: sticker.createdAt,
+        };
     }
 
-    @Delete(':emojiId')
-    @ApiOperation({ summary: 'Delete a server emoji' })
-    @ApiResponse({ status: 204, description: 'Emoji deleted' })
+    @Delete(':stickerId')
+    @ApiOperation({ summary: 'Delete a server sticker' })
+    @ApiResponse({ status: 204, description: 'Sticker deleted' })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
     })
-    @ApiResponse({ status: 404, description: ErrorMessages.EMOJI.NOT_FOUND })
+    @ApiResponse({ status: 404, description: ErrorMessages.STICKER.NOT_FOUND })
     @HttpCode(204)
-    public async deleteEmoji(
+    public async deleteSticker(
         @Param('serverId') serverId: string,
-        @Param('emojiId') emojiId: string,
+        @Param('stickerId') stickerId: string,
         @Req() req: ExpressRequest,
     ): Promise<void> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        const emojiOid = new Types.ObjectId(emojiId);
+        const stickerOid = new Types.ObjectId(stickerId);
 
         const server = await this.serverRepo.findById(serverOid);
         if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        if (!server.ownerId.equals(userOid)) {
-            throw new ForbiddenException(ErrorMessages.SERVER.ONLY_OWNER);
+        const isOwner = server.ownerId.equals(userOid);
+        if (
+            !isOwner &&
+            !(await this.permissionService.hasPermission(
+                serverOid,
+                userOid,
+                'manageStickers',
+            ))
+        ) {
+            throw new ForbiddenException(
+                ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+            );
         }
 
-        const emoji = await this.emojiRepo.findById(emojiOid);
-        if (emoji === null || !emoji.serverId.equals(serverOid)) {
-            throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
+        const sticker = await this.stickerRepo.findById(stickerOid);
+        if (sticker === null || !sticker.serverId.equals(serverOid)) {
+            throw new NotFoundException(ErrorMessages.STICKER.NOT_FOUND);
         }
 
-        // Remove the physical file from disk before deleting the database record
-        // Best-effort filesystem cleanup; missing files are ignored
-        const filePath = path.join(process.cwd(), emoji.imageUrl);
+        const filePath = path.join(process.cwd(), sticker.imageUrl);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
 
-        await this.emojiRepo.delete(emojiOid);
+        await this.stickerRepo.delete(stickerOid);
 
         this.wsServer.broadcastToServer(serverId, {
-            type: 'emoji_updated',
+            type: 'sticker_updated',
             payload: { serverId, senderId: userId },
         });
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverOid,
             actorId: userOid,
-            actionType: 'emoji_delete',
-            targetId: emojiOid,
+            actionType: 'sticker_delete',
+            targetId: stickerOid,
             targetType: 'server',
-            metadata: { emojiName: emoji.name },
+            metadata: { stickerName: sticker.name },
         });
     }
 }

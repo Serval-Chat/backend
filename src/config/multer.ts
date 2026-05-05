@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import fs from 'fs';
+import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import type { Request as ExpressRequest } from 'express';
 
 function sanitizeFilename(filename: string): string {
@@ -69,22 +70,18 @@ const profileStorage = multer.diskStorage({
   },
 });
 
-const profileFileFilter = (
-  req: ExpressRequest,
-  file: Express.Multer.File,
-  cb: multer.FileFilterCallback,
-) => {
-  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+export const imageFileFilter: NonNullable<MulterOptions['fileFilter']> = (req, file, cb) => {
+  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only JPEG, PNG, and GIF are allowed.'));
+    cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WEBP are allowed.'), false);
   }
 };
 
 export const profilePictureUpload = multer({
   storage: profileStorage,
-  fileFilter: profileFileFilter,
+  fileFilter: imageFileFilter as multer.Options['fileFilter'],
   limits: {
     fileSize: 10 * 1024 * 1024,
     files: 1,

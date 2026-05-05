@@ -13,6 +13,7 @@ import { MongooseCategoryRepository } from '@/infrastructure/repositories/Mongoo
 import { MongooseChannelRepository } from '@/infrastructure/repositories/MongooseChannelRepository';
 import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePingRepository';
 import { MongooseEmojiRepository } from '@/infrastructure/repositories/MongooseEmojiRepository';
+import { MongooseStickerRepository } from '@/infrastructure/repositories/MongooseStickerRepository';
 import { MongooseReactionRepository } from '@/infrastructure/repositories/MongooseReactionRepository';
 import { MongooseServerMessageRepository } from '@/infrastructure/repositories/MongooseServerMessageRepository';
 import { MongooseInviteRepository } from '@/infrastructure/repositories/MongooseInviteRepository';
@@ -82,6 +83,10 @@ import { SlashCommandRepository } from '@/infrastructure/repositories/SlashComma
             useClass: MongooseEmojiRepository,
         },
         {
+            provide: TYPES.StickerRepository,
+            useClass: MongooseStickerRepository,
+        },
+        {
             provide: TYPES.ReactionRepository,
             useClass: MongooseReactionRepository,
         },
@@ -144,6 +149,7 @@ import { SlashCommandRepository } from '@/infrastructure/repositories/SlashComma
         TYPES.ChannelRepository,
         TYPES.PingRepository,
         TYPES.EmojiRepository,
+        TYPES.StickerRepository,
         TYPES.ReactionRepository,
         TYPES.ServerMessageRepository,
         TYPES.InviteRepository,

@@ -266,9 +266,10 @@ export class AdminController {
     public async listUsers(
         @Query() query: AdminListUsersRequestDTO,
     ): Promise<AdminUserListItemDTO[]> {
+        const safeLimit = Math.min(Math.max(Number(query.limit ?? 50), 1), 200);
         // Build query options based on query parameters
         const options: Record<string, unknown> = {
-            limit: Number(query.limit ?? 50),
+            limit: safeLimit,
             offset: Number(query.offset ?? 0),
             includeDeleted: query.includeDeleted === true,
         };
@@ -950,8 +951,9 @@ export class AdminController {
         @Query('limit') limit: number = 50,
         @Query('offset') offset: number = 0,
     ): Promise<AdminBanListResponseDTO> {
+        const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
         const bans = await this.banRepo.findAll({
-            limit: Number(limit),
+            limit: safeLimit,
             offset: Number(offset),
         });
         return bans;
@@ -1067,8 +1069,9 @@ export class AdminController {
         @Query('limit') limit: number = 50,
         @Query('offset') offset: number = 0,
     ): Promise<AdminWarningListResponseDTO> {
+        const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
         const warnings = await this.warningRepo.findAll({
-            limit: Number(limit),
+            limit: safeLimit,
             offset: Number(offset),
         });
         return warnings.map((w) => {
@@ -1092,9 +1095,10 @@ export class AdminController {
     public async listAuditLogs(
         @Query() query: AdminListAuditLogsRequestDTO,
     ): Promise<AdminAuditLogListResponseDTO> {
+        const safeLimit = Math.min(Math.max(Number(query.limit ?? 100), 1), 200);
         const logs = await this.auditLogRepo.find({
             serverId: null,
-            limit: Number(query.limit ?? 100),
+            limit: safeLimit,
             offset: Number(query.offset ?? 0),
             actorId: (query.actorId !== undefined && query.actorId !== '')
                 ? new Types.ObjectId(query.actorId)
@@ -1119,8 +1123,9 @@ export class AdminController {
         @Query('offset') offset: number = 0,
         @Query('search') search?: string,
     ): Promise<AdminServerListResponseDTO> {
+        const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
         const servers = await this.serverRepo.findMany({
-            limit: Number(limit),
+            limit: safeLimit,
             offset: Number(offset),
             search: search as string,
             includeDeleted: true,
@@ -1330,8 +1335,9 @@ export class AdminController {
         @Query('limit') limit: number = 50,
         @Query('offset') offset: number = 0,
     ): Promise<{ items: AdminServerListResponseDTO; total: number }> {
+        const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
         const servers = await this.serverRepo.listAwaitingReview({
-            limit: Number(limit),
+            limit: safeLimit,
             offset: Number(offset)
         });
 

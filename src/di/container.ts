@@ -43,6 +43,8 @@ import { MongooseServerRepository } from '@/infrastructure/repositories/Mongoose
 import { MongooseMessageRepository } from '@/infrastructure/repositories/MongooseMessageRepository';
 import { MongooseFriendshipRepository } from '@/infrastructure/repositories/MongooseFriendshipRepository';
 import { MongooseEmojiRepository } from '@/infrastructure/repositories/MongooseEmojiRepository';
+import type { IStickerRepository } from '@/di/interfaces/IStickerRepository';
+import { MongooseStickerRepository } from '@/infrastructure/repositories/MongooseStickerRepository';
 import { MongooseWebhookRepository } from '@/infrastructure/repositories/MongooseWebhookRepository';
 import { MongooseServerMemberRepository } from '@/infrastructure/repositories/MongooseServerMemberRepository';
 import { MongooseRoleRepository } from '@/infrastructure/repositories/MongooseRoleRepository';
@@ -94,6 +96,8 @@ import { ServerRoleController } from '@/controllers/ServerRoleController';
 import { ServerInviteController } from '@/controllers/ServerInviteController';
 import { ServerMessageController } from '@/controllers/ServerMessageController';
 import { ServerEmojiController } from '@/controllers/ServerEmojiController';
+import { ServerStickerController } from '@/controllers/ServerStickerController';
+import { StickerController } from '@/controllers/StickerController';
 import { WebhookController } from '@/controllers/WebhookController';
 import { MetricsController } from '@/controllers/MetricsController';
 import { FileProxyController } from '@/controllers/FileProxyController';
@@ -156,6 +160,11 @@ container
 container
     .bind<IEmojiRepository>(TYPES.EmojiRepository)
     .to(MongooseEmojiRepository)
+    .inTransientScope();
+
+container
+    .bind<IStickerRepository>(TYPES.StickerRepository)
+    .to(MongooseStickerRepository)
     .inTransientScope();
 
 container
@@ -338,6 +347,8 @@ container
 
 container.bind<EmojiController>(EmojiController).toSelf().inTransientScope();
 
+container.bind<StickerController>(StickerController).toSelf().inTransientScope();
+
 container
     .bind<ReactionController>(ReactionController)
     .toSelf()
@@ -376,6 +387,11 @@ container
 
 container
     .bind<ServerEmojiController>(ServerEmojiController)
+    .toSelf()
+    .inTransientScope();
+
+container
+    .bind<ServerStickerController>(ServerStickerController)
     .toSelf()
     .inTransientScope();
 

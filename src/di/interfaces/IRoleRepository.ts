@@ -20,6 +20,8 @@ export interface IRolePermissions {
     pinMessages: boolean;
     connect: boolean;
     seeDeletedMessages: boolean;
+    moderateMembers: boolean;
+    manageStickers: boolean;
 }
 
 // Role interface (domain model)

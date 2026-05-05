@@ -12,7 +12,7 @@ function ensureAbsolute(p: string): string {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET ?? '';
-const APP_ENCRYPTION_KEY = process.env.APP_ENCRYPTION_KEY ?? JWT_SECRET;
+const APP_ENCRYPTION_KEY = process.env.APP_ENCRYPTION_KEY ?? '';
 const PORT = Number(process.env.CHAT_PORT ?? -1);
 const MONGO_URI = process.env.MONGO_URI ?? '';
 const PROJECT_LEVEL = process.env.PROJ_LEVEL ?? '';
@@ -61,23 +61,26 @@ if (FRONTEND_URL !== '') {
     }
 }
 
-if (PORT === -1) throw new Error('CHAT_PORT not set.');
-if (JWT_SECRET === '') throw new Error('JWT_SECRET not set.');
-if (APP_ENCRYPTION_KEY === '') throw new Error('APP_ENCRYPTION_KEY not set.');
-if (MONGO_URI === '') throw new Error('MONGO_URI not set.');
-if (PROJECT_LEVEL === '') throw new Error('PROJ_LEVEL not set.');
-if (LOGS_PATH === '') throw new Error('LOGS_PATH not set.');
-if (PUBLIC_FOLDER_PATH === '') throw new Error('PUBLIC_FOLDER not set.');
-if (USE_HTTPS === '') throw new Error('HTTPS not set.');
-if (SERVER_URL === '') throw new Error('SERVER_URL not set.');
+if (process.env.NODE_ENV !== 'test') {
+    if (PORT === -1) throw new Error('CHAT_PORT not set.');
+    if (JWT_SECRET === '') throw new Error('JWT_SECRET not set.');
+    if (APP_ENCRYPTION_KEY === '') throw new Error('APP_ENCRYPTION_KEY not set.');
+    if (APP_ENCRYPTION_KEY === JWT_SECRET) throw new Error('APP_ENCRYPTION_KEY cannot be the same as JWT_SECRET.');
+    if (MONGO_URI === '') throw new Error('MONGO_URI not set.');
+    if (PROJECT_LEVEL === '') throw new Error('PROJ_LEVEL not set.');
+    if (LOGS_PATH === '') throw new Error('LOGS_PATH not set.');
+    if (PUBLIC_FOLDER_PATH === '') throw new Error('PUBLIC_FOLDER not set.');
+    if (USE_HTTPS === '') throw new Error('HTTPS not set.');
+    if (SERVER_URL === '') throw new Error('SERVER_URL not set.');
+}
 
-if (!['production', 'development'].includes(PROJECT_LEVEL)) {
+if (process.env.NODE_ENV !== 'test' && !['production', 'development'].includes(PROJECT_LEVEL)) {
     throw new Error(
         'Invalid PROJECT_LEVEL. Use "production" or "development".',
     );
 }
 
-if (!['on', 'off'].includes(USE_HTTPS)) {
+if (process.env.NODE_ENV !== 'test' && !['on', 'off'].includes(USE_HTTPS)) {
     throw new Error('Invalid HTTPS. Use "on" or "off"');
 }
 
@@ -98,7 +101,7 @@ try {
     throw new Error('Failed to create logs folder: ' + error.message);
 }
 
-if (!fs.existsSync(PUBLIC_FOLDER_PATH)) {
+if (process.env.NODE_ENV !== 'test' && !fs.existsSync(PUBLIC_FOLDER_PATH)) {
     throw new Error(`Public folder not found at ${PUBLIC_FOLDER_PATH}`);
 }
 

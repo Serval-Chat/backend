@@ -126,7 +126,7 @@ export class PermissionService {
         @Inject(TYPES.Logger)
         private logger: ILogger,
     ) {
-        this.cacheTtlMs = 5 * 60 * 1000;
+        this.cacheTtlMs = 1 * 60 * 1000;
     }
 
     public invalidateCache(serverId: Types.ObjectId): void {

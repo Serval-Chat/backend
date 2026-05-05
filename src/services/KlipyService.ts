@@ -28,13 +28,14 @@ export class KlipyService {
     ) {}
 
     private getApiUrl(endpoint: string) {
-        return `${this.baseUrl}/${KLIPY_API_KEY}${endpoint}`;
+        return `${this.baseUrl}${endpoint}`;
     }
 
     public async searchGifs(query: string) {
         try {
             const response = await axios.get(this.getApiUrl('/gifs/search'), {
                 params: { q: query },
+                headers: { 'Authorization': `Bearer ${KLIPY_API_KEY}` }
             });
             return response.data;
         } catch (error) {
@@ -45,7 +46,9 @@ export class KlipyService {
 
     public async getTrendingGifs() {
         try {
-            const response = await axios.get(this.getApiUrl('/gifs/trending'));
+            const response = await axios.get(this.getApiUrl('/gifs/trending'), {
+                headers: { 'Authorization': `Bearer ${KLIPY_API_KEY}` }
+            });
             return response.data;
         } catch (error) {
             this.logger.error(`Failed to get trending Klipy GIFs: ${error}`);
@@ -61,6 +64,7 @@ export class KlipyService {
             this.logger.info(`Resolving Klipy GIF ${klipyId}`);
             const response = await axios.get(
                 this.getApiUrl(`/gifs/${klipyId}`),
+                { headers: { 'Authorization': `Bearer ${KLIPY_API_KEY}` } }
             );
             const data = response.data.data as {
                 file?: {
@@ -73,7 +77,7 @@ export class KlipyService {
 
             if (data.file === undefined) {
                 this.logger.error(
-                    `Invalid Klipy response for ${klipyId}: ${JSON.stringify(response.data)}`,
+                    `Invalid Klipy response for ${klipyId}: Missing 'file' property in data.`,
                 );
                 throw new Error('Invalid GIF data received from Klipy');
             }
@@ -119,7 +123,7 @@ export class KlipyService {
         gifData: ToggleFavoriteGifRequestDTO,
     ): Promise<ToggleFavoriteResponseDTO> {
         const userOid = new Types.ObjectId(userId);
-        const { klipyId } = gifData;
+        const { klipyId, url, previewUrl, width, height } = gifData;
 
         const existing = await this.favoriteGifModel.findOne({
             userId: userOid,
@@ -132,7 +136,11 @@ export class KlipyService {
         } else {
             await this.favoriteGifModel.create({
                 userId: userOid,
-                ...gifData,
+                klipyId,
+                url,
+                previewUrl,
+                width,
+                height,
             });
             return { favorited: true };
         }

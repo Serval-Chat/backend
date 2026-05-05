@@ -32,6 +32,8 @@ import { ServerMemberController } from './controllers/ServerMemberController';
 import { ServerInviteController } from './controllers/ServerInviteController';
 import { ServerRoleController } from './controllers/ServerRoleController';
 import { ServerEmojiController } from './controllers/ServerEmojiController';
+import { ServerStickerController } from './controllers/ServerStickerController';
+import { StickerController } from './controllers/StickerController';
 import { ServerMessageController } from './controllers/ServerMessageController';
 import { ServerPublicController } from './controllers/ServerPublicController';
 import { SystemController } from './controllers/SystemController';
@@ -50,7 +52,13 @@ import { ApplicationController } from './controllers/ApplicationController';
         ConfigModule.forRoot({
             isGlobal: true,
         }),
-        MongooseModule.forRoot(MONGO_URI),
+        MongooseModule.forRootAsync({
+            useFactory: () => ({
+                uri: (process.env.MONGO_URI !== undefined && process.env.MONGO_URI !== '')
+                    ? process.env.MONGO_URI
+                    : MONGO_URI,
+            }),
+        }),
 
         LoggerModule.forRoot({
             pinoHttp: {
@@ -118,6 +126,8 @@ import { ApplicationController } from './controllers/ApplicationController';
         ServerInviteController,
         ServerRoleController,
         ServerEmojiController,
+        ServerStickerController,
+        StickerController,
         ServerMessageController,
         ServerPublicController,
         SystemController,

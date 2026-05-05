@@ -21,6 +21,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { injectable } from 'inversify';
 import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 import { Types } from 'mongoose';
 
 import { TYPES } from '@/di/types';
@@ -34,7 +35,7 @@ import { Server, ServerMember, ServerBan, Role } from '@/models/Server';
 import { generateJWT } from '@/utils/jwt';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { storage } from '@/config/multer';
+import { storage, imageFileFilter } from '@/config/multer';
 import { processAndSaveImage, ImagePresets, getImageMetadata } from '@/utils/imageProcessing';
 import { ErrorMessages } from '@/constants/errorMessages';
 import fs from 'fs';
@@ -55,8 +56,16 @@ import {
     UpdateBotCommandsRequestDTO,
 } from './dto/bot.request.dto';
 
-function hashSecret(secret: string): string {
-    return crypto.createHash('sha256').update(secret).digest('hex');
+async function hashSecret(secret: string): Promise<string> {
+    return bcrypt.hash(secret, 12);
+}
+
+async function verifySecret(secret: string, hash: string): Promise<boolean> {
+    if (hash.startsWith('$2b$') || hash.startsWith('$2a$')) {
+        return bcrypt.compare(secret, hash);
+    }
+    const sha256 = crypto.createHash('sha256').update(secret).digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(sha256), Buffer.from(hash));
 }
 
 function generateClientId(): string {
@@ -165,10 +174,8 @@ export class BotController {
             throw new ForbiddenException('Invalid credentials');
         }
 
-        const secretHash = hashSecret(client_secret);
-        const a = Buffer.from(secretHash);
-        const b = Buffer.from(bot.clientSecretHash);
-        if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        const isValid = await verifySecret(client_secret, bot.clientSecretHash);
+        if (!isValid) {
             throw new ForbiddenException('Invalid credentials');
         }
 
@@ -220,7 +227,7 @@ export class BotController {
 
         const clientId = generateClientId();
         const clientSecret = generateClientSecret();
-        const clientSecretHash = hashSecret(clientSecret);
+        const clientSecretHash = await hashSecret(clientSecret);
 
         const username = await sanitizeBotUsername(name.trim());
         const botUser = await User.create({
@@ -424,7 +431,7 @@ export class BotController {
         }
 
         const newSecret = generateClientSecret();
-        bot.clientSecretHash = hashSecret(newSecret);
+        bot.clientSecretHash = await hashSecret(newSecret);
         await bot.save();
         await User.findByIdAndUpdate(bot.userId, { $inc: { tokenVersion: 1 } });
 
@@ -666,7 +673,7 @@ export class BotController {
 
     @Post(':clientId/picture')
     @UseGuards(JwtAuthGuard)
-    @UseInterceptors(FileInterceptor('profilePicture', { storage, limits: { fileSize: 5 * 1024 * 1024 } }))
+    @UseInterceptors(FileInterceptor('profilePicture', { storage, fileFilter: imageFileFilter, limits: { fileSize: 5 * 1024 * 1024 } }))
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {
@@ -709,45 +716,39 @@ export class BotController {
         if (!fs.existsSync(profilesDir)) fs.mkdirSync(profilesDir, { recursive: true });
 
         const uploadedPath = profilePicture.path;
-        let metadata;
         try {
-            metadata = await getImageMetadata(uploadedPath);
-            if (!metadata.width || !metadata.height) { fs.unlinkSync(uploadedPath); throw new BadRequestException('Could not read image dimensions'); }
-            if (metadata.width > 256 || metadata.height > 256) { fs.unlinkSync(uploadedPath); throw new BadRequestException(`Max 256x256px. Got ${metadata.width}x${metadata.height}px`); }
-            if (metadata.format !== 'webp' && metadata.format !== 'gif') { fs.unlinkSync(uploadedPath); throw new BadRequestException('Only WebP and GIF allowed.'); }
-        } catch (error) {
-            if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
-            throw new BadRequestException((error as Error).message);
-        }
+            const metadata = await getImageMetadata(uploadedPath);
+            if (!metadata.width || !metadata.height) throw new BadRequestException('Could not read image dimensions');
+            if (metadata.width > 256 || metadata.height > 256) throw new BadRequestException(`Max 256x256px. Got ${metadata.width}x${metadata.height}px`);
+            if (metadata.format !== 'webp' && metadata.format !== 'gif') throw new BadRequestException('Only WebP and GIF allowed.');
 
-        const isAnimated = !!(metadata.pages !== undefined && metadata.pages > 1);
-        const format = metadata.format === 'gif' ? 'gif' : 'webp';
-        const filename = `${crypto.randomBytes(16).toString('hex')}.${format}`;
-        const targetPath = path.join(profilesDir, filename);
+            const isAnimated = !!(metadata.pages !== undefined && metadata.pages > 1);
+            const format = metadata.format === 'gif' ? 'gif' : 'webp';
+            const filename = `${crypto.randomBytes(16).toString('hex')}.${format}`;
+            const targetPath = path.join(profilesDir, filename);
 
-        try {
             await processAndSaveImage(uploadedPath, targetPath, ImagePresets.profilePicture(format as 'webp' | 'gif', isAnimated));
+            
+            await this.userRepo.updateProfilePicture(botUser._id, filename);
+            const pictureUrl = `/api/v1/profile/picture/${filename}`;
+
+            const serverIds = await this.serverMemberRepo.findServerIdsByUserId(botUser._id);
+            const updatePayload = { userId: botUser._id.toString(), profilePicture: pictureUrl };
+            serverIds.forEach((sid) => {
+                this.wsServer.broadcastToServer(sid.toString(), { type: 'user_updated', payload: updatePayload });
+            });
+
+            return { message: 'Avatar updated', profilePicture: pictureUrl };
+        } catch (error) {
+            throw new BadRequestException(error instanceof Error ? error.message : 'Failed to process image');
+        } finally {
             if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
-        } catch {
-            if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
-            throw new BadRequestException('Failed to process image');
         }
-
-        await this.userRepo.updateProfilePicture(botUser._id, filename);
-        const pictureUrl = `/api/v1/profile/picture/${filename}`;
-
-        const serverIds = await this.serverMemberRepo.findServerIdsByUserId(botUser._id);
-        const updatePayload = { userId: botUser._id.toString(), profilePicture: pictureUrl };
-        serverIds.forEach((sid) => {
-            this.wsServer.broadcastToServer(sid.toString(), { type: 'user_updated', payload: updatePayload });
-        });
-
-        return { message: 'Avatar updated', profilePicture: pictureUrl };
     }
 
     @Post(':clientId/banner')
     @UseGuards(JwtAuthGuard)
-    @UseInterceptors(FileInterceptor('banner', { storage, limits: { fileSize: 5 * 1024 * 1024 } }))
+    @UseInterceptors(FileInterceptor('banner', { storage, fileFilter: imageFileFilter, limits: { fileSize: 5 * 1024 * 1024 } }))
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {
@@ -790,39 +791,33 @@ export class BotController {
         if (!fs.existsSync(bannersDir)) fs.mkdirSync(bannersDir, { recursive: true });
 
         const uploadedPath = banner.path;
-        let metadata;
         try {
-            metadata = await getImageMetadata(uploadedPath);
-            if (metadata.width === 0 || metadata.height === 0) { fs.unlinkSync(uploadedPath); throw new BadRequestException('Could not read image dimensions'); }
-            if (metadata.width > 1136 || metadata.height > 400) { fs.unlinkSync(uploadedPath); throw new BadRequestException(`Max 1136x400px. Got ${metadata.width}x${metadata.height}px`); }
-            if (metadata.format !== 'webp' && metadata.format !== 'gif') { fs.unlinkSync(uploadedPath); throw new BadRequestException('Only WebP and GIF allowed.'); }
-        } catch (error) {
-            if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
-            throw new BadRequestException((error as Error).message);
-        }
+            const metadata = await getImageMetadata(uploadedPath);
+            if (metadata.width === 0 || metadata.height === 0) throw new BadRequestException('Could not read image dimensions');
+            if (metadata.width > 1136 || metadata.height > 400) throw new BadRequestException(`Max 1136x400px. Got ${metadata.width}x${metadata.height}px`);
+            if (metadata.format !== 'webp' && metadata.format !== 'gif') throw new BadRequestException('Only WebP and GIF allowed.');
 
-        const isAnimated = !!(metadata.pages !== undefined && metadata.pages > 1);
-        const format = metadata.format === 'gif' ? 'gif' : 'webp';
-        const filename = `${crypto.randomBytes(16).toString('hex')}.${format}`;
-        const targetPath = path.join(bannersDir, filename);
+            const isAnimated = !!(metadata.pages !== undefined && metadata.pages > 1);
+            const format = metadata.format === 'gif' ? 'gif' : 'webp';
+            const filename = `${crypto.randomBytes(16).toString('hex')}.${format}`;
+            const targetPath = path.join(bannersDir, filename);
 
-        try {
             await processAndSaveImage(uploadedPath, targetPath, ImagePresets.profileBanner(format as 'webp' | 'gif', isAnimated));
+            
+            await this.userRepo.updateBanner(botUser._id, filename);
+            const bannerUrl = `/api/v1/profile/banner/${filename}`;
+
+            const serverIds = await this.serverMemberRepo.findServerIdsByUserId(botUser._id);
+            const bannerPayload = { username: botUser.username ?? '', banner: bannerUrl };
+            serverIds.forEach((sid) => {
+                this.wsServer.broadcastToServer(sid.toString(), { type: 'user_banner_updated', payload: bannerPayload });
+            });
+
+            return { message: 'Banner updated', banner: bannerUrl };
+        } catch (error) {
+            throw new BadRequestException(error instanceof Error ? error.message : 'Failed to process banner');
+        } finally {
             if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
-        } catch {
-            if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath);
-            throw new BadRequestException('Failed to process banner');
         }
-
-        await this.userRepo.updateBanner(botUser._id, filename);
-        const bannerUrl = `/api/v1/profile/banner/${filename}`;
-
-        const serverIds = await this.serverMemberRepo.findServerIdsByUserId(botUser._id);
-        const bannerPayload = { username: botUser.username ?? '', banner: bannerUrl };
-        serverIds.forEach((sid) => {
-            this.wsServer.broadcastToServer(sid.toString(), { type: 'user_banner_updated', payload: bannerPayload });
-        });
-
-        return { message: 'Banner updated', banner: bannerUrl };
     }
 }
