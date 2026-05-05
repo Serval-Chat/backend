@@ -94,7 +94,7 @@ type IRedisEnvelope = { instanceId: string } & RedisBroadcastMessage;
 
 @injectable()
 export class WsServer extends EventEmitter implements IWsServer {
-    private wss!: WebSocketServer;
+    private wss?: WebSocketServer;
     private unauthenticatedConnections = new Set<WebSocket>();
 
     // Track authenticated connections
@@ -292,9 +292,10 @@ export class WsServer extends EventEmitter implements IWsServer {
                 `http://${request.headers.host}`,
             ).pathname;
 
-            if (pathname === '/ws') {
-                this.wss.handleUpgrade(request, socket, head, (ws) => {
-                    this.wss.emit('connection', ws, request);
+            if (pathname === '/ws' && this.wss !== undefined) {
+                const wss = this.wss;
+                wss.handleUpgrade(request, socket, head, (ws) => {
+                    wss.emit('connection', ws, request);
                 });
             }
         });
@@ -577,7 +578,7 @@ export class WsServer extends EventEmitter implements IWsServer {
 
     private _localBroadcastToAll(event: AnyResponseWsEvent): void {
         const recipients: WebSocket[] = [];
-        this.wss.clients.forEach((client) => {
+        this.wss?.clients.forEach((client) => {
             if (client.readyState === 1 && this.socketToUser.has(client)) {
                 recipients.push(client);
             }
@@ -1142,14 +1143,12 @@ export class WsServer extends EventEmitter implements IWsServer {
     public async shutdown(): Promise<void> {
         logger.info('[WsServer] Shutting down WebSocket server...');
 
-        const closePromise = new Promise<void>((resolve) => {
-            this.wss.close(() => {
-                logger.info('[WsServer] WebSocket server closed');
-                resolve();
+        if (this.wss !== undefined) {
+            this.wss.clients.forEach((client) => {
+                client.terminate();
             });
-        });
+        }
 
-        // Close all active connections
         for (const ws of this.unauthenticatedConnections) {
             ws.terminate();
         }
@@ -1159,7 +1158,28 @@ export class WsServer extends EventEmitter implements IWsServer {
             }
         }
 
+        const closePromise = new Promise<void>((resolve) => {
+            if (this.wss !== undefined) {
+                this.wss.close(() => {
+                    logger.info('[WsServer] WebSocket server closed');
+                    resolve();
+                });
+            } else {
+                resolve();
+            }
+        });
+
         await closePromise;
+
+        try {
+            const subscriber = this.redisService.getSubscriber();
+            if (typeof subscriber.unsubscribe === 'function') {
+                await subscriber.unsubscribe('SERCHAT_WS_BROADCAST');
+            }
+        } catch (err) {
+            logger.error('[WsServer] Failed to unsubscribe from Redis', err);
+        }
+
         this.dispatcher.destroy();
         this.removeAllListeners();
     }

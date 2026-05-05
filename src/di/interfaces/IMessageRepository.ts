@@ -12,6 +12,7 @@ export interface IMessage {
     replyToId?: Types.ObjectId;
     repliedToMessageId?: Types.ObjectId;
     referenced_message?: IMessage;
+    stickerId?: Types.ObjectId;
     editedAt?: Date;
     isEdited?: boolean;
     senderDeleted?: boolean;
@@ -39,9 +40,10 @@ export interface IMessageRepository {
         data: {
             senderId: Types.ObjectId;
             receiverId: Types.ObjectId;
-            text: string;
+            text?: string;
             replyToId?: Types.ObjectId;
             repliedToMessageId?: Types.ObjectId;
+            stickerId?: Types.ObjectId;
         },
         session?: ClientSession,
     ): Promise<IMessage>;

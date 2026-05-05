@@ -18,6 +18,7 @@ export interface IServerMessage {
     replyToId?: Types.ObjectId;
     repliedToMessageId?: Types.ObjectId;
     referenced_message?: IServerMessage;
+    stickerId?: Types.ObjectId;
     editedAt?: Date;
     isEdited?: boolean;
     isPinned?: boolean;
@@ -51,6 +52,7 @@ export interface IServerMessageRepository {
             replyToId?: string | Types.ObjectId;
             repliedToMessageId?: Types.ObjectId;
             embeds?: IEmbed[];
+            stickerId?: string | Types.ObjectId;
             interaction?: {
                 command: string;
                 options: { name: string; value: InteractionValue }[];

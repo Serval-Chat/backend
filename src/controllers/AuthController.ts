@@ -287,7 +287,14 @@ export class AuthController {
         try {
             let tokens: string[];
             try {
-                const file = fs.readFileSync(path.join('tokens.txt'), 'utf-8');
+                const tokensPath = path.join(process.cwd(), '.data', 'tokens.txt');
+                if (!fs.existsSync(path.dirname(tokensPath))) {
+                    fs.mkdirSync(path.dirname(tokensPath), { recursive: true });
+                }
+                if (!fs.existsSync(tokensPath)) {
+                    fs.writeFileSync(tokensPath, '');
+                }
+                const file = fs.readFileSync(tokensPath, 'utf-8');
                 tokens = file
                     .split(/\r?\n/)
                     .map((t) => t.trim())
@@ -336,7 +343,8 @@ export class AuthController {
             usersCreatedCounter.inc();
 
             const updatedTokens = tokens.filter((t) => t !== invite);
-            fs.writeFileSync('tokens.txt', updatedTokens.join('\n'));
+            const tokensPath = path.join(process.cwd(), '.data', 'tokens.txt');
+            fs.writeFileSync(tokensPath, updatedTokens.join('\n'));
 
             const newUser = await this.userRepo.findByLogin(normalizedLogin);
             if (newUser === null)

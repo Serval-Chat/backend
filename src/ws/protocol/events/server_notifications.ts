@@ -286,6 +286,15 @@ export interface IEmojiUpdatedEvent
         }
     > {}
 
+export interface IStickerUpdatedEvent
+    extends WsEvent<
+        'sticker_updated',
+        {
+            serverId: string;
+            senderId?: string;
+        }
+    > {}
+
 /**
  * Server → Client (Direct)
  * Warning issued to user.

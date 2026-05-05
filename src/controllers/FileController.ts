@@ -175,6 +175,13 @@ export class FileController {
 
         const filePath = path.join(this.uploadsDir, safeFilename);
 
+        const resolvedPath = path.resolve(filePath);
+        const resolvedUploadsDir = path.resolve(this.uploadsDir);
+
+        if (!resolvedPath.startsWith(resolvedUploadsDir)) {
+            throw new ApiError(400, 'Invalid filename');
+        }
+
         try {
             await fsPromises.access(filePath, fs.constants.F_OK);
         } catch {

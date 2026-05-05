@@ -1164,6 +1164,8 @@ export class ProfileController {
     }
 
     @Post('status/bulk')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Get bulk custom statuses' })
     @ApiResponse({ status: 200, description: 'Bulk statuses' })
     @ApiBody({ type: BulkStatusRequestDTO })
@@ -1193,13 +1195,19 @@ export class ProfileController {
             return { statuses: {} };
         }
 
+        const users = await this.userRepo.findByUsernames(sanitized);
         const statuses: Record<string, SerializedCustomStatus | null> = {};
 
         for (const name of sanitized) {
-            const user = await this.userRepo.findByUsername(name);
-            statuses[name] = (user !== null)
-                ? resolveSerializedCustomStatus(user.customStatus)
-                : null;
+            statuses[name] = null;
+        }
+
+        for (const user of users) {
+            if (user.username !== undefined) {
+                statuses[user.username] = resolveSerializedCustomStatus(
+                    user.customStatus,
+                );
+            }
         }
 
         return { statuses };
@@ -1444,12 +1452,17 @@ export class ProfileController {
             return;
         }
 
-        const filePath = path.join(
-            process.cwd(),
-            'uploads',
-            'profiles',
-            filename,
-        );
+        const safeFilename = path.basename(filename);
+        const profilesDir = path.join(process.cwd(), 'uploads', 'profiles');
+        const filePath = path.join(profilesDir, safeFilename);
+
+        const resolvedPath = path.resolve(filePath);
+        const resolvedProfilesDir = path.resolve(profilesDir);
+
+        if (!resolvedPath.startsWith(resolvedProfilesDir)) {
+            res.status(400).send({ error: 'Invalid filename' });
+            return;
+        }
 
         if (fs.existsSync(filePath) === false) {
             res.status(404).send({ error: 'Profile picture not found' });

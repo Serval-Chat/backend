@@ -65,6 +65,11 @@ export class SendMessageRequestDTO {
     @ValidateNested()
     @Type(() => SendMessageInteractionMetadataDTO)
     public interaction?: SendMessageInteractionMetadataDTO;
+
+    @ApiPropertyOptional({ description: 'Sticker ID' })
+    @IsOptional()
+    @IsMessageId()
+    public stickerId?: string;
 }
 
 export class ServerEditMessageRequestDTO {

@@ -287,6 +287,9 @@ export class ServerMessageController {
                 : undefined,
             embeds,
             interaction: body.interaction,
+            stickerId: (body.stickerId !== undefined && body.stickerId !== '')
+                ? new mongoose.Types.ObjectId(body.stickerId)
+                : undefined,
         });
 
         await this.channelRepo.updateLastMessageAt(
@@ -320,6 +323,7 @@ export class ServerMessageController {
                 webhookAvatarUrl: message.webhookAvatarUrl,
                 embeds: message.embeds || [],
                 interaction: (message.interaction?.command !== undefined && message.interaction.command !== '') ? message.interaction : undefined,
+                stickerId: message.stickerId?.toString(),
             },
         };
         this.wsServer.broadcastToChannel(channelId, messagePayload);

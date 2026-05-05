@@ -11,6 +11,7 @@ export interface IMessage extends Document {
     createdAt: Date;
     replyToId?: Types.ObjectId;
     repliedToMessageId?: Types.ObjectId;
+    stickerId?: Types.ObjectId;
     editedAt?: Date;
     isEdited?: boolean;
     senderDeleted?: boolean;
@@ -24,7 +25,7 @@ export interface IMessage extends Document {
 const messageSchema = new Schema<IMessage>({
     senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     receiverId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    text: { type: String, required: true },
+    text: { type: String, required: false, default: '' },
     createdAt: { type: Date, default: Date.now },
     replyToId: { type: String, required: false },
     repliedToMessageId: {
@@ -32,6 +33,7 @@ const messageSchema = new Schema<IMessage>({
         ref: 'Message',
         required: false,
     },
+    stickerId: { type: Schema.Types.ObjectId, ref: 'Sticker', required: false },
     editedAt: { type: Date, required: false },
     isEdited: { type: Boolean, default: false },
     senderDeleted: { type: Boolean, default: false },

@@ -45,7 +45,7 @@ import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { IChannel } from '@/di/interfaces/IChannelRepository';
-import { storage } from '@/config/multer';
+import { storage, imageFileFilter } from '@/config/multer';
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
@@ -523,6 +523,7 @@ export class ServerController {
         if (body.banner !== undefined) updates.banner = body.banner;
         if (body.disableCustomFonts !== undefined)
             updates.disableCustomFonts = body.disableCustomFonts;
+        if (body.disableUsernameGlowAndCustomColor !== undefined)
             updates.disableUsernameGlowAndCustomColor =
                 body.disableUsernameGlowAndCustomColor;
 
@@ -787,7 +788,7 @@ export class ServerController {
             },
         },
     })
-    @UseInterceptors(FileInterceptor('icon', { storage }))
+    @UseInterceptors(FileInterceptor('icon', { storage, fileFilter: imageFileFilter }))
     @ApiResponse({ status: 201, type: UploadIconResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -816,56 +817,57 @@ export class ServerController {
         const filename = `${serverId}-${Date.now()}.png`;
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
-        const input = icon.path || icon.buffer;
-        if (input === '') {
-            throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
-        }
+        try {
+            const input = icon.path || icon.buffer;
+            if (input === '') {
+                throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
+            }
 
-        await processAndSaveImage(
-            input,
-            filepath,
-            ImagePresets.serverIcon(input),
-        );
+            await processAndSaveImage(
+                input,
+                filepath,
+                ImagePresets.serverIcon(input),
+            );
 
-        // Cleanup temporary Multer file if it was written to disk
-        if (icon.path !== '' && fs.existsSync(icon.path) === true) {
-            fs.unlinkSync(icon.path);
-        }
-
-        const iconUrl = `/api/v1/servers/icon/${filename}`;
-        const existingServer = await this.serverRepo.findById(serverOid);
-        const updatedServer = await this.serverRepo.update(serverOid, {
-            icon: iconUrl,
-        });
-        if (updatedServer === null) {
-            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
-        }
-
-        this.wsServer.broadcastToServer(serverId.toString(), {
-            type: 'server_icon_updated',
-            payload: {
-                serverId,
+            const iconUrl = `/api/v1/servers/icon/${filename}`;
+            const existingServer = await this.serverRepo.findById(serverOid);
+            const updatedServer = await this.serverRepo.update(serverOid, {
                 icon: iconUrl,
-                senderId: userId,
-            },
-        });
+            });
+            if (updatedServer === null) {
+                throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+            }
 
-        await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
-            actionType: 'update_server',
-            targetId: serverOid,
-            targetType: 'server',
-            changes: [
-                {
-                    field: 'icon',
-                    before: existingServer?.icon ?? null,
-                    after: iconUrl,
+            this.wsServer.broadcastToServer(serverId.toString(), {
+                type: 'server_icon_updated',
+                payload: {
+                    serverId,
+                    icon: iconUrl,
+                    senderId: userId,
                 },
-            ],
-        });
+            });
 
-        return { icon: iconUrl };
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'update_server',
+                targetId: serverOid,
+                targetType: 'server',
+                changes: [
+                    {
+                        field: 'icon',
+                        before: existingServer?.icon ?? null,
+                        after: iconUrl,
+                    },
+                ],
+            });
+
+            return { icon: iconUrl };
+        } finally {
+            if (icon.path !== '' && fs.existsSync(icon.path) === true) {
+                fs.unlinkSync(icon.path);
+            }
+        }
     }
 
     @Post(':serverId/banner')
@@ -882,7 +884,7 @@ export class ServerController {
             },
         },
     })
-    @UseInterceptors(FileInterceptor('banner', { storage }))
+    @UseInterceptors(FileInterceptor('banner', { storage, fileFilter: imageFileFilter }))
     @ApiResponse({ status: 201, type: UploadBannerResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -912,56 +914,57 @@ export class ServerController {
         const filename = `${serverId}-banner-${Date.now()}.${ext}`;
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
-        const input = banner.path || banner.buffer;
-        if (input === '') {
-            throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
-        }
+        try {
+            const input = banner.path || banner.buffer;
+            if (input === '') {
+                throw new ApiError(500, ErrorMessages.FILE.DATA_MISSING);
+            }
 
-        await processAndSaveImage(
-            input,
-            filepath,
-            ImagePresets.serverBanner(ext === 'gif'),
-        );
+            await processAndSaveImage(
+                input,
+                filepath,
+                ImagePresets.serverBanner(ext === 'gif'),
+            );
 
-        // Cleanup temporary Multer file if it was written to disk
-        if (banner.path !== '' && fs.existsSync(banner.path) === true) {
-            fs.unlinkSync(banner.path);
-        }
-
-        const bannerUrl = `/api/v1/servers/banner/${filename}`;
-        const existingServer = await this.serverRepo.findById(serverOid);
-        const updatedServer = await this.serverRepo.update(serverOid, {
-            banner: { type: 'image', value: bannerUrl },
-        });
-        if (updatedServer === null) {
-            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
-        }
-
-        this.wsServer.broadcastToServer(serverId.toString(), {
-            type: 'server_banner_updated',
-            payload: {
-                serverId,
+            const bannerUrl = `/api/v1/servers/banner/${filename}`;
+            const existingServer = await this.serverRepo.findById(serverOid);
+            const updatedServer = await this.serverRepo.update(serverOid, {
                 banner: { type: 'image', value: bannerUrl },
-                senderId: userId,
-            },
-        });
+            });
+            if (updatedServer === null) {
+                throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+            }
 
-        await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
-            actionType: 'update_server',
-            targetId: serverOid,
-            targetType: 'server',
-            changes: [
-                {
-                    field: 'banner',
-                    before: existingServer?.banner ?? null,
-                    after: bannerUrl,
+            this.wsServer.broadcastToServer(serverId.toString(), {
+                type: 'server_banner_updated',
+                payload: {
+                    serverId,
+                    banner: { type: 'image', value: bannerUrl },
+                    senderId: userId,
                 },
-            ],
-        });
+            });
 
-        return { banner: bannerUrl };
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId: serverOid,
+                actorId: userOid,
+                actionType: 'update_server',
+                targetId: serverOid,
+                targetType: 'server',
+                changes: [
+                    {
+                        field: 'banner',
+                        before: existingServer?.banner ?? null,
+                        after: bannerUrl,
+                    },
+                ],
+            });
+
+            return { banner: bannerUrl };
+        } finally {
+            if (banner.path !== '' && fs.existsSync(banner.path) === true) {
+                fs.unlinkSync(banner.path);
+            }
+        }
     }
     @Patch(':serverId/default-role')
     @ApiOperation({ summary: 'Update server default role' })

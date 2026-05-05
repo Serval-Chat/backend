@@ -91,6 +91,7 @@ export class MongooseServerMessageRepository
                 options: { name: string; value: InteractionValue }[];
                 user: { id: string; username: string };
             };
+            stickerId?: string | Types.ObjectId;
         },
         session?: ClientSession,
     ): Promise<IServerMessage> {
@@ -101,6 +102,9 @@ export class MongooseServerMessageRepository
             senderId: new Types.ObjectId(data.senderId),
             replyToId: (data.replyToId !== undefined && data.replyToId !== '')
                 ? new Types.ObjectId(data.replyToId)
+                : undefined,
+            stickerId: (data.stickerId !== undefined && data.stickerId !== '')
+                ? new Types.ObjectId(data.stickerId)
                 : undefined,
         };
         const message = new ServerMessage(createData);

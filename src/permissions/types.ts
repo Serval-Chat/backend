@@ -21,6 +21,7 @@ export const PERMISSION_KEYS = [
     'pinMessages',
     'seeDeletedMessages',
     'moderateMembers',
+    'manageStickers',
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];

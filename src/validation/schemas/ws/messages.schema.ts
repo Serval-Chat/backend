@@ -5,9 +5,14 @@ export const SendMessageDmSchema = z.object({
     receiverId: z.string().min(1, 'Receiver ID is required'),
     text: z
         .string()
-        .min(1, 'Message text is required')
-        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`),
+        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`)
+        .optional()
+        .default(''),
     replyToId: z.string().optional(),
+    stickerId: z.string().optional(),
+}).refine((data) => data.text.length > 0 || data.stickerId, {
+    message: 'Message text or sticker is required',
+    path: ['text'],
 });
 
 export const EditMessageDmSchema = z.object({
@@ -69,9 +74,14 @@ export const SendMessageServerSchema = z.object({
     channelId: z.string().min(1, 'Channel ID is required'),
     text: z
         .string()
-        .min(1, 'Message text is required')
-        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`),
+        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`)
+        .optional()
+        .default(''),
     replyToId: z.string().optional(),
+    stickerId: z.string().optional(),
+}).refine((data) => data.text.length > 0 || data.stickerId, {
+    message: 'Message text or sticker is required',
+    path: ['text'],
 });
 
 export const EditMessageServerSchema = z.object({

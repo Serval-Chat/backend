@@ -61,6 +61,7 @@ export async function setup() {
         del: async () => 1,
         publish: async () => 0,
         subscribe: async () => 'OK',
+        unsubscribe: async () => 'OK',
         on: () => {},
         quit: async () => 'OK',
         status: 'ready',

@@ -17,8 +17,9 @@ export interface ISendMessageDmEvent
         'send_message_dm',
         {
             receiverId: string; // User ID (ObjectId as string)
-            text: string; // Message content
+            text?: string; // Message content
             replyToId?: string; // Optional: Message ID being replied to
+            stickerId?: string;
         }
     > { }
 
@@ -41,6 +42,7 @@ export interface IMessageDmSentEvent
                 senderId: string;
                 text: string;
             };
+            stickerId?: string;
         }
     > { }
 
@@ -60,6 +62,7 @@ export interface IMessageDm {
         text: string;
     };
     isEdited: boolean;
+    stickerId?: string;
 }
 
 /**
@@ -260,8 +263,9 @@ export interface ISendMessageServerEvent
         {
             serverId: string;
             channelId: string;
-            text: string;
+            text?: string;
             replyToId?: string;
+            stickerId?: string;
         }
     > { }
 
@@ -282,6 +286,7 @@ export interface IMessageServerSentEvent
             replyToId?: string;
             embeds?: IEmbed[];
             slowModeNextMessageAllowedAt?: string | null;
+            stickerId?: string;
         }
     > { }
 
@@ -312,6 +317,7 @@ export interface IMessageServer {
         options: { name: string; value: InteractionValue }[];
         user?: { id: string; username: string };
     };
+    stickerId?: string;
     _id?: string; // Optional internal ID for broadcasting consistency
 }
 

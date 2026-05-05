@@ -78,7 +78,7 @@ export class ChatController {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
-        const { receiverId, text, replyToId } = payload;
+        const { receiverId, text, replyToId, stickerId } = payload;
         const senderId = authenticatedUser.userId;
 
         const receiverUser = await this.userRepo.findById(
@@ -116,9 +116,12 @@ export class ChatController {
                     {
                         senderId: new Types.ObjectId(senderId),
                         receiverId: new Types.ObjectId(receiverId),
-                        text,
+                        text: text ?? '',
                         ...(replyToId !== undefined && replyToId !== ''
                             ? { replyToId: new Types.ObjectId(replyToId) }
+                            : {}),
+                        ...(stickerId !== undefined && stickerId !== ''
+                            ? { stickerId: new Types.ObjectId(stickerId) }
                             : {}),
                     },
                     session,
@@ -156,6 +159,7 @@ export class ChatController {
                 }
                 : undefined,
             isEdited: false,
+            stickerId: created.stickerId?.toString(),
         };
 
         this.wsServer.broadcastToUser(
@@ -177,7 +181,7 @@ export class ChatController {
             type: 'dm',
             senderName: authenticatedUser.username,
             senderId,
-            preview: text,
+            preview: text ?? '',
         }).catch((err) =>
             logger.error(`[ChatController] Failed to push notify: ${err}`),
         );
@@ -208,6 +212,7 @@ export class ChatController {
                     text: repliedToMessage.text,
                 }
                 : undefined,
+            stickerId: created.stickerId?.toString(),
         };
     }
 

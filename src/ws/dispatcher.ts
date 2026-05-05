@@ -544,10 +544,20 @@ export class WsDispatcher {
             }
             return count <= maxPoints;
         } catch (err) {
-            this.logger.error('[WsDispatcher] checkRateLimit failed:', err);
-            // Fail open if Redis is down, but track the event Redis outage
+            this.logger.error('[WsDispatcher] checkRateLimit failed, falling back to restrictive in-memory limit:', err);
+
             wsRateLimitRedisFailuresCounter.inc();
-            return true;
+            
+            const now = Date.now();
+            let entry = this.rateLimitCache.get(key);
+            if (!entry || now > entry.resetAt) {
+                entry = { points: 0, resetAt: now + durationMs };
+            }
+            entry.points += 1;
+            this.rateLimitCache.set(key, entry);
+            
+            const fallbackPoints = Math.max(1, Math.floor(maxPoints / 2));
+            return entry.points <= fallbackPoints;
         }
     }
 

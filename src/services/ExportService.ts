@@ -190,34 +190,40 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         const filePath = path.join(this.EXPORT_DIR, `${job._id}-${fileName}`);
 
         const writeStream = createWriteStream(filePath);
-        writeStream.write('[\n');
+        try {
+            writeStream.write('[\n');
 
-        const cursor = this.serverMessageRepo.findCursorByChannelId(
-            job.channelId,
-        );
-        let first = true;
+            const cursor = this.serverMessageRepo.findCursorByChannelId(
+                job.channelId,
+            );
+            let first = true;
 
-        for await (const m of cursor) {
-            if (!first) {
-                writeStream.write(',\n');
+            for await (const m of cursor) {
+                if (!first) {
+                    writeStream.write(',\n');
+                }
+                const data = {
+                    content: m.text,
+                    sender_user_id: m.senderId.toString(),
+                    sent_at: m.createdAt.toISOString(),
+                    edited_at: m.editedAt ? m.editedAt.toISOString() : null,
+                };
+                writeStream.write(JSON.stringify(data, null, 2));
+                first = false;
             }
-            const data = {
-                content: m.text,
-                sender_user_id: m.senderId.toString(),
-                sent_at: m.createdAt.toISOString(),
-                edited_at: m.editedAt ? m.editedAt.toISOString() : null,
-            };
-            writeStream.write(JSON.stringify(data, null, 2));
-            first = false;
+
+            writeStream.write('\n]');
+            writeStream.end();
+
+            await new Promise<void>((resolve, reject) => {
+                writeStream.on('finish', () => resolve());
+                writeStream.on('error', reject);
+            });
+        } catch (err) {
+            writeStream.destroy();
+            await fs.unlink(filePath).catch(() => {});
+            throw err;
         }
-
-        writeStream.write('\n]');
-        writeStream.end();
-
-        await new Promise<void>((resolve, reject) => {
-            writeStream.on('finish', () => resolve());
-            writeStream.on('error', reject);
-        });
 
         const token = randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + 48 * 3600 * 1000);

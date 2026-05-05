@@ -135,6 +135,7 @@ export interface IRole extends Document {
         seeDeletedMessages: boolean;
         connect: boolean;
         moderateMembers: boolean;
+        manageStickers: boolean;
     };
     separateFromOtherRoles?: boolean;
     icon?: string;
@@ -191,6 +192,7 @@ export interface IServerMessage {
         options: { name: string; value: InteractionValue }[];
         user: { id: string; username: string };
     };
+    stickerId?: Types.ObjectId;
 }
 
 // Server ban interface
@@ -269,6 +271,7 @@ const categorySchema = new Schema<ICategory>({
                 pinMessages: { type: Boolean },
                 seeDeletedMessages: { type: Boolean },
                 connect: { type: Boolean },
+                manageStickers: { type: Boolean },
             },
             { _id: false },
         ),
@@ -310,6 +313,7 @@ const channelSchema = new Schema<IChannel>({
                 pinMessages: { type: Boolean },
                 seeDeletedMessages: { type: Boolean },
                 connect: { type: Boolean },
+                manageStickers: { type: Boolean },
             },
             { _id: false },
         ),
@@ -364,6 +368,7 @@ const roleSchema = new Schema<IRole>({
         seeDeletedMessages: { type: Boolean, default: false },
         connect: { type: Boolean, default: true },
         moderateMembers: { type: Boolean, default: false },
+        manageStickers: { type: Boolean, default: false },
     },
     separateFromOtherRoles: { type: Boolean, default: false },
     icon: { type: String, required: false },
@@ -424,6 +429,7 @@ const serverMessageSchema = new Schema<IServerMessage>({
             username: { type: String, required: false },
         },
     },
+    stickerId: { type: Schema.Types.ObjectId, ref: 'Sticker', required: false },
 });
 serverMessageSchema.index({ channelId: 1, deletedAt: 1, createdAt: -1 });
 serverMessageSchema.index({ channelId: 1, createdAt: -1 });

@@ -245,4 +245,13 @@ export const ErrorMessages = {
         ID_REQUIRED: 'ping id required',
         CHANNEL_ID_REQUIRED: 'channelId required',
     },
+    STICKER: {
+        NOT_FOUND: 'Sticker not found',
+        FILE_REQUIRED: 'Sticker file is required',
+        INVALID_NAME: 'Invalid sticker name',
+        NAME_EXISTS: 'Sticker name already exists',
+        NO_PERMISSION_MANAGE: 'No permission to manage stickers',
+        INVALID_DIMENSIONS: 'Sticker dimensions must be between 64x64 and 512x512',
+        SIZE_TOO_LARGE: 'Sticker size exceeds 10MB limit',
+    },
 } as const;

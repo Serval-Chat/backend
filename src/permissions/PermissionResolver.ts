@@ -39,6 +39,7 @@ function getPermissionDefault(permission: PermissionKey): boolean {
         case 'pinMessages':
         case 'seeDeletedMessages':
         case 'moderateMembers':
+        case 'manageStickers':
             return false;
         default:
             return false;

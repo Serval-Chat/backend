@@ -122,11 +122,19 @@ export class ExportController {
             return this.sendExpiredResponse(res, 410);
         }
 
-        if (fs.existsSync(job.filePath) === false) {
+
+        const path = await import('path');
+        const EXPORT_DIR = path.resolve(process.cwd(), 'uploads', 'exports');
+        const resolvedPath = path.resolve(job.filePath);
+        if (!resolvedPath.startsWith(EXPORT_DIR + path.sep)) {
+            return res.status(403).send('Forbidden');
+        }
+
+        if (fs.existsSync(resolvedPath) === false) {
             return res.status(404).send('File not found');
         }
 
-        res.download(job.filePath, `channel-${job.channelId}.json`);
+        res.download(resolvedPath, `channel-${job.channelId}.json`);
     }
 
     private sendExpiredResponse(res: Response, status: number) {

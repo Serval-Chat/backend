@@ -547,7 +547,7 @@ export class ServerController {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
-        const { serverId, channelId, text, replyToId } = payload;
+        const { serverId, channelId, text, replyToId, stickerId } = payload;
         const userId = authenticatedUser.userId;
 
 
@@ -621,7 +621,7 @@ export class ServerController {
             userIds: mentionedUserIds,
             roleIds: mentionedRoleIds,
             everyone: mentionedEveryone,
-        } = this.parseMentions(text);
+        } = this.parseMentions(text ?? '');
 
 
         if (mentionedEveryone) {
@@ -655,12 +655,17 @@ export class ServerController {
                         serverId: new mongoose.Types.ObjectId(serverId),
                         channelId: new mongoose.Types.ObjectId(channelId),
                         senderId: new mongoose.Types.ObjectId(userId),
-                        text,
+                        text: text ?? '',
                         ...(replyToId !== undefined && replyToId !== ''
                             ? {
                                 replyToId: new mongoose.Types.ObjectId(
                                     replyToId,
                                 ),
+                            }
+                            : {}),
+                        ...(stickerId !== undefined && stickerId !== ''
+                            ? {
+                                stickerId: new mongoose.Types.ObjectId(stickerId),
                             }
                             : {}),
                     },
@@ -702,6 +707,7 @@ export class ServerController {
             isPinned: false,
             isSticky: false,
             isWebhook: false,
+            stickerId: created.stickerId?.toString(),
         };
 
         this.wsServer.broadcastToChannel(
@@ -823,6 +829,7 @@ export class ServerController {
                 created.createdAt.toISOString(),
             replyToId: created.replyToId?.toString(),
             slowModeNextMessageAllowedAt,
+            stickerId: created.stickerId?.toString(),
         };
     }
 

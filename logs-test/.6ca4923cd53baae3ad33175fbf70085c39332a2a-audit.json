@@ -9,6 +9,11 @@
             "date": 1777725752825,
             "name": "/home/neko/Serchat/backend/logs-test/app-2026-05-02.log",
             "hash": "858d9f1444260dbb4354f134f0463428d453539cd4f63a1a15bd30b7e86e7d10"
+        },
+        {
+            "date": 1777987668428,
+            "name": "/home/neko/Serchat/backend/logs-test/app-2026-05-05.log",
+            "hash": "569f44fd98e74a6d91a45cc1d54e68a1ebcf15755f4900ff7a874ed5e1dcf461"
         }
     ],
     "hashType": "sha256"
