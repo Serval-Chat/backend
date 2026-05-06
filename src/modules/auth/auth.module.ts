@@ -67,7 +67,7 @@ export class JwtAuthGuard implements CanActivate {
             }
 
             // Validate tokenVersion
-            if (user.tokenVersion !== decoded.tokenVersion) {
+            if (Number(user.tokenVersion ?? 0) !== Number(decoded.tokenVersion ?? 0)) {
                 throw new UnauthorizedException('Token expired');
             }
 
