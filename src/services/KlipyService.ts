@@ -75,21 +75,59 @@ export class KlipyService {
         }
     }
 
-    public async resolveGif(klipyId: string, contentType: 'gif' | 'sticker' = 'gif'): Promise<GifMetadataResponseDTO> {
+    public async resolveGif(
+        klipyId: string,
+        contentType: 'gif' | 'sticker' = 'gif',
+    ): Promise<GifMetadataResponseDTO> {
         try {
-            const cached = await this.klipyCacheModel.findOne({ klipyId, contentType });
+            return await this.doResolve(klipyId, contentType);
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 404) {
+                const otherType = contentType === 'gif' ? 'sticker' : 'gif';
+                try {
+                    return await this.doResolve(klipyId, otherType);
+                } catch {
+                    this.logger.error(
+                        `Failed to resolve Klipy content ${klipyId} as either gif or sticker`,
+                    );
+                    throw error; 
+                }
+            }
+            throw error;
+        }
+    }
+
+    private async doResolve(
+        klipyId: string,
+        contentType: 'gif' | 'sticker',
+    ): Promise<GifMetadataResponseDTO> {
+        try {
+            const cached = await this.klipyCacheModel.findOne({
+                klipyId,
+                contentType,
+            });
             if (cached) return cached;
 
             this.logger.info(`Resolving Klipy ${contentType} ${klipyId}`);
             const response = await axios.get(
-                this.getApiUrl(`/${contentType === 'gif' ? 'gifs' : 'stickers'}/${klipyId}`)
+                this.getApiUrl(
+                    `/${contentType === 'gif' ? 'gifs' : 'stickers'}/${klipyId}`,
+                ),
             );
             const data = response.data.data as {
                 file?: {
-                    hd?: { gif?: { url: string; width: number; height: number } };
-                    md?: { gif?: { url: string; width: number; height: number } };
-                    sm?: { gif?: { url: string; width: number; height: number } };
-                    xs?: { gif?: { url: string; width: number; height: number } };
+                    hd?: {
+                        gif?: { url: string; width: number; height: number };
+                    };
+                    md?: {
+                        gif?: { url: string; width: number; height: number };
+                    };
+                    sm?: {
+                        gif?: { url: string; width: number; height: number };
+                    };
+                    xs?: {
+                        gif?: { url: string; width: number; height: number };
+                    };
                 };
             };
 
@@ -107,11 +145,18 @@ export class KlipyService {
                     (data.file.md?.gif?.url as string | undefined) ??
                     (data.file.sm?.gif?.url as string | undefined) ??
                     '',
-                previewUrl: (data.file.sm?.gif?.url as string | undefined) ?? (data.file.xs?.gif?.url as string | undefined) ?? '',
+                previewUrl:
+                    (data.file.sm?.gif?.url as string | undefined) ??
+                    (data.file.xs?.gif?.url as string | undefined) ??
+                    '',
                 width:
-                    (data.file.hd?.gif?.width as number | undefined) ?? (data.file.md?.gif?.width as number | undefined) ?? 0,
+                    (data.file.hd?.gif?.width as number | undefined) ??
+                    (data.file.md?.gif?.width as number | undefined) ??
+                    0,
                 height:
-                    (data.file.hd?.gif?.height as number | undefined) ?? (data.file.md?.gif?.height as number | undefined) ?? 0,
+                    (data.file.hd?.gif?.height as number | undefined) ??
+                    (data.file.md?.gif?.height as number | undefined) ??
+                    0,
                 contentType,
                 expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
             };
@@ -122,9 +167,6 @@ export class KlipyService {
                 { upsert: true, new: true, setDefaultsOnInsert: true },
             );
         } catch (error) {
-            this.logger.error(
-                `Failed to resolve Klipy ${contentType} ${klipyId}: ${error}`,
-            );
             throw error;
         }
     }
