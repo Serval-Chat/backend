@@ -300,6 +300,10 @@ export class MongooseMessageRepository implements IMessageRepository {
     }
 
     public async countByDay(since: Date, days: number): Promise<number[]> {
+        if (days <= 0 || !Number.isFinite(days) || days > 10000) {
+            return [];
+        }
+        
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await this.messageModel.aggregate<{
             _id: number;

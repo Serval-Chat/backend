@@ -452,6 +452,10 @@ export class MongooseServerMessageRepository
     }
 
     public async countByDay(since: Date, days: number): Promise<number[]> {
+        if (days <= 0 || !Number.isFinite(days) || days > 10000) {
+            return [];
+        }
+        
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await ServerMessage.aggregate<{
             _id: number;
