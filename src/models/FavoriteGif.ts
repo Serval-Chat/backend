@@ -8,6 +8,7 @@ export interface IFavoriteGif extends Document {
     previewUrl: string;
     width: number;
     height: number;
+    contentType: 'gif' | 'sticker';
 }
 
 const schema = new Schema<IFavoriteGif>(
@@ -23,6 +24,7 @@ const schema = new Schema<IFavoriteGif>(
         previewUrl: { type: String, required: true },
         width: { type: Number, required: true },
         height: { type: Number, required: true },
+        contentType: { type: String, enum: ['gif', 'sticker'], default: 'gif' },
     },
     { timestamps: true },
 );

@@ -11,6 +11,7 @@ export interface ISticker extends Document {
     _id: Types.ObjectId;
     name: string;
     imageUrl: string;
+    isAnimated: boolean;
     serverId: Types.ObjectId;
     createdBy: Types.ObjectId;
     createdAt: Date;
@@ -28,6 +29,10 @@ const schema = new Schema<ISticker>(
         imageUrl: {
             type: String,
             required: true,
+        },
+        isAnimated: {
+            type: Boolean,
+            default: false,
         },
         serverId: {
             type: Schema.Types.ObjectId,

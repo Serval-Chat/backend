@@ -4,6 +4,7 @@ export interface ISticker {
     _id: Types.ObjectId;
     name: string;
     imageUrl: string;
+    isAnimated: boolean;
     serverId: Types.ObjectId;
     createdBy: Types.ObjectId;
     createdAt?: Date;
@@ -16,6 +17,7 @@ export interface IStickerRepository {
     create(data: {
         name: string;
         imageUrl: string;
+        isAnimated: boolean;
         serverId: Types.ObjectId;
         createdBy: Types.ObjectId;
     }): Promise<ISticker>;

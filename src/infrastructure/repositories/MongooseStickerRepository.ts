@@ -18,6 +18,7 @@ export class MongooseStickerRepository implements IStickerRepository {
     public async create(data: {
         name: string;
         imageUrl: string;
+        isAnimated: boolean;
         serverId: Types.ObjectId;
         createdBy: Types.ObjectId;
     }): Promise<ISticker> {
@@ -54,7 +55,7 @@ export class MongooseStickerRepository implements IStickerRepository {
 
     public async findByServerIds(serverIds: Types.ObjectId[]): Promise<ISticker[]> {
         return await Sticker.find({ serverId: { $in: serverIds } })
-            .select('_id name imageUrl serverId createdBy createdAt')
+            .select('_id name imageUrl isAnimated serverId createdBy createdAt')
             .sort({ name: 1 })
             .lean();
     }

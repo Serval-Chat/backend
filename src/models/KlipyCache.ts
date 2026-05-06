@@ -7,6 +7,7 @@ export interface IKlipyCache extends Document {
     previewUrl: string;
     width: number;
     height: number;
+    contentType: 'gif' | 'sticker';
     expiresAt: Date;
 }
 
@@ -17,6 +18,7 @@ const schema = new Schema<IKlipyCache>(
         previewUrl: { type: String, required: true },
         width: { type: Number, required: true },
         height: { type: Number, required: true },
+        contentType: { type: String, enum: ['gif', 'sticker'], default: 'gif' },
         expiresAt: { type: Date, required: true, index: { expires: 0 } },
     },
     { timestamps: true },

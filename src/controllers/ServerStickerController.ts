@@ -52,6 +52,7 @@ import {
 import { StickerResponseDTO } from './dto/sticker.response.dto';
 import { UploadStickerRequestDTO } from './dto/sticker.request.dto';
 import { StickerValidationPipe } from '@/validation/StickerValidationPipe';
+import { isAnimatedImage, processAndSaveImage } from '@/utils/imageProcessing';
 
 
 @injectable()
@@ -113,6 +114,7 @@ export class ServerStickerController {
             id: s._id.toString(),
             name: s.name,
             imageUrl: s.imageUrl,
+            isAnimated: s.isAnimated,
             serverId: s.serverId.toString(),
             createdBy: s.createdBy.toString(),
             createdAt: s.createdAt,
@@ -189,21 +191,25 @@ export class ServerStickerController {
         const stickerId = new mongoose.Types.ObjectId();
 
         try {
-            const fileName = `${stickerId}.webp`;
+            const isAnimated = await isAnimatedImage(sticker.path || sticker.buffer);
+            const fileName = `${stickerId}.${isAnimated ? 'gif' : 'webp'}`;
             const filePath = path.join(this.UPLOADS_DIR, fileName);
 
-            if ('path' in sticker && typeof sticker.path === 'string' && sticker.path !== '') {
-                fs.copyFileSync(sticker.path, filePath);
-                fs.unlinkSync(sticker.path);
-            } else {
-                fs.writeFileSync(filePath, sticker.buffer);
-            }
+            await processAndSaveImage(sticker.path || sticker.buffer, filePath, {
+                width: 512,
+                height: 512,
+                fit: 'contain',
+                format: isAnimated ? 'gif' : 'webp',
+                animated: isAnimated,
+                quality: 90,
+            });
 
             const imageUrl = `/uploads/stickers/${fileName}`;
 
             const newSticker = await this.stickerRepo.create({
                 name,
                 imageUrl,
+                isAnimated,
                 serverId: serverOid,
                 createdBy: userOid,
             });
@@ -236,6 +242,7 @@ export class ServerStickerController {
                 id: populatedSticker._id.toString(),
                 name: populatedSticker.name,
                 imageUrl: populatedSticker.imageUrl,
+                isAnimated: populatedSticker.isAnimated,
                 serverId: populatedSticker.serverId.toString(),
                 createdBy: populatedSticker.createdBy.toString(),
                 createdAt: populatedSticker.createdAt,
@@ -280,6 +287,7 @@ export class ServerStickerController {
             id: sticker._id.toString(),
             name: sticker.name,
             imageUrl: sticker.imageUrl,
+            isAnimated: sticker.isAnimated,
             serverId: sticker.serverId.toString(),
             createdBy: sticker.createdBy.toString(),
             createdAt: sticker.createdAt,

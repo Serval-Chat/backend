@@ -16,6 +16,9 @@ export class GifMetadataResponseDTO {
     @ApiProperty({ description: 'GIF height in pixels' })
     public height!: number;
 
+    @ApiProperty({ description: 'Content type (gif or sticker)', enum: ['gif', 'sticker'] })
+    public contentType!: 'gif' | 'sticker';
+
     @ApiProperty({ description: 'Cache expiry timestamp' })
     public expiresAt!: Date;
 }
@@ -35,6 +38,9 @@ export class FavoriteGifResponseDTO {
 
     @ApiProperty({ description: 'GIF height in pixels' })
     public height!: number;
+
+    @ApiProperty({ description: 'Content type (gif or sticker)', enum: ['gif', 'sticker'] })
+    public contentType!: 'gif' | 'sticker';
 }
 
 export class ToggleFavoriteResponseDTO {

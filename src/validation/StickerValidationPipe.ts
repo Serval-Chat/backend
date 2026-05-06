@@ -10,6 +10,7 @@ import {
     STICKER_MIN_WIDTH,
     STICKER_MIN_HEIGHT,
     STICKER_MAX_SIZE_BYTES,
+    SUPPORTED_STICKER_MIMETYPES,
 } from '@/constants/stickers';
 import { getImageMetadata } from '@/utils/imageProcessing';
 import { Express } from 'express';
@@ -25,17 +26,14 @@ export class StickerValidationPipe implements PipeTransform<Express.Multer.File 
             throw new BadRequestException(ErrorMessages.STICKER.SIZE_TOO_LARGE);
         }
 
-        if (!value.mimetype.startsWith('image/')) {
-            throw new BadRequestException('File must be an image');
+        if (!SUPPORTED_STICKER_MIMETYPES.includes(value.mimetype)) {
+            throw new BadRequestException(`File must be one of: ${SUPPORTED_STICKER_MIMETYPES.join(', ')}`);
         }
 
         const input = value.path || value.buffer;
         try {
             const metadata = await getImageMetadata(input);
 
-            if (metadata.format !== 'webp') {
-                throw new BadRequestException('Sticker must be in WebP format');
-            }
 
             const width = metadata.width || 0;
             const height = metadata.height || 0;
