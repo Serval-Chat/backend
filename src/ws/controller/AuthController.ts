@@ -78,8 +78,8 @@ export class AuthController {
         }
 
         // Validate token version
-        const currentTokenVersion = user.tokenVersion ?? 0;
-        const payloadTokenVersion = decoded.tokenVersion;
+        const currentTokenVersion = Number(user.tokenVersion ?? 0);
+        const payloadTokenVersion = Number(decoded.tokenVersion ?? 0);
 
         if (currentTokenVersion !== payloadTokenVersion) {
             throw new Error('AUTHENTICATION_FAILED: Token expired');
