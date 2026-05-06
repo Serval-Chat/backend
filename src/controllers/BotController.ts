@@ -195,7 +195,7 @@ export class BotController {
             id: botUser._id.toString(),
             login: `bot.${client_id}`,
             username: botUser.username,
-            tokenVersion: botUser.tokenVersion,
+            tokenVersion: botUser.tokenVersion ?? 0,
             isBot: true,
         });
 

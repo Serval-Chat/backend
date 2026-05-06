@@ -31,9 +31,7 @@ export async function expressAuthentication(
         try {
             const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
-            const user = await User.findById(decoded.id)
-                .select('deletedAt tokenVersion username permissions')
-                .lean();
+            const user = await User.findById(decoded.id).lean();
 
             if (user === null) {
                 return Promise.reject(new Error('Invalid token'));
@@ -43,8 +41,8 @@ export async function expressAuthentication(
                 return Promise.reject(new Error('Invalid token'));
             }
 
-            const currentTokenVersion = user.tokenVersion ?? 0;
-            const payloadTokenVersion = decoded.tokenVersion;
+            const currentTokenVersion = Number(user.tokenVersion ?? 0);
+            const payloadTokenVersion = Number(decoded.tokenVersion ?? 0);
 
             if (currentTokenVersion !== payloadTokenVersion) {
                 return Promise.reject(new Error('Token expired'));

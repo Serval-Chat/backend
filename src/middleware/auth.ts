@@ -45,9 +45,7 @@ export const authenticateToken = async (
         }
 
         // Check if account is deleted and validate tokenVersion
-        const user = await User.findById(decoded.id)
-            .select('deletedAt tokenVersion username')
-            .lean();
+        const user = await User.findById(decoded.id).lean();
 
         if (!user) {
             return res.status(401).json({ error: 'Invalid token' });
@@ -58,8 +56,8 @@ export const authenticateToken = async (
         }
 
         // Validate tokenVersion to invalidate old JWTs
-        const currentTokenVersion = user.tokenVersion ?? 0;
-        const payloadTokenVersion = decoded.tokenVersion;
+        const currentTokenVersion = Number(user.tokenVersion ?? 0);
+        const payloadTokenVersion = Number(decoded.tokenVersion ?? 0);
 
         if (currentTokenVersion !== payloadTokenVersion) {
             return res.status(401).json({ error: 'Token expired' });
