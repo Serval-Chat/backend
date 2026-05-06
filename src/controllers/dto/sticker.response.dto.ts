@@ -17,6 +17,9 @@ export class StickerResponseDTO {
     public imageUrl!: string;
 
     @ApiProperty()
+    public isAnimated!: boolean;
+
+    @ApiProperty()
     @IsMongoId()
     @IsString()
     public serverId!: string;

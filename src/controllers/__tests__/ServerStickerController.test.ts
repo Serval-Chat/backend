@@ -113,6 +113,7 @@ describe('ServerStickerController', () => {
                 _id: new Types.ObjectId(), 
                 name: 'test',
                 imageUrl: 'url',
+                isAnimated: false,
                 serverId: new Types.ObjectId(SERVER_ID),
                 createdBy: new Types.ObjectId(USER_ID),
                 createdAt: new Date(),
@@ -147,6 +148,7 @@ describe('ServerStickerController', () => {
                 _id: new Types.ObjectId(STICKER_ID),
                 name: 'test_sticker',
                 imageUrl: '/uploads/stickers/test.png',
+                isAnimated: false,
                 serverId: new Types.ObjectId(SERVER_ID),
                 createdBy: new Types.ObjectId(USER_ID),
                 createdAt: new Date(),
@@ -155,6 +157,7 @@ describe('ServerStickerController', () => {
                 _id: new Types.ObjectId(STICKER_ID),
                 name: 'test_sticker',
                 imageUrl: '/uploads/stickers/test.png',
+                isAnimated: false,
                 serverId: new Types.ObjectId(SERVER_ID),
                 createdBy: new Types.ObjectId(USER_ID),
                 createdAt: new Date(),
@@ -193,6 +196,7 @@ describe('ServerStickerController', () => {
                 serverId: new Types.ObjectId(SERVER_ID),
                 name: 'test',
                 imageUrl: 'test.png',
+                isAnimated: false,
             });
 
             await controller.deleteSticker(SERVER_ID, STICKER_ID, req);
@@ -213,6 +217,7 @@ describe('ServerStickerController', () => {
                 serverId: new Types.ObjectId(SERVER_ID),
                 name: 'test',
                 imageUrl: 'test.png',
+                isAnimated: false,
             });
 
             await controller.deleteSticker(SERVER_ID, STICKER_ID, req);

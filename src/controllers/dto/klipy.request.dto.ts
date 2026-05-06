@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUrl, IsInt, Min } from 'class-validator';
+import { IsString, IsUrl, IsInt, Min, IsEnum, IsOptional } from 'class-validator';
 
 export class ToggleFavoriteGifRequestDTO {
     @ApiProperty({ description: 'Klipy GIF identifier' })
@@ -23,4 +23,8 @@ export class ToggleFavoriteGifRequestDTO {
     @IsInt()
     @Min(0)
     public height!: number;
+    @ApiProperty({ description: 'Content type (gif or sticker)', enum: ['gif', 'sticker'], required: false })
+    @IsEnum(['gif', 'sticker'])
+    @IsOptional()
+    public contentType?: 'gif' | 'sticker';
 }

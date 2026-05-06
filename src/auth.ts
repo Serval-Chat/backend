@@ -43,7 +43,7 @@ export async function expressAuthentication(
                 return Promise.reject(new Error('Invalid token'));
             }
 
-            const currentTokenVersion = user.tokenVersion;
+            const currentTokenVersion = user.tokenVersion ?? 0;
             const payloadTokenVersion = decoded.tokenVersion;
 
             if (currentTokenVersion !== payloadTokenVersion) {

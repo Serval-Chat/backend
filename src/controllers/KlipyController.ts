@@ -50,13 +50,26 @@ export class KlipyController {
         return this.klipyService.getTrendingGifs();
     }
 
+    @Get('stickers/search')
+    @ApiOperation({ summary: 'Search for stickers on Klipy' })
+    public async searchStickers(@Query('q') q: string) {
+        return this.klipyService.searchStickers(q);
+    }
+
+    @Get('stickers/trending')
+    @ApiOperation({ summary: 'Get trending stickers from Klipy' })
+    public async trendingStickers() {
+        return this.klipyService.getTrendingStickers();
+    }
+
     @Get('resolve')
-    @ApiOperation({ summary: 'Resolve Klipy GIF metadata' })
+    @ApiOperation({ summary: 'Resolve Klipy content metadata' })
     @ApiResponse({ status: 200, type: GifMetadataResponseDTO })
     public async resolve(
         @Query('id') id: string,
+        @Query('type') type: 'gif' | 'sticker' = 'gif',
     ): Promise<GifMetadataResponseDTO> {
-        return this.klipyService.resolveGif(id);
+        return this.klipyService.resolveGif(id, type);
     }
 
     @Get('favorites')

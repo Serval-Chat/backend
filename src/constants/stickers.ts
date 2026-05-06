@@ -10,6 +10,13 @@ export const STICKER_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 export const STICKER_NAME_REGEX = /^[^\p{Cc}\p{Cn}\p{Cs}]+$/u;
 export const INVALID_STICKER_NAME_CHARS_REGEX = /[\p{Cc}\p{Cn}\p{Cs}]/gu;
 
+export const SUPPORTED_STICKER_MIMETYPES = [
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/gif',
+];
+
 export function isValidStickerName(name: string): boolean {
     if (!name) return false;
     const trimmed = name.trim();
