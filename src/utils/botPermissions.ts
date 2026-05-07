@@ -31,7 +31,10 @@ export function permissionsToBitmask(permissions: BotPermissions): number {
  */
 export function bitmaskToPermissions(bitmask: number): BotPermissions {
     const permissions = {} as Partial<BotPermissions>;
-    for (const [key, bit] of Object.entries(BOT_PERMISSION_BITS) as [keyof BotPermissions, number][]) {
+    for (const [key, bit] of Object.entries(BOT_PERMISSION_BITS) as [
+        keyof BotPermissions,
+        number,
+    ][]) {
         permissions[key] = (bitmask & bit) !== 0;
     }
     return permissions as BotPermissions;
@@ -40,7 +43,9 @@ export function bitmaskToPermissions(bitmask: number): BotPermissions {
 /**
  * Maps BotPermissions to Server Role permissions
  */
-export function mapBotToServerPermissions(botPerms: BotPermissions): Record<string, boolean> {
+export function mapBotToServerPermissions(
+    botPerms: BotPermissions,
+): Record<string, boolean> {
     return {
         viewChannels: botPerms.readMessages,
         sendMessages: botPerms.sendMessages,

@@ -165,8 +165,12 @@ async function bootstrap() {
         }
     };
 
-    process.on('SIGTERM', () => { void cleanup('SIGTERM'); });
-    process.on('SIGINT', () => { void cleanup('SIGINT'); });
+    process.on('SIGTERM', () => {
+        void cleanup('SIGTERM');
+    });
+    process.on('SIGINT', () => {
+        void cleanup('SIGINT');
+    });
 }
 
 void bootstrap();

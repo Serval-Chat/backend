@@ -60,14 +60,18 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
         currentNote.content = content;
         currentNote.adminId = adminId;
 
-        return await currentNote
-            .save()
-            .then((doc) =>
-                doc.populate([
-                    { path: 'adminId', select: 'username displayName profilePicture' },
-                    { path: 'history.editorId', select: 'username displayName profilePicture' },
-                ]),
-            );
+        return await currentNote.save().then((doc) =>
+            doc.populate([
+                {
+                    path: 'adminId',
+                    select: 'username displayName profilePicture',
+                },
+                {
+                    path: 'history.editorId',
+                    select: 'username displayName profilePicture',
+                },
+            ]),
+        );
     }
 
     public async softDelete(data: {

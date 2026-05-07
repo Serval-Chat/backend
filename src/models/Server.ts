@@ -233,15 +233,15 @@ const serverSchema = new Schema<IServer>({
     createdAt: { type: Date, default: Date.now },
     deletedAt: { type: Date },
     allTimeHigh: { type: Number, default: 0 },
-    tags: { 
-        type: [String], 
+    tags: {
+        type: [String],
         default: [],
         validate: [
             {
                 validator: (v: string[]) => v.length <= 8,
-                message: 'Max 8 tags allowed'
-            }
-        ]
+                message: 'Max 8 tags allowed',
+            },
+        ],
     },
 });
 
@@ -402,7 +402,11 @@ const serverMessageSchema = new Schema<IServerMessage>({
     text: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
     replyToId: { type: Schema.Types.ObjectId, required: false },
-    repliedToMessageId: { type: Schema.Types.ObjectId, ref: 'ServerMessage', required: false },
+    repliedToMessageId: {
+        type: Schema.Types.ObjectId,
+        ref: 'ServerMessage',
+        required: false,
+    },
     repliedTo: {
         messageId: { type: Schema.Types.ObjectId, required: false },
         senderId: { type: Schema.Types.ObjectId, required: false },
@@ -420,10 +424,12 @@ const serverMessageSchema = new Schema<IServerMessage>({
     embeds: { type: [Schema.Types.Mixed], default: [] },
     interaction: {
         command: { type: String, required: false },
-        options: [{
-            name: { type: String, required: false },
-            value: { type: Schema.Types.Mixed, required: false },
-        }],
+        options: [
+            {
+                name: { type: String, required: false },
+                value: { type: Schema.Types.Mixed, required: false },
+            },
+        ],
         user: {
             id: { type: String, required: false },
             username: { type: String, required: false },

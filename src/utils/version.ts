@@ -53,7 +53,8 @@ export function getVersion(): string {
             const packageJson = JSON.parse(
                 fs.readFileSync(packageJsonPath, 'utf-8'),
             );
-            const version = (packageJson.version as string | undefined) ?? 'unknown';
+            const version =
+                (packageJson.version as string | undefined) ?? 'unknown';
             cachedVersion = version;
             return version;
         }

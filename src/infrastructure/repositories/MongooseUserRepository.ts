@@ -6,7 +6,7 @@ import {
     IUser,
     CreateUserDTO,
 } from '@/di/interfaces/IUserRepository';
-import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import { AdminPermissions } from '@/permissions/AdminPermissions';
 import { User, IUser as IUserModel } from '@/models/User';
 import { Friendship, FriendRequest } from '@/models/Friendship';
 import { Ban } from '@/models/Ban';
@@ -25,7 +25,7 @@ export class MongooseUserRepository implements IUserRepository {
     private friendRequestModel = FriendRequest;
     private banModel = Ban;
 
-    public constructor() { }
+    public constructor() {}
 
     private toDomain(doc: unknown): IUser | null {
         if (doc === undefined || doc === null) return null;
@@ -37,7 +37,9 @@ export class MongooseUserRepository implements IUserRepository {
     }
 
     public async findById(id: Types.ObjectId): Promise<IUser | null> {
-        return this.toDomain(await this.userModel.findById(id).select('-password').lean());
+        return this.toDomain(
+            await this.userModel.findById(id).select('-password').lean(),
+        );
     }
 
     public async findByIds(ids: Types.ObjectId[]): Promise<IUser[]> {
@@ -47,7 +49,7 @@ export class MongooseUserRepository implements IUserRepository {
                 .select(
                     'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
                 )
-                .lean()
+                .lean(),
         );
     }
 
@@ -64,7 +66,7 @@ export class MongooseUserRepository implements IUserRepository {
             await this.userModel
                 .find({ username: { $in: usernames } })
                 .select('username displayName customStatus')
-                .lean()
+                .lean(),
         );
     }
 
@@ -83,7 +85,7 @@ export class MongooseUserRepository implements IUserRepository {
                     'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
                 )
                 .limit(limit)
-                .lean()
+                .lean(),
         );
     }
 
@@ -99,7 +101,7 @@ export class MongooseUserRepository implements IUserRepository {
         return this.toDomain(
             await this.userModel
                 .findByIdAndUpdate(id, data, { new: true })
-                .lean()
+                .lean(),
         );
     }
 
@@ -112,7 +114,10 @@ export class MongooseUserRepository implements IUserRepository {
     //
     // Marks the user as deleted, sets a reason, and increments the token version
     // To invalidate all existing sessions
-    public async softDelete(id: Types.ObjectId, reason: string): Promise<boolean> {
+    public async softDelete(
+        id: Types.ObjectId,
+        reason: string,
+    ): Promise<boolean> {
         const user = await this.userModel.findById(id);
         if (!user) return false;
 
@@ -154,7 +159,10 @@ export class MongooseUserRepository implements IUserRepository {
         });
     }
 
-    public async updateLogin(id: Types.ObjectId, newLogin: string): Promise<void> {
+    public async updateLogin(
+        id: Types.ObjectId,
+        newLogin: string,
+    ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { login: newLogin });
     }
 
@@ -221,11 +229,17 @@ export class MongooseUserRepository implements IUserRepository {
         );
     }
 
-    public async updateLanguage(id: Types.ObjectId, language: string): Promise<void> {
+    public async updateLanguage(
+        id: Types.ObjectId,
+        language: string,
+    ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { language });
     }
 
-    public async updateBio(id: Types.ObjectId, bio: string | null): Promise<void> {
+    public async updateBio(
+        id: Types.ObjectId,
+        bio: string | null,
+    ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { bio });
     }
 
@@ -286,7 +300,7 @@ export class MongooseUserRepository implements IUserRepository {
                 .limit(Number(limit))
                 .skip(Number(offset))
                 .select('-password')
-                .lean()
+                .lean(),
         );
     }
 
@@ -392,7 +406,7 @@ export class MongooseUserRepository implements IUserRepository {
         if (days <= 0 || !Number.isFinite(days) || days > 10000) {
             return [];
         }
-        
+
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await this.userModel.aggregate<{
             _id: number;

@@ -123,7 +123,10 @@ export class FileProxyController {
                 const contentLengthHeader =
                     response.headers.get('content-length');
                 // ... rest of logic
-                if (contentLengthHeader !== null && contentLengthHeader !== '') {
+                if (
+                    contentLengthHeader !== null &&
+                    contentLengthHeader !== ''
+                ) {
                     const parsed = Number(contentLengthHeader);
                     if (!Number.isNaN(parsed) && parsed > MAX_FILE_SIZE_BYTES) {
                         await response.body?.cancel();
@@ -161,7 +164,10 @@ export class FileProxyController {
 
                 const headerRecord = sanitizeHeaders(response.headers);
                 const originalMimeType =
-                    (headerRecord['content-type'] !== undefined && headerRecord['content-type'] !== '') ? headerRecord['content-type'] : 'application/octet-stream';
+                    headerRecord['content-type'] !== undefined &&
+                    headerRecord['content-type'] !== ''
+                        ? headerRecord['content-type']
+                        : 'application/octet-stream';
 
                 // Try to convert to WebP on the fly if it's an image and client supports it
                 const {
@@ -285,9 +291,10 @@ export class FileProxyController {
 
             const headerRecord = sanitizeHeaders(response.headers);
             const contentLength = response.headers.get('content-length');
-            const parsedLength = (contentLength !== null && contentLength !== '')
-                ? Number(contentLength)
-                : undefined;
+            const parsedLength =
+                contentLength !== null && contentLength !== ''
+                    ? Number(contentLength)
+                    : undefined;
 
             const entry: MetaCacheEntry = {
                 status: response.status,

@@ -57,7 +57,7 @@ export const authenticateToken = async (
 
         // Validate tokenVersion to invalidate old JWTs
         const currentTokenVersion = Number(user.tokenVersion ?? 0);
-        const payloadTokenVersion = Number(decoded.tokenVersion ?? 0);
+        const payloadTokenVersion = Number(decoded.tokenVersion);
 
         if (currentTokenVersion !== payloadTokenVersion) {
             return res.status(401).json({ error: 'Token expired' });

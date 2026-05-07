@@ -6,7 +6,7 @@ const { combine, timestamp, printf, colorize, errors } = format;
 
 // Log format with timestamp and error stack traces
 const logFormat = printf(({ level, message, timestamp, stack }) => {
-    return `${timestamp} ${level}: ${(stack !== undefined && stack !== null && stack !== '') ? stack : message}`;
+    return `${timestamp} ${level}: ${stack !== undefined && stack !== null && stack !== '' ? stack : message}`;
 });
 
 // Winston logger instance

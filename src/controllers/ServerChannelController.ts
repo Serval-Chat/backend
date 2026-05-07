@@ -152,7 +152,9 @@ export class ServerChannelController {
             async (channel: IChannel) => {
                 const channelId = channel._id.toString();
                 const lastMessageAt: Date | null =
-                    (channel.lastMessageAt !== undefined) ? channel.lastMessageAt : null;
+                    channel.lastMessageAt !== undefined
+                        ? channel.lastMessageAt
+                        : null;
                 const lastReadAt: Date | undefined = channelId
                     ? readMap.get(channelId)
                     : undefined;
@@ -187,7 +189,10 @@ export class ServerChannelController {
                     lastMessageAt: lastMessageAt
                         ? lastMessageAt.toISOString()
                         : null,
-                    lastReadAt: (lastReadAt !== undefined) ? lastReadAt.toISOString() : null,
+                    lastReadAt:
+                        lastReadAt !== undefined
+                            ? lastReadAt.toISOString()
+                            : null,
                     slowMode: channel.slowMode,
                     slowModeNextMessageAllowedAt,
                     permissions:
@@ -251,9 +256,9 @@ export class ServerChannelController {
         const maxPositionChannel =
             await this.channelRepo.findMaxPositionByServerId(serverOid);
         const finalPosition =
-            (body.position !== undefined)
+            body.position !== undefined
                 ? body.position
-                : (maxPositionChannel !== null)
+                : maxPositionChannel !== null
                   ? maxPositionChannel.position + 1
                   : 0;
 
@@ -283,13 +288,17 @@ export class ServerChannelController {
             name: body.name,
             type: body.type ?? 'text',
             position: finalPosition,
-            categoryId: (body.categoryId !== undefined && body.categoryId !== '')
-                ? new Types.ObjectId(body.categoryId)
-                : null,
+            categoryId:
+                body.categoryId !== undefined && body.categoryId !== ''
+                    ? new Types.ObjectId(body.categoryId)
+                    : null,
             permissions: filteredPermissions,
-            ...((body.description !== undefined && body.description !== '') && { description: body.description }),
-            ...((body.icon !== undefined && body.icon !== '') && { icon: body.icon }),
-            ...((body.link !== undefined && body.link !== '') && { link: body.link }),
+            ...(body.description !== undefined &&
+                body.description !== '' && { description: body.description }),
+            ...(body.icon !== undefined &&
+                body.icon !== '' && { icon: body.icon }),
+            ...(body.link !== undefined &&
+                body.link !== '' && { link: body.link }),
             ...(body.slowMode !== undefined && { slowMode: body.slowMode }),
         });
 
@@ -426,8 +435,7 @@ export class ServerChannelController {
         return {
             channelId: channel._id.toString(),
             channelName: channel.name,
-            createdAt:
-                channel.createdAt.toISOString(),
+            createdAt: channel.createdAt.toISOString(),
             messageCount,
         };
     }
@@ -467,12 +475,14 @@ export class ServerChannelController {
         }
 
         const updates: Partial<IChannel> = {};
-        if (body.name !== undefined && body.name !== '') updates.name = body.name;
+        if (body.name !== undefined && body.name !== '')
+            updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
         if (body.categoryId !== undefined)
-            updates.categoryId = (body.categoryId !== null && body.categoryId !== '')
-                ? new Types.ObjectId(body.categoryId)
-                : null;
+            updates.categoryId =
+                body.categoryId !== null && body.categoryId !== ''
+                    ? new Types.ObjectId(body.categoryId)
+                    : null;
         if (body.description !== undefined)
             updates.description = body.description;
 
@@ -500,7 +510,11 @@ export class ServerChannelController {
         });
 
         const changes = [];
-        if ((body.name !== undefined && body.name !== '') && body.name !== existingChannel.name) {
+        if (
+            body.name !== undefined &&
+            body.name !== '' &&
+            body.name !== existingChannel.name
+        ) {
             changes.push({
                 field: 'name',
                 before: existingChannel.name,
@@ -519,7 +533,10 @@ export class ServerChannelController {
         }
         if (body.categoryId !== undefined) {
             const oldCatString = existingChannel.categoryId?.toString() ?? null;
-            const newCatString = (body.categoryId !== null && body.categoryId !== '') ? body.categoryId : null;
+            const newCatString =
+                body.categoryId !== null && body.categoryId !== ''
+                    ? body.categoryId
+                    : null;
             if (oldCatString !== newCatString) {
                 changes.push({
                     field: 'categoryId',
@@ -617,7 +634,7 @@ export class ServerChannelController {
             actionType: 'delete_channel',
             targetId: channelOid,
             targetType: 'channel',
-            metadata: { channelName: (channel !== null) ? channel.name : '' },
+            metadata: { channelName: channel !== null ? channel.name : '' },
         });
 
         return { message: 'Channel deleted' };
@@ -651,7 +668,7 @@ export class ServerChannelController {
         const finalPosition =
             body.position !== undefined
                 ? body.position
-                : (maxPositionCategory !== null)
+                : maxPositionCategory !== null
                   ? maxPositionCategory.position + 1
                   : 0;
 
@@ -749,7 +766,8 @@ export class ServerChannelController {
         }
 
         const updates: Partial<ICategory> = {};
-        if (body.name !== undefined && body.name !== '') updates.name = body.name;
+        if (body.name !== undefined && body.name !== '')
+            updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
 
         const existingCategory = await this.categoryRepo.findById(categoryOid);
@@ -768,7 +786,11 @@ export class ServerChannelController {
         });
 
         const changes = [];
-        if ((body.name !== undefined && body.name !== '') && body.name !== existingCategory.name) {
+        if (
+            body.name !== undefined &&
+            body.name !== '' &&
+            body.name !== existingCategory.name
+        ) {
             changes.push({
                 field: 'name',
                 before: existingCategory.name,
@@ -946,7 +968,10 @@ export class ServerChannelController {
             }
         }
 
-        const oldPerms = (channel.permissions as Record<string, Record<string, boolean>>);
+        const oldPerms = channel.permissions as Record<
+            string,
+            Record<string, boolean>
+        >;
         const roles = await this.roleRepo.findByServerId(serverOid);
         const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
 
@@ -959,7 +984,7 @@ export class ServerChannelController {
             const roleName =
                 id === 'everyone'
                     ? '@everyone'
-                    : roleMap.get(id)?.name ?? `Role ${id}`;
+                    : (roleMap.get(id)?.name ?? `Role ${id}`);
             const oldRolePerms = oldPerms[id] || {};
             const newRolePerms = filteredPermissions[id] || {};
 
@@ -1108,7 +1133,10 @@ export class ServerChannelController {
             }
         }
 
-        const oldPerms = (category.permissions as Record<string, Record<string, boolean>>);
+        const oldPerms = category.permissions as Record<
+            string,
+            Record<string, boolean>
+        >;
         const roles = await this.roleRepo.findByServerId(serverOid);
         const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
 
@@ -1121,7 +1149,7 @@ export class ServerChannelController {
             const roleName =
                 id === 'everyone'
                     ? '@everyone'
-                    : roleMap.get(id)?.name ?? `Role ${id}`;
+                    : (roleMap.get(id)?.name ?? `Role ${id}`);
             const oldRolePerms = oldPerms[id] || {};
             const newRolePerms = filteredPermissions[id] || {};
 

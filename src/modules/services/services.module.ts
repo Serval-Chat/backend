@@ -10,6 +10,7 @@ import { MetricsService } from '@/services/MetricsService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { LiveKitService } from '@/services/LiveKitService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
+import { RegistrationInviteService } from '@/services/RegistrationInviteService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 
@@ -61,6 +62,10 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
             provide: TYPES.ImageDeliveryService,
             useClass: ImageDeliveryService,
         },
+        {
+            provide: TYPES.RegistrationInviteService,
+            useClass: RegistrationInviteService,
+        },
     ],
     exports: [
         TYPES.AuthService,
@@ -73,6 +78,7 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
         TYPES.LiveKitService,
         TYPES.ServerAuditLogService,
         TYPES.ImageDeliveryService,
+        TYPES.RegistrationInviteService,
     ],
 })
 export class ServicesModule {}

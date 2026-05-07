@@ -306,7 +306,7 @@ export function setupExpressApp(app: Application): Application {
         const message =
             PROJECT_LEVEL === 'production' && status >= 500
                 ? 'Internal Server Error'
-                : error.message ?? 'Internal Server Error';
+                : (error.message ?? 'Internal Server Error');
 
         res.status(status).json({
             error: message,

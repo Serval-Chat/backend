@@ -247,7 +247,7 @@ export class PresenceController {
         const user = await this.userRepo.findById(
             new mongoose.Types.ObjectId(userId),
         );
-        const status = (user?.customStatus)
+        const status = user?.customStatus
             ? {
                   text: user.customStatus.text,
                   emoji: user.customStatus.emoji ?? null,

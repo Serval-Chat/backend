@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
-import { IStickerRepository, ISticker } from '@/di/interfaces/IStickerRepository';
+import {
+    IStickerRepository,
+    ISticker,
+} from '@/di/interfaces/IStickerRepository';
 import { Sticker } from '@/models/Sticker';
 
 @injectable()
@@ -40,7 +43,9 @@ export class MongooseStickerRepository implements IStickerRepository {
             .lean();
     }
 
-    public async findByIdWithCreator(id: Types.ObjectId): Promise<ISticker | null> {
+    public async findByIdWithCreator(
+        id: Types.ObjectId,
+    ): Promise<ISticker | null> {
         return await Sticker.findById(id)
             .populate('createdBy', 'username')
             .lean();
@@ -53,7 +58,9 @@ export class MongooseStickerRepository implements IStickerRepository {
         return await Sticker.findOne({ serverId, name }).lean();
     }
 
-    public async findByServerIds(serverIds: Types.ObjectId[]): Promise<ISticker[]> {
+    public async findByServerIds(
+        serverIds: Types.ObjectId[],
+    ): Promise<ISticker[]> {
         return await Sticker.find({ serverId: { $in: serverIds } })
             .select('_id name imageUrl isAnimated serverId createdBy createdAt')
             .sort({ name: 1 })

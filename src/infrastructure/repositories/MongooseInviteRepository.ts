@@ -32,7 +32,9 @@ export class MongooseInviteRepository implements IInviteRepository {
     //
     // Query that checks 'code', 'customPath', and optionally '_id'
     // If the input is a valid ObjectId
-    public async findByCodeOrCustomPath(codeOrPath: string): Promise<IInvite | null> {
+    public async findByCodeOrCustomPath(
+        codeOrPath: string,
+    ): Promise<IInvite | null> {
         const query: FilterQuery<IInvite> = {
             $or: [{ code: codeOrPath }, { customPath: codeOrPath }],
         };

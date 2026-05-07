@@ -117,7 +117,9 @@ export class AuthController {
 
             res.status(HttpStatus.UNAUTHORIZED).json({
                 error:
-                    authResult.error !== undefined && authResult.error !== '' ? authResult.error : ErrorMessages.AUTH.INVALID_CREDENTIALS,
+                    authResult.error !== undefined && authResult.error !== ''
+                        ? authResult.error
+                        : ErrorMessages.AUTH.INVALID_CREDENTIALS,
             });
             return;
         }
@@ -189,7 +191,10 @@ export class AuthController {
         @Body() body: TotpVerifyRequestDTO,
         @Res() res: Response,
     ): Promise<void> {
-        if ((body.code === undefined || body.code === '') && (body.backupCode === undefined || body.backupCode === '')) {
+        if (
+            (body.code === undefined || body.code === '') &&
+            (body.backupCode === undefined || body.backupCode === '')
+        ) {
             res.status(HttpStatus.BAD_REQUEST).json({
                 error: ErrorMessages.AUTH.INVALID_TOTP_CODE,
             });
@@ -287,7 +292,11 @@ export class AuthController {
         try {
             let tokens: string[];
             try {
-                const tokensPath = path.join(process.cwd(), '.data', 'tokens.txt');
+                const tokensPath = path.join(
+                    process.cwd(),
+                    '.data',
+                    'tokens.txt',
+                );
                 if (!fs.existsSync(path.dirname(tokensPath))) {
                     fs.mkdirSync(path.dirname(tokensPath), { recursive: true });
                 }
@@ -315,7 +324,8 @@ export class AuthController {
                 return;
             }
 
-            const existingLogin = await this.userRepo.findByLogin(normalizedLogin);
+            const existingLogin =
+                await this.userRepo.findByLogin(normalizedLogin);
             if (existingLogin !== null) {
                 registrationAttemptsCounter.labels('failure').inc();
                 res.status(HttpStatus.BAD_REQUEST).json({
@@ -324,7 +334,8 @@ export class AuthController {
                 return;
             }
 
-            const existingUsername = await this.userRepo.findByUsername(username);
+            const existingUsername =
+                await this.userRepo.findByUsername(username);
             if (existingUsername !== null) {
                 registrationAttemptsCounter.labels('failure').inc();
                 res.status(HttpStatus.BAD_REQUEST).json({
@@ -352,9 +363,9 @@ export class AuthController {
 
             const token = generateJWT({
                 id: newUser._id.toString(),
-            login: newUser.login ?? '',
-            username: newUser.username ?? '',
-            tokenVersion: newUser.tokenVersion ?? 0,
+                login: newUser.login ?? '',
+                username: newUser.username ?? '',
+                tokenVersion: newUser.tokenVersion ?? 0,
                 permissions: newUser.permissions,
                 isBot: newUser.isBot ?? false,
             });

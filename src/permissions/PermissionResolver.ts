@@ -107,7 +107,10 @@ export class PermissionResolver {
         this.everyoneRoleId = data.everyoneRoleId?.toString();
     }
 
-    public hasServerPermission(userId: string, permission: PermissionKey): boolean {
+    public hasServerPermission(
+        userId: string,
+        permission: PermissionKey,
+    ): boolean {
         // 1) Owner
         if (userId === this.data.ownerId.toString()) {
             this.logger?.debug(
@@ -122,9 +125,10 @@ export class PermissionResolver {
         const rolesAsc = this.getMemberRolesByAscPosition(member);
 
         // Include @everyone as the lowest-priority role in base permission merging.
-        const rolesAscWithEveryone = (this.everyoneRoleId !== undefined && this.everyoneRoleId !== '')
-            ? this.appendEveryoneRole(rolesAsc)
-            : rolesAsc;
+        const rolesAscWithEveryone =
+            this.everyoneRoleId !== undefined && this.everyoneRoleId !== ''
+                ? this.appendEveryoneRole(rolesAsc)
+                : rolesAsc;
 
         // 2) Administrator bypass
         if (this.hasAdministrator(rolesAscWithEveryone)) return true;
@@ -146,8 +150,7 @@ export class PermissionResolver {
         if (!channel) return false;
 
         // 1) Owner
-        if (userId === this.data.ownerId.toString())
-            return true;
+        if (userId === this.data.ownerId.toString()) return true;
 
         const member = this.memberByUserId.get(userId);
         if (!member) return false;
@@ -163,9 +166,10 @@ export class PermissionResolver {
         const rolesAsc = this.getMemberRolesByAscPosition(member);
 
         // Include @everyone role for overrides if available.
-        const rolesAscForOverrides = (this.everyoneRoleId !== undefined && this.everyoneRoleId !== '')
-            ? this.appendEveryoneRole(rolesAsc)
-            : rolesAsc;
+        const rolesAscForOverrides =
+            this.everyoneRoleId !== undefined && this.everyoneRoleId !== ''
+                ? this.appendEveryoneRole(rolesAsc)
+                : rolesAsc;
 
         // 2) Administrator bypass
         if (this.hasAdministrator(rolesAscForOverrides)) return true;
@@ -225,9 +229,10 @@ export class PermissionResolver {
         }
 
         const rolesAsc = this.getMemberRolesByAscPosition(member);
-        const rolesAscForOverrides = (this.everyoneRoleId !== undefined && this.everyoneRoleId !== '')
-            ? this.appendEveryoneRole(rolesAsc)
-            : rolesAsc;
+        const rolesAscForOverrides =
+            this.everyoneRoleId !== undefined && this.everyoneRoleId !== ''
+                ? this.appendEveryoneRole(rolesAsc)
+                : rolesAsc;
 
         const isAdmin = this.hasAdministrator(rolesAscForOverrides);
 
@@ -320,7 +325,8 @@ export class PermissionResolver {
     private getEveryonePermission(
         permission: PermissionKey,
     ): boolean | undefined {
-        if (this.everyoneRoleId === undefined || this.everyoneRoleId === '') return undefined;
+        if (this.everyoneRoleId === undefined || this.everyoneRoleId === '')
+            return undefined;
         const role = this.roleById.get(this.everyoneRoleId);
         if (!role) return undefined;
 
@@ -331,7 +337,8 @@ export class PermissionResolver {
     private appendEveryoneRole(
         rolesByAscPosition: readonly ServerRole[],
     ): ServerRole[] {
-        if (this.everyoneRoleId === undefined || this.everyoneRoleId === '') return [...rolesByAscPosition];
+        if (this.everyoneRoleId === undefined || this.everyoneRoleId === '')
+            return [...rolesByAscPosition];
         const everyone = this.roleById.get(this.everyoneRoleId);
         if (!everyone) return [...rolesByAscPosition];
 

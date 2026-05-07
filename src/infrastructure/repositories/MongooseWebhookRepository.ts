@@ -28,7 +28,9 @@ export class MongooseWebhookRepository implements IWebhookRepository {
         return await Webhook.find({ serverId }).lean();
     }
 
-    public async findByChannelId(channelId: Types.ObjectId): Promise<IWebhook[]> {
+    public async findByChannelId(
+        channelId: Types.ObjectId,
+    ): Promise<IWebhook[]> {
         return await Webhook.find({ channelId }).lean();
     }
 

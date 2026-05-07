@@ -100,7 +100,7 @@ export class ProfileController {
         private imageDeliveryService: ImageDeliveryService,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
-    ) { }
+    ) {}
 
     private async mapToProfile(
         user: IUser,
@@ -115,10 +115,7 @@ export class ProfileController {
             throw new Error('User not found');
         }
 
-        if (
-            user.badges !== undefined &&
-            user.badges.length > 0
-        ) {
+        if (user.badges !== undefined && user.badges.length > 0) {
             try {
                 const badgeDocs = await Badge.find({ id: { $in: user.badges } })
                     .lean()
@@ -139,7 +136,11 @@ export class ProfileController {
 
         mapped.serverSettings = user.serverSettings;
 
-        if (options.viewerId !== undefined && options.viewerId !== '' && options.viewerId !== user._id.toString()) {
+        if (
+            options.viewerId !== undefined &&
+            options.viewerId !== '' &&
+            options.viewerId !== user._id.toString()
+        ) {
             const blockFlags = await this.blockRepo.getActiveBlockFlags(
                 user._id,
                 new Types.ObjectId(options.viewerId),
@@ -202,15 +203,24 @@ export class ProfileController {
         }
 
         if (viewer.isBot === true && viewerId !== userId) {
-            const botServerIds = await this.serverMemberRepo.findServerIdsByUserId(new Types.ObjectId(viewerId));
-            const userServerIds = await this.serverMemberRepo.findServerIdsByUserId(user._id);
+            const botServerIds =
+                await this.serverMemberRepo.findServerIdsByUserId(
+                    new Types.ObjectId(viewerId),
+                );
+            const userServerIds =
+                await this.serverMemberRepo.findServerIdsByUserId(user._id);
 
-            const hasSharedServer = botServerIds.some(botSid =>
-                userServerIds.some(userSid => userSid.toString() === botSid.toString())
+            const hasSharedServer = botServerIds.some((botSid) =>
+                userServerIds.some(
+                    (userSid) => userSid.toString() === botSid.toString(),
+                ),
             );
 
             if (hasSharedServer !== true) {
-                throw new ApiError(403, 'Bots can only view profiles of users they share a server with');
+                throw new ApiError(
+                    403,
+                    'Bots can only view profiles of users they share a server with',
+                );
             }
         }
 
@@ -232,7 +242,6 @@ export class ProfileController {
     ): Promise<BadgeOperationResponseDTO> {
         const adminUser = (req as unknown as RequestWithUser).user;
         try {
-
             if (hasPermission(adminUser, 'manageUsers') !== true) {
                 throw new ApiError(
                     403,
@@ -372,7 +381,10 @@ export class ProfileController {
             }
 
             // Remove old profile picture
-            if (user.profilePicture !== undefined && user.profilePicture !== '') {
+            if (
+                user.profilePicture !== undefined &&
+                user.profilePicture !== ''
+            ) {
                 const oldPath = path.join(
                     process.cwd(),
                     'uploads',
@@ -429,13 +441,14 @@ export class ProfileController {
                 );
             }
 
-            const isAnimated: boolean = (metadata.pages !== undefined && metadata.pages > 1);
+            const isAnimated: boolean =
+                metadata.pages !== undefined && metadata.pages > 1;
             const format =
                 metadata.format === 'gif'
                     ? 'gif'
                     : isAnimated
-                        ? 'webp'
-                        : 'webp';
+                      ? 'webp'
+                      : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(profilesDir, filename);
@@ -636,13 +649,14 @@ export class ProfileController {
                 );
             }
 
-            const isAnimated: boolean = (metadata.pages !== undefined && metadata.pages > 1);
+            const isAnimated: boolean =
+                metadata.pages !== undefined && metadata.pages > 1;
             const format =
                 metadata.format === 'gif'
                     ? 'gif'
                     : isAnimated
-                        ? 'webp'
-                        : 'webp';
+                      ? 'webp'
+                      : 'webp';
             const ext = `.${format}`;
             const filename = `${randomBytes(16).toString('hex')}${ext}`;
             const targetPath = path.join(bannersDir, filename);
@@ -926,7 +940,10 @@ export class ProfileController {
 
             const payload = {
                 username,
-                displayName: (updatedUser !== null) ? (updatedUser.displayName ?? null) : null,
+                displayName:
+                    updatedUser !== null
+                        ? (updatedUser.displayName ?? null)
+                        : null,
             };
 
             // Emit to servers
@@ -960,7 +977,8 @@ export class ProfileController {
 
         return {
             message: 'Display name updated successfully',
-            displayName: (updatedUser !== null) ? (updatedUser.displayName ?? null) : null,
+            displayName:
+                updatedUser !== null ? (updatedUser.displayName ?? null) : null,
         };
     }
 
@@ -1069,9 +1087,10 @@ export class ProfileController {
         await this.userRepo.updateCustomStatus(userOid, newStatus);
 
         const updatedUser = await this.userRepo.findById(userOid);
-        const serialized = (updatedUser !== null)
-            ? resolveSerializedCustomStatus(updatedUser.customStatus)
-            : null;
+        const serialized =
+            updatedUser !== null
+                ? resolveSerializedCustomStatus(updatedUser.customStatus)
+                : null;
 
         try {
             // Broadcast status update to friends and server members
@@ -1362,9 +1381,12 @@ export class ProfileController {
                 userId,
                 oldUsername,
                 newUsername,
-                profilePicture: (updatedUser !== null && updatedUser.profilePicture !== undefined && updatedUser.profilePicture !== '')
-                    ? `/api/v1/profile/picture/${updatedUser.profilePicture}`
-                    : null,
+                profilePicture:
+                    updatedUser !== null &&
+                    updatedUser.profilePicture !== undefined &&
+                    updatedUser.profilePicture !== ''
+                        ? `/api/v1/profile/picture/${updatedUser.profilePicture}`
+                        : null,
                 usernameFont: updatedUser?.usernameFont,
                 usernameGradient: updatedUser?.usernameGradient,
                 usernameGlow: updatedUser?.usernameGlow,

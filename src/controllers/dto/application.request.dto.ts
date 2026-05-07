@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNumber, IsBoolean, IsOptional, ValidateNested, IsArray, MaxLength } from 'class-validator';
+import {
+    IsString,
+    IsNumber,
+    IsBoolean,
+    IsOptional,
+    ValidateNested,
+    IsArray,
+    MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SlashCommandOptionDTO {

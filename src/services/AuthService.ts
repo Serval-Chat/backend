@@ -364,7 +364,10 @@ export class AuthService {
     }
 
     // Request a password reset
-    public async requestPasswordReset(email: string, ip: string): Promise<string> {
+    public async requestPasswordReset(
+        email: string,
+        ip: string,
+    ): Promise<string> {
         const requestId = crypto.randomBytes(8).toString('hex');
 
         // Normalize email to prevent plus-addressing bypass

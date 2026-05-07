@@ -24,7 +24,10 @@ export const addReactionBodySchema = z
     .refine(
         (data) => {
             // If emojiType is 'custom', emojiId must be provided
-            if (data.emojiType === 'custom' && (data.emojiId === undefined || data.emojiId === '')) {
+            if (
+                data.emojiType === 'custom' &&
+                (data.emojiId === undefined || data.emojiId === '')
+            ) {
                 return false;
             }
             // If emojiType is 'unicode', validate emoji format
@@ -46,9 +49,14 @@ export const removeReactionBodySchema = z
         emojiId: objectIdSchema.optional(),
         scope: z.enum(['me', 'all']).optional(),
     })
-    .refine((data) => (data.emoji !== undefined && data.emoji !== '') || (data.emojiId !== undefined && data.emojiId !== ''), {
-        message: 'Either emoji or emojiId must be provided',
-    });
+    .refine(
+        (data) =>
+            (data.emoji !== undefined && data.emoji !== '') ||
+            (data.emojiId !== undefined && data.emojiId !== ''),
+        {
+            message: 'Either emoji or emojiId must be provided',
+        },
+    );
 
 // Schema for message ID parameter
 export const messageIdParamSchema = z.object({

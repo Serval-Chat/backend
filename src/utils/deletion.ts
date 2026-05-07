@@ -20,7 +20,11 @@ export const DELETED_AVATAR_PATH = '/assets/deleted-user-avatar.png';
 export async function deleteAvatarFile(
     avatarPath: string | undefined,
 ): Promise<void> {
-    if (avatarPath === undefined || avatarPath === '' || avatarPath === DELETED_AVATAR_PATH) {
+    if (
+        avatarPath === undefined ||
+        avatarPath === '' ||
+        avatarPath === DELETED_AVATAR_PATH
+    ) {
         return;
     }
 

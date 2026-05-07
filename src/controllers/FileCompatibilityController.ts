@@ -94,6 +94,8 @@ export class FileCompatibilityController {
             '.txt': 'text/plain',
         };
         const mime = mimeTypes[ext];
-        return (mime !== undefined && mime !== '') ? mime : 'application/octet-stream';
+        return mime !== undefined && mime !== ''
+            ? mime
+            : 'application/octet-stream';
     }
 }

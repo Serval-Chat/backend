@@ -14,6 +14,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { AuthController } from './controllers/AuthController';
 import { BlockController } from './controllers/BlockController';
 import { AdminController } from './controllers/AdminController';
+import { AdminBadgeController } from './controllers/AdminBadgeController';
+import { AdminInviteController } from './controllers/AdminInviteController';
 import { UserPingController } from './controllers/UserPingController';
 import { ExportController } from './controllers/ExportController';
 import { UserWarningController } from './controllers/UserWarningController';
@@ -54,9 +56,11 @@ import { ApplicationController } from './controllers/ApplicationController';
         }),
         MongooseModule.forRootAsync({
             useFactory: () => ({
-                uri: (process.env.MONGO_URI !== undefined && process.env.MONGO_URI !== '')
-                    ? process.env.MONGO_URI
-                    : MONGO_URI,
+                uri:
+                    process.env.MONGO_URI !== undefined &&
+                    process.env.MONGO_URI !== ''
+                        ? process.env.MONGO_URI
+                        : MONGO_URI,
             }),
         }),
 
@@ -75,28 +79,28 @@ import { ApplicationController } from './controllers/ApplicationController';
                     PROJECT_LEVEL !== 'production'
                         ? { target: 'pino-pretty' }
                         : {
-                            targets: [
-                                {
-                                    target: 'pino-pretty',
-                                    options: { colorize: false },
-                                    level: LOG_LEVEL,
-                                },
-                                {
-                                    target: 'pino-loki',
-                                    options: {
-                                        host: LOKI_HOST,
-                                        labels: {
-                                            app: 'serval-backend',
-                                            env: 'production',
-                                        },
-                                        batching: true,
-                                        interval: 5,
-                                        silenceErrors: true,
-                                    },
-                                    level: 'info',
-                                },
-                            ],
-                        },
+                              targets: [
+                                  {
+                                      target: 'pino-pretty',
+                                      options: { colorize: false },
+                                      level: LOG_LEVEL,
+                                  },
+                                  {
+                                      target: 'pino-loki',
+                                      options: {
+                                          host: LOKI_HOST,
+                                          labels: {
+                                              app: 'serval-backend',
+                                              env: 'production',
+                                          },
+                                          batching: true,
+                                          interval: 5,
+                                          silenceErrors: true,
+                                      },
+                                      level: 'info',
+                                  },
+                              ],
+                          },
             },
         }),
 
@@ -110,6 +114,8 @@ import { ApplicationController } from './controllers/ApplicationController';
         AuthController,
         BlockController,
         AdminController,
+        AdminBadgeController,
+        AdminInviteController,
         UserPingController,
         UserWarningController,
         EmojiController,
@@ -150,5 +156,5 @@ import { ApplicationController } from './controllers/ApplicationController';
     ],
 })
 export class AppModule {
-    public configure(_consumer: MiddlewareConsumer) { }
+    public configure(_consumer: MiddlewareConsumer) {}
 }

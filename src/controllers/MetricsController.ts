@@ -1,4 +1,9 @@
-import { Controller, Get, Headers, UnauthorizedException } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    Headers,
+    UnauthorizedException,
+} from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import { injectable } from 'inversify';
 import { register } from '@/utils/metrics';
@@ -16,7 +21,9 @@ export class MetricsController {
         description: 'Prometheus metrics',
         content: { 'text/plain': {} },
     })
-    public async getMetrics(@Headers('authorization') auth?: string): Promise<string> {
+    public async getMetrics(
+        @Headers('authorization') auth?: string,
+    ): Promise<string> {
         const expectedAuth = `Bearer ${METRICS_TOKEN}`;
         const actualAuth = auth ?? '';
 

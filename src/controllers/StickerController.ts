@@ -21,8 +21,6 @@ interface RequestWithUser extends Request {
     user: JWTPayload;
 }
 
-
-
 @ApiTags('Stickers')
 @injectable()
 @Controller('api/v1/stickers')

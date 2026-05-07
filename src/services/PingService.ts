@@ -4,8 +4,10 @@ import { Injectable, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { IPingRepository } from '@/di/interfaces/IPingRepository';
 import type { IPing } from '@/di/interfaces/IPingRepository';
-import { PingMentionMessageDTO, PingExportMessageDTO } from '@/controllers/dto/types.dto';
-
+import {
+    PingMentionMessageDTO,
+    PingExportMessageDTO,
+} from '@/controllers/dto/types.dto';
 
 export interface PingNotification {
     id: string;
@@ -154,7 +156,9 @@ export class PingService {
             type: ping.type,
             sender: ping.sender,
             senderId: ping.senderId.toString(),
-            message: ping.message as unknown as PingMentionMessageDTO | PingExportMessageDTO,
+            message: ping.message as unknown as
+                | PingMentionMessageDTO
+                | PingExportMessageDTO,
             timestamp:
                 ping.timestamp instanceof Date
                     ? ping.timestamp.getTime()

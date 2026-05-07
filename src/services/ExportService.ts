@@ -276,7 +276,11 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
 
         const downloadUrl = `${SERVER_URL}/api/v1/exports/download/${token}`;
 
-        if (user.login !== undefined && user.login !== '' && this.isValidEmail(user.login)) {
+        if (
+            user.login !== undefined &&
+            user.login !== '' &&
+            this.isValidEmail(user.login)
+        ) {
             await this.mailService.sendExportSuccessEmail(
                 user.login,
                 channel.name,
@@ -311,7 +315,11 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
 
         if (!user || !server || !channel) return;
 
-        if (user.login !== undefined && user.login !== '' && this.isValidEmail(user.login)) {
+        if (
+            user.login !== undefined &&
+            user.login !== '' &&
+            this.isValidEmail(user.login)
+        ) {
             await this.mailService.sendExportFailureEmail(
                 user.login,
                 channel.name,
@@ -350,7 +358,11 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
 
             const user = await this.userRepo.findById(job.requestedBy);
             if (user) {
-                if (user.login !== undefined && user.login !== '' && this.isValidEmail(user.login)) {
+                if (
+                    user.login !== undefined &&
+                    user.login !== '' &&
+                    this.isValidEmail(user.login)
+                ) {
                     await this.mailService.sendExportCancelledEmail(
                         user.login,
                         channelNameAtDeletion,

@@ -64,8 +64,10 @@ if (FRONTEND_URL !== '') {
 if (process.env.NODE_ENV !== 'test') {
     if (PORT === -1) throw new Error('CHAT_PORT not set.');
     if (JWT_SECRET === '') throw new Error('JWT_SECRET not set.');
-    if (APP_ENCRYPTION_KEY === '') throw new Error('APP_ENCRYPTION_KEY not set.');
-    if (APP_ENCRYPTION_KEY === JWT_SECRET) throw new Error('APP_ENCRYPTION_KEY cannot be the same as JWT_SECRET.');
+    if (APP_ENCRYPTION_KEY === '')
+        throw new Error('APP_ENCRYPTION_KEY not set.');
+    if (APP_ENCRYPTION_KEY === JWT_SECRET)
+        throw new Error('APP_ENCRYPTION_KEY cannot be the same as JWT_SECRET.');
     if (MONGO_URI === '') throw new Error('MONGO_URI not set.');
     if (PROJECT_LEVEL === '') throw new Error('PROJ_LEVEL not set.');
     if (LOGS_PATH === '') throw new Error('LOGS_PATH not set.');
@@ -74,7 +76,10 @@ if (process.env.NODE_ENV !== 'test') {
     if (SERVER_URL === '') throw new Error('SERVER_URL not set.');
 }
 
-if (process.env.NODE_ENV !== 'test' && !['production', 'development'].includes(PROJECT_LEVEL)) {
+if (
+    process.env.NODE_ENV !== 'test' &&
+    !['production', 'development'].includes(PROJECT_LEVEL)
+) {
     throw new Error(
         'Invalid PROJECT_LEVEL. Use "production" or "development".',
     );

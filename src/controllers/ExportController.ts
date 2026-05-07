@@ -114,14 +114,18 @@ export class ExportController {
     ) {
         const job = await this.exportJobRepo.findByDownloadToken(token);
 
-        if (job === null || job.status !== 'completed' || job.filePath === undefined || job.filePath === '') {
+        if (
+            job === null ||
+            job.status !== 'completed' ||
+            job.filePath === undefined ||
+            job.filePath === ''
+        ) {
             return this.sendExpiredResponse(res, 404);
         }
 
         if (job.expiresAt !== undefined && new Date() > job.expiresAt) {
             return this.sendExpiredResponse(res, 410);
         }
-
 
         const path = await import('path');
         const EXPORT_DIR = path.resolve(process.cwd(), 'uploads', 'exports');

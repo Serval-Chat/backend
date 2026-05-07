@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMongoId, IsString } from 'class-validator';
 import { AdminBanHistoryItemDTO } from './types.dto';
 
-
 export class AdminResetProfileResponseDTO {
     @ApiProperty()
     public message!: string;

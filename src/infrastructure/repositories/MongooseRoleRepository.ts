@@ -44,7 +44,10 @@ export class MongooseRoleRepository implements IRoleRepository {
             serverId: data.serverId,
             name: data.name,
             // Default color is a grey if none specified
-            color: (data.color !== undefined && data.color !== '') ? data.color : '#99aab5',
+            color:
+                data.color !== undefined && data.color !== ''
+                    ? data.color
+                    : '#99aab5',
             startColor: data.startColor,
             endColor: data.endColor,
             colors: data.colors,
@@ -71,7 +74,9 @@ export class MongooseRoleRepository implements IRoleRepository {
         return result.deletedCount > 0;
     }
 
-    public async findEveryoneRole(serverId: Types.ObjectId): Promise<IRole | null> {
+    public async findEveryoneRole(
+        serverId: Types.ObjectId,
+    ): Promise<IRole | null> {
         return await Role.findOne({ serverId, name: '@everyone' }).lean();
     }
 

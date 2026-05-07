@@ -37,10 +37,10 @@ jest.mock('@/utils/logger', () => ({
 jest.mock('@/utils/imageProcessing', () => ({
     processAndSaveImage: jest.fn().mockResolvedValue(undefined),
     isAnimatedImage: jest.fn().mockResolvedValue(false),
-    getImageMetadata: jest.fn().mockResolvedValue({ 
-        format: 'webp', 
-        width: 320, 
-        height: 320 
+    getImageMetadata: jest.fn().mockResolvedValue({
+        format: 'webp',
+        width: 320,
+        height: 320,
     }),
     ImagePresets: {
         sticker: jest.fn().mockReturnValue({}),
@@ -97,7 +97,9 @@ describe('ServerStickerController', () => {
             mockServerAuditLogService,
         );
         jest.clearAllMocks();
-        (path.join as jest.Mock).mockImplementation((...args) => args.join('/'));
+        (path.join as jest.Mock).mockImplementation((...args) =>
+            args.join('/'),
+        );
         (fs.existsSync as jest.Mock).mockReturnValue(true);
     });
 
@@ -108,16 +110,22 @@ describe('ServerStickerController', () => {
     describe('getServerStickers', () => {
         it('should return stickers for a server member', async () => {
             const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
-            (mockServerMemberRepo.findByServerAndUser as jest.Mock).mockResolvedValue({});
-            (mockStickerRepo.findByServerIdWithCreator as jest.Mock).mockResolvedValue([{ 
-                _id: new Types.ObjectId(), 
-                name: 'test',
-                imageUrl: 'url',
-                isAnimated: false,
-                serverId: new Types.ObjectId(SERVER_ID),
-                createdBy: new Types.ObjectId(USER_ID),
-                createdAt: new Date(),
-            }]);
+            (
+                mockServerMemberRepo.findByServerAndUser as jest.Mock
+            ).mockResolvedValue({});
+            (
+                mockStickerRepo.findByServerIdWithCreator as jest.Mock
+            ).mockResolvedValue([
+                {
+                    _id: new Types.ObjectId(),
+                    name: 'test',
+                    imageUrl: 'url',
+                    isAnimated: false,
+                    serverId: new Types.ObjectId(SERVER_ID),
+                    createdBy: new Types.ObjectId(USER_ID),
+                    createdAt: new Date(),
+                },
+            ]);
 
             const result = await controller.getServerStickers(SERVER_ID, req);
 
@@ -127,14 +135,22 @@ describe('ServerStickerController', () => {
 
         it('should throw Forbidden if not a member', async () => {
             const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
-            (mockServerMemberRepo.findByServerAndUser as jest.Mock).mockResolvedValue(null);
+            (
+                mockServerMemberRepo.findByServerAndUser as jest.Mock
+            ).mockResolvedValue(null);
 
-            await expect(controller.getServerStickers(SERVER_ID, req)).rejects.toThrow(ForbiddenException);
+            await expect(
+                controller.getServerStickers(SERVER_ID, req),
+            ).rejects.toThrow(ForbiddenException);
         });
     });
 
     describe('uploadSticker', () => {
-        const file = { path: 'temp/path', buffer: Buffer.from(''), size: 1024 } as unknown as Express.Multer.File;
+        const file = {
+            path: 'temp/path',
+            buffer: Buffer.from(''),
+            size: 1024,
+        } as unknown as Express.Multer.File;
 
         it('should upload sticker if user has permission', async () => {
             const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
@@ -142,8 +158,12 @@ describe('ServerStickerController', () => {
                 _id: new Types.ObjectId(SERVER_ID),
                 ownerId: new Types.ObjectId(),
             });
-            (mockPermissionService.hasPermission as jest.Mock).mockResolvedValue(true);
-            (mockStickerRepo.findByServerAndName as jest.Mock).mockResolvedValue(null);
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValue(true);
+            (
+                mockStickerRepo.findByServerAndName as jest.Mock
+            ).mockResolvedValue(null);
             (mockStickerRepo.create as jest.Mock).mockResolvedValue({
                 _id: new Types.ObjectId(STICKER_ID),
                 name: 'test_sticker',
@@ -153,7 +173,9 @@ describe('ServerStickerController', () => {
                 createdBy: new Types.ObjectId(USER_ID),
                 createdAt: new Date(),
             });
-            (mockStickerRepo.findByIdWithCreator as jest.Mock).mockResolvedValue({
+            (
+                mockStickerRepo.findByIdWithCreator as jest.Mock
+            ).mockResolvedValue({
                 _id: new Types.ObjectId(STICKER_ID),
                 name: 'test_sticker',
                 imageUrl: '/uploads/stickers/test.png',
@@ -163,11 +185,18 @@ describe('ServerStickerController', () => {
                 createdAt: new Date(),
             });
 
-            const result = await controller.uploadSticker(SERVER_ID, req, file, { name: 'test_sticker' });
+            const result = await controller.uploadSticker(
+                SERVER_ID,
+                req,
+                file,
+                { name: 'test_sticker' },
+            );
 
             expect(result.name).toBe('test_sticker');
             expect(mockWsServer.broadcastToServer).toHaveBeenCalled();
-            expect(mockServerAuditLogService.createAndBroadcast).toHaveBeenCalled();
+            expect(
+                mockServerAuditLogService.createAndBroadcast,
+            ).toHaveBeenCalled();
         });
 
         it('should throw Forbidden if no permission', async () => {
@@ -176,12 +205,16 @@ describe('ServerStickerController', () => {
                 _id: new Types.ObjectId(SERVER_ID),
                 ownerId: new Types.ObjectId(),
             });
-            (mockPermissionService.hasPermission as jest.Mock).mockResolvedValue(false);
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValue(false);
 
-            await expect(controller.uploadSticker(SERVER_ID, req, file, { name: 'test' }))
-    .rejects.toThrow(ForbiddenException);
+            await expect(
+                controller.uploadSticker(SERVER_ID, req, file, {
+                    name: 'test',
+                }),
+            ).rejects.toThrow(ForbiddenException);
         });
-
     });
 
     describe('deleteSticker', () => {
@@ -201,7 +234,9 @@ describe('ServerStickerController', () => {
 
             await controller.deleteSticker(SERVER_ID, STICKER_ID, req);
 
-            expect(mockStickerRepo.delete).toHaveBeenCalledWith(expect.any(Types.ObjectId));
+            expect(mockStickerRepo.delete).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+            );
             expect(mockWsServer.broadcastToServer).toHaveBeenCalled();
         });
 
@@ -211,7 +246,9 @@ describe('ServerStickerController', () => {
                 _id: new Types.ObjectId(SERVER_ID),
                 ownerId: new Types.ObjectId(),
             });
-            (mockPermissionService.hasPermission as jest.Mock).mockResolvedValue(true);
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValue(true);
             (mockStickerRepo.findById as jest.Mock).mockResolvedValue({
                 _id: new Types.ObjectId(STICKER_ID),
                 serverId: new Types.ObjectId(SERVER_ID),
@@ -231,9 +268,13 @@ describe('ServerStickerController', () => {
                 _id: new Types.ObjectId(SERVER_ID),
                 ownerId: new Types.ObjectId(),
             });
-            (mockPermissionService.hasPermission as jest.Mock).mockResolvedValue(false);
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValue(false);
 
-            await expect(controller.deleteSticker(SERVER_ID, STICKER_ID, req)).rejects.toThrow(ForbiddenException);
+            await expect(
+                controller.deleteSticker(SERVER_ID, STICKER_ID, req),
+            ).rejects.toThrow(ForbiddenException);
         });
 
         it('should throw NotFound if sticker does not exist', async () => {
@@ -244,7 +285,9 @@ describe('ServerStickerController', () => {
             });
             (mockStickerRepo.findById as jest.Mock).mockResolvedValue(null);
 
-            await expect(controller.deleteSticker(SERVER_ID, STICKER_ID, req)).rejects.toThrow(NotFoundException);
+            await expect(
+                controller.deleteSticker(SERVER_ID, STICKER_ID, req),
+            ).rejects.toThrow(NotFoundException);
         });
     });
 });

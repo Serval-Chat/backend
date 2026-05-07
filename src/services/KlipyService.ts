@@ -34,7 +34,7 @@ export class KlipyService {
     public async searchGifs(query: string) {
         try {
             const response = await axios.get(this.getApiUrl('/gifs/search'), {
-                params: { q: query }
+                params: { q: query },
             });
             return response.data;
         } catch (error) {
@@ -55,9 +55,12 @@ export class KlipyService {
 
     public async searchStickers(query: string) {
         try {
-            const response = await axios.get(this.getApiUrl('/stickers/search'), {
-                params: { q: query }
-            });
+            const response = await axios.get(
+                this.getApiUrl('/stickers/search'),
+                {
+                    params: { q: query },
+                },
+            );
             return response.data;
         } catch (error) {
             this.logger.error(`Failed to search Klipy stickers: ${error}`);
@@ -67,10 +70,14 @@ export class KlipyService {
 
     public async getTrendingStickers() {
         try {
-            const response = await axios.get(this.getApiUrl('/stickers/trending'));
+            const response = await axios.get(
+                this.getApiUrl('/stickers/trending'),
+            );
             return response.data;
         } catch (error) {
-            this.logger.error(`Failed to get trending Klipy stickers: ${error}`);
+            this.logger.error(
+                `Failed to get trending Klipy stickers: ${error}`,
+            );
             throw error;
         }
     }
@@ -90,7 +97,7 @@ export class KlipyService {
                     this.logger.error(
                         `Failed to resolve Klipy content ${klipyId} as either gif or sticker`,
                     );
-                    throw error; 
+                    throw error;
                 }
             }
             throw error;
@@ -184,7 +191,14 @@ export class KlipyService {
         gifData: ToggleFavoriteGifRequestDTO,
     ): Promise<ToggleFavoriteResponseDTO> {
         const userOid = new Types.ObjectId(userId);
-        const { klipyId, url, previewUrl, width, height, contentType = 'gif' } = gifData;
+        const {
+            klipyId,
+            url,
+            previewUrl,
+            width,
+            height,
+            contentType = 'gif',
+        } = gifData;
 
         const existing = await this.favoriteGifModel.findOne({
             userId: userOid,

@@ -174,7 +174,7 @@ export class MongooseServerRepository implements IServerRepository {
         if (days <= 0 || !Number.isFinite(days) || days > 10000) {
             return [];
         }
-        
+
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await this.serverModel.aggregate<{
             _id: number;
@@ -224,34 +224,40 @@ export class MongooseServerRepository implements IServerRepository {
         return await this.serverModel.countDocuments({
             verificationRequested: true,
             verified: { $ne: true },
-            deletedAt: { $exists: false }
+            deletedAt: { $exists: false },
         });
     }
 
     public async listAwaitingReview(options: {
         limit: number;
         offset: number;
-    }): Promise<(IServer & { memberCount?: number; realMessageCount?: number; weightScore?: number })[]> {
+    }): Promise<
+        (IServer & {
+            memberCount?: number;
+            realMessageCount?: number;
+            weightScore?: number;
+        })[]
+    > {
         const pipeline: PipelineStage[] = [
-            { 
-                $match: { 
-                    verificationRequested: true, 
-                    verified: { $ne: true }, 
-                    deletedAt: { $exists: false } 
-                } 
+            {
+                $match: {
+                    verificationRequested: true,
+                    verified: { $ne: true },
+                    deletedAt: { $exists: false },
+                },
             },
             {
                 $lookup: {
                     from: 'servermembers',
                     localField: '_id',
                     foreignField: 'serverId',
-                    as: 'members'
-                }
+                    as: 'members',
+                },
             },
             {
                 $addFields: {
-                    memberCount: { $size: "$members" }
-                }
+                    memberCount: { $size: '$members' },
+                },
             },
             {
                 $lookup: {
@@ -260,32 +266,40 @@ export class MongooseServerRepository implements IServerRepository {
                     foreignField: 'serverId',
                     pipeline: [
                         { $match: { isWebhook: { $ne: true } } },
-                        { $count: "realMessageCount" }
+                        { $count: 'realMessageCount' },
                     ],
-                    as: "messagesInfo"
-                }
+                    as: 'messagesInfo',
+                },
             },
             {
                 $addFields: {
-                    realMessageCount: { 
-                        $ifNull: [ { $arrayElemAt: ["$messagesInfo.realMessageCount", 0] }, 0 ] 
-                    }
-                }
+                    realMessageCount: {
+                        $ifNull: [
+                            {
+                                $arrayElemAt: [
+                                    '$messagesInfo.realMessageCount',
+                                    0,
+                                ],
+                            },
+                            0,
+                        ],
+                    },
+                },
             },
             {
                 $addFields: {
-                    weightScore: { 
+                    weightScore: {
                         $add: [
-                            { $multiply: ["$memberCount", 10] },
-                            { $multiply: ["$realMessageCount", 1] }
-                        ]
-                    }
-                }
+                            { $multiply: ['$memberCount', 10] },
+                            { $multiply: ['$realMessageCount', 1] },
+                        ],
+                    },
+                },
             },
             { $sort: { weightScore: -1, createdAt: -1 } },
             { $skip: options.offset },
             { $limit: options.limit },
-            { $project: { members: 0, messagesInfo: 0 } }
+            { $project: { members: 0, messagesInfo: 0 } },
         ];
 
         return await this.serverModel.aggregate(pipeline).exec();

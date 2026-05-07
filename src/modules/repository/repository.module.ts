@@ -164,4 +164,4 @@ import { SlashCommandRepository } from '@/infrastructure/repositories/SlashComma
         TYPES.SlashCommandRepository,
     ],
 })
-export class RepositoryModule { }
+export class RepositoryModule {}

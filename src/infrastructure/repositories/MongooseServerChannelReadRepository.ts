@@ -12,9 +12,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 //
 // Implements IServerChannelReadRepository using Mongoose ServerChannelRead model
 @injectable()
-export class MongooseServerChannelReadRepository
-    implements IServerChannelReadRepository
-{
+export class MongooseServerChannelReadRepository implements IServerChannelReadRepository {
     public async findByServerAndUser(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
@@ -25,7 +23,9 @@ export class MongooseServerChannelReadRepository
         }).lean()) as unknown as IServerChannelRead[];
     }
 
-    public async findByUserId(userId: Types.ObjectId): Promise<IServerChannelRead[]> {
+    public async findByUserId(
+        userId: Types.ObjectId,
+    ): Promise<IServerChannelRead[]> {
         return (await ServerChannelRead.find({
             userId,
         }).lean()) as unknown as IServerChannelRead[];

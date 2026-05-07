@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { BanInfoDTO } from './types.dto';
 
-
 export class LoginResponseDTO {
     @ApiProperty({ required: false })
     public token?: string;

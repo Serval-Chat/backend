@@ -40,7 +40,9 @@ export class MongooseCategoryRepository implements ICategoryRepository {
         return transformCategory(result);
     }
 
-    public async findByServerId(serverId: Types.ObjectId): Promise<ICategory[]> {
+    public async findByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<ICategory[]> {
         const results = await Category.find({ serverId })
             .sort({ position: 1 })
             .lean();

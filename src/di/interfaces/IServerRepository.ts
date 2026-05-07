@@ -100,6 +100,12 @@ export interface IServerRepository {
     listAwaitingReview(options: {
         limit: number;
         offset: number;
-    }): Promise<(IServer & { memberCount?: number; realMessageCount?: number; weightScore?: number })[]>;
+    }): Promise<
+        (IServer & {
+            memberCount?: number;
+            realMessageCount?: number;
+            weightScore?: number;
+        })[]
+    >;
     countAwaitingReview(): Promise<number>;
 }

@@ -181,7 +181,9 @@ export const serverMessagesQuerySchema = z.object({
     limit: z
         .string()
         .optional()
-        .transform((val) => (val !== undefined && val !== '' ? parseInt(val, 10) : 50)),
+        .transform((val) =>
+            val !== undefined && val !== '' ? parseInt(val, 10) : 50,
+        ),
     before: objectIdSchema.optional(),
     after: objectIdSchema.optional(),
     around: objectIdSchema.optional(),
@@ -192,7 +194,9 @@ export const serverMembersSearchQuerySchema = z.object({
     limit: z
         .string()
         .optional()
-        .transform((val) => (val !== undefined && val !== '' ? parseInt(val, 10) : 10)),
+        .transform((val) =>
+            val !== undefined && val !== '' ? parseInt(val, 10) : 10,
+        ),
 });
 
 export const transferOwnershipSchema = z.object({

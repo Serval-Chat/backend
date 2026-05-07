@@ -46,14 +46,11 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { storage } from '@/config/multer';
-import { 
-    STICKER_MAX_SIZE_BYTES 
-} from '@/constants/stickers';
+import { STICKER_MAX_SIZE_BYTES } from '@/constants/stickers';
 import { StickerResponseDTO } from './dto/sticker.response.dto';
 import { UploadStickerRequestDTO } from './dto/sticker.request.dto';
 import { StickerValidationPipe } from '@/validation/StickerValidationPipe';
 import { isAnimatedImage, processAndSaveImage } from '@/utils/imageProcessing';
-
 
 @injectable()
 @Controller('api/v1/servers/:serverId/stickers')
@@ -91,7 +88,11 @@ export class ServerStickerController {
 
     @Get()
     @ApiOperation({ summary: 'Get all server stickers' })
-    @ApiResponse({ status: 200, description: 'Server stickers retrieved', type: [StickerResponseDTO] })
+    @ApiResponse({
+        status: 200,
+        description: 'Server stickers retrieved',
+        type: [StickerResponseDTO],
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     @ApiResponse({ status: 404, description: ErrorMessages.SERVER.NOT_FOUND })
     public async getServerStickers(
@@ -109,7 +110,8 @@ export class ServerStickerController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const stickers = await this.stickerRepo.findByServerIdWithCreator(serverOid);
+        const stickers =
+            await this.stickerRepo.findByServerIdWithCreator(serverOid);
         return stickers.map((s) => ({
             id: s._id.toString(),
             name: s.name,
@@ -122,10 +124,12 @@ export class ServerStickerController {
     }
 
     @Post()
-    @UseInterceptors(FileInterceptor('sticker', { 
-        storage,
-        limits: { fileSize: STICKER_MAX_SIZE_BYTES }
-    }))
+    @UseInterceptors(
+        FileInterceptor('sticker', {
+            storage,
+            limits: { fileSize: STICKER_MAX_SIZE_BYTES },
+        }),
+    )
     @ApiOperation({ summary: 'Upload a server sticker' })
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -137,7 +141,11 @@ export class ServerStickerController {
             },
         },
     })
-    @ApiResponse({ status: 201, description: 'Sticker uploaded', type: StickerResponseDTO })
+    @ApiResponse({
+        status: 201,
+        description: 'Sticker uploaded',
+        type: StickerResponseDTO,
+    })
     @ApiResponse({
         status: 400,
         description: 'File required or invalid name',
@@ -158,8 +166,6 @@ export class ServerStickerController {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-
-
 
         const server = await this.serverRepo.findById(serverOid);
         if (server === null) {
@@ -191,18 +197,24 @@ export class ServerStickerController {
         const stickerId = new mongoose.Types.ObjectId();
 
         try {
-            const isAnimated = await isAnimatedImage(sticker.path || sticker.buffer);
+            const isAnimated = await isAnimatedImage(
+                sticker.path || sticker.buffer,
+            );
             const fileName = `${stickerId}.${isAnimated ? 'gif' : 'webp'}`;
             const filePath = path.join(this.UPLOADS_DIR, fileName);
 
-            await processAndSaveImage(sticker.path || sticker.buffer, filePath, {
-                width: 512,
-                height: 512,
-                fit: 'contain',
-                format: isAnimated ? 'gif' : 'webp',
-                animated: isAnimated,
-                quality: 90,
-            });
+            await processAndSaveImage(
+                sticker.path || sticker.buffer,
+                filePath,
+                {
+                    width: 512,
+                    height: 512,
+                    fit: 'contain',
+                    format: isAnimated ? 'gif' : 'webp',
+                    animated: isAnimated,
+                    quality: 90,
+                },
+            );
 
             const imageUrl = `/uploads/stickers/${fileName}`;
 
@@ -249,7 +261,8 @@ export class ServerStickerController {
             };
         } catch (error) {
             this.logger.error('Error adding sticker:', error);
-            if (error instanceof ApiError || error instanceof HttpException) throw error;
+            if (error instanceof ApiError || error instanceof HttpException)
+                throw error;
             throw new InternalServerErrorException(
                 ErrorMessages.SYSTEM.INTERNAL_ERROR,
             );
@@ -258,7 +271,11 @@ export class ServerStickerController {
 
     @Get(':stickerId')
     @ApiOperation({ summary: 'Get a specific sticker' })
-    @ApiResponse({ status: 200, description: 'Sticker retrieved', type: StickerResponseDTO })
+    @ApiResponse({
+        status: 200,
+        description: 'Sticker retrieved',
+        type: StickerResponseDTO,
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     @ApiResponse({ status: 404, description: ErrorMessages.STICKER.NOT_FOUND })
     public async getSticker(

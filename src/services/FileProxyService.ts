@@ -128,11 +128,16 @@ export async function resolveAndCheck(hostname: string) {
 
         return records.map((r) => r.address);
     } catch (err) {
-        if (err instanceof Error && err.message === ErrorMessages.FILE.DISALLOWED_ADDRESS) {
+        if (
+            err instanceof Error &&
+            err.message === ErrorMessages.FILE.DISALLOWED_ADDRESS
+        ) {
             throw err;
         }
         logger.error('Failed to resolve hostname:', err);
-        throw new Error(`${ErrorMessages.FILE.FAILED_RESOLVE_HOSTNAME}: ${err instanceof Error ? err.message : String(err)}`);
+        throw new Error(
+            `${ErrorMessages.FILE.FAILED_RESOLVE_HOSTNAME}: ${err instanceof Error ? err.message : String(err)}`,
+        );
     }
 }
 
@@ -158,16 +163,25 @@ const proxyAgent = new Agent({
         }
         resolveAndCheck(opts.host)
             .then((ips) => {
-                const port = opts.port ? Number(opts.port) : (opts.protocol === 'https:' ? 443 : 80);
-                
+                const port = opts.port
+                    ? Number(opts.port)
+                    : opts.protocol === 'https:'
+                      ? 443
+                      : 80;
+
                 let currentIpIndex = 0;
 
                 function attempt() {
                     const ip = ips[currentIpIndex];
-                    const socket = opts.protocol === 'https:' 
-                        ? tls.connect({ host: ip, servername: opts.host, port })
-                        : net.connect({ host: ip, port });
-                    
+                    const socket =
+                        opts.protocol === 'https:'
+                            ? tls.connect({
+                                  host: ip,
+                                  servername: opts.host,
+                                  port,
+                              })
+                            : net.connect({ host: ip, port });
+
                     const errorHandler = (err: Error) => {
                         socket.destroy();
                         currentIpIndex++;
@@ -179,14 +193,17 @@ const proxyAgent = new Agent({
                     };
 
                     socket.once('error', errorHandler);
-                    
-                    const connectEvent = opts.protocol === 'https:' ? 'secureConnect' : 'connect';
+
+                    const connectEvent =
+                        opts.protocol === 'https:'
+                            ? 'secureConnect'
+                            : 'connect';
                     socket.once(connectEvent, () => {
                         socket.removeListener('error', errorHandler);
                         cb(null, socket);
                     });
                 }
-                
+
                 attempt();
             })
             .catch((err) => cb(err, null));
@@ -221,7 +238,11 @@ export async function fetchWithRedirects(
             const response = await fetch(currentUrl, fetchOptions);
 
             const location = response.headers.get('location');
-            if (location !== null && response.status >= 300 && response.status < 400) {
+            if (
+                location !== null &&
+                response.status >= 300 &&
+                response.status < 400
+            ) {
                 redirects += 1;
                 if (redirects > MAX_REDIRECTS)
                     throw new Error(ErrorMessages.FILE.TOO_MANY_REDIRECTS);

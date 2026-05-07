@@ -1,11 +1,10 @@
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
-import { 
-    STICKER_NAME_MIN_LENGTH, 
-    STICKER_NAME_MAX_LENGTH, 
-    STICKER_NAME_REGEX 
+import {
+    STICKER_NAME_MIN_LENGTH,
+    STICKER_NAME_MAX_LENGTH,
+    STICKER_NAME_REGEX,
 } from '@/constants/stickers';
-
 
 export interface ISticker extends Document {
     _id: Types.ObjectId;

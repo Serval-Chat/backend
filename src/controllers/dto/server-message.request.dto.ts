@@ -6,7 +6,6 @@ import { Type } from 'class-transformer';
 import { ValidateNested, IsString, IsArray, IsDefined } from 'class-validator';
 import { InteractionValue } from '@/types/interactions';
 
-
 export class SendMessageInteractionOptionDTO {
     @IsString()
     public name!: string;

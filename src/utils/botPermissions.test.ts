@@ -1,4 +1,9 @@
-import { bitmaskToPermissions, permissionsToBitmask, BOT_PERMISSION_BITS, mapBotToServerPermissions } from './botPermissions';
+import {
+    bitmaskToPermissions,
+    permissionsToBitmask,
+    BOT_PERMISSION_BITS,
+    mapBotToServerPermissions,
+} from './botPermissions';
 import type { BotPermissions } from '../models/Bot';
 
 describe('botPermissions utility', () => {
@@ -36,7 +41,10 @@ describe('botPermissions utility', () => {
     };
 
     test('permissionsToBitmask should convert all true to correct bitmask', () => {
-        const expected = Object.values(BOT_PERMISSION_BITS).reduce((a, b) => a | b, 0);
+        const expected = Object.values(BOT_PERMISSION_BITS).reduce(
+            (a, b) => a | b,
+            0,
+        );
         expect(permissionsToBitmask(allOn)).toBe(expected);
     });
 
@@ -45,7 +53,10 @@ describe('botPermissions utility', () => {
     });
 
     test('permissionsToBitmask should convert partial permissions correctly', () => {
-        const expected = BOT_PERMISSION_BITS.readMessages | BOT_PERMISSION_BITS.sendMessages | BOT_PERMISSION_BITS.manageServer;
+        const expected =
+            BOT_PERMISSION_BITS.readMessages |
+            BOT_PERMISSION_BITS.sendMessages |
+            BOT_PERMISSION_BITS.manageServer;
         expect(permissionsToBitmask(partial)).toBe(expected);
     });
 
@@ -54,7 +65,10 @@ describe('botPermissions utility', () => {
     });
 
     test('bitmaskToPermissions should convert partial bitmask correctly', () => {
-        const mask = BOT_PERMISSION_BITS.readMessages | BOT_PERMISSION_BITS.sendMessages | BOT_PERMISSION_BITS.manageServer;
+        const mask =
+            BOT_PERMISSION_BITS.readMessages |
+            BOT_PERMISSION_BITS.sendMessages |
+            BOT_PERMISSION_BITS.manageServer;
         expect(bitmaskToPermissions(mask)).toEqual(partial);
     });
 

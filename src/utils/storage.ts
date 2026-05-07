@@ -43,7 +43,10 @@ export class FilesystemAvatarStorage implements IAvatarStorage {
         }
     }
 
-    public async uploadAvatar(file: Buffer | string, userId: string): Promise<string> {
+    public async uploadAvatar(
+        file: Buffer | string,
+        userId: string,
+    ): Promise<string> {
         const filename = `${userId}-${Date.now()}.png`;
         const fullPath = path.join(this.baseDir, filename);
 

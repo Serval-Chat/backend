@@ -1,26 +1,34 @@
 import { z } from 'zod';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
 
-export const SendMessageDmSchema = z.object({
-    receiverId: z.string().min(1, 'Receiver ID is required'),
-    text: z
-        .string()
-        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`)
-        .optional()
-        .default(''),
-    replyToId: z.string().optional(),
-    stickerId: z.string().optional(),
-}).refine((data) => data.text.length > 0 || data.stickerId, {
-    message: 'Message text or sticker is required',
-    path: ['text'],
-});
+export const SendMessageDmSchema = z
+    .object({
+        receiverId: z.string().min(1, 'Receiver ID is required'),
+        text: z
+            .string()
+            .max(
+                MAX_MESSAGE_LENGTH,
+                `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`,
+            )
+            .optional()
+            .default(''),
+        replyToId: z.string().optional(),
+        stickerId: z.string().optional(),
+    })
+    .refine((data) => data.text.length > 0 || data.stickerId, {
+        message: 'Message text or sticker is required',
+        path: ['text'],
+    });
 
 export const EditMessageDmSchema = z.object({
     messageId: z.string().min(1, 'Message ID is required'),
     text: z
         .string()
         .min(1, 'Message text is required')
-        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`),
+        .max(
+            MAX_MESSAGE_LENGTH,
+            `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`,
+        ),
 });
 
 export const DeleteMessageDmSchema = z.object({
@@ -69,27 +77,35 @@ export const UpdateVoiceStateSchema = z.object({
     isDeafened: z.boolean(),
 });
 
-export const SendMessageServerSchema = z.object({
-    serverId: z.string().min(1, 'Server ID is required'),
-    channelId: z.string().min(1, 'Channel ID is required'),
-    text: z
-        .string()
-        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`)
-        .optional()
-        .default(''),
-    replyToId: z.string().optional(),
-    stickerId: z.string().optional(),
-}).refine((data) => data.text.length > 0 || data.stickerId, {
-    message: 'Message text or sticker is required',
-    path: ['text'],
-});
+export const SendMessageServerSchema = z
+    .object({
+        serverId: z.string().min(1, 'Server ID is required'),
+        channelId: z.string().min(1, 'Channel ID is required'),
+        text: z
+            .string()
+            .max(
+                MAX_MESSAGE_LENGTH,
+                `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`,
+            )
+            .optional()
+            .default(''),
+        replyToId: z.string().optional(),
+        stickerId: z.string().optional(),
+    })
+    .refine((data) => data.text.length > 0 || data.stickerId, {
+        message: 'Message text or sticker is required',
+        path: ['text'],
+    });
 
 export const EditMessageServerSchema = z.object({
     messageId: z.string().min(1, 'Message ID is required'),
     text: z
         .string()
         .min(1, 'Message text is required')
-        .max(MAX_MESSAGE_LENGTH, `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`),
+        .max(
+            MAX_MESSAGE_LENGTH,
+            `Message text too long (max ${MAX_MESSAGE_LENGTH} characters)`,
+        ),
 });
 
 export const DeleteMessageServerSchema = z.object({
@@ -121,7 +137,10 @@ export const AddReactionSchema = z
     })
     .refine(
         (data) => {
-            if (data.emojiType === 'custom' && (data.emojiId === undefined || data.emojiId === '')) {
+            if (
+                data.emojiType === 'custom' &&
+                (data.emojiId === undefined || data.emojiId === '')
+            ) {
                 return false;
             }
             return true;

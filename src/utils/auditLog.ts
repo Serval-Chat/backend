@@ -50,14 +50,13 @@ export function mapAuditLogEntry(entry: IAuditLog) {
         metadata instanceof Map ? Object.fromEntries(metadata) : metadata;
 
     const m = metadataObj as Record<string, unknown>;
-    const resolvedName = (
+    const resolvedName =
         (m['targetName'] as string | undefined) ??
         (m['channelName'] as string | undefined) ??
         (m['roleName'] as string | undefined) ??
         (m['categoryName'] as string | undefined) ??
         (m['emojiName'] as string | undefined) ??
-        (m['code'] as string | undefined)
-    );
+        (m['code'] as string | undefined);
 
     return {
         id: entry._id.toString(),
@@ -77,7 +76,7 @@ export function mapAuditLogEntry(entry: IAuditLog) {
                   name: targetUserObj.displayName ?? targetUserObj.username,
                   avatarUrl: targetUserObj.profilePicture,
               }
-            : (resolvedName !== undefined && resolvedName !== '')
+            : resolvedName !== undefined && resolvedName !== ''
               ? {
                     id: entry.targetId?.toString(),
                     name: resolvedName,

@@ -135,11 +135,12 @@ export class ServerController {
                 const memberCount = await this.serverMemberRepo.countByServerId(
                     server._id,
                 );
-                const canManage = (await this.permissionService.hasPermission(
-                    server._id as Types.ObjectId,
-                    userOid,
-                    'manageServer',
-                )) === true;
+                const canManage =
+                    (await this.permissionService.hasPermission(
+                        server._id as Types.ObjectId,
+                        userOid,
+                        'manageServer',
+                    )) === true;
                 return {
                     ...server,
                     memberCount,
@@ -273,7 +274,10 @@ export class ServerController {
             if (lastMessageAt === undefined) continue;
 
             const lastReadAt = readMap.get(channel._id.toString());
-            if (lastReadAt === undefined || new Date(lastMessageAt) > new Date(lastReadAt)) {
+            if (
+                lastReadAt === undefined ||
+                new Date(lastMessageAt) > new Date(lastReadAt)
+            ) {
                 unreadMap[serverIdStr] = true;
             }
         }
@@ -295,7 +299,10 @@ export class ServerController {
 
     @Get('emojis')
     @ApiOperation({ summary: 'Get all emojis from all joined servers' })
-    @ApiResponse({ status: 200, description: 'Aggregate list of server emojis' })
+    @ApiResponse({
+        status: 200,
+        description: 'Aggregate list of server emojis',
+    })
     public async getAllServerEmojis(
         @Req() req: Request,
     ): Promise<EmojiResponseDTO[]> {
@@ -318,8 +325,14 @@ export class ServerController {
             _id: e._id.toString(),
             name: e.name,
             imageUrl: e.imageUrl,
-            serverId: (e.serverId !== undefined && e.serverId !== null) ? e.serverId.toString() : undefined,
-            createdBy: (e.createdBy !== undefined && e.createdBy !== null) ? e.createdBy.toString() : undefined,
+            serverId:
+                e.serverId !== undefined && e.serverId !== null
+                    ? e.serverId.toString()
+                    : undefined,
+            createdBy:
+                e.createdBy !== undefined && e.createdBy !== null
+                    ? e.createdBy.toString()
+                    : undefined,
             createdAt: e.createdAt,
         }));
     }
@@ -446,7 +459,10 @@ export class ServerController {
         const bannedUserCount = bannedUsers.length;
 
         const owner = await this.userRepo.findById(server.ownerId);
-        const ownerName = (owner !== null) ? (owner.displayName ?? owner.username ?? 'Unknown') : 'Unknown';
+        const ownerName =
+            owner !== null
+                ? (owner.displayName ?? owner.username ?? 'Unknown')
+                : 'Unknown';
 
         // Identify the most recent member by join date
         const sortedMembers = [...members].sort((a, b) => {
@@ -455,9 +471,8 @@ export class ServerController {
             return dateB - dateA;
         });
         const newestMemberId = sortedMembers[0]?.userId.toString();
-        const newestMemberUser = (newestMemberId !== undefined)
-            ? userMap.get(newestMemberId)
-            : null;
+        const newestMemberUser =
+            newestMemberId !== undefined ? userMap.get(newestMemberId) : null;
         const newestMember =
             newestMemberUser?.displayName ??
             newestMemberUser?.username ??
@@ -519,7 +534,8 @@ export class ServerController {
         }
 
         const updates: Record<string, unknown> = {};
-        if (body.name !== undefined && body.name !== '') updates.name = body.name;
+        if (body.name !== undefined && body.name !== '')
+            updates.name = body.name;
         if (body.banner !== undefined) updates.banner = body.banner;
         if (body.disableCustomFonts !== undefined)
             updates.disableCustomFonts = body.disableCustomFonts;
@@ -572,7 +588,11 @@ export class ServerController {
 
         const changes = [];
         if (existingServer !== null) {
-            if (body.name !== undefined && body.name !== '' && body.name !== existingServer.name)
+            if (
+                body.name !== undefined &&
+                body.name !== '' &&
+                body.name !== existingServer.name
+            )
                 changes.push({
                     field: 'name',
                     before: existingServer.name,
@@ -590,7 +610,11 @@ export class ServerController {
                     before: existingServer.defaultRoleId?.toString() ?? null,
                     after: body.defaultRoleId ?? null,
                 });
-            if (body.tags !== undefined && JSON.stringify(body.tags) !== JSON.stringify(existingServer.tags))
+            if (
+                body.tags !== undefined &&
+                JSON.stringify(body.tags) !==
+                    JSON.stringify(existingServer.tags)
+            )
                 changes.push({
                     field: 'tags',
                     before: existingServer.tags,
@@ -658,7 +682,10 @@ export class ServerController {
 
         const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, {
-            defaultRoleId: (roleId !== null && roleId !== '') ? new Types.ObjectId(roleId) : undefined,
+            defaultRoleId:
+                roleId !== null && roleId !== ''
+                    ? new Types.ObjectId(roleId)
+                    : undefined,
         });
 
         if (server !== null) {
@@ -681,8 +708,9 @@ export class ServerController {
                 changes: [
                     {
                         field: 'defaultRoleId',
-                        before:
-                            existingServer?.defaultRoleId ? existingServer.defaultRoleId.toString() : null,
+                        before: existingServer?.defaultRoleId
+                            ? existingServer.defaultRoleId.toString()
+                            : null,
                         after: roleId,
                     },
                 ],
@@ -703,28 +731,35 @@ export class ServerController {
     ): Promise<{ message: string }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
-        
+
         const server = await this.serverRepo.findById(serverOid);
         if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
-        
+
         if (server.ownerId.toString() !== userId) {
-            throw new ApiError(403, 'Only the server owner can apply for verification.');
+            throw new ApiError(
+                403,
+                'Only the server owner can apply for verification.',
+            );
         }
 
         if (server.verified === true || server.verificationRequested === true) {
             return { message: 'Already verified or request pending.' };
         }
 
-        await this.serverRepo.update(serverOid, { verificationRequested: true });
+        await this.serverRepo.update(serverOid, {
+            verificationRequested: true,
+        });
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverOid,
             actorId: new Types.ObjectId(userId),
             actionType: 'request_server_verification',
             targetId: serverOid,
             targetType: 'server',
-            changes: [{ field: 'verificationRequested', before: false, after: true }],
+            changes: [
+                { field: 'verificationRequested', before: false, after: true },
+            ],
         });
         return { message: 'Verification requested' };
     }
@@ -788,7 +823,9 @@ export class ServerController {
             },
         },
     })
-    @UseInterceptors(FileInterceptor('icon', { storage, fileFilter: imageFileFilter }))
+    @UseInterceptors(
+        FileInterceptor('icon', { storage, fileFilter: imageFileFilter }),
+    )
     @ApiResponse({ status: 201, type: UploadIconResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -884,7 +921,9 @@ export class ServerController {
             },
         },
     })
-    @UseInterceptors(FileInterceptor('banner', { storage, fileFilter: imageFileFilter }))
+    @UseInterceptors(
+        FileInterceptor('banner', { storage, fileFilter: imageFileFilter }),
+    )
     @ApiResponse({ status: 201, type: UploadBannerResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -1012,7 +1051,8 @@ export class ServerController {
 
         const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, {
-            defaultRoleId: (roleId !== '') ? new Types.ObjectId(roleId) : undefined,
+            defaultRoleId:
+                roleId !== '' ? new Types.ObjectId(roleId) : undefined,
         });
 
         if (server !== null) {
@@ -1033,8 +1073,9 @@ export class ServerController {
                 changes: [
                     {
                         field: 'defaultRoleId',
-                        before:
-                            existingServer?.defaultRoleId ? existingServer.defaultRoleId.toString() : null,
+                        before: existingServer?.defaultRoleId
+                            ? existingServer.defaultRoleId.toString()
+                            : null,
                         after: roleId,
                     },
                 ],
@@ -1085,7 +1126,11 @@ export class ServerController {
                     if (parts.length === 3) {
                         const [, , channelId] = parts;
                         const members = await redisClient.smembers(key);
-                        if (members.length > 0 && channelId !== undefined && channelId !== '') {
+                        if (
+                            members.length > 0 &&
+                            channelId !== undefined &&
+                            channelId !== ''
+                        ) {
                             voiceStates[channelId] = members;
                         }
                     }

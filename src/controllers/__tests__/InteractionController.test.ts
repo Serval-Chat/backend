@@ -81,7 +81,9 @@ describe('InteractionController', () => {
         (Bot.find as jest.Mock).mockReturnValue(
             chainResult([{ _id: new Types.ObjectId(), userId: botUserId }]),
         );
-        (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(true);
+        (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(
+            true,
+        );
         (slashCommandRepo.findByNameAndBotIds as jest.Mock).mockResolvedValue({
             options: [{ name: 'target', required: true }],
             shouldReply: false,
@@ -112,7 +114,9 @@ describe('InteractionController', () => {
         (Bot.find as jest.Mock).mockReturnValue(
             chainResult([{ _id: new Types.ObjectId(), userId: botUserId }]),
         );
-        (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(true);
+        (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(
+            true,
+        );
         (slashCommandRepo.findByNameAndBotIds as jest.Mock).mockResolvedValue({
             options: [{ name: 'target', required: false }],
             shouldReply: true,

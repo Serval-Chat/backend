@@ -90,7 +90,13 @@ describe('ReactionController', () => {
                 user: { id: USER_ID, username: 'testuser' },
             } as unknown as Request;
 
-            await controller.addServerReaction(SERVER_ID, CHANNEL_ID, MESSAGE_ID, req, body);
+            await controller.addServerReaction(
+                SERVER_ID,
+                CHANNEL_ID,
+                MESSAGE_ID,
+                req,
+                body,
+            );
 
             expect(mockWsServer.broadcastToServer).toHaveBeenCalledWith(
                 SERVER_ID,

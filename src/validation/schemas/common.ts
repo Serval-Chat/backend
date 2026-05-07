@@ -257,7 +257,11 @@ export function IsUrlField(validationOptions?: ValidationOptions) {
 export function IsLimit(validationOptions?: ValidationOptions) {
     return applyDecorators(
         IsOptional(validationOptions),
-        Transform(({ value }) => (value !== undefined && value !== '' ? parseInt(value as string, 10) : 50)),
+        Transform(({ value }) =>
+            value !== undefined && value !== ''
+                ? parseInt(value as string, 10)
+                : 50,
+        ),
         IsInt(validationOptions),
         Min(1, validationOptions),
         Max(100, validationOptions),
@@ -267,7 +271,11 @@ export function IsLimit(validationOptions?: ValidationOptions) {
 export function IsOffset(validationOptions?: ValidationOptions) {
     return applyDecorators(
         IsOptional(validationOptions),
-        Transform(({ value }) => (value !== undefined && value !== '' ? parseInt(value as string, 10) : 0)),
+        Transform(({ value }) =>
+            value !== undefined && value !== ''
+                ? parseInt(value as string, 10)
+                : 0,
+        ),
         IsInt(validationOptions),
         Min(0, validationOptions),
     );
@@ -394,7 +402,10 @@ export const nameSchema = z
 export const messageContentSchema = z
     .string()
     .min(1, 'Message content cannot be empty')
-    .max(MAX_MESSAGE_LENGTH, `Message content must be at most ${MAX_MESSAGE_LENGTH} characters`)
+    .max(
+        MAX_MESSAGE_LENGTH,
+        `Message content must be at most ${MAX_MESSAGE_LENGTH} characters`,
+    )
     .trim();
 
 export const reasonSchema = z
@@ -422,12 +433,16 @@ export const optionalUrlSchema = z
 export const limitSchema = z
     .string()
     .optional()
-    .transform((val) => (val !== undefined && val !== '' ? parseInt(val, 10) : 50));
+    .transform((val) =>
+        val !== undefined && val !== '' ? parseInt(val, 10) : 50,
+    );
 
 export const offsetSchema = z
     .string()
     .optional()
-    .transform((val) => (val !== undefined && val !== '' ? parseInt(val, 10) : 0));
+    .transform((val) =>
+        val !== undefined && val !== '' ? parseInt(val, 10) : 0,
+    );
 
 export const searchSchema = z.string().optional();
 
@@ -459,8 +474,7 @@ export function IsPermissionMap(validationOptions?: ValidationOptions) {
                     >;
                     for (const roleId in map) {
                         const perms = map[roleId];
-                        if (typeof perms !== 'object')
-                            return false;
+                        if (typeof perms !== 'object') return false;
                         for (const key in perms) {
                             // Unknown keys (e.g. _id) are skipped; the
                             // controller whitelist discards them.

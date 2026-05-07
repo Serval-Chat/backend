@@ -6,10 +6,22 @@ import { readFileSync } from 'fs';
 
 const router: Router = Router();
 
-router.use('/uploads/profiles', express.static(path.join(process.cwd(), 'uploads', 'profiles')));
-router.use('/uploads/banners', express.static(path.join(process.cwd(), 'uploads', 'banners')));
-router.use('/uploads/emojis', express.static(path.join(process.cwd(), 'uploads', 'emojis')));
-router.use('/uploads/stickers', express.static(path.join(process.cwd(), 'uploads', 'stickers')));
+router.use(
+    '/uploads/profiles',
+    express.static(path.join(process.cwd(), 'uploads', 'profiles')),
+);
+router.use(
+    '/uploads/banners',
+    express.static(path.join(process.cwd(), 'uploads', 'banners')),
+);
+router.use(
+    '/uploads/emojis',
+    express.static(path.join(process.cwd(), 'uploads', 'emojis')),
+);
+router.use(
+    '/uploads/stickers',
+    express.static(path.join(process.cwd(), 'uploads', 'stickers')),
+);
 
 // Serve frontend static assets
 router.use(express.static(PUBLIC_FOLDER_PATH));
@@ -37,14 +49,21 @@ router.get('*', (req, res, next) => {
     }
 
     try {
-        if (cachedHtml === null || process.env.PROJECT_LEVEL === 'development') {
+        if (
+            cachedHtml === null ||
+            process.env.PROJECT_LEVEL === 'development'
+        ) {
             const htmlPath = path.resolve(PUBLIC_FOLDER_PATH, 'index.html');
             cachedHtml = readFileSync(htmlPath, 'utf8');
         }
 
-        const nonce = typeof res.locals.cspNonce === 'string' ? res.locals.cspNonce : '';
-        
-        const html = cachedHtml.replace(/<script(?![^>]*nonce=)/gi, `<script nonce="${nonce}"`);
+        const nonce =
+            typeof res.locals.cspNonce === 'string' ? res.locals.cspNonce : '';
+
+        const html = cachedHtml.replace(
+            /<script(?![^>]*nonce=)/gi,
+            `<script nonce="${nonce}"`,
+        );
 
         res.set('Content-Type', 'text/html');
         res.send(html);

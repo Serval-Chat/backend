@@ -212,7 +212,7 @@ export async function isAnimatedImage(
     input: string | Buffer,
 ): Promise<boolean> {
     const metadata = await sharp(input).metadata();
-    return (metadata.pages !== undefined && metadata.pages > 1);
+    return metadata.pages !== undefined && metadata.pages > 1;
 }
 
 /**

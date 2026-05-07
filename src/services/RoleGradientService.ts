@@ -24,15 +24,19 @@ export class RoleGradientService {
         // If role has gradient colors, use gradient interpolation
         if (
             (role.colors !== undefined && role.colors.length >= 2) ||
-            (role.startColor !== undefined && role.startColor !== '' && role.endColor !== undefined && role.endColor !== '')
+            (role.startColor !== undefined &&
+                role.startColor !== '' &&
+                role.endColor !== undefined &&
+                role.endColor !== '')
         ) {
             const roleColors: RoleGradientColors = {
                 startColor: role.startColor ?? undefined,
                 endColor: role.endColor ?? undefined,
                 colors: role.colors,
-                ...((role.gradientRepeat !== undefined && role.gradientRepeat !== 0) && {
-                    gradientRepeat: role.gradientRepeat,
-                }),
+                ...(role.gradientRepeat !== undefined &&
+                    role.gradientRepeat !== 0 && {
+                        gradientRepeat: role.gradientRepeat,
+                    }),
             };
 
             return getUserGradientColor(
@@ -55,15 +59,19 @@ export class RoleGradientService {
         // If role has gradient colors, generate gradient assignments
         if (
             (role.colors !== undefined && role.colors.length >= 2) ||
-            (role.startColor !== undefined && role.startColor !== '' && role.endColor !== undefined && role.endColor !== '')
+            (role.startColor !== undefined &&
+                role.startColor !== '' &&
+                role.endColor !== undefined &&
+                role.endColor !== '')
         ) {
             const roleColors: RoleGradientColors = {
                 startColor: role.startColor ?? undefined,
                 endColor: role.endColor ?? undefined,
                 colors: role.colors,
-                ...((role.gradientRepeat !== undefined && role.gradientRepeat !== 0) && {
-                    gradientRepeat: role.gradientRepeat,
-                }),
+                ...(role.gradientRepeat !== undefined &&
+                    role.gradientRepeat !== 0 && {
+                        gradientRepeat: role.gradientRepeat,
+                    }),
             };
 
             return generateRoleGradientAssignments(roleColors, memberUserIds, {
@@ -82,7 +90,10 @@ export class RoleGradientService {
     public isGradientRole(role: IRole): boolean {
         return (
             (role.colors !== undefined && role.colors.length >= 2) ||
-            (role.startColor !== undefined && role.startColor !== '' && role.endColor !== undefined && role.endColor !== '')
+            (role.startColor !== undefined &&
+                role.startColor !== '' &&
+                role.endColor !== undefined &&
+                role.endColor !== '')
         );
     }
 
@@ -106,7 +117,10 @@ export class RoleGradientService {
                 '#99aab5',
             colors: role.colors,
             isGradient,
-            ...((role.gradientRepeat !== undefined && role.gradientRepeat !== 0) && { gradientRepeat: role.gradientRepeat }),
+            ...(role.gradientRepeat !== undefined &&
+                role.gradientRepeat !== 0 && {
+                    gradientRepeat: role.gradientRepeat,
+                }),
         };
     }
 }

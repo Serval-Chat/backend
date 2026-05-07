@@ -48,7 +48,11 @@ export class MongooseMessageRepository implements IMessageRepository {
         const transformed = messages.map((msg) => this.transformMessage(msg));
 
         const replyToIds = transformed
-            .filter((m) => m.referenced_message === undefined && m.replyToId !== undefined)
+            .filter(
+                (m) =>
+                    m.referenced_message === undefined &&
+                    m.replyToId !== undefined,
+            )
             .map((m) => m.replyToId as Types.ObjectId);
 
         // Skip legacy replyToId lookup if all messages are modern (populated via repliedToMessageId)
@@ -61,7 +65,10 @@ export class MongooseMessageRepository implements IMessageRepository {
         const replyMap = new Map(replyDocs.map((d) => [d._id.toString(), d]));
 
         return transformed.map((m) => {
-            if (m.referenced_message === undefined && m.replyToId !== undefined) {
+            if (
+                m.referenced_message === undefined &&
+                m.replyToId !== undefined
+            ) {
                 const ref = replyMap.get(m.replyToId.toString());
                 if (ref) {
                     return {
@@ -169,7 +176,7 @@ export class MongooseMessageRepository implements IMessageRepository {
 
         const messages = (await this.messageModel
             .find(query)
-            .sort({ createdAt: (after !== undefined && after !== '') ? 1 : -1 })
+            .sort({ createdAt: after !== undefined && after !== '' ? 1 : -1 })
             .limit(limit)
             .populate({
                 path: 'repliedToMessageId',
@@ -211,7 +218,10 @@ export class MongooseMessageRepository implements IMessageRepository {
         return this.transformMessage(msgObj);
     }
 
-    public async update(id: Types.ObjectId, text: string): Promise<IMessage | null> {
+    public async update(
+        id: Types.ObjectId,
+        text: string,
+    ): Promise<IMessage | null> {
         const msg = (await this.messageModel
             .findByIdAndUpdate(
                 id,
@@ -303,7 +313,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         if (days <= 0 || !Number.isFinite(days) || days > 10000) {
             return [];
         }
-        
+
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await this.messageModel.aggregate<{
             _id: number;

@@ -16,7 +16,11 @@ const vapidConfigs: Record<string, { publicKey: string; privateKey: string }> =
     {};
 
 export function initWebPush() {
-    if (process.env.VAPID_KEY_VERSION !== undefined && VAPID_PUB !== '' && VAPID_PRI !== '') {
+    if (
+        process.env.VAPID_KEY_VERSION !== undefined &&
+        VAPID_PUB !== '' &&
+        VAPID_PRI !== ''
+    ) {
         vapidConfigs[process.env.VAPID_KEY_VERSION] = {
             publicKey: VAPID_PUB,
             privateKey: VAPID_PRI,
@@ -54,20 +58,20 @@ interface NotificationPayload {
 
 type NotificationTemplateData =
     | {
-        type: 'mention';
-        senderName: string;
-        channelName?: string;
-        preview: string;
-    }
+          type: 'mention';
+          senderName: string;
+          channelName?: string;
+          preview: string;
+      }
     | { type: 'friend_request'; senderName: string; senderId: string }
     | { type: 'dm'; senderName: string; senderId: string; preview: string }
     | {
-        type: 'custom';
-        title: string;
-        body: string;
-        url?: string;
-        tag?: string;
-    };
+          type: 'custom';
+          title: string;
+          body: string;
+          url?: string;
+          tag?: string;
+      };
 
 const templates: {
     [K in NotificationType]: (
@@ -76,7 +80,10 @@ const templates: {
 } = {
     mention: ({ senderName, channelName, preview }) => ({
         title: `${senderName} mentioned you`,
-        body: (channelName !== undefined && channelName !== '') ? `#${channelName}: ${preview}` : preview,
+        body:
+            channelName !== undefined && channelName !== ''
+                ? `#${channelName}: ${preview}`
+                : preview,
         tag: 'mention',
         data: { type: 'mention' },
     }),
@@ -134,7 +141,7 @@ async function sendToSubscription(
                 {
                     TTL: 86400, // 24h
                     vapidDetails: {
-                        subject: `mailto:${(process.env.VAPID_EMAIL !== undefined && process.env.VAPID_EMAIL !== '') ? process.env.VAPID_EMAIL : 'admin@localhost'}`,
+                        subject: `mailto:${process.env.VAPID_EMAIL !== undefined && process.env.VAPID_EMAIL !== '' ? process.env.VAPID_EMAIL : 'admin@localhost'}`,
                         publicKey: config.publicKey,
                         privateKey: config.privateKey,
                     },
@@ -228,7 +235,8 @@ async function isAllowedByPreferences(
     const user = await User.findById(userId)
         .select('notificationPreferences')
         .lean();
-    if (user === null || user.notificationPreferences === undefined) return true;
+    if (user === null || user.notificationPreferences === undefined)
+        return true;
     const prefs = user.notificationPreferences as Record<string, boolean>;
     return prefs[type] !== false;
 }

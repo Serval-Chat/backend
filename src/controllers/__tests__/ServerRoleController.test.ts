@@ -10,7 +10,10 @@ import type { WsServer } from '@/ws/server';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { ImageDeliveryService } from '@/services/ImageDeliveryService';
-import type { UpdateRoleRequestDTO, ReorderRolesRequestDTO } from '../dto/server-role.request.dto';
+import type {
+    UpdateRoleRequestDTO,
+    ReorderRolesRequestDTO,
+} from '../dto/server-role.request.dto';
 
 describe('ServerRoleController', () => {
     let controller: ServerRoleController;
@@ -24,35 +27,37 @@ describe('ServerRoleController', () => {
         findById: jest.fn(),
         delete: jest.fn(),
     } as unknown as IRoleRepository;
-    
+
     const mockServerMemberRepo = {
         findByServerAndUser: jest.fn(),
     } as unknown as IServerMemberRepository;
-    
+
     const mockServerRepo = {
-        findById: jest.fn().mockResolvedValue({ ownerId: new Types.ObjectId() }),
+        findById: jest
+            .fn()
+            .mockResolvedValue({ ownerId: new Types.ObjectId() }),
     } as unknown as IServerRepository;
-    
+
     const mockPermissionService = {
         hasPermission: jest.fn().mockResolvedValue(true),
         invalidateCache: jest.fn(),
         getHighestRolePosition: jest.fn().mockResolvedValue(100),
     } as unknown as PermissionService;
-    
+
     const mockLogger = {
         error: jest.fn(),
     } as unknown as ILogger;
-    
+
     const mockWsServer = {
         broadcastToServer: jest.fn(),
     } as unknown as WsServer;
-    
+
     const mockAuditLogRepo = {} as unknown as IAuditLogRepository;
-    
+
     const mockServerAuditLogService = {
         createAndBroadcast: jest.fn(),
     } as unknown as IServerAuditLogService;
-    
+
     const mockImageDeliveryService = {} as unknown as ImageDeliveryService;
 
     beforeEach(() => {
@@ -65,7 +70,7 @@ describe('ServerRoleController', () => {
             mockWsServer,
             mockAuditLogRepo,
             mockServerAuditLogService,
-            mockImageDeliveryService
+            mockImageDeliveryService,
         );
         jest.clearAllMocks();
     });
@@ -83,8 +88,13 @@ describe('ServerRoleController', () => {
                 glowEnabled: true,
             };
 
-            (mockRoleRepo.findById as jest.Mock).mockResolvedValue(existingRole);
-            (mockRoleRepo.update as jest.Mock).mockResolvedValue({ ...existingRole, glowEnabled: false });
+            (mockRoleRepo.findById as jest.Mock).mockResolvedValue(
+                existingRole,
+            );
+            (mockRoleRepo.update as jest.Mock).mockResolvedValue({
+                ...existingRole,
+                glowEnabled: false,
+            });
 
             const req = {
                 user: { id: USER_ID.toHexString() },
@@ -94,11 +104,16 @@ describe('ServerRoleController', () => {
                 glowEnabled: false,
             };
 
-            const result = await controller.updateRole(SERVER_ID.toHexString(), ROLE_ID.toHexString(), req, body as unknown as UpdateRoleRequestDTO);
+            const result = await controller.updateRole(
+                SERVER_ID.toHexString(),
+                ROLE_ID.toHexString(),
+                req,
+                body as unknown as UpdateRoleRequestDTO,
+            );
 
             expect(mockRoleRepo.update).toHaveBeenCalledWith(
                 ROLE_ID,
-                expect.objectContaining({ glowEnabled: false })
+                expect.objectContaining({ glowEnabled: false }),
             );
             expect(result.glowEnabled).toBe(false);
         });
@@ -110,9 +125,16 @@ describe('ServerRoleController', () => {
             const USER_ID = new Types.ObjectId().toHexString();
             const EVERYONE_ROLE_ID = new Types.ObjectId().toHexString();
 
-            (mockRoleRepo.findEveryoneRole as jest.Mock).mockResolvedValue({ _id: new Types.ObjectId(EVERYONE_ROLE_ID), name: '@everyone' });
+            (mockRoleRepo.findEveryoneRole as jest.Mock).mockResolvedValue({
+                _id: new Types.ObjectId(EVERYONE_ROLE_ID),
+                name: '@everyone',
+            });
             (mockRoleRepo.findByServerId as jest.Mock).mockResolvedValue([
-                { _id: new Types.ObjectId(EVERYONE_ROLE_ID), name: '@everyone', position: 0 }
+                {
+                    _id: new Types.ObjectId(EVERYONE_ROLE_ID),
+                    name: '@everyone',
+                    position: 0,
+                },
             ]);
 
             const req = {
@@ -120,15 +142,19 @@ describe('ServerRoleController', () => {
             } as unknown as Request;
 
             const body = {
-                rolePositions: [
-                    { roleId: EVERYONE_ROLE_ID, position: 1 }
-                ]
+                rolePositions: [{ roleId: EVERYONE_ROLE_ID, position: 1 }],
             };
 
-            await controller.reorderRoles(SERVER_ID, req, body as unknown as ReorderRolesRequestDTO);
+            await controller.reorderRoles(
+                SERVER_ID,
+                req,
+                body as unknown as ReorderRolesRequestDTO,
+            );
 
             expect(mockWsServer.broadcastToServer).not.toHaveBeenCalled();
-            expect(mockServerAuditLogService.createAndBroadcast).not.toHaveBeenCalled();
+            expect(
+                mockServerAuditLogService.createAndBroadcast,
+            ).not.toHaveBeenCalled();
         });
     });
 });
