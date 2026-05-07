@@ -1,6 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMongoId, IsString, IsOptional } from 'class-validator';
-import { InteractionValue, InteractionResolvedUser, InteractionResolvedChannel, InteractionResolvedRole } from '@/types/interactions';
+import {
+    InteractionValue,
+    InteractionResolvedUser,
+    InteractionResolvedChannel,
+    InteractionResolvedRole,
+} from '@/types/interactions';
 
 export class UserSettingsDTO {
     @ApiPropertyOptional()
@@ -158,4 +163,3 @@ export class AdminBanHistoryItemDTO {
 }
 
 export type InteractionOptionValue = InteractionValue;
-

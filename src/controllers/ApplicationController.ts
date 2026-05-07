@@ -26,7 +26,8 @@ import { SetCommandsRequestDTO } from './dto/application.request.dto';
 @Controller('api/v1/applications')
 export class ApplicationController {
     public constructor(
-        @Inject(TYPES.SlashCommandRepository) private slashCommandRepo: ISlashCommandRepository,
+        @Inject(TYPES.SlashCommandRepository)
+        private slashCommandRepo: ISlashCommandRepository,
     ) {}
 
     @UseGuards(JwtAuthGuard)
@@ -44,7 +45,9 @@ export class ApplicationController {
     @UseGuards(JwtAuthGuard)
     @Put('@me/commands')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Bulk-overwrite slash commands for this bot (token auth)' })
+    @ApiOperation({
+        summary: 'Bulk-overwrite slash commands for this bot (token auth)',
+    })
     public async setMyCommands(
         @Req() req: AuthenticatedRequest,
         @Body() body: SetCommandsRequestDTO,
@@ -58,13 +61,15 @@ export class ApplicationController {
 
         const created = [];
         for (const cmd of body.commands) {
-            created.push(await this.slashCommandRepo.create({
-                botId: bot._id,
-                name: cmd.name.toLowerCase(),
-                description: cmd.description,
-                options: cmd.options ?? [],
-                shouldReply: cmd.shouldReply ?? false,
-            }));
+            created.push(
+                await this.slashCommandRepo.create({
+                    botId: bot._id,
+                    name: cmd.name.toLowerCase(),
+                    description: cmd.description,
+                    options: cmd.options ?? [],
+                    shouldReply: cmd.shouldReply ?? false,
+                }),
+            );
         }
 
         return created;

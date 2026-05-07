@@ -21,10 +21,10 @@ export interface InteractionResolvedRole {
     color?: string;
 }
 
-export type InteractionValue = 
-    | string 
-    | number 
-    | boolean 
-    | InteractionResolvedUser 
-    | InteractionResolvedChannel 
+export type InteractionValue =
+    | string
+    | number
+    | boolean
+    | InteractionResolvedUser
+    | InteractionResolvedChannel
     | InteractionResolvedRole;

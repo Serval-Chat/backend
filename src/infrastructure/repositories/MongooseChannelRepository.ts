@@ -49,14 +49,20 @@ export class MongooseChannelRepository implements IChannelRepository {
         const results = await Channel.find({ serverId })
             .sort({ position: 1 })
             .lean();
-        return results.map(transformChannel).filter((c): c is IChannel => c !== null) as IChannel[];
+        return results
+            .map(transformChannel)
+            .filter((c): c is IChannel => c !== null) as IChannel[];
     }
 
-    public async findByServerIds(serverIds: Types.ObjectId[]): Promise<IChannel[]> {
+    public async findByServerIds(
+        serverIds: Types.ObjectId[],
+    ): Promise<IChannel[]> {
         const results = await Channel.find({
             serverId: { $in: serverIds },
         }).lean();
-        return results.map(transformChannel).filter((c): c is IChannel => c !== null) as IChannel[];
+        return results
+            .map(transformChannel)
+            .filter((c): c is IChannel => c !== null) as IChannel[];
     }
 
     public async findMaxPositionByServerId(

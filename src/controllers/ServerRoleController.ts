@@ -84,7 +84,7 @@ export class ServerRoleController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.ImageDeliveryService)
         private imageDeliveryService: ImageDeliveryService,
-    ) { }
+    ) {}
 
     @Get()
     @UseGuards(JwtAuthGuard)
@@ -142,7 +142,8 @@ export class ServerRoleController {
         // New roles are placed at the top of the hierarchy by default
         const maxPositionRole =
             await this.roleRepo.findMaxPositionByServerId(serverOid);
-        const position = (maxPositionRole !== null) ? maxPositionRole.position + 1 : 1;
+        const position =
+            maxPositionRole !== null ? maxPositionRole.position + 1 : 1;
 
         if (body.name.trim().toLowerCase() === '@everyone') {
             throw new BadRequestException('Role name "@everyone" is reserved');
@@ -150,18 +151,17 @@ export class ServerRoleController {
 
         const roleColor =
             (body.startColor !== undefined && body.startColor !== '') ||
-                (body.endColor !== undefined && body.endColor !== '') ||
-                ((body.colors !== undefined) && body.colors.length > 0)
+            (body.endColor !== undefined && body.endColor !== '') ||
+            (body.colors !== undefined && body.colors.length > 0)
                 ? null
-                : body.color ?? '#99aab5';
-
+                : (body.color ?? '#99aab5');
 
         const colors =
-            ((body.colors !== undefined) && body.colors.length > 0)
+            body.colors !== undefined && body.colors.length > 0
                 ? body.colors
-                : (body.startColor !== undefined && body.endColor !== undefined)
-                    ? [body.startColor, body.endColor]
-                    : undefined;
+                : body.startColor !== undefined && body.endColor !== undefined
+                  ? [body.startColor, body.endColor]
+                  : undefined;
 
         const filteredPermissions: Record<string, boolean> = {};
         if (body.permissions) {
@@ -181,7 +181,8 @@ export class ServerRoleController {
             separateFromOtherRoles: body.separateFromOtherRoles,
             position,
             permissions: filteredPermissions,
-            glowEnabled: body.glowEnabled !== undefined ? body.glowEnabled : true,
+            glowEnabled:
+                body.glowEnabled !== undefined ? body.glowEnabled : true,
         });
         this.permissionService.invalidateCache(serverOid);
 
@@ -235,21 +236,32 @@ export class ServerRoleController {
         const isOwner = server !== null && server.ownerId.equals(userOid);
 
         if (!isOwner) {
-            const currentUserHighest = await this.permissionService.getHighestRolePosition(serverOid, userOid);
+            const currentUserHighest =
+                await this.permissionService.getHighestRolePosition(
+                    serverOid,
+                    userOid,
+                );
             for (const { roleId, position } of body.rolePositions) {
-                const r = await this.roleRepo.findById(new Types.ObjectId(roleId));
+                const r = await this.roleRepo.findById(
+                    new Types.ObjectId(roleId),
+                );
                 if (r && currentUserHighest <= r.position) {
-                    throw new ForbiddenException('You cannot move a role equal to or higher than your own highest role');
+                    throw new ForbiddenException(
+                        'You cannot move a role equal to or higher than your own highest role',
+                    );
                 }
                 if (currentUserHighest <= position) {
-                    throw new ForbiddenException('You cannot move a role to a position equal to or higher than your own highest role');
+                    throw new ForbiddenException(
+                        'You cannot move a role to a position equal to or higher than your own highest role',
+                    );
                 }
             }
         }
 
         // Bulk update role positions to reflect the new hierarchy
         const everyoneRole = await this.roleRepo.findEveryoneRole(serverOid);
-        const everyoneId = (everyoneRole !== null) ? everyoneRole._id.toString() : undefined;
+        const everyoneId =
+            everyoneRole !== null ? everyoneRole._id.toString() : undefined;
 
         const oldAllRoles = await this.roleRepo.findByServerId(serverOid);
         const roleMap = new Map(
@@ -262,7 +274,12 @@ export class ServerRoleController {
             .map((r) => r.name);
 
         for (const { roleId, position } of body.rolePositions) {
-            if (everyoneId !== undefined && everyoneId !== '' && roleId === everyoneId) continue;
+            if (
+                everyoneId !== undefined &&
+                everyoneId !== '' &&
+                roleId === everyoneId
+            )
+                continue;
             await this.roleRepo.update(new Types.ObjectId(roleId), {
                 position,
             });
@@ -345,9 +362,15 @@ export class ServerRoleController {
         const isOwner = server !== null && server.ownerId.equals(userOid);
 
         if (!isOwner) {
-            const currentUserHighest = await this.permissionService.getHighestRolePosition(serverOid, userOid);
+            const currentUserHighest =
+                await this.permissionService.getHighestRolePosition(
+                    serverOid,
+                    userOid,
+                );
             if (currentUserHighest <= role.position) {
-                throw new ForbiddenException('You cannot modify a role equal to or higher than your own highest role');
+                throw new ForbiddenException(
+                    'You cannot modify a role equal to or higher than your own highest role',
+                );
             }
         }
 
@@ -373,7 +396,7 @@ export class ServerRoleController {
         if (
             (body.startColor !== undefined && body.startColor !== '') ||
             (body.endColor !== undefined && body.endColor !== '') ||
-            ((body.colors !== undefined) && body.colors.length > 0)
+            (body.colors !== undefined && body.colors.length > 0)
         ) {
             updates.color = null;
         } else if (body.color !== undefined) {
@@ -382,9 +405,16 @@ export class ServerRoleController {
 
         if (body.colors !== undefined) {
             updates.colors = body.colors;
-        } else if (body.startColor !== undefined || body.endColor !== undefined) {
-            const s = body.startColor !== undefined ? body.startColor : role.startColor;
-            const e = body.endColor !== undefined ? body.endColor : role.endColor;
+        } else if (
+            body.startColor !== undefined ||
+            body.endColor !== undefined
+        ) {
+            const s =
+                body.startColor !== undefined
+                    ? body.startColor
+                    : role.startColor;
+            const e =
+                body.endColor !== undefined ? body.endColor : role.endColor;
             if (s !== undefined && s !== '' && e !== undefined && e !== '') {
                 updates.colors = [s, e];
             }
@@ -409,7 +439,8 @@ export class ServerRoleController {
         }
 
         if (body.position !== undefined) updates.position = body.position;
-        if (body.glowEnabled !== undefined) updates.glowEnabled = body.glowEnabled;
+        if (body.glowEnabled !== undefined)
+            updates.glowEnabled = body.glowEnabled;
 
         const updatedRole = await this.roleRepo.update(roleOid, updates);
         if (updatedRole === null) {
@@ -428,7 +459,11 @@ export class ServerRoleController {
         });
 
         const changes = [];
-        if (updates.name !== undefined && updates.name !== '' && updates.name !== role.name)
+        if (
+            updates.name !== undefined &&
+            updates.name !== '' &&
+            updates.name !== role.name
+        )
             changes.push({
                 field: 'name',
                 before: role.name,
@@ -466,7 +501,7 @@ export class ServerRoleController {
         if (
             updates.permissions !== undefined &&
             JSON.stringify(updates.permissions) !==
-            JSON.stringify(role.permissions)
+                JSON.stringify(role.permissions)
         )
             changes.push({
                 field: 'permissions',
@@ -521,11 +556,12 @@ export class ServerRoleController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
-        const hasPermission = (await this.permissionService.hasPermission(
-            serverOid,
-            userOid,
-            'manageRoles',
-        )) === true;
+        const hasPermission =
+            (await this.permissionService.hasPermission(
+                serverOid,
+                userOid,
+                'manageRoles',
+            )) === true;
         if (hasPermission === false) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -541,9 +577,15 @@ export class ServerRoleController {
         const isOwner = server !== null && server.ownerId.equals(userOid);
 
         if (!isOwner) {
-            const currentUserHighest = await this.permissionService.getHighestRolePosition(serverOid, userOid);
+            const currentUserHighest =
+                await this.permissionService.getHighestRolePosition(
+                    serverOid,
+                    userOid,
+                );
             if (currentUserHighest <= role.position) {
-                throw new ForbiddenException('You cannot delete a role equal to or higher than your own highest role');
+                throw new ForbiddenException(
+                    'You cannot delete a role equal to or higher than your own highest role',
+                );
             }
         }
 
@@ -645,7 +687,8 @@ export class ServerRoleController {
                 throw new Error('Invalid image');
             }
         } catch {
-            if ((icon.path !== '') && fs.existsSync(icon.path) === true) fs.unlinkSync(icon.path);
+            if (icon.path !== '' && fs.existsSync(icon.path) === true)
+                fs.unlinkSync(icon.path);
             throw new BadRequestException('Invalid image file');
         }
 

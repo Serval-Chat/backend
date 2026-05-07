@@ -45,7 +45,9 @@ export class TotpVerifyRequestDTO {
 
 export class TotpSensitiveActionRequestDTO {
     @ApiProperty({ required: false })
-    @ValidateIf((o: TotpSensitiveActionRequestDTO) => o.backupCode === undefined)
+    @ValidateIf(
+        (o: TotpSensitiveActionRequestDTO) => o.backupCode === undefined,
+    )
     @IsString()
     @Matches(/^\d{6}$/)
     @IsOptional()

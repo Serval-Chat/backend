@@ -13,7 +13,11 @@ export class LiveKitService {
         const apiSecret = process.env.LIVEKIT_API_SECRET;
         const wsUrl = process.env.LIVEKIT_URL;
 
-        if (apiKey === undefined || apiSecret === undefined || wsUrl === undefined) {
+        if (
+            apiKey === undefined ||
+            apiSecret === undefined ||
+            wsUrl === undefined
+        ) {
             throw new ApiError(
                 500,
                 'LiveKit credentials are not properly configured.',

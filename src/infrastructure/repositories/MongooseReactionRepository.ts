@@ -87,7 +87,10 @@ export class MongooseReactionRepository implements IReactionRepository {
             userId,
             emoji,
             emojiType,
-            emojiId: (emojiId !== undefined && emojiId !== '') ? new Types.ObjectId(emojiId) : undefined,
+            emojiId:
+                emojiId !== undefined && emojiId !== ''
+                    ? new Types.ObjectId(emojiId)
+                    : undefined,
         });
 
         return await reaction.save();
@@ -177,9 +180,10 @@ export class MongooseReactionRepository implements IReactionRepository {
             const userIds = r.users.map((id: Types.ObjectId) => id.toString());
 
             if (r._id.emojiType === 'custom') {
-                const emojiIdStr = (r._id.emojiId !== undefined && r._id.emojiId !== null)
-                    ? r._id.emojiId.toString()
-                    : '';
+                const emojiIdStr =
+                    r._id.emojiId !== undefined && r._id.emojiId !== null
+                        ? r._id.emojiId.toString()
+                        : '';
                 const emojiInfo = emojiMap.get(emojiIdStr);
 
                 return {
@@ -265,9 +269,10 @@ export class MongooseReactionRepository implements IReactionRepository {
             const userIds = r.users.map((id: Types.ObjectId) => id.toString());
 
             if (r._id.emojiType === 'custom') {
-                const emojiIdStr = (r._id.emojiId !== undefined && r._id.emojiId !== null)
-                    ? r._id.emojiId.toString()
-                    : '';
+                const emojiIdStr =
+                    r._id.emojiId !== undefined && r._id.emojiId !== null
+                        ? r._id.emojiId.toString()
+                        : '';
                 const emojiInfo = emojiMap.get(emojiIdStr);
 
                 reactionsByMessage[messageId].push({

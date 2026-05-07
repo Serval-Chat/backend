@@ -68,7 +68,7 @@ export class FriendshipController {
         private logger: ILogger,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
-    ) { }
+    ) {}
 
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
         const mapped = mapUser(user);
@@ -77,7 +77,10 @@ export class FriendshipController {
         return {
             _id: mapped.id,
             username: mapped.username,
-            displayName: (mapped.displayName !== null && mapped.displayName !== '') ? mapped.displayName : undefined,
+            displayName:
+                mapped.displayName !== null && mapped.displayName !== ''
+                    ? mapped.displayName
+                    : undefined,
             createdAt: mapped.createdAt,
             profilePicture: mapped.profilePicture,
             customStatus: mapped.customStatus as SerializedCustomStatus | null,
@@ -155,11 +158,14 @@ export class FriendshipController {
 
                 return {
                     friend,
-                    latestMessageAt: (latestMessage !== undefined && latestMessage !== null)
-                        ? (latestMessage.createdAt !== undefined)
-                            ? new Date(latestMessage.createdAt).toISOString()
-                            : null
-                        : null,
+                    latestMessageAt:
+                        latestMessage !== undefined && latestMessage !== null
+                            ? latestMessage.createdAt !== undefined
+                                ? new Date(
+                                      latestMessage.createdAt,
+                                  ).toISOString()
+                                : null
+                            : null,
                 };
             }),
         );
@@ -193,7 +199,9 @@ export class FriendshipController {
     @Get('profiles')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
-    @ApiOperation({ summary: 'Get full profiles for all friends in one request' })
+    @ApiOperation({
+        summary: 'Get full profiles for all friends in one request',
+    })
     @ApiResponse({ status: 200, description: 'Array of full user profiles' })
     public async getFriendProfiles(@Req() req: Request): Promise<unknown[]> {
         const userId = (req as unknown as RequestWithUser).user.id;
@@ -233,7 +241,10 @@ export class FriendshipController {
             friendDocs
                 .filter((u): u is NonNullable<typeof u> => u !== null)
                 .map(async (user) => {
-                    const mapped = mapUser(user) as Record<string, unknown> | null;
+                    const mapped = mapUser(user) as Record<
+                        string,
+                        unknown
+                    > | null;
                     if (mapped === null) return null;
 
                     const blockFlags = await this.blockRepo.getActiveBlockFlags(
@@ -241,10 +252,13 @@ export class FriendshipController {
                         userOid,
                     );
 
-                    if ((blockFlags & HIDE_PRONOUNS) !== 0) mapped.pronouns = undefined;
+                    if ((blockFlags & HIDE_PRONOUNS) !== 0)
+                        mapped.pronouns = undefined;
                     if ((blockFlags & HIDE_BIO) !== 0) mapped.bio = undefined;
-                    if ((blockFlags & HIDE_DISPLAY_NAME) !== 0) mapped.displayName = null;
-                    if ((blockFlags & HIDE_AVATAR) !== 0) mapped.profilePicture = null;
+                    if ((blockFlags & HIDE_DISPLAY_NAME) !== 0)
+                        mapped.displayName = null;
+                    if ((blockFlags & HIDE_AVATAR) !== 0)
+                        mapped.profilePicture = null;
 
                     if (user.deletedAt !== undefined) {
                         mapped.profilePicture = '/images/deleted-cat.jpg';
@@ -275,7 +289,8 @@ export class FriendshipController {
                 let fromUsername = r.from;
                 if (fromUsername === undefined || fromUsername === '') {
                     const fromUser = await this.userRepo.findById(r.fromId);
-                    fromUsername = (fromUser !== null) ? fromUser.username : undefined;
+                    fromUsername =
+                        fromUser !== null ? fromUser.username : undefined;
                 }
 
                 return {
@@ -343,10 +358,7 @@ export class FriendshipController {
             await this.friendshipRepo.rejectRequest(existingRequest._id);
         }
 
-        await this.blockRepo.getActiveBlockFlags(
-            friendId,
-            meOid,
-        );
+        await this.blockRepo.getActiveBlockFlags(friendId, meOid);
 
         const reqDoc = await this.friendshipRepo.createRequest(meOid, friendId);
 
@@ -432,8 +444,6 @@ export class FriendshipController {
 
         const fromId = fr.fromId;
         const toId = fr.toId;
-
-
 
         const [fromUser, toUser] = await Promise.all([
             this.userRepo.findById(fromId),

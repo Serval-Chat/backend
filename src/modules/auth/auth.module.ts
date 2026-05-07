@@ -67,7 +67,9 @@ export class JwtAuthGuard implements CanActivate {
             }
 
             // Validate tokenVersion
-            if (Number(user.tokenVersion ?? 0) !== Number(decoded.tokenVersion ?? 0)) {
+            if (
+                Number(user.tokenVersion ?? 0) !== Number(decoded.tokenVersion)
+            ) {
                 throw new UnauthorizedException('Token expired');
             }
 
@@ -89,7 +91,10 @@ export class JwtAuthGuard implements CanActivate {
             }
 
             // Check permissions if required
-            if (requiredPermissions !== undefined && requiredPermissions.length > 0) {
+            if (
+                requiredPermissions !== undefined &&
+                requiredPermissions.length > 0
+            ) {
                 const userPermissions = (user as IUser).permissions;
                 if (!userPermissions) {
                     throw new ForbiddenException('Insufficient permissions');

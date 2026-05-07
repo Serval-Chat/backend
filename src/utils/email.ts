@@ -29,7 +29,12 @@ export function normalizeEmail(email: string): string {
     const local = parts[0];
     const domain = parts[1];
 
-    if (local === undefined || local === '' || domain === undefined || domain === '') {
+    if (
+        local === undefined ||
+        local === '' ||
+        domain === undefined ||
+        domain === ''
+    ) {
         return email.toLowerCase().trim();
     }
 

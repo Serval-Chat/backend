@@ -23,10 +23,16 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IAuditLogRepository, IAuditLog } from '@/di/interfaces/IAuditLogRepository';
+import type {
+    IAuditLogRepository,
+    IAuditLog,
+} from '@/di/interfaces/IAuditLogRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IBanRepository } from '@/di/interfaces/IBanRepository';
-import type { IServerRepository, IServer } from '@/di/interfaces/IServerRepository';
+import type {
+    IServerRepository,
+    IServer,
+} from '@/di/interfaces/IServerRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
@@ -152,7 +158,7 @@ export class AdminController {
         private inviteRepo: IInviteRepository,
         @Inject(TYPES.AdminNoteRepository)
         private adminNoteRepo: IAdminNoteRepository,
-    ) { }
+    ) {}
 
     @Get('stats')
     @Permissions('viewLogs')
@@ -173,8 +179,8 @@ export class AdminController {
             range === '30d'
                 ? 30 * 24 * 60 * 60 * 1000
                 : range === '7d'
-                    ? 7 * 24 * 60 * 60 * 1000
-                    : 24 * 60 * 60 * 1000;
+                  ? 7 * 24 * 60 * 60 * 1000
+                  : 24 * 60 * 60 * 1000;
         const since = new Date(now.getTime() - msWindow);
 
         const [
@@ -197,28 +203,28 @@ export class AdminController {
             isLifetime
                 ? this.userRepo.countAllByDay()
                 : isHourly
-                    ? this.userRepo.countByHour(since, buckets)
-                    : this.userRepo.countByDay(since, buckets),
+                  ? this.userRepo.countByHour(since, buckets)
+                  : this.userRepo.countByDay(since, buckets),
             isLifetime
                 ? this.banRepo.countAllByDay()
                 : isHourly
-                    ? this.banRepo.countByHour(since, buckets)
-                    : this.banRepo.countByDay(since, buckets),
+                  ? this.banRepo.countByHour(since, buckets)
+                  : this.banRepo.countByDay(since, buckets),
             isLifetime
                 ? this.serverRepo.countAllByDay()
                 : isHourly
-                    ? this.serverRepo.countByHour(since, buckets)
-                    : this.serverRepo.countByDay(since, buckets),
+                  ? this.serverRepo.countByHour(since, buckets)
+                  : this.serverRepo.countByDay(since, buckets),
             isLifetime
                 ? this.messageRepo.countAllByDay()
                 : isHourly
-                    ? this.messageRepo.countByHour(since, buckets)
-                    : this.messageRepo.countByDay(since, buckets),
+                  ? this.messageRepo.countByHour(since, buckets)
+                  : this.messageRepo.countByDay(since, buckets),
             isLifetime
                 ? this.serverMessageRepo.countAllByDay()
                 : isHourly
-                    ? this.serverMessageRepo.countByHour(since, buckets)
-                    : this.serverMessageRepo.countByDay(since, buckets),
+                  ? this.serverMessageRepo.countByHour(since, buckets)
+                  : this.serverMessageRepo.countByDay(since, buckets),
         ]);
 
         let messagesSparkline: number[];
@@ -273,7 +279,8 @@ export class AdminController {
             offset: Number(query.offset ?? 0),
             includeDeleted: query.includeDeleted === true,
         };
-        if (query.search !== undefined && query.search !== '') options.search = query.search;
+        if (query.search !== undefined && query.search !== '')
+            options.search = query.search;
         if (query.filter !== undefined) options.filter = query.filter;
 
         const users = await this.userRepo.findMany(options);
@@ -291,9 +298,14 @@ export class AdminController {
                 item._id = user._id.toString();
                 item.username = user.username ?? '';
                 item.login = user.login ?? '';
-                item.displayName = (user.displayName !== undefined) ? user.displayName : null;
-                item.profilePicture = (user.profilePicture !== undefined) ? user.profilePicture : null;
-                item.permissions = (user.permissions as AdminPermissions | undefined) ?? '0';
+                item.displayName =
+                    user.displayName !== undefined ? user.displayName : null;
+                item.profilePicture =
+                    user.profilePicture !== undefined
+                        ? user.profilePicture
+                        : null;
+                item.permissions =
+                    (user.permissions as AdminPermissions | undefined) ?? '0';
                 item.createdAt = user.createdAt ?? new Date();
                 item.banExpiry = activeBan?.expirationTimestamp;
                 item.warningCount = warningCount;
@@ -319,7 +331,8 @@ export class AdminController {
             const dto = new AdminUserShortDTO();
             dto._id = user._id.toString();
             dto.username = user.username ?? '';
-            dto.displayName = (user.displayName !== undefined) ? user.displayName : null;
+            dto.displayName =
+                user.displayName !== undefined ? user.displayName : null;
             return dto;
         });
     }
@@ -360,18 +373,22 @@ export class AdminController {
         details._id = user._id.toString();
         details.username = user.username ?? '';
         details.login = user.login ?? '';
-        details.displayName = (user.displayName !== undefined) ? user.displayName : null;
-        details.profilePicture = (user.profilePicture !== undefined) ? user.profilePicture : null;
-        details.permissions = (user.permissions as AdminPermissions | undefined) ?? '0';
+        details.displayName =
+            user.displayName !== undefined ? user.displayName : null;
+        details.profilePicture =
+            user.profilePicture !== undefined ? user.profilePicture : null;
+        details.permissions =
+            (user.permissions as AdminPermissions | undefined) ?? '0';
         details.createdAt = user.createdAt ?? new Date();
         details.banExpiry = activeBan?.expirationTimestamp;
         details.warningCount = warningCount;
         details.bio = user.bio ?? '';
         details.pronouns = user.pronouns ?? '';
         details.badges = badges as string[];
-        details.banner = (user.banner !== undefined && user.banner !== '')
-            ? `/api/v1/profile/banner/${user.banner}`
-            : null;
+        details.banner =
+            user.banner !== undefined && user.banner !== ''
+                ? `/api/v1/profile/banner/${user.banner}`
+                : null;
         details.deletedAt = user.deletedAt;
         details.deletedReason = user.deletedReason;
         return details;
@@ -429,9 +446,11 @@ export class AdminController {
                         userId,
                         oldUsername,
                         newUsername: updateData.username as string,
-                        profilePicture: (updatedUser?.profilePicture !== undefined && updatedUser.profilePicture !== '')
-                            ? `/api/v1/profile/picture/${updatedUser.profilePicture}`
-                            : null,
+                        profilePicture:
+                            updatedUser?.profilePicture !== undefined &&
+                            updatedUser.profilePicture !== ''
+                                ? `/api/v1/profile/picture/${updatedUser.profilePicture}`
+                                : null,
                         usernameFont: updatedUser?.usernameFont,
                         usernameGradient: updatedUser?.usernameGradient,
                         usernameGlow: updatedUser?.usernameGlow,
@@ -479,18 +498,21 @@ export class AdminController {
                     safeData.reason = additionalData.reason;
                 if (additionalData.duration !== undefined)
                     safeData.duration = additionalData.duration;
-                if (additionalData.count !== undefined) safeData.count = additionalData.count;
+                if (additionalData.count !== undefined)
+                    safeData.count = additionalData.count;
                 if (additionalData.serverId !== undefined)
                     safeData.serverId = additionalData.serverId;
                 if (additionalData.serverName !== undefined)
                     safeData.serverName = additionalData.serverName;
                 if (additionalData.fields !== undefined)
                     safeData.fields = additionalData.fields;
-                if (additionalData.noteId !== undefined) safeData.noteId = additionalData.noteId;
+                if (additionalData.noteId !== undefined)
+                    safeData.noteId = additionalData.noteId;
                 if (additionalData.content !== undefined)
-                    safeData.content = typeof additionalData.content === 'string'
-                        ? additionalData.content.substring(0, 100)
-                        : additionalData.content;
+                    safeData.content =
+                        typeof additionalData.content === 'string'
+                            ? additionalData.content.substring(0, 100)
+                            : additionalData.content;
             }
 
             const actorId = req.user.id;
@@ -521,7 +543,8 @@ export class AdminController {
             }
 
             if (targetType !== undefined && targetType !== '') {
-                auditData.targetType = targetType.toLowerCase() as IAuditLog['targetType'];
+                auditData.targetType =
+                    targetType.toLowerCase() as IAuditLog['targetType'];
             }
 
             if (serverId !== undefined && serverId !== '') {
@@ -565,7 +588,10 @@ export class AdminController {
         const oldAvatar = user.profilePicture;
 
         const anonymizedUsername =
-            (user.anonymizedUsername !== undefined && user.anonymizedUsername !== '') ? user.anonymizedUsername : generateAnonymizedUsername(userId);
+            user.anonymizedUsername !== undefined &&
+            user.anonymizedUsername !== ''
+                ? user.anonymizedUsername
+                : generateAnonymizedUsername(userId);
 
         await this.userRepo.update(userOid, {
             deletedAt: new Date(),
@@ -881,15 +907,19 @@ export class AdminController {
         response._id = ban._id.toString();
         response.userId = ban.userId.toString();
         response.reason = ban.reason;
-        response.issuedBy = (ban.issuedBy !== undefined) ? ban.issuedBy.toString() : 'unknown';
-        response.expirationTimestamp = (ban.expirationTimestamp !== undefined) ? ban.expirationTimestamp : new Date();
+        response.issuedBy =
+            ban.issuedBy !== undefined ? ban.issuedBy.toString() : 'unknown';
+        response.expirationTimestamp =
+            ban.expirationTimestamp !== undefined
+                ? ban.expirationTimestamp
+                : new Date();
         response.active = ban.active;
-        response.history = (ban.history ?? []).map(h => ({
+        response.history = (ban.history ?? []).map((h) => ({
             reason: h.reason,
             timestamp: h.timestamp,
             expirationTimestamp: h.expirationTimestamp ?? new Date(),
             issuedBy: h.issuedBy.toString(),
-            active: false
+            active: false,
         }));
         return response;
     }
@@ -922,10 +952,13 @@ export class AdminController {
     ): Promise<AdminUserBanHistoryResponseDTO> {
         const userOid = new Types.ObjectId(userId);
         const ban = await this.banRepo.findByUserIdWithHistory(userOid);
-        if (ban === null || ban.history === undefined || ban.history.length === 0) {
+        if (
+            ban === null ||
+            ban.history === undefined ||
+            ban.history.length === 0
+        ) {
             return [];
         }
-
 
         const historyWithStatus: AdminUserBanHistoryResponseDTO =
             ban.history.map((entry, index: number) => {
@@ -936,7 +969,9 @@ export class AdminController {
                 item.timestamp = e.timestamp as Date;
                 item.expirationTimestamp = e.expirationTimestamp as Date;
                 item.issuedBy = String(e.issuedBy ?? 'unknown');
-                item.active = index === (ban.history as unknown[]).length - 1 && (ban.active === true);
+                item.active =
+                    index === (ban.history as unknown[]).length - 1 &&
+                    ban.active === true;
                 return item;
             });
         return historyWithStatus;
@@ -1012,7 +1047,10 @@ export class AdminController {
         });
 
         const user = await this.userRepo.findById(userOid);
-        if (user !== null && (await this.wsServer.isUserOnline(userOid.toString())) === true) {
+        if (
+            user !== null &&
+            (await this.wsServer.isUserOnline(userOid.toString())) === true
+        ) {
             const event: IWarningEvent = {
                 type: 'warning',
                 payload: {
@@ -1095,20 +1133,31 @@ export class AdminController {
     public async listAuditLogs(
         @Query() query: AdminListAuditLogsRequestDTO,
     ): Promise<AdminAuditLogListResponseDTO> {
-        const safeLimit = Math.min(Math.max(Number(query.limit ?? 100), 1), 200);
+        const safeLimit = Math.min(
+            Math.max(Number(query.limit ?? 100), 1),
+            200,
+        );
         const logs = await this.auditLogRepo.find({
             serverId: null,
             limit: safeLimit,
             offset: Number(query.offset ?? 0),
-            actorId: (query.actorId !== undefined && query.actorId !== '')
-                ? new Types.ObjectId(query.actorId)
-                : undefined,
+            actorId:
+                query.actorId !== undefined && query.actorId !== ''
+                    ? new Types.ObjectId(query.actorId)
+                    : undefined,
             actionType: query.actionType,
-            targetUserId: (query.targetUserId !== undefined && query.targetUserId !== '')
-                ? new Types.ObjectId(query.targetUserId)
-                : undefined,
-            startDate: (query.startDate !== undefined && query.startDate !== '') ? new Date(query.startDate) : undefined,
-            endDate: (query.endDate !== undefined && query.endDate !== '') ? new Date(query.endDate) : undefined,
+            targetUserId:
+                query.targetUserId !== undefined && query.targetUserId !== ''
+                    ? new Types.ObjectId(query.targetUserId)
+                    : undefined,
+            startDate:
+                query.startDate !== undefined && query.startDate !== ''
+                    ? new Date(query.startDate)
+                    : undefined,
+            endDate:
+                query.endDate !== undefined && query.endDate !== ''
+                    ? new Date(query.endDate)
+                    : undefined,
         });
         return logs;
     }
@@ -1143,18 +1192,25 @@ export class AdminController {
                     server._id,
                 );
                 const item = new AdminServerListItemDTO();
-                const enrichedServer = server as IServer & { realMessageCount?: number; weightScore?: number };
+                const enrichedServer = server as IServer & {
+                    realMessageCount?: number;
+                    weightScore?: number;
+                };
 
                 item._id = server._id.toString();
                 item.name = server.name;
-                item.icon = (server.icon !== undefined && server.icon !== '') ? `${server.icon}` : null;
+                item.icon =
+                    server.icon !== undefined && server.icon !== ''
+                        ? `${server.icon}`
+                        : null;
                 item.banner = server.banner;
                 item.ownerId = server.ownerId.toString();
                 item.memberCount = memberCount;
                 item.createdAt = server.createdAt ?? new Date();
                 item.deletedAt = server.deletedAt;
                 item.verified = server.verified ?? false;
-                item.verificationRequested = server.verificationRequested ?? false;
+                item.verificationRequested =
+                    server.verificationRequested ?? false;
                 item.realMessageCount = enrichedServer.realMessageCount;
                 item.weightScore = enrichedServer.weightScore;
                 if (owner) {
@@ -1162,9 +1218,11 @@ export class AdminController {
                         _id: owner._id.toString(),
                         username: owner.username ?? '',
                         displayName: owner.displayName ?? null,
-                        profilePicture: (owner.profilePicture !== undefined && owner.profilePicture !== '')
-                            ? `/api/v1/profile/picture/${owner.profilePicture}`
-                            : null,
+                        profilePicture:
+                            owner.profilePicture !== undefined &&
+                            owner.profilePicture !== ''
+                                ? `/api/v1/profile/picture/${owner.profilePicture}`
+                                : null,
                     };
                 }
                 return item;
@@ -1265,11 +1323,13 @@ export class AdminController {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        const profilePictureUrl = (user.deletedAt !== undefined)
-            ? '/images/deleted-cat.jpg'
-            : (user.profilePicture !== undefined && user.profilePicture !== '')
-                ? `/api/v1/profile/picture/${user.profilePicture}`
-                : null;
+        const profilePictureUrl =
+            user.deletedAt !== undefined
+                ? '/images/deleted-cat.jpg'
+                : user.profilePicture !== undefined &&
+                    user.profilePicture !== ''
+                  ? `/api/v1/profile/picture/${user.profilePicture}`
+                  : null;
 
         const memberships = await this.serverMemberRepo.findByUserId(userOid);
         const serverIds = memberships.map((m) => m.serverId);
@@ -1310,16 +1370,18 @@ export class AdminController {
         response.login = user.login ?? '';
         response.displayName = user.displayName ?? null;
         response.profilePicture = profilePictureUrl;
-        response.permissions = (user.permissions !== undefined) ? user.permissions : '0';
+        response.permissions =
+            user.permissions !== undefined ? user.permissions : '0';
         response.createdAt = user.createdAt ?? new Date();
         response.banExpiry = activeBan?.expirationTimestamp;
         response.warningCount = warningCount;
         response.bio = user.bio ?? '';
         response.pronouns = user.pronouns ?? '';
         response.badges = badges as string[];
-        response.banner = (user.banner !== undefined && user.banner !== '')
-            ? `/api/v1/profile/banner/${user.banner}`
-            : null;
+        response.banner =
+            user.banner !== undefined && user.banner !== ''
+                ? `/api/v1/profile/banner/${user.banner}`
+                : null;
         response.deletedAt = user.deletedAt;
         response.deletedReason = user.deletedReason;
         response.servers = serverList;
@@ -1338,7 +1400,7 @@ export class AdminController {
         const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
         const servers = await this.serverRepo.listAwaitingReview({
             limit: safeLimit,
-            offset: Number(offset)
+            offset: Number(offset),
         });
 
         const total = await this.serverRepo.countAwaitingReview();
@@ -1353,7 +1415,10 @@ export class AdminController {
             const item = new AdminServerListItemDTO();
             item._id = server._id.toString();
             item.name = server.name;
-            item.icon = (server.icon !== undefined && server.icon !== '') ? `${server.icon}` : null;
+            item.icon =
+                server.icon !== undefined && server.icon !== ''
+                    ? `${server.icon}`
+                    : null;
             item.banner = server.banner;
             item.ownerId = server.ownerId.toString();
             item.memberCount = server.memberCount ?? 0;
@@ -1369,9 +1434,11 @@ export class AdminController {
                     _id: owner._id.toString(),
                     username: owner.username ?? '',
                     displayName: owner.displayName ?? null,
-                    profilePicture: (owner.profilePicture !== undefined && owner.profilePicture !== '')
-                        ? `/api/v1/profile/picture/${owner.profilePicture}`
-                        : null,
+                    profilePicture:
+                        owner.profilePicture !== undefined &&
+                        owner.profilePicture !== ''
+                            ? `/api/v1/profile/picture/${owner.profilePicture}`
+                            : null,
                 };
             }
             return item;
@@ -1398,12 +1465,10 @@ export class AdminController {
         }
 
         const owner = await this.userRepo.findById(server.ownerId);
-        const memberCount = await this.serverMemberRepo.countByServerId(
-            serverOid,
-        );
-        const messageVolume = await this.serverMessageRepo.countByServerId(
-            serverOid,
-        );
+        const memberCount =
+            await this.serverMemberRepo.countByServerId(serverOid);
+        const messageVolume =
+            await this.serverMessageRepo.countByServerId(serverOid);
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const [recentBanCount, recentKickCount] = await Promise.all([
             this.auditLogRepo.count({
@@ -1422,7 +1487,10 @@ export class AdminController {
         const details = new AdminServerDetailsDTO();
         details._id = server._id.toString();
         details.name = server.name;
-        details.icon = (server.icon !== undefined && server.icon !== '') ? `${server.icon}` : null;
+        details.icon =
+            server.icon !== undefined && server.icon !== ''
+                ? `${server.icon}`
+                : null;
         details.banner = server.banner;
         details.ownerId = server.ownerId.toString();
         details.memberCount = memberCount;
@@ -1439,9 +1507,11 @@ export class AdminController {
                 _id: owner._id.toString(),
                 username: owner.username ?? '',
                 displayName: owner.displayName ?? null,
-                profilePicture: (owner.profilePicture !== undefined && owner.profilePicture !== '')
-                    ? `/api/v1/profile/picture/${owner.profilePicture}`
-                    : null,
+                profilePicture:
+                    owner.profilePicture !== undefined &&
+                    owner.profilePicture !== ''
+                        ? `/api/v1/profile/picture/${owner.profilePicture}`
+                        : null,
             };
         } else {
             details.owner = null;
@@ -1485,7 +1555,8 @@ export class AdminController {
             uses: invite.uses,
             expiresAt: invite.expiresAt,
             createdAt: invite.createdAt,
-        }));    }
+        }));
+    }
 
     @Delete('servers/:serverId/invites/:inviteId')
     @Permissions('manageServer')
@@ -1502,7 +1573,7 @@ export class AdminController {
         const serverOid = new Types.ObjectId(serverId);
 
         const invite = await this.inviteRepo.findById(inviteOid);
-        if (invite === null || (invite.serverId.equals(serverOid) === false)) {
+        if (invite === null || invite.serverId.equals(serverOid) === false) {
             throw new NotFoundException('Invite not found for this server');
         }
 
@@ -1517,7 +1588,6 @@ export class AdminController {
 
         return { message: 'Invite deleted' };
     }
-
 
     @Delete('servers/:serverId/verification')
     @Permissions('manageServer')
@@ -1535,12 +1605,17 @@ export class AdminController {
             throw new NotFoundException('Verification request not found.');
         }
         await this.serverRepo.update(serverOid, {
-            verificationRequested: false
+            verificationRequested: false,
         });
-        await this.logAdminAction(req, 'decline_server_verification', server.ownerId.toString(), {
-            serverId,
-            serverName: server.name,
-        });
+        await this.logAdminAction(
+            req,
+            'decline_server_verification',
+            server.ownerId.toString(),
+            {
+                serverId,
+                serverName: server.name,
+            },
+        );
         return { message: 'Verification application declined.' };
     }
 
@@ -1562,16 +1637,23 @@ export class AdminController {
         }
 
         if (server.verificationRequested !== true) {
-            throw new BadRequestException('Verification has not been requested for this server.');
+            throw new BadRequestException(
+                'Verification has not been requested for this server.',
+            );
         }
         await this.serverRepo.update(serverOid, {
             verified: true,
-            verificationRequested: false
+            verificationRequested: false,
         });
-        await this.logAdminAction(req, 'verify_server', server.ownerId.toString(), {
-            serverId,
-            serverName: server.name,
-        });
+        await this.logAdminAction(
+            req,
+            'verify_server',
+            server.ownerId.toString(),
+            {
+                serverId,
+                serverName: server.name,
+            },
+        );
         return { verified: true };
     }
 
@@ -1591,23 +1673,40 @@ export class AdminController {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
         await this.serverRepo.update(serverOid, { verified: false });
-        await this.logAdminAction(req, 'unverify_server', server.ownerId.toString(), {
-            serverId,
-            serverName: server.name,
-        });
+        await this.logAdminAction(
+            req,
+            'unverify_server',
+            server.ownerId.toString(),
+            {
+                serverId,
+                serverName: server.name,
+            },
+        );
         return { verified: false };
     }
 
     private mapAdminInfo(admin: unknown): Record<string, unknown> | null {
         if (admin === null || admin === undefined) return null;
-        const a = admin as { _id?: { toString(): string }; id?: string; username?: string; displayName?: string; profilePicture?: string };
+        const a = admin as {
+            _id?: { toString(): string };
+            id?: string;
+            username?: string;
+            displayName?: string;
+            profilePicture?: string;
+        };
         return {
-            _id: ((a._id !== undefined) ? a._id : (a.id !== undefined ? a.id : undefined))?.toString(),
+            _id: (a._id !== undefined
+                ? a._id
+                : a.id !== undefined
+                  ? a.id
+                  : undefined
+            )?.toString(),
             username: a.username,
             displayName: a.displayName ?? null,
-            profilePicture: (a.profilePicture !== undefined && a.profilePicture !== '')
-                ? `/api/v1/profile/picture/${a.profilePicture}`
-                : null,
+            profilePicture:
+                a.profilePicture !== undefined && a.profilePicture !== ''
+                    ? `/api/v1/profile/picture/${a.profilePicture}`
+                    : null,
         };
     }
 
@@ -1663,12 +1762,20 @@ export class AdminController {
             content: body.content,
         });
 
-        await this.logAdminAction(req, 'create_admin_note', undefined, {
-            noteId: note._id.toString(),
-            targetId: serverId,
-            targetType: 'Server',
-            content: body.content,
-        }, serverId, 'server', serverId);
+        await this.logAdminAction(
+            req,
+            'create_admin_note',
+            undefined,
+            {
+                noteId: note._id.toString(),
+                targetId: serverId,
+                targetType: 'Server',
+                content: body.content,
+            },
+            serverId,
+            'server',
+            serverId,
+        );
 
         const found = await this.adminNoteRepo.findById(note._id);
         if (found === null) {
@@ -1709,12 +1816,19 @@ export class AdminController {
             content: body.content,
         });
 
-        await this.logAdminAction(req, 'create_admin_note', userId, {
-            noteId: note._id.toString(),
-            targetId: userId,
-            targetType: 'User',
-            content: body.content,
-        }, userId, 'user');
+        await this.logAdminAction(
+            req,
+            'create_admin_note',
+            userId,
+            {
+                noteId: note._id.toString(),
+                targetId: userId,
+                targetType: 'User',
+                content: body.content,
+            },
+            userId,
+            'user',
+        );
 
         const found = await this.adminNoteRepo.findById(note._id);
         if (found === null) throw new NotFoundException('Note not found');
@@ -1736,15 +1850,20 @@ export class AdminController {
             body.content,
         );
         if (updated === null) {
-            throw new NotFoundException(
-                'Note not found or already deleted',
-            );
+            throw new NotFoundException('Note not found or already deleted');
         }
 
-        await this.logAdminAction(req, 'update_admin_note', undefined, {
+        await this.logAdminAction(
+            req,
+            'update_admin_note',
+            undefined,
+            {
+                noteId,
+                content: body.content,
+            },
             noteId,
-            content: body.content,
-        }, noteId, updated.targetType.toLowerCase());
+            updated.targetType.toLowerCase(),
+        );
 
         return this.mapAdminNote(updated) as unknown as AdminNoteResponseDTO;
     }
@@ -1767,12 +1886,18 @@ export class AdminController {
             throw new NotFoundException('Note not found');
         }
 
-        await this.logAdminAction(req, 'delete_admin_note', undefined, {
+        await this.logAdminAction(
+            req,
+            'delete_admin_note',
+            undefined,
+            {
+                noteId,
+                reason: body.reason,
+            },
             noteId,
-            reason: body.reason,
-        }, noteId, deleted.targetType.toLowerCase());
+            deleted.targetType.toLowerCase(),
+        );
 
         return this.mapAdminNote(deleted) as unknown as AdminNoteResponseDTO;
     }
 }
-

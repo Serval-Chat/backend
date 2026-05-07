@@ -166,7 +166,9 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         return await request.save();
     }
 
-    public async findAllByUserId(userId: Types.ObjectId): Promise<IFriendship[]> {
+    public async findAllByUserId(
+        userId: Types.ObjectId,
+    ): Promise<IFriendship[]> {
         return await this.friendshipModel
             .find({
                 $or: [{ userId: userId }, { friendId: userId }],

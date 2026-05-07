@@ -322,63 +322,66 @@ export class WsServer extends EventEmitter implements IWsServer {
             ws.on('message', (data) => {
                 void (async () => {
                     const span = wsTracer.startSpan('ws.message.handle', {
-                    attributes: {
-                        'messaging.system': 'websocket',
-                        'messaging.destination': 'chat',
-                        'message.size_bytes':
-                            data instanceof Buffer
-                                ? data.byteLength
-                                : Buffer.byteLength(data.toString()),
-                    },
-                });
-                await context.with(
-                    trace.setSpan(context.active(), span),
-                    async () => {
-                        try {
-                            const raw =
+                        attributes: {
+                            'messaging.system': 'websocket',
+                            'messaging.destination': 'chat',
+                            'message.size_bytes':
                                 data instanceof Buffer
-                                    ? data
-                                    : Buffer.from(data.toString());
-                            const sizeBytes = raw.byteLength;
-                            const message: IWsEnvelope = JSON.parse(
-                                raw.toString(),
-                            );
-                            const msgType =
-                                (message.event as { type?: string }).type ??
-                                'unknown';
+                                    ? data.byteLength
+                                    : Buffer.byteLength(data.toString()),
+                        },
+                    });
+                    await context.with(
+                        trace.setSpan(context.active(), span),
+                        async () => {
+                            try {
+                                const raw =
+                                    data instanceof Buffer
+                                        ? data
+                                        : Buffer.from(data.toString());
+                                const sizeBytes = raw.byteLength;
+                                const message: IWsEnvelope = JSON.parse(
+                                    raw.toString(),
+                                );
+                                const msgType =
+                                    (message.event as { type?: string }).type ??
+                                    'unknown';
 
-                            wsMsgTotalCounter.inc({ type: msgType });
-                            wsMsgSizeBytesHistogram.observe(
-                                { type: msgType },
-                                sizeBytes,
-                            );
+                                wsMsgTotalCounter.inc({ type: msgType });
+                                wsMsgSizeBytesHistogram.observe(
+                                    { type: msgType },
+                                    sizeBytes,
+                                );
 
-                            const authUser = this.getAuthenticatedUser(ws);
-                            await this.dispatcher.dispatch(
-                                ws,
-                                message,
-                                authUser,
-                            );
-                            span.setStatus({ code: SpanStatusCode.OK });
-                        } catch (error) {
-                            span.recordException(error as Error);
-                            span.setStatus({ code: SpanStatusCode.ERROR });
-                            wsErrorsTotalCounter.inc({
-                                reason: 'handler_exception',
-                            });
-                            logger.error(
-                                '[WsServer] Failed to handle message:',
-                                error,
-                            );
-                        } finally {
-                            span.end();
-                        }
-                    },
-                );
-            })().catch(err => {
-                logger.error('[WsServer] Unhandled error in message event listener', err);
+                                const authUser = this.getAuthenticatedUser(ws);
+                                await this.dispatcher.dispatch(
+                                    ws,
+                                    message,
+                                    authUser,
+                                );
+                                span.setStatus({ code: SpanStatusCode.OK });
+                            } catch (error) {
+                                span.recordException(error as Error);
+                                span.setStatus({ code: SpanStatusCode.ERROR });
+                                wsErrorsTotalCounter.inc({
+                                    reason: 'handler_exception',
+                                });
+                                logger.error(
+                                    '[WsServer] Failed to handle message:',
+                                    error,
+                                );
+                            } finally {
+                                span.end();
+                            }
+                        },
+                    );
+                })().catch((err) => {
+                    logger.error(
+                        '[WsServer] Unhandled error in message event listener',
+                        err,
+                    );
+                });
             });
-        });
 
             ws.on('close', () => {
                 logger.info('[WsServer] Connection closed');
@@ -463,7 +466,7 @@ export class WsServer extends EventEmitter implements IWsServer {
      */
     public getUserSockets(userId: string): WebSocket[] {
         const sockets = this.connectionsByUserId.get(userId);
-        return (sockets !== undefined) ? Array.from(sockets) : [];
+        return sockets !== undefined ? Array.from(sockets) : [];
     }
 
     /**
@@ -530,7 +533,9 @@ export class WsServer extends EventEmitter implements IWsServer {
             sockets = sockets.filter((s) => s !== excludeWs);
         }
         if (options?.excludeBots === true) {
-            sockets = sockets.filter((s) => this.socketToUser.get(s)?.isBot === false);
+            sockets = sockets.filter(
+                (s) => this.socketToUser.get(s)?.isBot === false,
+            );
         }
         if (sockets.length > 0) {
             sendToMany(sockets, event, replyTo);
@@ -726,7 +731,13 @@ export class WsServer extends EventEmitter implements IWsServer {
             replyTo,
             options,
         });
-        this._localBroadcastToServer(serverId, event, replyTo, excludeWs, options);
+        this._localBroadcastToServer(
+            serverId,
+            event,
+            replyTo,
+            excludeWs,
+            options,
+        );
     }
 
     private _localBroadcastToServer(
@@ -743,10 +754,14 @@ export class WsServer extends EventEmitter implements IWsServer {
                 recipients = recipients.filter((r) => r !== excludeWs);
             }
             if (options?.excludeBots === true) {
-                recipients = recipients.filter((r) => this.socketToUser.get(r)?.isBot === false);
+                recipients = recipients.filter(
+                    (r) => this.socketToUser.get(r)?.isBot === false,
+                );
             }
             if (options?.onlyBots === true) {
-                recipients = recipients.filter((r) => this.socketToUser.get(r)?.isBot === true);
+                recipients = recipients.filter(
+                    (r) => this.socketToUser.get(r)?.isBot === true,
+                );
             }
             if (recipients.length > 0) {
                 sendToMany(recipients, event, replyTo);
@@ -807,7 +822,8 @@ export class WsServer extends EventEmitter implements IWsServer {
                 permissionCheck.permission,
             );
         } else if (
-            permissionCheck.targetId !== undefined && permissionCheck.targetId !== ''
+            permissionCheck.targetId !== undefined &&
+            permissionCheck.targetId !== ''
         ) {
             return this.permissionService.hasChannelPermission(
                 new mongoose.Types.ObjectId(serverId),
@@ -1002,7 +1018,11 @@ export class WsServer extends EventEmitter implements IWsServer {
                             .scard(presenceKey)
                             .exec()
                             .then((results) => {
-                                if (results === null || results[1] === undefined) return;
+                                if (
+                                    results === null ||
+                                    results[1] === undefined
+                                )
+                                    return;
                                 const countAfter = results[1][1] as number;
                                 if (countAfter === 0) {
                                     logger.info(
@@ -1104,7 +1124,8 @@ export class WsServer extends EventEmitter implements IWsServer {
         excludeUserIds?: string[],
     ): void {
         const recipients = new Set<WebSocket>();
-        const excludeSet = excludeUserIds !== undefined ? new Set(excludeUserIds) : null;
+        const excludeSet =
+            excludeUserIds !== undefined ? new Set(excludeUserIds) : null;
 
         for (const friendId of friendIds) {
             if (excludeSet !== null && excludeSet.has(friendId)) continue;
@@ -1119,7 +1140,12 @@ export class WsServer extends EventEmitter implements IWsServer {
             if (subscribers) {
                 subscribers.forEach((socket) => {
                     const user = this.socketToUser.get(socket);
-                    if (user !== undefined && (excludeSet !== null && excludeSet.has(user.userId))) return;
+                    if (
+                        user !== undefined &&
+                        excludeSet !== null &&
+                        excludeSet.has(user.userId)
+                    )
+                        return;
                     recipients.add(socket);
                 });
             }

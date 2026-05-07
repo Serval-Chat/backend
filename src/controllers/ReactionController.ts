@@ -219,7 +219,8 @@ export class ReactionController {
             payload: {
                 messageId,
                 userId,
-                username: (req as Request & { user: JWTPayload }).user.username || '',
+                username:
+                    (req as Request & { user: JWTPayload }).user.username || '',
                 emoji,
                 emojiType,
                 emojiId,
@@ -302,7 +303,10 @@ export class ReactionController {
                 messageId,
                 userId,
                 emoji: emoji ?? '',
-                emojiType: (emojiId !== undefined && emojiId !== '') ? 'custom' : 'unicode',
+                emojiType:
+                    emojiId !== undefined && emojiId !== ''
+                        ? 'custom'
+                        : 'unicode',
                 emojiId: emojiId ?? undefined,
                 messageType: 'dm',
             },
@@ -548,7 +552,10 @@ export class ReactionController {
                 messageId,
                 userId,
                 emoji: emoji ?? '',
-                emojiType: (emojiId !== undefined && emojiId !== '') ? 'custom' : 'unicode',
+                emojiType:
+                    emojiId !== undefined && emojiId !== ''
+                        ? 'custom'
+                        : 'unicode',
                 emojiId,
                 messageType: 'server',
                 serverId,

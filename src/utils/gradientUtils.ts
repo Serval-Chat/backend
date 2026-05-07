@@ -17,7 +17,12 @@ export function hexToRgb(
     hex: string,
 ): { r: number; g: number; b: number } | null {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (result === null || result[1] === undefined || result[2] === undefined || result[3] === undefined) {
+    if (
+        result === null ||
+        result[1] === undefined ||
+        result[2] === undefined ||
+        result[3] === undefined
+    ) {
         return null;
     }
     return {
@@ -220,7 +225,6 @@ export function generateRoleGradientAssignments(
 
         let color: string;
         if (roleColors.colors !== undefined && roleColors.colors.length >= 2) {
-
             const colorCount = roleColors.colors.length;
             const segment = factor * (colorCount - 1);
             const lowIndex = Math.floor(segment);

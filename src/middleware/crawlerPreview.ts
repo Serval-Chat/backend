@@ -11,19 +11,22 @@ import { SERVER_URL } from '@/config/env';
  */
 const escapeHtml = (unsafe: string) => {
     return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
- };
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
 
 export const discordCrawlerPreview = async (
     req: Request,
     res: Response,
     next: NextFunction,
 ) => {
-    const userAgent = typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : '';
+    const userAgent =
+        typeof req.headers['user-agent'] === 'string'
+            ? req.headers['user-agent']
+            : '';
     const isDiscordBot =
         userAgent.includes('Discordbot') ||
         userAgent.includes('Discord-ExternalFetcher');
@@ -61,10 +64,13 @@ export const discordCrawlerPreview = async (
             );
 
             const title = escapeHtml(`Join ${server.name}`);
-            const description = escapeHtml(`You've been invited to join ${server.name} on Serchat. Current members: ${memberCount}.`);
-            const imageUrl = (server.icon !== undefined && server.icon !== '')
-                ? `${SERVER_URL}/api/v1/file-proxy?url=${encodeURIComponent(server.icon)}`
-                : `${SERVER_URL}/logo.png`;
+            const description = escapeHtml(
+                `You've been invited to join ${server.name} on Serchat. Current members: ${memberCount}.`,
+            );
+            const imageUrl =
+                server.icon !== undefined && server.icon !== ''
+                    ? `${SERVER_URL}/api/v1/file-proxy?url=${encodeURIComponent(server.icon)}`
+                    : `${SERVER_URL}/logo.png`;
             const url = escapeHtml(`${SERVER_URL}/invite/${inviteCode}`);
             const themeColor = '#5865F2';
 

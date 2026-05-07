@@ -129,9 +129,9 @@ beforeEach(() => {
 describe('getPublicInfo', () => {
     it('throws NotFoundException when bot does not exist', async () => {
         (Bot.findOne as jest.Mock).mockReturnValue(makeChain(null));
-        await expect(controller.getPublicInfo('0123456789abcdef0123456789abcdef')).rejects.toThrow(
-            NotFoundException,
-        );
+        await expect(
+            controller.getPublicInfo('0123456789abcdef0123456789abcdef'),
+        ).rejects.toThrow(NotFoundException);
     });
 
     it('returns public bot info including server count', async () => {
@@ -151,7 +151,9 @@ describe('getPublicInfo', () => {
         );
         (ServerMember.countDocuments as jest.Mock).mockResolvedValue(7);
 
-        const result = await controller.getPublicInfo('0123456789abcdef0123456789abcdef');
+        const result = await controller.getPublicInfo(
+            '0123456789abcdef0123456789abcdef',
+        );
 
         expect(result.clientId).toBe('0123456789abcdef0123456789abcdef');
         expect(result.username).toBe('mybot');
@@ -174,7 +176,10 @@ describe('getToken', () => {
     it('throws ForbiddenException when bot does not exist', async () => {
         (Bot.findOne as jest.Mock).mockReturnValue(makeChain(null));
         await expect(
-            controller.getToken({ client_id: '0123456789abcdef0123456789abcdef', client_secret: 'secret' }),
+            controller.getToken({
+                client_id: '0123456789abcdef0123456789abcdef',
+                client_secret: 'secret',
+            }),
         ).rejects.toThrow(ForbiddenException);
     });
 
@@ -192,7 +197,10 @@ describe('getToken', () => {
             }),
         );
         await expect(
-            controller.getToken({ client_id: '0123456789abcdef0123456789abcdef', client_secret: 'wrong-secret' }),
+            controller.getToken({
+                client_id: '0123456789abcdef0123456789abcdef',
+                client_secret: 'wrong-secret',
+            }),
         ).rejects.toThrow(ForbiddenException);
     });
 
@@ -212,7 +220,10 @@ describe('getToken', () => {
             }),
         );
         await expect(
-            controller.getToken({ client_id: '0123456789abcdef0123456789abcdef', client_secret: secret }),
+            controller.getToken({
+                client_id: '0123456789abcdef0123456789abcdef',
+                client_secret: secret,
+            }),
         ).rejects.toThrow(ForbiddenException);
     });
 
@@ -243,16 +254,24 @@ describe('authorizeToServer', () => {
 
     it('throws BadRequestException for invalid serverId', async () => {
         await expect(
-            controller.authorizeToServer(req, '0123456789abcdef0123456789abcdef', {
-                serverId: 'not-an-objectid',
-            }),
+            controller.authorizeToServer(
+                req,
+                '0123456789abcdef0123456789abcdef',
+                {
+                    serverId: 'not-an-objectid',
+                },
+            ),
         ).rejects.toThrow(BadRequestException);
     });
 
     it('throws NotFoundException when bot does not exist', async () => {
         (Bot.findOne as jest.Mock).mockReturnValue(makeChain(null));
         await expect(
-            controller.authorizeToServer(req, '0123456789abcdef0123456789abcdef', { serverId: SERVER_ID }),
+            controller.authorizeToServer(
+                req,
+                '0123456789abcdef0123456789abcdef',
+                { serverId: SERVER_ID },
+            ),
         ).rejects.toThrow(NotFoundException);
     });
 
@@ -266,7 +285,11 @@ describe('authorizeToServer', () => {
             }),
         );
         await expect(
-            controller.authorizeToServer(req, '0123456789abcdef0123456789abcdef', { serverId: SERVER_ID }),
+            controller.authorizeToServer(
+                req,
+                '0123456789abcdef0123456789abcdef',
+                { serverId: SERVER_ID },
+            ),
         ).rejects.toThrow(ForbiddenException);
     });
 
@@ -281,7 +304,11 @@ describe('authorizeToServer', () => {
         (Server.findById as jest.Mock).mockReturnValue(makeChain(null));
 
         await expect(
-            controller.authorizeToServer(req, '0123456789abcdef0123456789abcdef', { serverId: SERVER_ID }),
+            controller.authorizeToServer(
+                req,
+                '0123456789abcdef0123456789abcdef',
+                { serverId: SERVER_ID },
+            ),
         ).rejects.toThrow(NotFoundException);
     });
 
@@ -307,7 +334,11 @@ describe('authorizeToServer', () => {
         (ServerMember.findOne as jest.Mock).mockReturnValue(makeChain(null));
 
         await expect(
-            controller.authorizeToServer(callerReq, '0123456789abcdef0123456789abcdef', { serverId: SERVER_ID }),
+            controller.authorizeToServer(
+                callerReq,
+                '0123456789abcdef0123456789abcdef',
+                { serverId: SERVER_ID },
+            ),
         ).rejects.toThrow(ForbiddenException);
     });
 
@@ -332,7 +363,11 @@ describe('authorizeToServer', () => {
         );
 
         await expect(
-            controller.authorizeToServer(req, '0123456789abcdef0123456789abcdef', { serverId: SERVER_ID }),
+            controller.authorizeToServer(
+                req,
+                '0123456789abcdef0123456789abcdef',
+                { serverId: SERVER_ID },
+            ),
         ).rejects.toThrow(ConflictException);
     });
 
@@ -358,7 +393,11 @@ describe('authorizeToServer', () => {
         );
 
         await expect(
-            controller.authorizeToServer(req, '0123456789abcdef0123456789abcdef', { serverId: SERVER_ID }),
+            controller.authorizeToServer(
+                req,
+                '0123456789abcdef0123456789abcdef',
+                { serverId: SERVER_ID },
+            ),
         ).rejects.toThrow(ForbiddenException);
     });
 
@@ -382,16 +421,31 @@ describe('authorizeToServer', () => {
         (ServerMember.findOne as jest.Mock).mockReturnValue(makeChain(null));
         (ServerBan.findOne as jest.Mock).mockReturnValue(makeChain(null));
         (Role.findOne as jest.Mock).mockReturnValue(makeChain(null));
-        (User.findById as jest.Mock).mockReturnValue({ lean: () => ({ username: 'testbot' }) });
-        mockRoleRepo.findMaxPositionByServerId.mockResolvedValue({ position: 1 });
-        mockRoleRepo.create.mockResolvedValue({ _id: new Types.ObjectId(), name: 'testbot', managed: true });
+        (User.findById as jest.Mock).mockReturnValue({
+            lean: () => ({ username: 'testbot' }),
+        });
+        mockRoleRepo.findMaxPositionByServerId.mockResolvedValue({
+            position: 1,
+        });
+        mockRoleRepo.create.mockResolvedValue({
+            _id: new Types.ObjectId(),
+            name: 'testbot',
+            managed: true,
+        });
         (ServerMember.create as jest.Mock).mockResolvedValue({});
 
-        const result = await controller.authorizeToServer(req, '0123456789abcdef0123456789abcdef', {
-            serverId: SERVER_ID,
-        });
+        const result = await controller.authorizeToServer(
+            req,
+            '0123456789abcdef0123456789abcdef',
+            {
+                serverId: SERVER_ID,
+            },
+        );
 
-        expect(result).toEqual({ serverId: SERVER_ID, serverName: 'Test Server' });
+        expect(result).toEqual({
+            serverId: SERVER_ID,
+            serverName: 'Test Server',
+        });
         expect(ServerMember.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 serverId: expect.any(Types.ObjectId),
@@ -419,9 +473,9 @@ describe('getBotServers', () => {
             }),
         );
 
-        await expect(controller.getBotServers(req, '0123456789abcdef0123456789abcdef')).rejects.toThrow(
-            ForbiddenException,
-        );
+        await expect(
+            controller.getBotServers(req, '0123456789abcdef0123456789abcdef'),
+        ).rejects.toThrow(ForbiddenException);
     });
 
     it('returns mapped server list for owner', async () => {
@@ -435,7 +489,10 @@ describe('getBotServers', () => {
         );
         (ServerMember.countDocuments as jest.Mock).mockResolvedValue(5);
 
-        const result = await controller.getBotServers(req, '0123456789abcdef0123456789abcdef');
+        const result = await controller.getBotServers(
+            req,
+            '0123456789abcdef0123456789abcdef',
+        );
         expect(result).toEqual({ count: 5 });
     });
 });

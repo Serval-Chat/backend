@@ -10,7 +10,6 @@ import { Reaction } from '@/models/Reaction';
 import { type FilterQuery, Types, ClientSession } from 'mongoose';
 import type { ReactionData } from '@/di/interfaces/IReactionRepository';
 
-
 type PopulatedServerMessageDoc = Omit<IServerMessage, 'repliedToMessageId'> & {
     repliedToMessageId?: Types.ObjectId | PopulatedServerMessageDoc;
 };
@@ -19,9 +18,7 @@ type PopulatedServerMessageDoc = Omit<IServerMessage, 'repliedToMessageId'> & {
 //
 // Implements IServerMessageRepository using Mongoose ServerMessage model
 @injectable()
-export class MongooseServerMessageRepository
-    implements IServerMessageRepository
-{
+export class MongooseServerMessageRepository implements IServerMessageRepository {
     private transformMessage(msg: PopulatedServerMessageDoc): IServerMessage {
         const transformed = { ...msg } as unknown as IServerMessage;
 
@@ -48,8 +45,13 @@ export class MongooseServerMessageRepository
 
         // Collect IDs of messages that still lack referenced_message but have replyToId
         const replyToIds = transformed
-            .filter((m) => m.referenced_message === undefined && m.replyToId !== undefined)
-            .map((m) => m.replyToId?.toString() ?? '').filter((id) => id !== '');
+            .filter(
+                (m) =>
+                    m.referenced_message === undefined &&
+                    m.replyToId !== undefined,
+            )
+            .map((m) => m.replyToId?.toString() ?? '')
+            .filter((id) => id !== '');
 
         // Skip legacy replyToId lookup if all messages are modern (populated via repliedToMessageId)
         if (replyToIds.length === 0) return transformed;
@@ -61,7 +63,10 @@ export class MongooseServerMessageRepository
         const replyMap = new Map(replyDocs.map((d) => [d._id.toString(), d]));
 
         return transformed.map((m) => {
-            if (m.referenced_message === undefined && m.replyToId !== undefined) {
+            if (
+                m.referenced_message === undefined &&
+                m.replyToId !== undefined
+            ) {
                 const ref = replyMap.get(m.replyToId.toString());
                 if (ref) {
                     return {
@@ -100,16 +105,20 @@ export class MongooseServerMessageRepository
             serverId: new Types.ObjectId(data.serverId),
             channelId: new Types.ObjectId(data.channelId),
             senderId: new Types.ObjectId(data.senderId),
-            replyToId: (data.replyToId !== undefined && data.replyToId !== '')
-                ? new Types.ObjectId(data.replyToId)
-                : undefined,
-            stickerId: (data.stickerId !== undefined && data.stickerId !== '')
-                ? new Types.ObjectId(data.stickerId)
-                : undefined,
+            replyToId:
+                data.replyToId !== undefined && data.replyToId !== ''
+                    ? new Types.ObjectId(data.replyToId)
+                    : undefined,
+            stickerId:
+                data.stickerId !== undefined && data.stickerId !== ''
+                    ? new Types.ObjectId(data.stickerId)
+                    : undefined,
         };
         const message = new ServerMessage(createData);
         const savedMessage = await message.save({ session });
-        return this.transformMessage(savedMessage.toObject() as unknown as PopulatedServerMessageDoc);
+        return this.transformMessage(
+            savedMessage.toObject() as unknown as PopulatedServerMessageDoc,
+        );
     }
 
     public async delete(id: Types.ObjectId): Promise<boolean> {
@@ -130,11 +139,14 @@ export class MongooseServerMessageRepository
         return result.deletedCount;
     }
 
-    public async bulkDelete(channelId: Types.ObjectId, ids: Types.ObjectId[]): Promise<number> {
+    public async bulkDelete(
+        channelId: Types.ObjectId,
+        ids: Types.ObjectId[],
+    ): Promise<number> {
         const result = await ServerMessage.updateMany(
-            { 
+            {
                 channelId: new Types.ObjectId(channelId.toString()),
-                _id: { $in: ids } 
+                _id: { $in: ids },
             },
             { $set: { deletedAt: new Date() } },
         );
@@ -253,7 +265,9 @@ export class MongooseServerMessageRepository
             }
 
             const docs = (await ServerMessage.find(query)
-                .sort({ createdAt: (after !== undefined && after !== '') ? 1 : -1 })
+                .sort({
+                    createdAt: after !== undefined && after !== '' ? 1 : -1,
+                })
                 .limit(limit)
                 .populate({
                     path: 'repliedToMessageId',
@@ -379,7 +393,10 @@ export class MongooseServerMessageRepository
         userId: Types.ObjectId,
         includeDeleted?: boolean,
     ): Promise<IServerMessage | null> {
-        const filter: FilterQuery<IServerMessage> = { channelId, senderId: userId };
+        const filter: FilterQuery<IServerMessage> = {
+            channelId,
+            senderId: userId,
+        };
         if (includeDeleted !== true) {
             filter.deletedAt = { $exists: false };
         }
@@ -455,7 +472,7 @@ export class MongooseServerMessageRepository
         if (days <= 0 || !Number.isFinite(days) || days > 10000) {
             return [];
         }
-        
+
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await ServerMessage.aggregate<{
             _id: number;

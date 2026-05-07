@@ -45,7 +45,10 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     }
 
     // Reset the unread count for a user from a peer to zero
-    public async reset(userId: Types.ObjectId, peerId: Types.ObjectId): Promise<void> {
+    public async reset(
+        userId: Types.ObjectId,
+        peerId: Types.ObjectId,
+    ): Promise<void> {
         await DmUnread.findOneAndUpdate(
             { user: userId, peer: peerId },
             { $set: { count: 0 } },

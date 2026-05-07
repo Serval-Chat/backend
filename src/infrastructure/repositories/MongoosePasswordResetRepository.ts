@@ -5,9 +5,7 @@ import { IPasswordReset, PasswordReset } from '@/models/PasswordReset';
 import { RateLimitError } from '@/utils/RateLimitError';
 
 @injectable()
-export class MongoosePasswordResetRepository
-    implements IPasswordResetRepository
-{
+export class MongoosePasswordResetRepository implements IPasswordResetRepository {
     private model: Model<IPasswordReset>;
 
     public constructor() {
@@ -33,7 +31,9 @@ export class MongoosePasswordResetRepository
         });
     }
 
-    public async markAsUsed(hashedToken: string): Promise<IPasswordReset | null> {
+    public async markAsUsed(
+        hashedToken: string,
+    ): Promise<IPasswordReset | null> {
         return this.model.findOneAndUpdate(
             {
                 hashedToken,

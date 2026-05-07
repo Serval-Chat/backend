@@ -13,11 +13,10 @@ export type WsErrorCode =
     | 'NOT_FOUND'
     | 'CONFLICT';
 
-export interface IWsErrorEvent<WSEDetails = unknown>
-    extends WsEvent<
-        'error',
-        {
-            code: WsErrorCode;
-            details?: WSEDetails;
-        }
-    > {}
+export interface IWsErrorEvent<WSEDetails = unknown> extends WsEvent<
+    'error',
+    {
+        code: WsErrorCode;
+        details?: WSEDetails;
+    }
+> {}

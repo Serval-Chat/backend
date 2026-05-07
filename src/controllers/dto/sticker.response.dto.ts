@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsMongoId, IsString, IsDate, IsOptional, MaxLength } from 'class-validator';
+import {
+    IsMongoId,
+    IsString,
+    IsDate,
+    IsOptional,
+    MaxLength,
+} from 'class-validator';
 
 export class StickerResponseDTO {
     @ApiProperty()

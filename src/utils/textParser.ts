@@ -28,7 +28,9 @@ export async function parseNotificationText(text: string): Promise<string> {
                 /<userid:'([^']+)'>/g,
                 (match, id) => {
                     const username = userMap.get(id);
-                    return (username !== undefined && username !== '') ? `@${username}` : '@Unknown';
+                    return username !== undefined && username !== ''
+                        ? `@${username}`
+                        : '@Unknown';
                 },
             );
         } catch {
@@ -55,7 +57,9 @@ export async function parseNotificationText(text: string): Promise<string> {
                 /<roleid:'([^']+)'>/g,
                 (match, id) => {
                     const roleName = roleMap.get(id);
-                    return (roleName !== undefined && roleName !== '') ? `@${roleName}` : '@UnknownRole';
+                    return roleName !== undefined && roleName !== ''
+                        ? `@${roleName}`
+                        : '@UnknownRole';
                 },
             );
         } catch {
@@ -65,7 +69,6 @@ export async function parseNotificationText(text: string): Promise<string> {
             );
         }
     }
-
 
     // replace <emoji:name:id>
     parsedText = parsedText.replace(/<emoji:([^:]+):?[^>]*>/g, ':$1:');

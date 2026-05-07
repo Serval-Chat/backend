@@ -1,7 +1,7 @@
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
-import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import type { AdminPermissions } from '@/permissions/AdminPermissions';
 
 // User interface
 //
@@ -208,7 +208,9 @@ schema.virtual('deleted').get(function () {
 // Returns the anonymized username if the user is soft-deleted,
 // Otherwise returns the real username
 schema.virtual('displayUsername').get(function () {
-    return this.deletedAt !== undefined && this.anonymizedUsername !== undefined && this.anonymizedUsername !== ''
+    return this.deletedAt !== undefined &&
+        this.anonymizedUsername !== undefined &&
+        this.anonymizedUsername !== ''
         ? this.anonymizedUsername
         : this.username;
 });

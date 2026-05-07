@@ -23,7 +23,9 @@ export class MongooseServerBanRepository implements IServerBanRepository {
         return await ServerBan.findOne({ serverId, userId }).lean();
     }
 
-    public async findByServerId(serverId: Types.ObjectId): Promise<IServerBan[]> {
+    public async findByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<IServerBan[]> {
         return await ServerBan.find({ serverId }).lean();
     }
 

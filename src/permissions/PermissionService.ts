@@ -35,7 +35,12 @@ function remapEveryoneOverrideKey(
     overrides: Map<string, Permissions> | undefined,
     everyoneRoleId: string | undefined,
 ): Map<string, Permissions> | undefined {
-    if (overrides === undefined || everyoneRoleId === undefined || everyoneRoleId === '') return overrides;
+    if (
+        overrides === undefined ||
+        everyoneRoleId === undefined ||
+        everyoneRoleId === ''
+    )
+        return overrides;
 
     const everyoneOverride = overrides.get('everyone');
     if (!everyoneOverride) return overrides;
@@ -184,7 +189,7 @@ export class PermissionService {
     ): Promise<Permissions> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return {};
-        
+
         const perms: Permissions = {};
         for (const key of PERMISSION_KEYS) {
             perms[key] = resolver.hasServerPermission(userId.toString(), key);

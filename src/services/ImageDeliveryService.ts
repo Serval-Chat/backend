@@ -163,6 +163,8 @@ export class ImageDeliveryService {
             '.webp': 'image/webp',
         };
         const mime = mimes[ext];
-        return (mime !== undefined && mime !== '') ? mime : 'application/octet-stream';
+        return mime !== undefined && mime !== ''
+            ? mime
+            : 'application/octet-stream';
     }
 }

@@ -44,7 +44,9 @@ export class MongooseEmojiRepository implements IEmojiRepository {
     }
 
     // Find emoji by ID with creator info populated
-    public async findByIdWithCreator(id: Types.ObjectId): Promise<IEmoji | null> {
+    public async findByIdWithCreator(
+        id: Types.ObjectId,
+    ): Promise<IEmoji | null> {
         return await Emoji.findById(id)
             .populate('createdBy', 'username')
             .lean();
@@ -57,7 +59,9 @@ export class MongooseEmojiRepository implements IEmojiRepository {
         return await Emoji.findOne({ serverId, name }).lean();
     }
 
-    public async findByServerIds(serverIds: Types.ObjectId[]): Promise<IEmoji[]> {
+    public async findByServerIds(
+        serverIds: Types.ObjectId[],
+    ): Promise<IEmoji[]> {
         return await Emoji.find({ serverId: { $in: serverIds } })
             .select('_id name imageUrl serverId createdBy createdAt')
             .sort({ name: 1 })

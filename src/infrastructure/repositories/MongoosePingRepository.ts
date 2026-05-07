@@ -3,8 +3,10 @@ import { injectable } from 'inversify';
 import { IPingRepository, IPing } from '@/di/interfaces/IPingRepository';
 import { Ping } from '@/models/Ping';
 import { type FilterQuery, Types } from 'mongoose';
-import { PingMentionMessageDTO, PingExportMessageDTO } from '@/controllers/dto/types.dto';
-
+import {
+    PingMentionMessageDTO,
+    PingExportMessageDTO,
+} from '@/controllers/dto/types.dto';
 
 // Mongoose Ping repository
 //
@@ -14,7 +16,7 @@ import { PingMentionMessageDTO, PingExportMessageDTO } from '@/controllers/dto/t
 @Injectable()
 export class MongoosePingRepository implements IPingRepository {
     public async findById(id: Types.ObjectId): Promise<IPing | null> {
-        return await Ping.findById(id).lean() as unknown as IPing | null;
+        return (await Ping.findById(id).lean()) as unknown as IPing | null;
     }
 
     public async findByUserId(
@@ -31,7 +33,9 @@ export class MongoosePingRepository implements IPingRepository {
             query.timestamp = { $gte: cutoffDate };
         }
 
-        return await Ping.find(query).sort({ timestamp: -1 }).lean() as unknown as IPing[];
+        return (await Ping.find(query)
+            .sort({ timestamp: -1 })
+            .lean()) as unknown as IPing[];
     }
 
     public async create(data: {

@@ -181,7 +181,6 @@ export class WsDispatcher {
             return metadata.id;
         }
 
-
         this.registerConnection(ws);
         const newMetadata = this.connectionMetadata.get(ws);
         return newMetadata?.id ?? 'unknown';
@@ -502,7 +501,9 @@ export class WsDispatcher {
 
         // Evict oldest entry if cache is full
         if (messageMap.size >= MAX_DEDUP_CACHE_SIZE) {
-            const firstKey = messageMap.keys().next().value as string | undefined;
+            const firstKey = messageMap.keys().next().value as
+                | string
+                | undefined;
             if (firstKey !== undefined) {
                 messageMap.delete(firstKey);
             }
@@ -544,10 +545,13 @@ export class WsDispatcher {
             }
             return count <= maxPoints;
         } catch (err) {
-            this.logger.error('[WsDispatcher] checkRateLimit failed, falling back to restrictive in-memory limit:', err);
+            this.logger.error(
+                '[WsDispatcher] checkRateLimit failed, falling back to restrictive in-memory limit:',
+                err,
+            );
 
             wsRateLimitRedisFailuresCounter.inc();
-            
+
             const now = Date.now();
             let entry = this.rateLimitCache.get(key);
             if (!entry || now > entry.resetAt) {
@@ -555,7 +559,7 @@ export class WsDispatcher {
             }
             entry.points += 1;
             this.rateLimitCache.set(key, entry);
-            
+
             const fallbackPoints = Math.max(1, Math.floor(maxPoints / 2));
             return entry.points <= fallbackPoints;
         }

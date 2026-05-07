@@ -1,5 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AdminServerOwnerDTO, AdminServerBannerDTO } from './admin-servers.response.dto';
+import {
+    AdminServerOwnerDTO,
+    AdminServerBannerDTO,
+} from './admin-servers.response.dto';
 
 export class AdminChannelShortDTO {
     @ApiProperty()

@@ -55,4 +55,5 @@ export const TYPES = {
     WsDispatcher: Symbol.for('WsDispatcher'),
     WsController: Symbol.for('WsController'),
     PresenceController: Symbol.for('PresenceController'),
+    RegistrationInviteService: Symbol.for('RegistrationInviteService'),
 };

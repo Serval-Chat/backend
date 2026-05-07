@@ -29,7 +29,9 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .lean();
     }
 
-    public async findByServerId(serverId: Types.ObjectId): Promise<IServerMember[]> {
+    public async findByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<IServerMember[]> {
         return await this.serverMemberModel.find({ serverId }).lean();
     }
 
@@ -91,11 +93,15 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return !!member;
     }
 
-    public async findAllByUserId(userId: Types.ObjectId): Promise<IServerMember[]> {
+    public async findAllByUserId(
+        userId: Types.ObjectId,
+    ): Promise<IServerMember[]> {
         return await this.serverMemberModel.find({ userId }).lean();
     }
 
-    public async findByUserId(userId: Types.ObjectId): Promise<IServerMember[]> {
+    public async findByUserId(
+        userId: Types.ObjectId,
+    ): Promise<IServerMember[]> {
         return await this.findAllByUserId(userId);
     }
 

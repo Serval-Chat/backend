@@ -347,7 +347,10 @@ container
 
 container.bind<EmojiController>(EmojiController).toSelf().inTransientScope();
 
-container.bind<StickerController>(StickerController).toSelf().inTransientScope();
+container
+    .bind<StickerController>(StickerController)
+    .toSelf()
+    .inTransientScope();
 
 container
     .bind<ReactionController>(ReactionController)

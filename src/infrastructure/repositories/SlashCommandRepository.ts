@@ -8,11 +8,20 @@ import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepos
 @injectable()
 @Injectable()
 export class SlashCommandRepository implements ISlashCommandRepository {
-    public async create(data: { botId: Types.ObjectId; name: string; description: string; options?: ISlashCommandOption[]; shouldReply?: boolean }): Promise<ISlashCommand> {
+    public async create(data: {
+        botId: Types.ObjectId;
+        name: string;
+        description: string;
+        options?: ISlashCommandOption[];
+        shouldReply?: boolean;
+    }): Promise<ISlashCommand> {
         return SlashCommand.create(data);
     }
 
-    public async update(id: Types.ObjectId, data: Partial<ISlashCommand>): Promise<ISlashCommand | null> {
+    public async update(
+        id: Types.ObjectId,
+        data: Partial<ISlashCommand>,
+    ): Promise<ISlashCommand | null> {
         return SlashCommand.findByIdAndUpdate(id, data, { new: true }).exec();
     }
 
@@ -38,7 +47,13 @@ export class SlashCommandRepository implements ISlashCommandRepository {
         return result.deletedCount;
     }
 
-    public async findByNameAndBotIds(name: string, botIds: Types.ObjectId[]): Promise<ISlashCommand | null> {
-        return SlashCommand.findOne({ botId: { $in: botIds }, name: name.toLowerCase() }).exec();
+    public async findByNameAndBotIds(
+        name: string,
+        botIds: Types.ObjectId[],
+    ): Promise<ISlashCommand | null> {
+        return SlashCommand.findOne({
+            botId: { $in: botIds },
+            name: name.toLowerCase(),
+        }).exec();
     }
 }

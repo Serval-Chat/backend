@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, ValidateNested, IsArray, MaxLength } from 'class-validator';
+import {
+    IsString,
+    IsOptional,
+    IsBoolean,
+    ValidateNested,
+    IsArray,
+    MaxLength,
+} from 'class-validator';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
 import { Type } from 'class-transformer';
 import { SlashCommandOptionDTO } from './application.request.dto';

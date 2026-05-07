@@ -3,8 +3,6 @@ import type { IEmbed } from '@/models/Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { ReactionData } from './IReactionRepository';
 
-
-
 // Server Message interface (domain model)
 //
 // Represents a message sent within a server channel
@@ -67,8 +65,11 @@ export interface IServerMessageRepository {
     deleteByServerId(serverId: Types.ObjectId): Promise<number>;
 
     deleteByChannelId(channelId: Types.ObjectId): Promise<number>;
-    
-    bulkDelete(channelId: Types.ObjectId, ids: Types.ObjectId[]): Promise<number>;
+
+    bulkDelete(
+        channelId: Types.ObjectId,
+        ids: Types.ObjectId[],
+    ): Promise<number>;
 
     findById(
         id: Types.ObjectId,

@@ -94,7 +94,7 @@ export class ServerController {
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
         @inject(TYPES.RedisService) private redisService: IRedisService,
-    ) { }
+    ) {}
 
     @postConstruct()
     public setupEventListeners() {
@@ -161,7 +161,6 @@ export class ServerController {
             redis.del(`user_voice:${userId}`),
         ]);
 
-
         this.wsServer.broadcastToServer(serverId, {
             type: 'user_left_voice',
             payload: { serverId, channelId, userId },
@@ -208,7 +207,6 @@ export class ServerController {
         const { serverId } = payload;
         const userId = authenticatedUser.userId;
 
-
         const serverOid = new mongoose.Types.ObjectId(serverId);
         const userOid = new mongoose.Types.ObjectId(userId);
 
@@ -217,12 +215,11 @@ export class ServerController {
             this.serverRepo.findById(serverOid),
         ]);
 
-        const isOwner = (server?.ownerId) && server.ownerId.toString() === userId;
+        const isOwner = server?.ownerId && server.ownerId.toString() === userId;
 
         if (member === null && isOwner === false) {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
-
 
         this.wsServer.subscribeToServer(ws, serverId);
         logger.debug(
@@ -250,7 +247,11 @@ export class ServerController {
                     if (parts.length === 3) {
                         const [, , channelId] = parts;
                         const members = await redisClient.smembers(key);
-                        if (members.length > 0 && channelId !== undefined && channelId !== '') {
+                        if (
+                            members.length > 0 &&
+                            channelId !== undefined &&
+                            channelId !== ''
+                        ) {
                             voiceStates[channelId] = members;
                         }
                     }
@@ -308,7 +309,6 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -316,7 +316,6 @@ export class ServerController {
         if (!member) {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
-
 
         const channel = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
@@ -370,7 +369,6 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -415,7 +413,12 @@ export class ServerController {
             existingVoiceRoom !== `${serverId}:${channelId}`
         ) {
             const [oldServerId, oldChannelId] = existingVoiceRoom.split(':');
-            if (oldServerId !== undefined && oldServerId !== '' && oldChannelId !== undefined && oldChannelId !== '') {
+            if (
+                oldServerId !== undefined &&
+                oldServerId !== '' &&
+                oldChannelId !== undefined &&
+                oldChannelId !== ''
+            ) {
                 await this._internalLeaveVoice(
                     userId,
                     oldServerId,
@@ -550,7 +553,6 @@ export class ServerController {
         const { serverId, channelId, text, replyToId, stickerId } = payload;
         const userId = authenticatedUser.userId;
 
-
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -558,7 +560,6 @@ export class ServerController {
         if (!member) {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
-
 
         const channel = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
@@ -580,7 +581,6 @@ export class ServerController {
                 'FORBIDDEN: No permission to send messages in this channel',
             );
         }
-
 
         if (channel !== null && (channel.slowMode ?? 0) > 0) {
             const hasBypass = await this.permissionService.hasChannelPermission(
@@ -616,13 +616,11 @@ export class ServerController {
             }
         }
 
-
         const {
             userIds: mentionedUserIds,
             roleIds: mentionedRoleIds,
             everyone: mentionedEveryone,
         } = this.parseMentions(text ?? '');
-
 
         if (mentionedEveryone) {
             const canPingEveryone = await this.permissionService.hasPermission(
@@ -635,7 +633,6 @@ export class ServerController {
             }
         }
 
-
         if (mentionedRoleIds.length > 0) {
             const canPingRoles = await this.permissionService.hasPermission(
                 new mongoose.Types.ObjectId(serverId),
@@ -647,7 +644,6 @@ export class ServerController {
             }
         }
 
-
         const created = await this.transactionManager.runInTransaction(
             async (session) => {
                 const msg = await this.serverMessageRepo.create(
@@ -658,15 +654,17 @@ export class ServerController {
                         text: text ?? '',
                         ...(replyToId !== undefined && replyToId !== ''
                             ? {
-                                replyToId: new mongoose.Types.ObjectId(
-                                    replyToId,
-                                ),
-                            }
+                                  replyToId: new mongoose.Types.ObjectId(
+                                      replyToId,
+                                  ),
+                              }
                             : {}),
                         ...(stickerId !== undefined && stickerId !== ''
                             ? {
-                                stickerId: new mongoose.Types.ObjectId(stickerId),
-                            }
+                                  stickerId: new mongoose.Types.ObjectId(
+                                      stickerId,
+                                  ),
+                              }
                             : {}),
                     },
                     session,
@@ -699,8 +697,7 @@ export class ServerController {
             senderId: userId,
             senderUsername: authenticatedUser.username,
             text: created.text,
-            createdAt:
-                created.createdAt.toISOString(),
+            createdAt: created.createdAt.toISOString(),
             replyToId: created.replyToId?.toString(),
             repliedTo: undefined,
             isEdited: false,
@@ -758,8 +755,7 @@ export class ServerController {
                 payload: {
                     serverId,
                     channelId,
-                    lastMessageAt:
-                        created.createdAt.toISOString(),
+                    lastMessageAt: created.createdAt.toISOString(),
                     senderId: userId,
                 },
             },
@@ -825,8 +821,7 @@ export class ServerController {
             channelId,
             senderId: userId,
             text: created.text,
-            createdAt:
-                created.createdAt.toISOString(),
+            createdAt: created.createdAt.toISOString(),
             replyToId: created.replyToId?.toString(),
             slowModeNextMessageAllowedAt,
             stickerId: created.stickerId?.toString(),
@@ -860,11 +855,9 @@ export class ServerController {
             throw new Error('NOT_FOUND: Message not found');
         }
 
-
         if (message.senderId.toString() !== userId) {
             throw new Error('FORBIDDEN: Can only edit your own messages');
         }
-
 
         const updated = await this.serverMessageRepo.update(
             new mongoose.Types.ObjectId(messageId),
@@ -881,7 +874,6 @@ export class ServerController {
         logger.info(
             `[ServerController] Server message ${messageId} edited by ${userId}`,
         );
-
 
         const broadcastPayload: IMessageServerEditedEvent['payload'] = {
             messageId,
@@ -968,7 +960,6 @@ export class ServerController {
             throw new Error('FORBIDDEN: No permission to delete this message');
         }
 
-
         await this.serverMessageRepo.delete(
             new mongoose.Types.ObjectId(messageId),
         );
@@ -976,7 +967,6 @@ export class ServerController {
         logger.info(
             `[ServerController] Server message ${messageId} deleted by ${userId}`,
         );
-
 
         this.wsServer.broadcastToChannel(
             message.channelId.toString(),
@@ -1033,7 +1023,6 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -1041,7 +1030,6 @@ export class ServerController {
         if (!member) {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
-
 
         const updatedRead = await this.serverChannelReadRepo.upsert(
             new mongoose.Types.ObjectId(serverId),
@@ -1052,7 +1040,6 @@ export class ServerController {
         logger.debug(
             `[ServerController] User ${userId} marked channel ${channelId} as read`,
         );
-
 
         const unreadPayload: IChannelUnreadUpdatedEvent['payload'] = {
             serverId,
@@ -1082,7 +1069,8 @@ export class ServerController {
             if (lastMessageAt === undefined) return false;
             const lastReadAt = readMap.get(ch._id.toString());
             return (
-                lastReadAt === undefined || new Date(lastMessageAt) > new Date(lastReadAt)
+                lastReadAt === undefined ||
+                new Date(lastMessageAt) > new Date(lastReadAt)
             );
         });
         this.wsServer.broadcastToUser(userId, {
@@ -1112,7 +1100,6 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-
         const canSend = await this.permissionService.hasChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -1122,7 +1109,6 @@ export class ServerController {
         if (canSend !== true) {
             return; // Silently ignore
         }
-
 
         const typingPayload: ITypingServerBroadcastEvent['payload'] = {
             channelId,
@@ -1254,7 +1240,8 @@ export class ServerController {
             const mentionedUser = await this.userRepo.findById(
                 new mongoose.Types.ObjectId(mentionedUserId),
             );
-            if (!mentionedUser || mentionedUser.username === undefined) continue;
+            if (!mentionedUser || mentionedUser.username === undefined)
+                continue;
 
             // Check if mentioned user is a member
             const mentionedMember =

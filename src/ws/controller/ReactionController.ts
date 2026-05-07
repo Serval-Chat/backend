@@ -160,7 +160,9 @@ export class ReactionController {
                             receiverUsername:
                                 receiver.username ?? 'Unknown User',
                             text: message.text,
-                            createdAt: (message.createdAt ?? new Date()).toISOString(),
+                            createdAt: (
+                                message.createdAt ?? new Date()
+                            ).toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited ?? false,
                         },

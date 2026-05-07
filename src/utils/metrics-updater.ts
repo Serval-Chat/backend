@@ -28,6 +28,8 @@ export function startMetricsUpdater(
     intervalMs: number = defaultUpdateInterval,
 ) {
     void updateDatabaseMetrics();
-    setInterval(() => { void updateDatabaseMetrics(); }, intervalMs).unref();
+    setInterval(() => {
+        void updateDatabaseMetrics();
+    }, intervalMs).unref();
     logger.info(`Metrics updater started (interval: ${intervalMs}ms)`);
 }

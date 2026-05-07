@@ -54,9 +54,14 @@ describe('ServerMessageController embeds', () => {
             mockServerRepo as never,
         );
 
-        mockServerRepo.findById.mockResolvedValue({ _id: new Types.ObjectId(serverId), ownerId: new Types.ObjectId() });
+        mockServerRepo.findById.mockResolvedValue({
+            _id: new Types.ObjectId(serverId),
+            ownerId: new Types.ObjectId(),
+        });
 
-        mockServerMemberRepo.findByServerAndUser.mockResolvedValue({ _id: 'm1' });
+        mockServerMemberRepo.findByServerAndUser.mockResolvedValue({
+            _id: 'm1',
+        });
         mockPermissionService.hasChannelPermission.mockResolvedValue(true);
         mockChannelRepo.findById.mockResolvedValue({
             _id: channelId,

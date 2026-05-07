@@ -19,12 +19,15 @@ export interface ISlashCommand extends Document {
     updatedAt: Date;
 }
 
-const optionSchema = new Schema<ISlashCommandOption>({
-    type: { type: Number, required: true },
-    name: { type: String, required: true },
-    description: { type: String, required: true },
-    required: { type: Boolean, default: false },
-}, { _id: false });
+const optionSchema = new Schema<ISlashCommandOption>(
+    {
+        type: { type: Number, required: true },
+        name: { type: String, required: true },
+        description: { type: String, required: true },
+        required: { type: Boolean, default: false },
+    },
+    { _id: false },
+);
 
 const schema = new Schema<ISlashCommand>(
     {

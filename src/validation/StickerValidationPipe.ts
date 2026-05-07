@@ -1,8 +1,4 @@
-import {
-    Injectable,
-    PipeTransform,
-    BadRequestException,
-} from '@nestjs/common';
+import { Injectable, PipeTransform, BadRequestException } from '@nestjs/common';
 import { ErrorMessages } from '@/constants/errorMessages';
 import {
     STICKER_MAX_WIDTH,
@@ -16,8 +12,13 @@ import { getImageMetadata } from '@/utils/imageProcessing';
 import { Express } from 'express';
 
 @Injectable()
-export class StickerValidationPipe implements PipeTransform<Express.Multer.File | undefined, Promise<Express.Multer.File>> {
-    public async transform(value: Express.Multer.File | undefined): Promise<Express.Multer.File> {
+export class StickerValidationPipe implements PipeTransform<
+    Express.Multer.File | undefined,
+    Promise<Express.Multer.File>
+> {
+    public async transform(
+        value: Express.Multer.File | undefined,
+    ): Promise<Express.Multer.File> {
         if (value === undefined) {
             throw new BadRequestException(ErrorMessages.STICKER.FILE_REQUIRED);
         }
@@ -27,13 +28,14 @@ export class StickerValidationPipe implements PipeTransform<Express.Multer.File 
         }
 
         if (!SUPPORTED_STICKER_MIMETYPES.includes(value.mimetype)) {
-            throw new BadRequestException(`File must be one of: ${SUPPORTED_STICKER_MIMETYPES.join(', ')}`);
+            throw new BadRequestException(
+                `File must be one of: ${SUPPORTED_STICKER_MIMETYPES.join(', ')}`,
+            );
         }
 
         const input = value.path || value.buffer;
         try {
             const metadata = await getImageMetadata(input);
-
 
             const width = metadata.width || 0;
             const height = metadata.height || 0;
@@ -44,7 +46,9 @@ export class StickerValidationPipe implements PipeTransform<Express.Multer.File 
                 width < STICKER_MIN_WIDTH ||
                 height < STICKER_MIN_HEIGHT
             ) {
-                throw new BadRequestException(ErrorMessages.STICKER.INVALID_DIMENSIONS);
+                throw new BadRequestException(
+                    ErrorMessages.STICKER.INVALID_DIMENSIONS,
+                );
             }
         } catch (error) {
             if (error instanceof BadRequestException) {

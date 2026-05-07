@@ -40,7 +40,9 @@ export function send(
     const envelope = createEnvelope(event, replyTo);
     ws.send(JSON.stringify(envelope), (err) => {
         if (err) {
-            logger.warn(`[WsServer] Send failed for event '${event.type}': ${err.message}`);
+            logger.warn(
+                `[WsServer] Send failed for event '${event.type}': ${err.message}`,
+            );
         }
     });
 }
@@ -63,7 +65,9 @@ export function sendToMany(
         if (ws.readyState === ws.OPEN) {
             ws.send(message, (err) => {
                 if (err) {
-                    logger.warn(`[WsServer] sendToMany failed for event '${event.type}': ${err.message}`);
+                    logger.warn(
+                        `[WsServer] sendToMany failed for event '${event.type}': ${err.message}`,
+                    );
                 }
             });
         }

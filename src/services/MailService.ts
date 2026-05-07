@@ -25,7 +25,8 @@ export class MailService implements IMailService, OnModuleInit {
         private config?: { skipSending?: boolean },
     ) {
         const shouldSkip =
-            this.config?.skipSending === true || process.env.NODE_ENV === 'test';
+            this.config?.skipSending === true ||
+            process.env.NODE_ENV === 'test';
 
         if (MAILGUN_API_KEY !== '' && MAILGUN_DOMAIN !== '' && !shouldSkip) {
             const mailgun = new Mailgun(FormData);
@@ -87,9 +88,11 @@ export class MailService implements IMailService, OnModuleInit {
 
         try {
             const TEMPLATE_DIR =
-                (process.env.TEMPLATE_DIR !== undefined && process.env.TEMPLATE_DIR !== '') ? process.env.TEMPLATE_DIR :
-                path.join(process.cwd(), 'templates');
-            
+                process.env.TEMPLATE_DIR !== undefined &&
+                process.env.TEMPLATE_DIR !== ''
+                    ? process.env.TEMPLATE_DIR
+                    : path.join(process.cwd(), 'templates');
+
             const resolvedDir = path.resolve(TEMPLATE_DIR);
             const templatePath = path.join(
                 TEMPLATE_DIR,
@@ -98,7 +101,9 @@ export class MailService implements IMailService, OnModuleInit {
             const resolvedPath = path.resolve(templatePath);
 
             if (!resolvedPath.startsWith(resolvedDir)) {
-                throw new Error(`Template path traversal detected: ${templateName}`);
+                throw new Error(
+                    `Template path traversal detected: ${templateName}`,
+                );
             }
 
             let template = await fs.readFile(templatePath, 'utf-8');

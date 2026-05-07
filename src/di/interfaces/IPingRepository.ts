@@ -1,6 +1,8 @@
 import type { Types } from 'mongoose';
-import type { PingMentionMessageDTO, PingExportMessageDTO } from '@/controllers/dto/types.dto';
-
+import type {
+    PingMentionMessageDTO,
+    PingExportMessageDTO,
+} from '@/controllers/dto/types.dto';
 
 // Ping interface (domain model)
 //

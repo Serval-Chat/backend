@@ -165,9 +165,10 @@ export class ServerInviteController {
             code = crypto.randomBytes(4).toString('hex');
         }
 
-        const expiresAt = (expiresIn !== undefined && expiresIn !== 0)
-            ? new Date(Date.now() + expiresIn * 1000)
-            : undefined;
+        const expiresAt =
+            expiresIn !== undefined && expiresIn !== 0
+                ? new Date(Date.now() + expiresIn * 1000)
+                : undefined;
 
         const invite = await this.inviteRepo.create({
             serverId: serverOid,
@@ -197,8 +198,8 @@ export class ServerInviteController {
                 code: invite.code,
                 maxUses: invite.maxUses ?? null,
                 expiresAt: invite.expiresAt ?? null,
-                senderId: userId
-            }
+                senderId: userId,
+            },
         });
 
         return invite;
@@ -261,8 +262,8 @@ export class ServerInviteController {
             payload: {
                 serverId,
                 code: invite.code,
-                senderId: userId
-            }
+                senderId: userId,
+            },
         });
 
         return { message: 'Invite deleted' };
@@ -285,7 +286,10 @@ export class ServerInviteController {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        if (invite.expiresAt !== undefined && new Date(invite.expiresAt) < new Date()) {
+        if (
+            invite.expiresAt !== undefined &&
+            new Date(invite.expiresAt) < new Date()
+        ) {
             throw new HttpException(
                 ErrorMessages.INVITE.EXPIRED,
                 HttpStatus.GONE,
@@ -316,7 +320,10 @@ export class ServerInviteController {
         );
 
         return {
-            code: (invite.customPath !== undefined && invite.customPath !== '') ? invite.customPath : invite.code,
+            code:
+                invite.customPath !== undefined && invite.customPath !== ''
+                    ? invite.customPath
+                    : invite.code,
             expiresAt: invite.expiresAt,
             maxUses: invite.maxUses,
             uses: invite.uses,
@@ -355,7 +362,10 @@ export class ServerInviteController {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        if (invite.expiresAt !== undefined && new Date(invite.expiresAt) < new Date()) {
+        if (
+            invite.expiresAt !== undefined &&
+            new Date(invite.expiresAt) < new Date()
+        ) {
             throw new HttpException(
                 ErrorMessages.INVITE.EXPIRED,
                 HttpStatus.GONE,
@@ -419,7 +429,8 @@ export class ServerInviteController {
         this.permissionService.invalidateCache(serverOid);
 
         const user = await this.userRepo.findById(userOid);
-        const username = user !== null ? (user.username ?? 'Unknown') : 'Unknown';
+        const username =
+            user !== null ? (user.username ?? 'Unknown') : 'Unknown';
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_added',

@@ -30,7 +30,9 @@ describe('ApplicationController', () => {
     });
 
     it('rejects getMyCommands when token does not belong to bot', async () => {
-        (Bot.findOne as jest.Mock).mockReturnValue({ lean: jest.fn().mockResolvedValue(null) });
+        (Bot.findOne as jest.Mock).mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null),
+        });
 
         await expect(controller.getMyCommands(req)).rejects.toThrow(
             ForbiddenException,
@@ -40,7 +42,9 @@ describe('ApplicationController', () => {
     it('setMyCommands lowercases names and overwrites existing commands', async () => {
         const botId = new Types.ObjectId();
         (Bot.findOne as jest.Mock).mockReturnValue({
-            lean: jest.fn().mockResolvedValue({ _id: botId, userId: req.user.id }),
+            lean: jest
+                .fn()
+                .mockResolvedValue({ _id: botId, userId: req.user.id }),
         });
         slashCommandRepo.create.mockResolvedValue({ _id: 'cmd-1' });
 

@@ -80,7 +80,7 @@ export class ServerMemberController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
-    ) { }
+    ) {}
 
     @Get('members')
     @ApiOperation({ summary: 'Get all server members' })
@@ -436,7 +436,10 @@ export class ServerMemberController {
         await this.serverBanRepo.create({
             serverId: serverOid,
             userId: targetOid,
-            reason: (reason !== undefined && reason !== '') ? reason : 'No reason provided',
+            reason:
+                reason !== undefined && reason !== ''
+                    ? reason
+                    : 'No reason provided',
             bannedBy: currentOid,
         });
 
@@ -520,9 +523,10 @@ export class ServerMemberController {
             );
         }
 
-        const until = (duration !== undefined && duration > 0) 
-            ? new Date(Date.now() + duration * 1000) 
-            : null;
+        const until =
+            duration !== undefined && duration > 0
+                ? new Date(Date.now() + duration * 1000)
+                : null;
 
         const updatedMember = await this.serverMemberRepo.setTimeout(
             serverOid,
@@ -550,16 +554,19 @@ export class ServerMemberController {
             targetId: targetOid,
             targetType: 'user',
             targetUserId: targetOid,
-            reason: (reason !== undefined && reason !== '') ? reason : 'No reason provided',
+            reason:
+                reason !== undefined && reason !== ''
+                    ? reason
+                    : 'No reason provided',
             metadata: {
                 durationSeconds: duration,
                 until: until ? until.toISOString() : undefined,
             },
         });
 
-        return { 
-            message: until ? 'Member timed out' : 'Timeout removed', 
-            communicationDisabledUntil: until ? until.toISOString() : null 
+        return {
+            message: until ? 'Member timed out' : 'Timeout removed',
+            communicationDisabledUntil: until ? until.toISOString() : null,
         };
     }
 
@@ -690,15 +697,27 @@ export class ServerMemberController {
         const isOwner = server !== null && server.ownerId.equals(currentOid);
 
         if (isOwner !== true) {
-            const currentUserHighest = await this.permissionService.getHighestRolePosition(serverOid, currentOid);
-            const targetHighest = await this.permissionService.getHighestRolePosition(serverOid, targetOid);
+            const currentUserHighest =
+                await this.permissionService.getHighestRolePosition(
+                    serverOid,
+                    currentOid,
+                );
+            const targetHighest =
+                await this.permissionService.getHighestRolePosition(
+                    serverOid,
+                    targetOid,
+                );
 
             if (currentUserHighest <= targetHighest) {
-                throw new ForbiddenException('You cannot manage roles for a member with a role equal to or higher than your own');
+                throw new ForbiddenException(
+                    'You cannot manage roles for a member with a role equal to or higher than your own',
+                );
             }
 
             if (currentUserHighest <= role.position) {
-                throw new ForbiddenException('You cannot assign a role equal to or higher than your own highest role');
+                throw new ForbiddenException(
+                    'You cannot assign a role equal to or higher than your own highest role',
+                );
             }
         }
 
@@ -781,22 +800,36 @@ export class ServerMemberController {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
         if (role.managed === true) {
-            throw new ForbiddenException('Cannot remove a managed role from a member');
+            throw new ForbiddenException(
+                'Cannot remove a managed role from a member',
+            );
         }
 
         const server = await this.serverRepo.findById(serverOid);
         const isOwner = server !== null && server.ownerId.equals(currentOid);
 
         if (isOwner !== true) {
-            const currentUserHighest = await this.permissionService.getHighestRolePosition(serverOid, currentOid);
-            const targetHighest = await this.permissionService.getHighestRolePosition(serverOid, targetOid);
+            const currentUserHighest =
+                await this.permissionService.getHighestRolePosition(
+                    serverOid,
+                    currentOid,
+                );
+            const targetHighest =
+                await this.permissionService.getHighestRolePosition(
+                    serverOid,
+                    targetOid,
+                );
 
             if (currentUserHighest <= targetHighest) {
-                throw new ForbiddenException('You cannot manage roles for a member with a role equal to or higher than your own');
+                throw new ForbiddenException(
+                    'You cannot manage roles for a member with a role equal to or higher than your own',
+                );
             }
 
             if (currentUserHighest <= role.position) {
-                throw new ForbiddenException('You cannot remove a role equal to or higher than your own highest role');
+                throw new ForbiddenException(
+                    'You cannot remove a role equal to or higher than your own highest role',
+                );
             }
         }
 
@@ -816,8 +849,6 @@ export class ServerMemberController {
                 member: updatedMember,
             },
         });
-
-
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverOid,
@@ -895,21 +926,29 @@ export class ServerMemberController {
         return { message: 'Ownership transferred' };
     }
 
-    private async cleanupManagedRole(serverId: Types.ObjectId, userId: Types.ObjectId) {
+    private async cleanupManagedRole(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+    ) {
         try {
             const bot = await Bot.findOne({ userId }).lean();
             if (bot) {
                 const managedRole = await Role.findOne({
                     serverId,
                     managed: true,
-                    managedBotId: bot._id
+                    managedBotId: bot._id,
                 }).lean();
 
                 if (managedRole) {
-                    await this.roleRepo.delete(managedRole._id as Types.ObjectId);
+                    await this.roleRepo.delete(
+                        managedRole._id as Types.ObjectId,
+                    );
                     this.wsServer.broadcastToServer(serverId.toString(), {
                         type: 'role_deleted',
-                        payload: { serverId: serverId.toString(), roleId: managedRole._id.toString() },
+                        payload: {
+                            serverId: serverId.toString(),
+                            roleId: managedRole._id.toString(),
+                        },
                     });
                 }
             }

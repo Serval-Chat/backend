@@ -3,7 +3,6 @@ import type { IEmbed } from '@/models/Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { Permissions } from '@/permissions/types';
 
-
 // ============================================================================
 // Direct Message Events
 // ============================================================================
@@ -12,39 +11,37 @@ import type { Permissions } from '@/permissions/types';
  * Client → Server
  * Send a direct message to another user.
  */
-export interface ISendMessageDmEvent
-    extends WsEvent<
-        'send_message_dm',
-        {
-            receiverId: string; // User ID (ObjectId as string)
-            text?: string; // Message content
-            replyToId?: string; // Optional: Message ID being replied to
-            stickerId?: string;
-        }
-    > { }
+export interface ISendMessageDmEvent extends WsEvent<
+    'send_message_dm',
+    {
+        receiverId: string; // User ID (ObjectId as string)
+        text?: string; // Message content
+        replyToId?: string; // Optional: Message ID being replied to
+        stickerId?: string;
+    }
+> {}
 
 /**
  * Server → Client (Response to send_message_dm)
  * Confirms message was sent and saved.
  */
-export interface IMessageDmSentEvent
-    extends WsEvent<
-        'message_dm_sent',
-        {
+export interface IMessageDmSentEvent extends WsEvent<
+    'message_dm_sent',
+    {
+        messageId: string;
+        senderId: string;
+        receiverId: string;
+        text: string;
+        createdAt: string; // ISO 8601 timestamp
+        replyToId?: string;
+        repliedTo?: {
             messageId: string;
             senderId: string;
-            receiverId: string;
             text: string;
-            createdAt: string; // ISO 8601 timestamp
-            replyToId?: string;
-            repliedTo?: {
-                messageId: string;
-                senderId: string;
-                text: string;
-            };
-            stickerId?: string;
-        }
-    > { }
+        };
+        stickerId?: string;
+    }
+> {}
 
 export interface IMessageDm {
     messageId: string;
@@ -69,110 +66,102 @@ export interface IMessageDm {
  * Server → Client (Broadcast)
  * New DM received or sent (broadcast to both sender and receiver sessions).
  */
-export interface IMessageDmEvent extends WsEvent<'message_dm', IMessageDm> { }
+export interface IMessageDmEvent extends WsEvent<'message_dm', IMessageDm> {}
 
 /**
  * Client → Server
  * Edit an existing direct message.
  */
-export interface IEditMessageDmEvent
-    extends WsEvent<
-        'edit_message_dm',
-        {
-            messageId: string;
-            text: string;
-        }
-    > { }
+export interface IEditMessageDmEvent extends WsEvent<
+    'edit_message_dm',
+    {
+        messageId: string;
+        text: string;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast)
  * DM was edited.
  */
-export interface IMessageDmEditedEvent
-    extends WsEvent<
-        'message_dm_edited',
-        {
-            messageId: string;
-            text: string;
-            editedAt: string;
-            isEdited: true;
-        }
-    > { }
+export interface IMessageDmEditedEvent extends WsEvent<
+    'message_dm_edited',
+    {
+        messageId: string;
+        text: string;
+        editedAt: string;
+        isEdited: true;
+    }
+> {}
 
 /**
  * Client → Server
  * Delete a direct message.
  */
-export interface IDeleteMessageDmEvent
-    extends WsEvent<
-        'delete_message_dm',
-        {
-            messageId: string;
-        }
-    > { }
+export interface IDeleteMessageDmEvent extends WsEvent<
+    'delete_message_dm',
+    {
+        messageId: string;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast)
  * DM was deleted.
  */
-export interface IMessageDmDeletedEvent
-    extends WsEvent<
-        'message_dm_deleted',
-        {
-            messageId: string;
-        }
-    > { }
+export interface IMessageDmDeletedEvent extends WsEvent<
+    'message_dm_deleted',
+    {
+        messageId: string;
+    }
+> {}
 
 /**
  * Client → Server
  * Mark a DM conversation as read.
  */
-export interface IMarkDmReadEvent
-    extends WsEvent<
-        'mark_dm_read',
-        {
-            peerId: string; // User ID of conversation partner
-        }
-    > { }
+export interface IMarkDmReadEvent extends WsEvent<
+    'mark_dm_read',
+    {
+        peerId: string; // User ID of conversation partner
+    }
+> {}
 
 /**
  * Server → Client (Broadcast to user's sessions)
  * Unread count for a DM conversation updated.
  */
-export interface IDmUnreadUpdatedEvent
-    extends WsEvent<
-        'dm_unread_updated',
-        {
-            peerId: string;
-            peerUsername: string;
-            count: number; // New unread count
-        }
-    > { }
+export interface IDmUnreadUpdatedEvent extends WsEvent<
+    'dm_unread_updated',
+    {
+        peerId: string;
+        peerUsername: string;
+        count: number; // New unread count
+    }
+> {}
 
 /**
  * Client → Server
  * Indicate typing in a DM conversation.
  */
-export interface ITypingDmEvent
-    extends WsEvent<
-        'typing_dm',
-        {
-            receiverId: string;
-        }
-    > { }
+export interface ITypingDmEvent extends WsEvent<
+    'typing_dm',
+    {
+        receiverId: string;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast to receiver)
  * User is typing in DM.
  */
-export interface ITypingDmBroadcastEvent
-    extends WsEvent<
-        'typing_dm',
-        {
-            senderId: string;
-            senderUsername: string;
-        }
-    > { }
+export interface ITypingDmBroadcastEvent extends WsEvent<
+    'typing_dm',
+    {
+        senderId: string;
+        senderUsername: string;
+    }
+> {}
 
 // ============================================================================
 // Server (Guild/Channel) Message Events
@@ -182,113 +171,105 @@ export interface ITypingDmBroadcastEvent
  * Client → Server
  * Subscribe to server-wide events.
  */
-export interface IJoinServerEvent
-    extends WsEvent<
-        'join_server',
-        {
-            serverId: string;
-        }
-    > { }
+export interface IJoinServerEvent extends WsEvent<
+    'join_server',
+    {
+        serverId: string;
+    }
+> {}
 
 /**
  * Server → Client (Response)
  * Successfully joined server.
  */
-export interface IServerJoinedEvent
-    extends WsEvent<
-        'server_joined',
-        {
-            serverId: string;
-            voiceStates?: Record<string, string[]>;
-        }
-    > { }
+export interface IServerJoinedEvent extends WsEvent<
+    'server_joined',
+    {
+        serverId: string;
+        voiceStates?: Record<string, string[]>;
+    }
+> {}
 
 /**
  * Client → Server
  * Unsubscribe from server events.
  */
-export interface ILeaveServerEvent
-    extends WsEvent<
-        'leave_server',
-        {
-            serverId: string;
-        }
-    > { }
+export interface ILeaveServerEvent extends WsEvent<
+    'leave_server',
+    {
+        serverId: string;
+    }
+> {}
 
 /**
  * Client → Server
  * Subscribe to channel-specific events.
  */
-export interface IJoinChannelEvent
-    extends WsEvent<
-        'join_channel',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > { }
+export interface IJoinChannelEvent extends WsEvent<
+    'join_channel',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
 /**
  * Server → Client (Response)
  * Successfully joined channel.
  */
-export interface IChannelJoinedEvent
-    extends WsEvent<
-        'channel_joined',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > { }
+export interface IChannelJoinedEvent extends WsEvent<
+    'channel_joined',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
 /**
  * Client → Server
  * Unsubscribe from channel events.
  */
-export interface ILeaveChannelEvent
-    extends WsEvent<
-        'leave_channel',
-        {
-            channelId: string;
-        }
-    > { }
+export interface ILeaveChannelEvent extends WsEvent<
+    'leave_channel',
+    {
+        channelId: string;
+    }
+> {}
 
 /**
  * Client → Server
  * Send a message to a server channel.
  */
-export interface ISendMessageServerEvent
-    extends WsEvent<
-        'send_message_server',
-        {
-            serverId: string;
-            channelId: string;
-            text?: string;
-            replyToId?: string;
-            stickerId?: string;
-        }
-    > { }
+export interface ISendMessageServerEvent extends WsEvent<
+    'send_message_server',
+    {
+        serverId: string;
+        channelId: string;
+        text?: string;
+        replyToId?: string;
+        stickerId?: string;
+    }
+> {}
 
 /**
  * Server → Client (Response)
  * Confirms server message was sent.
  */
-export interface IMessageServerSentEvent
-    extends WsEvent<
-        'message_server_sent',
-        {
-            messageId: string;
-            serverId: string;
-            channelId: string;
-            senderId: string;
-            text: string;
-            createdAt: string;
-            replyToId?: string;
-            embeds?: IEmbed[];
-            slowModeNextMessageAllowedAt?: string | null;
-            stickerId?: string;
-        }
-    > { }
+export interface IMessageServerSentEvent extends WsEvent<
+    'message_server_sent',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        senderId: string;
+        text: string;
+        createdAt: string;
+        replyToId?: string;
+        embeds?: IEmbed[];
+        slowModeNextMessageAllowedAt?: string | null;
+        stickerId?: string;
+    }
+> {}
 
 export interface IMessageServer {
     messageId: string;
@@ -325,175 +306,165 @@ export interface IMessageServer {
  * Server → Client (Broadcast to channel)
  * New server message.
  */
-export interface IMessageServerEvent
-    extends WsEvent<'message_server', IMessageServer> { }
+export interface IMessageServerEvent extends WsEvent<
+    'message_server',
+    IMessageServer
+> {}
 
 /**
  * Client → Server
  * Edit a server message.
  */
-export interface IEditMessageServerEvent
-    extends WsEvent<
-        'edit_message_server',
-        {
-            messageId: string;
-            text: string;
-        }
-    > { }
+export interface IEditMessageServerEvent extends WsEvent<
+    'edit_message_server',
+    {
+        messageId: string;
+        text: string;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast)
  * Server message was edited.
  */
-export interface IMessageServerEditedEvent
-    extends WsEvent<
-        'message_server_edited',
-        {
-            messageId: string;
-            serverId: string;
-            channelId: string;
-            text: string;
-            editedAt: string;
-            isEdited: true;
-        }
-    > { }
+export interface IMessageServerEditedEvent extends WsEvent<
+    'message_server_edited',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        text: string;
+        editedAt: string;
+        isEdited: true;
+    }
+> {}
 
 /**
  * Client → Server
  * Delete a server message.
  */
-export interface IDeleteMessageServerEvent
-    extends WsEvent<
-        'delete_message_server',
-        {
-            serverId: string;
-            messageId: string;
-        }
-    > { }
+export interface IDeleteMessageServerEvent extends WsEvent<
+    'delete_message_server',
+    {
+        serverId: string;
+        messageId: string;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast)
  * Server message was deleted.
  */
-export interface IMessageServerDeletedEvent
-    extends WsEvent<
-        'message_server_deleted',
-        {
-            messageId: string;
-            serverId: string;
-            channelId: string;
-            hard?: boolean;
-        }
-    > { }
+export interface IMessageServerDeletedEvent extends WsEvent<
+    'message_server_deleted',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        hard?: boolean;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast)
  * Multiple server messages were deleted.
  */
-export interface IMessagesServerBulkDeletedEvent
-    extends WsEvent<
-        'messages_server_bulk_deleted',
-        {
-            messageIds: string[];
-            serverId: string;
-            channelId: string;
-            hard?: boolean;
-        }
-    > { }
+export interface IMessagesServerBulkDeletedEvent extends WsEvent<
+    'messages_server_bulk_deleted',
+    {
+        messageIds: string[];
+        serverId: string;
+        channelId: string;
+        hard?: boolean;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast)
  * Server message pin status updated.
  */
-export interface IMessageServerPinUpdatedEvent
-    extends WsEvent<
-        'message_server_pin_updated',
-        {
-            messageId: string;
-            serverId: string;
-            channelId: string;
-            isPinned: boolean;
-            isSticky: boolean;
-        }
-    > { }
+export interface IMessageServerPinUpdatedEvent extends WsEvent<
+    'message_server_pin_updated',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        isPinned: boolean;
+        isSticky: boolean;
+    }
+> {}
 
 /**
  * Client → Server
  * Mark a channel as read.
  */
-export interface IMarkChannelReadEvent
-    extends WsEvent<
-        'mark_channel_read',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > { }
+export interface IMarkChannelReadEvent extends WsEvent<
+    'mark_channel_read',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast to user's sessions)
  * Channel unread status updated.
  */
-export interface IChannelUnreadUpdatedEvent
-    extends WsEvent<
-        'channel_unread_updated',
-        {
-            serverId: string;
-            channelId: string;
-            lastMessageAt: string | null;
-            senderId: string;
-            lastReadAt?: string;
-        }
-    > { }
+export interface IChannelUnreadUpdatedEvent extends WsEvent<
+    'channel_unread_updated',
+    {
+        serverId: string;
+        channelId: string;
+        lastMessageAt: string | null;
+        senderId: string;
+        lastReadAt?: string;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast to user's sessions)
  * Server-level unread status updated (e.g. after channel message or mark channel read).
  */
-export interface IServerUnreadUpdatedEvent
-    extends WsEvent<
-        'server_unread_updated',
-        {
-            serverId: string;
-            hasUnread: boolean;
-        }
-    > { }
+export interface IServerUnreadUpdatedEvent extends WsEvent<
+    'server_unread_updated',
+    {
+        serverId: string;
+        hasUnread: boolean;
+    }
+> {}
 
 /**
  * Client → Server
  * Indicate typing in a channel.
  */
-export interface ITypingServerEvent
-    extends WsEvent<
-        'typing_server',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > { }
+export interface ITypingServerEvent extends WsEvent<
+    'typing_server',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
 /**
  * Server → Client (Broadcast to channel)
  * User is typing in channel.
  */
-export interface ITypingServerBroadcastEvent
-    extends WsEvent<
-        'typing_server',
-        {
-            channelId: string;
-            senderId: string;
-            senderUsername: string;
-        }
-    > { }
+export interface ITypingServerBroadcastEvent extends WsEvent<
+    'typing_server',
+    {
+        channelId: string;
+        senderId: string;
+        senderUsername: string;
+    }
+> {}
 
-export interface IJoinVoiceEvent
-    extends WsEvent<
-        'join_voice',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > {
+export interface IJoinVoiceEvent extends WsEvent<
+    'join_voice',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {
     response: {
         success: boolean;
         serverId: string;
@@ -503,70 +474,64 @@ export interface IJoinVoiceEvent
     };
 }
 
-export interface ILeaveVoiceEvent
-    extends WsEvent<
-        'leave_voice',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > { }
+export interface ILeaveVoiceEvent extends WsEvent<
+    'leave_voice',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
-export interface IUserJoinedVoiceEvent
-    extends WsEvent<
-        'user_joined_voice',
-        {
-            serverId: string;
-            channelId: string;
-            userId: string;
-        }
-    > { }
+export interface IUserJoinedVoiceEvent extends WsEvent<
+    'user_joined_voice',
+    {
+        serverId: string;
+        channelId: string;
+        userId: string;
+    }
+> {}
 
-export interface IUserLeftVoiceEvent
-    extends WsEvent<
-        'user_left_voice',
-        {
-            serverId: string;
-            channelId: string;
-            userId: string;
-        }
-    > { }
+export interface IUserLeftVoiceEvent extends WsEvent<
+    'user_left_voice',
+    {
+        serverId: string;
+        channelId: string;
+        userId: string;
+    }
+> {}
 
-export interface IUpdateVoiceStateEvent
-    extends WsEvent<
-        'update_voice_state',
-        {
-            serverId: string;
-            channelId: string;
-            isMuted: boolean;
-            isDeafened: boolean;
-        }
-    > { }
+export interface IUpdateVoiceStateEvent extends WsEvent<
+    'update_voice_state',
+    {
+        serverId: string;
+        channelId: string;
+        isMuted: boolean;
+        isDeafened: boolean;
+    }
+> {}
 
-export interface IVoiceStateUpdatedEvent
-    extends WsEvent<
-        'voice_state_updated',
-        {
-            serverId: string;
-            channelId: string;
-            userId: string;
-            isMuted: boolean;
-            isDeafened: boolean;
-        }
-    > { }
+export interface IVoiceStateUpdatedEvent extends WsEvent<
+    'voice_state_updated',
+    {
+        serverId: string;
+        channelId: string;
+        userId: string;
+        isMuted: boolean;
+        isDeafened: boolean;
+    }
+> {}
 
-export interface IInteractionCreateServerEvent
-    extends WsEvent<
-        'interaction_create_server',
-        {
-            command: string;
-            options: { name: string; value: InteractionValue }[];
-            serverId: string;
-            channelId: string;
-            senderId: string;
-            senderUsername: string;
-            senderPermissions?: Permissions;
-            user?: { id: string; username: string };
-            invocationId?: string;
-        }
-    > { }
+export interface IInteractionCreateServerEvent extends WsEvent<
+    'interaction_create_server',
+    {
+        command: string;
+        options: { name: string; value: InteractionValue }[];
+        serverId: string;
+        channelId: string;
+        senderId: string;
+        senderUsername: string;
+        senderPermissions?: Permissions;
+        user?: { id: string; username: string };
+        invocationId?: string;
+    }
+> {}

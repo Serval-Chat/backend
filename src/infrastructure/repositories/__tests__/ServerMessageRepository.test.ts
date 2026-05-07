@@ -11,7 +11,6 @@ jest.mock('@/models/Server', () => ({
     },
 }));
 
-
 jest.mock('@/models/Reaction', () => ({
     Reaction: {
         aggregate: jest.fn(),
@@ -20,7 +19,6 @@ jest.mock('@/models/Reaction', () => ({
 
 describe('MongooseServerMessageRepository', () => {
     let repository: MongooseServerMessageRepository;
-
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -34,7 +32,7 @@ describe('MongooseServerMessageRepository', () => {
             const mockInteraction = {
                 command: 'poke',
                 options: [{ name: 'user', value: 'target-user-id' }],
-                user: { id: 'caller-user-id', username: 'caller' }
+                user: { id: 'caller-user-id', username: 'caller' },
             };
 
             const mockDbMessage = {
@@ -52,15 +50,17 @@ describe('MongooseServerMessageRepository', () => {
                     senderId: new Types.ObjectId(),
                     text: 'Pokes target-user-id!',
                     interaction: mockInteraction,
-                    createdAt: new Date()
-                })
+                    createdAt: new Date(),
+                }),
             };
 
             const mockQuery = {
                 populate: jest.fn().mockReturnThis(),
-                lean: jest.fn().mockResolvedValue(mockDbMessage)
+                lean: jest.fn().mockResolvedValue(mockDbMessage),
             };
-            (ServerMessage.findOne as jest.Mock) = jest.fn().mockReturnValue(mockQuery);
+            (ServerMessage.findOne as jest.Mock) = jest
+                .fn()
+                .mockReturnValue(mockQuery);
 
             const result = await repository.findById(mockDbMessage._id);
 
@@ -74,7 +74,7 @@ describe('MongooseServerMessageRepository', () => {
             const mockInteraction = {
                 command: 'poke',
                 options: [],
-                user: { id: 'u1', username: 'user1' }
+                user: { id: 'u1', username: 'user1' },
             };
 
             const mockDoc = {
@@ -82,7 +82,7 @@ describe('MongooseServerMessageRepository', () => {
                 text: 'Interaction Response',
                 interaction: mockInteraction,
                 repliedToMessageId: new Types.ObjectId(),
-                createdAt: new Date()
+                createdAt: new Date(),
             } as unknown as IServerMessage;
 
             const result = repository['transformMessage'](mockDoc);

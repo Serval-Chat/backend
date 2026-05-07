@@ -23,7 +23,9 @@ export class MongooseExportJobRepository implements IExportJobRepository {
         return await ExportJob.findOne({ channelId }).sort({ createdAt: -1 });
     }
 
-    public async findByDownloadToken(token: string): Promise<IExportJob | null> {
+    public async findByDownloadToken(
+        token: string,
+    ): Promise<IExportJob | null> {
         return await ExportJob.findOne({ downloadToken: token });
     }
 

@@ -331,7 +331,9 @@ export class UserMessageController {
         const broadcastPayload = {
             messageId: updated._id.toString(),
             text: updated.text,
-            editedAt: updated.editedAt ? updated.editedAt.toISOString() : new Date().toISOString(),
+            editedAt: updated.editedAt
+                ? updated.editedAt.toISOString()
+                : new Date().toISOString(),
             isEdited: true as const,
         };
         this.wsServer.broadcastToUser(message.senderId.toString(), {

@@ -64,7 +64,7 @@ describe('StickerController', () => {
                 expect.objectContaining({
                     message: ErrorMessages.STICKER.NOT_FOUND,
                     status: 404,
-                })
+                }),
             );
         });
     });
@@ -75,9 +75,9 @@ describe('StickerController', () => {
             const serverId = new Types.ObjectId();
             const req = { user: { id: userId } } as unknown as Request;
 
-            (mockServerMemberRepo.findAllByUserId as jest.Mock).mockResolvedValue([
-                { serverId }
-            ]);
+            (
+                mockServerMemberRepo.findAllByUserId as jest.Mock
+            ).mockResolvedValue([{ serverId }]);
             (mockStickerRepo.findByServerIds as jest.Mock).mockResolvedValue([
                 {
                     _id: new Types.ObjectId(),
@@ -86,7 +86,7 @@ describe('StickerController', () => {
                     serverId: serverId,
                     createdBy: new Types.ObjectId(),
                     createdAt: new Date(),
-                }
+                },
             ]);
 
             const result = await controller.getAllStickers(req);

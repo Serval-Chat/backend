@@ -111,9 +111,7 @@ export class MongooseBlockRepository implements IBlockRepository {
                 targetId: target
                     ? target._id.toString()
                     : rawTargetId.toString(),
-                targetUsername: target
-                    ? target.username
-                    : 'Deleted User',
+                targetUsername: target ? target.username : 'Deleted User',
                 profileId: profile
                     ? profile._id.toString()
                     : rawProfileId.toString(),

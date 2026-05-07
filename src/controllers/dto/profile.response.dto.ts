@@ -1,11 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMongoId, IsString } from 'class-validator';
 import { SerializedCustomStatus } from '@/utils/status';
-import { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import { AdminPermissions } from '@/permissions/AdminPermissions';
 import { VALID_USERNAME_FONTS } from '@/validation/schemas/profile';
 import { UsernameGradientDTO, UsernameGlowDTO } from './profile.request.dto';
 import { UserSettingsDTO } from './types.dto';
-
 
 export class BadgeResponseDTO {
     @ApiProperty()

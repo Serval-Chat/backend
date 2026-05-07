@@ -16,7 +16,9 @@ export class MongooseBanRepository implements IBanRepository {
     private banModel = Ban;
     public constructor() {}
 
-    public async findActiveByUserId(userId: Types.ObjectId): Promise<IBan | null> {
+    public async findActiveByUserId(
+        userId: Types.ObjectId,
+    ): Promise<IBan | null> {
         return await this.banModel.findOne({ userId, active: true }).lean();
     }
 
@@ -220,7 +222,7 @@ export class MongooseBanRepository implements IBanRepository {
         if (days <= 0 || !Number.isFinite(days) || days > 10000) {
             return [];
         }
-        
+
         const msPerDay = 1000 * 60 * 60 * 24;
         const buckets = await this.banModel.aggregate<{
             _id: number;

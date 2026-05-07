@@ -3,7 +3,6 @@ import { IsMongoId, IsString } from 'class-validator';
 import { type SerializedCustomStatus } from '@/utils/status';
 import { FriendRequestDTO } from './types.dto';
 
-
 export class FriendResponseDTO {
     @ApiProperty()
     @IsMongoId()

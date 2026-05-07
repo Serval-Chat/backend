@@ -229,6 +229,8 @@ export class FileController {
      */
     private getContentType(filename: string): string {
         const contentType = mime.contentType(filename);
-        return (typeof contentType === 'string' && contentType !== '') ? contentType : 'application/octet-stream';
+        return typeof contentType === 'string' && contentType !== ''
+            ? contentType
+            : 'application/octet-stream';
     }
 }

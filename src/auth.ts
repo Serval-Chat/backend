@@ -42,7 +42,7 @@ export async function expressAuthentication(
             }
 
             const currentTokenVersion = Number(user.tokenVersion ?? 0);
-            const payloadTokenVersion = Number(decoded.tokenVersion ?? 0);
+            const payloadTokenVersion = Number(decoded.tokenVersion);
 
             if (currentTokenVersion !== payloadTokenVersion) {
                 return Promise.reject(new Error('Token expired'));
@@ -96,7 +96,11 @@ export async function expressAuthentication(
 
             return Promise.resolve(decoded);
         } catch (err) {
-            if (err !== null && typeof err === 'object' && 'status' in (err as object)) {
+            if (
+                err !== null &&
+                typeof err === 'object' &&
+                'status' in (err as object)
+            ) {
                 return Promise.reject(err);
             }
             return Promise.reject(new Error('Invalid token'));

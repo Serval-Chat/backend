@@ -30,7 +30,8 @@ export class AuthController {
 
     public constructor(
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-        @inject(TYPES.ServerMemberRepository) private serverMemberRepo: IServerMemberRepository,
+        @inject(TYPES.ServerMemberRepository)
+        private serverMemberRepo: IServerMemberRepository,
     ) {}
 
     /**
@@ -79,7 +80,7 @@ export class AuthController {
 
         // Validate token version
         const currentTokenVersion = Number(user.tokenVersion ?? 0);
-        const payloadTokenVersion = Number(decoded.tokenVersion ?? 0);
+        const payloadTokenVersion = Number(decoded.tokenVersion);
 
         if (currentTokenVersion !== payloadTokenVersion) {
             throw new Error('AUTHENTICATION_FAILED: Token expired');
@@ -110,7 +111,10 @@ export class AuthController {
                 new mongoose.Types.ObjectId(decoded.id),
             );
             for (const membership of memberships) {
-                this.wsServer.subscribeToServer(ws, membership.serverId.toString());
+                this.wsServer.subscribeToServer(
+                    ws,
+                    membership.serverId.toString(),
+                );
             }
         }
 

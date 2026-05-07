@@ -147,8 +147,6 @@ export class ServerEmojiController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
-
-
         const server = await this.serverRepo.findById(serverOid);
         if (server === null || !server.ownerId.equals(userOid)) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);

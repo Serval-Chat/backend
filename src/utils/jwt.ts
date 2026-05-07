@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '@/config/env';
-import type { AdminPermissions } from '@/routes/api/v1/admin/permissions';
+import type { AdminPermissions } from '@/permissions/AdminPermissions';
 
 // JWT payload structure for user authentication
 export interface JWTPayload {

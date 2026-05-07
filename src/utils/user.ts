@@ -5,7 +5,7 @@ import {
 import {
     type AdminPermissions,
     DEFAULT_PERMISSIONS,
-} from '@/routes/api/v1/admin/permissions';
+} from '@/permissions/AdminPermissions';
 
 export interface Badge {
     _id: string;
@@ -107,19 +107,18 @@ export function mapUser(
     user: DBUser | unknown,
     options: MapUserOptions = {},
 ): MappedUser | null {
-    if (user === undefined || user === null || typeof user !== 'object') return null;
+    if (user === undefined || user === null || typeof user !== 'object')
+        return null;
     const u = user as DBUser;
 
     const profilePictureUrl = u.deletedAt
         ? '/images/deleted-cat.jpg'
-        : (u.profilePicture !== undefined && u.profilePicture !== '')
-            ? `/api/v1/profile/picture/${u.profilePicture}`
-            : null;
+        : u.profilePicture !== undefined && u.profilePicture !== ''
+          ? `/api/v1/profile/picture/${u.profilePicture}`
+          : null;
 
     const populatedBadges: Badge[] = Array.isArray(u.badges)
-        ? u.badges.filter(
-            (b): b is Badge => typeof b === 'object' && 'id' in b,
-        )
+        ? u.badges.filter((b): b is Badge => typeof b === 'object' && 'id' in b)
         : [];
 
     return {
@@ -149,13 +148,18 @@ export function mapUser(
         badges: populatedBadges,
         deletedAt: u.deletedAt ?? null,
         anonymizedUsername: u.anonymizedUsername ?? null,
-        banner: (u.banner !== undefined && u.banner !== '') ? `/api/v1/profile/banner/${u.banner}` : null,
+        banner:
+            u.banner !== undefined && u.banner !== ''
+                ? `/api/v1/profile/banner/${u.banner}`
+                : null,
         bannerColor: u.bannerColor ?? null,
         ...(options.includePermissions === true && {
             permissions: u.permissions ?? DEFAULT_PERMISSIONS,
         }),
         settings: u.settings,
-        ...(options.includeTotp === true && { totpEnabled: u.totpEnabled ?? false }),
+        ...(options.includeTotp === true && {
+            totpEnabled: u.totpEnabled ?? false,
+        }),
         serverSettings: u.serverSettings,
     };
 }

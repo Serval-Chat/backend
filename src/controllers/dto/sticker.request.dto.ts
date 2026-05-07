@@ -1,6 +1,9 @@
 import { IsNotEmpty, IsString, MaxLength, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { STICKER_NAME_MAX_LENGTH, STICKER_NAME_REGEX } from '@/constants/stickers';
+import {
+    STICKER_NAME_MAX_LENGTH,
+    STICKER_NAME_REGEX,
+} from '@/constants/stickers';
 
 export class UploadStickerRequestDTO {
     @ApiProperty({

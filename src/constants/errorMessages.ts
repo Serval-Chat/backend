@@ -251,7 +251,8 @@ export const ErrorMessages = {
         INVALID_NAME: 'Invalid sticker name',
         NAME_EXISTS: 'Sticker name already exists',
         NO_PERMISSION_MANAGE: 'No permission to manage stickers',
-        INVALID_DIMENSIONS: 'Sticker dimensions must be between 64x64 and 512x512',
+        INVALID_DIMENSIONS:
+            'Sticker dimensions must be between 64x64 and 512x512',
         SIZE_TOO_LARGE: 'Sticker size exceeds 10MB limit',
     },
 } as const;

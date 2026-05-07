@@ -92,7 +92,12 @@ export const areFriends = async (
 
     // Fallback for legacy documents that still rely on usernames
     // If usernames are provided, use them. Otherwise, try using user1/user2 if they are NOT ObjectIds
-    if (username1 !== undefined && username1 !== '' && username2 !== undefined && username2 !== '') {
+    if (
+        username1 !== undefined &&
+        username1 !== '' &&
+        username2 !== undefined &&
+        username2 !== ''
+    ) {
         conditions.push({ user: username1, friend: username2 });
         conditions.push({ user: username2, friend: username1 });
     } else if (!user1IsObjectId && !user2IsObjectId) {

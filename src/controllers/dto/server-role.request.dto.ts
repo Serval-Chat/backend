@@ -28,12 +28,18 @@ export class CreateRoleRequestDTO {
     @IsColor()
     public color?: string;
 
-    @ApiPropertyOptional({ deprecated: true, description: 'Use colors array instead' })
+    @ApiPropertyOptional({
+        deprecated: true,
+        description: 'Use colors array instead',
+    })
     @IsOptional()
     @IsColor()
     public startColor?: string;
 
-    @ApiPropertyOptional({ deprecated: true, description: 'Use colors array instead' })
+    @ApiPropertyOptional({
+        deprecated: true,
+        description: 'Use colors array instead',
+    })
     @IsOptional()
     @IsColor()
     public endColor?: string;
@@ -98,12 +104,18 @@ export class UpdateRoleRequestDTO {
     @IsColor()
     public color?: string;
 
-    @ApiPropertyOptional({ deprecated: true, description: 'Use colors array instead' })
+    @ApiPropertyOptional({
+        deprecated: true,
+        description: 'Use colors array instead',
+    })
     @IsOptional()
     @IsColor()
     public startColor?: string;
 
-    @ApiPropertyOptional({ deprecated: true, description: 'Use colors array instead' })
+    @ApiPropertyOptional({
+        deprecated: true,
+        description: 'Use colors array instead',
+    })
     @IsOptional()
     @IsColor()
     public endColor?: string;
