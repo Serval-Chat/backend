@@ -111,7 +111,6 @@ export class KlipyService {
         try {
             const cached = await this.klipyCacheModel.findOne({
                 klipyId,
-                contentType,
             });
             if (cached) return cached;
 
@@ -168,11 +167,26 @@ export class KlipyService {
                 expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
             };
 
-            return await this.klipyCacheModel.findOneAndUpdate(
-                { klipyId, contentType },
-                { $set: metadata },
-                { upsert: true, new: true, setDefaultsOnInsert: true },
-            );
+            try {
+                return await this.klipyCacheModel.findOneAndUpdate(
+                    { klipyId },
+                    { $set: metadata },
+                    { upsert: true, new: true, setDefaultsOnInsert: true },
+                );
+            } catch (innerError: unknown) {
+                if (
+                    typeof innerError === 'object' &&
+                    innerError !== null &&
+                    'code' in innerError &&
+                    innerError.code === 11000
+                ) {
+                    const existing = await this.klipyCacheModel.findOne({
+                        klipyId,
+                    });
+                    if (existing) return existing;
+                }
+                throw innerError;
+            }
         } catch (error) {
             throw error;
         }

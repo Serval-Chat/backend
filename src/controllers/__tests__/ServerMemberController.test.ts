@@ -91,8 +91,14 @@ describe('ServerMemberController', () => {
 
             await controller.leaveServer(serverIdStr, req);
 
-            expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(serverId, meId);
-            expect(mockPingService.clearServerPings).toHaveBeenCalledWith(meId, serverId);
+            expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
+                serverId,
+                meId,
+            );
+            expect(mockPingService.clearServerPings).toHaveBeenCalledWith(
+                meId,
+                serverId,
+            );
         });
     });
 
@@ -105,18 +111,32 @@ describe('ServerMemberController', () => {
 
         it('clears server pings when kicking a member', async () => {
             mockPermissionService.hasPermission.mockResolvedValue(true);
-            mockServerMemberRepo.findByServerAndUser.mockResolvedValue({ userId: targetId });
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValue({
+                userId: targetId,
+            });
             mockServerRepo.findById.mockResolvedValue({
                 _id: serverId,
                 ownerId: meId,
             });
-            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(10); // me
-            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(5);  // target
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                10,
+            ); // me
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                5,
+            ); // target
 
-            await controller.kickMember(serverIdStr, targetIdStr, req, { reason: 'test' });
+            await controller.kickMember(serverIdStr, targetIdStr, req, {
+                reason: 'test',
+            });
 
-            expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(serverId, targetId);
-            expect(mockPingService.clearServerPings).toHaveBeenCalledWith(targetId, serverId);
+            expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
+                serverId,
+                targetId,
+            );
+            expect(mockPingService.clearServerPings).toHaveBeenCalledWith(
+                targetId,
+                serverId,
+            );
         });
     });
 
@@ -133,13 +153,26 @@ describe('ServerMemberController', () => {
                 _id: serverId,
                 ownerId: meId,
             });
-            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(10); // me
-            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(5);  // target
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                10,
+            ); // me
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                5,
+            ); // target
 
-            await controller.banMember(serverIdStr, req, { userId: targetIdStr, reason: 'test' });
+            await controller.banMember(serverIdStr, req, {
+                userId: targetIdStr,
+                reason: 'test',
+            });
 
-            expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(serverId, targetId);
-            expect(mockPingService.clearServerPings).toHaveBeenCalledWith(targetId, serverId);
+            expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
+                serverId,
+                targetId,
+            );
+            expect(mockPingService.clearServerPings).toHaveBeenCalledWith(
+                targetId,
+                serverId,
+            );
         });
     });
 });

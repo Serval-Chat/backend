@@ -83,7 +83,7 @@ export class ServerMemberController {
         private blockRepo: IBlockRepository,
         @Inject(TYPES.PingService)
         private pingService: PingService,
-    ) { }
+    ) {}
 
     @Get('members')
     @ApiOperation({ summary: 'Get all server members' })

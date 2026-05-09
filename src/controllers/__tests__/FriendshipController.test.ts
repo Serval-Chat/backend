@@ -71,8 +71,14 @@ describe('FriendshipController', () => {
                 meId,
                 friendId,
             );
-            expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(meId, friendId);
-            expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(friendId, meId);
+            expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(
+                meId,
+                friendId,
+            );
+            expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(
+                friendId,
+                meId,
+            );
             expect(mockWsServer.broadcastToUser).toHaveBeenCalledTimes(2);
         });
     });

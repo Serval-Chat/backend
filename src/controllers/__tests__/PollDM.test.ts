@@ -98,12 +98,10 @@ describe('DM Polls', () => {
 
     beforeEach(() => {
         userRepo = {
-            findById: jest
-                .fn()
-                .mockResolvedValue({
-                    _id: new Types.ObjectId(PEER_ID),
-                    username: 'peeruser',
-                }),
+            findById: jest.fn().mockResolvedValue({
+                _id: new Types.ObjectId(PEER_ID),
+                username: 'peeruser',
+            }),
         };
         friendshipRepo = {
             areFriends: jest.fn().mockResolvedValue(true),
