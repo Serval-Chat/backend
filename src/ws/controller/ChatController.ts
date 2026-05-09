@@ -78,7 +78,7 @@ export class ChatController {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
-        const { receiverId, text, replyToId, stickerId } = payload;
+        const { receiverId, text, replyToId, stickerId, poll } = payload;
         const senderId = authenticatedUser.userId;
 
         const receiverUser = await this.userRepo.findById(
@@ -123,6 +123,21 @@ export class ChatController {
                         ...(stickerId !== undefined && stickerId !== ''
                             ? { stickerId: new Types.ObjectId(stickerId) }
                             : {}),
+                        poll: poll
+                            ? {
+                                  ...poll,
+                                  expiresAt:
+                                      poll.expiresAt !== undefined &&
+                                      poll.expiresAt !== ''
+                                          ? new Date(poll.expiresAt)
+                                          : undefined,
+                                  options: poll.options.map((opt) => ({
+                                      ...opt,
+                                      id: new Types.ObjectId().toString(),
+                                      votes: [],
+                                  })),
+                              }
+                            : undefined,
                     },
                     session,
                 );
@@ -160,6 +175,7 @@ export class ChatController {
                 : undefined,
             isEdited: false,
             stickerId: created.stickerId?.toString(),
+            poll: created.poll,
         };
 
         this.wsServer.broadcastToUser(
@@ -213,6 +229,7 @@ export class ChatController {
                   }
                 : undefined,
             stickerId: created.stickerId?.toString(),
+            poll: created.poll,
         };
     }
 

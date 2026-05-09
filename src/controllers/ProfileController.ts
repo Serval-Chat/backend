@@ -1339,6 +1339,26 @@ export class ProfileController {
         return { _id: user._id.toString() };
     }
 
+    @Post('bulk')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Lookup multiple user profiles by ID' })
+    @ApiResponse({ status: 200, type: [UserProfileResponseDTO] })
+    public async bulkLookupUsers(
+        @Body() body: { ids: string[] },
+        @Req() req: Request,
+    ): Promise<UserProfileResponseDTO[]> {
+        const viewerId = (req as unknown as RequestWithUser).user.id;
+        const objectIds = body.ids.map((id) => new Types.ObjectId(id));
+        const users = await this.userRepo.findByIds(objectIds);
+
+        const profiles = await Promise.all(
+            users.map((user) => this.mapToProfile(user, { viewerId })),
+        );
+
+        return profiles;
+    }
+
     @Patch('username')
     @NoBot()
     @ApiBearerAuth()

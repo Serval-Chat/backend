@@ -12,6 +12,7 @@ import {
     NotFoundException,
     ForbiddenException,
     InternalServerErrorException,
+    Post,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -45,7 +46,9 @@ import {
     MessageIdParamDTO,
     UserMessageParamsDTO,
 } from './dto/user-message.request.dto';
-import { Types } from 'mongoose';
+import { PollVoteRequestDTO } from './dto/poll-vote.request.dto';
+import mongoose, { Types } from 'mongoose';
+import { BadRequestException } from '@nestjs/common';
 
 interface UnreadCountsResponse {
     counts: Record<string, number>;
@@ -346,6 +349,98 @@ export class UserMessageController {
         });
 
         return updated;
+    }
+
+    @Post(':id/poll/vote')
+    @ApiOperation({ summary: 'Vote on a poll' })
+    @ApiResponse({ status: 200, description: 'Vote registered' })
+    @ApiResponse({ status: 400, description: 'Invalid vote or not a poll' })
+    @ApiResponse({ status: 403, description: ErrorMessages.AUTH.UNAUTHORIZED })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
+    public async votePoll(
+        @Param() params: MessageIdParamDTO,
+        @Req() req: ExpressRequest,
+        @Body() body: PollVoteRequestDTO,
+    ): Promise<IMessage> {
+        const { id } = params;
+        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+
+        const message = await this.messageRepo.findById(new Types.ObjectId(id));
+        if (message === null) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        if (!message.poll) {
+            throw new BadRequestException(
+                'This message does not contain a poll.',
+            );
+        }
+
+        const { poll } = message;
+        if (poll.expiresAt && new Date() > new Date(poll.expiresAt)) {
+            throw new BadRequestException(
+                'This poll has ended and can no longer be voted on.',
+            );
+        }
+
+        if (!poll.multiSelect && body.optionIds.length > 1) {
+            throw new BadRequestException(
+                'This poll does not allow multiple selections.',
+            );
+        }
+
+        const validOptionIds = poll.options.map((o) => o.id);
+        const allValid = body.optionIds.every((id) =>
+            validOptionIds.includes(id),
+        );
+        if (!allValid) {
+            throw new BadRequestException(
+                'One or more option IDs are invalid.',
+            );
+        }
+
+        const userObjId = new Types.ObjectId(meId);
+
+        const newOptions = poll.options.map((opt) => {
+            const votes = opt.votes.filter((v) => v.toString() !== meId);
+            if (body.optionIds.includes(opt.id)) {
+                votes.push(userObjId);
+            }
+            return { ...opt, votes };
+        });
+
+        const MessageModel = mongoose.model('Message');
+        const updatedDoc = (await MessageModel.findByIdAndUpdate(
+            new Types.ObjectId(id),
+            { 'poll.options': newOptions },
+            { new: true },
+        ).lean()) as IMessage | null;
+
+        if (updatedDoc === null) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        if (updatedDoc.poll === undefined) {
+            throw new InternalServerErrorException(
+                'Poll data missing after update',
+            );
+        }
+
+        const payload = {
+            messageId: id,
+            poll: updatedDoc.poll,
+        };
+
+        this.wsServer.broadcastToUser(message.senderId.toString(), {
+            type: 'poll_vote_updated_dm',
+            payload,
+        });
+        this.wsServer.broadcastToUser(message.receiverId.toString(), {
+            type: 'poll_vote_updated_dm',
+            payload,
+        });
+
+        return updatedDoc;
     }
 
     @Delete(':id')

@@ -28,6 +28,7 @@ describe('FriendshipController', () => {
     const mockWsServer = { broadcastToUser: jest.fn() };
     const mockLogger = { error: jest.fn() };
     const mockBlockRepo = { getActiveBlockFlags: jest.fn() };
+    const mockPingService = { clearPingsBetweenUsers: jest.fn() };
 
     let controller: FriendshipController;
 
@@ -40,6 +41,7 @@ describe('FriendshipController', () => {
             mockWsServer as never,
             mockLogger as never,
             mockBlockRepo as never,
+            mockPingService as never,
         );
     });
 

@@ -139,4 +139,18 @@ export class MongoosePingRepository implements IPingRepository {
         });
         return result.deletedCount;
     }
+
+    public async deleteBetweenUsers(
+        user1: Types.ObjectId,
+        user2: Types.ObjectId,
+    ): Promise<number> {
+        const result = await Ping.deleteMany({
+            $or: [
+                { userId: user1, senderId: user2 },
+                { userId: user2, senderId: user1 },
+            ],
+            serverId: { $exists: false },
+        });
+        return result.deletedCount;
+    }
 }

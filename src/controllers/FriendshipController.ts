@@ -17,6 +17,7 @@ import { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { WsServer } from '@/ws/server';
 import { ILogger } from '@/di/interfaces/ILogger';
 import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import { PingService } from '@/services/PingService';
 import {
     ApiTags,
     ApiResponse,
@@ -68,6 +69,8 @@ export class FriendshipController {
         private logger: ILogger,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
+        @Inject(TYPES.PingService)
+        private pingService: PingService,
     ) {}
 
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
@@ -558,6 +561,12 @@ export class FriendshipController {
         }
 
         await this.friendshipRepo.remove(meOid, friendOid);
+
+        try {
+            await this.pingService.clearPingsBetweenUsers(meOid, friendOid);
+        } catch (err) {
+            this.logger.error('Failed to clear pings after unfriend:', err);
+        }
 
         try {
             this.wsServer.broadcastToUser(meId, {

@@ -1,11 +1,12 @@
 import { Ping as PingModel } from '@/models/Ping';
+import { Friendship } from '@/models/Friendship';
 import {
     Channel as ChannelModel,
     Role as RoleModel,
     ServerMember as ServerMemberModel,
 } from '@/models/Server';
 import logger from '@/utils/logger';
-import type { Types } from 'mongoose';
+import { Types } from 'mongoose';
 
 interface PingModelLike {
     distinct(field: string, query: object): Promise<Types.ObjectId[]>;
@@ -128,6 +129,71 @@ export async function repairEveryoneRoles(
     } catch (error) {
         logger.error(
             '[EveryoneRepair] Error while repairing @everyone roles:',
+            error,
+        );
+    }
+}
+
+export async function cleanupDeadPings(
+    pingModel: typeof PingModel = PingModel,
+    friendshipModel: typeof Friendship = Friendship,
+): Promise<void> {
+    try {
+        const dmPings = await pingModel
+            .find({ serverId: { $exists: false } })
+            .lean();
+
+        if (dmPings.length === 0) {
+            logger.info(
+                '[DeadPingCleanup] No DM pings found - nothing to clean up.',
+            );
+            return;
+        }
+
+        const seenPairs = new Set<string>();
+        for (const ping of dmPings) {
+            const uid = (ping.userId as Types.ObjectId).toString();
+            const sid = (ping.senderId as Types.ObjectId).toString();
+            const key = uid < sid ? `${uid}:${sid}` : `${sid}:${uid}`;
+            seenPairs.add(key);
+        }
+
+        let deletedCount = 0;
+
+        for (const key of seenPairs) {
+            const [a, b] = key.split(':');
+            const aOid = new Types.ObjectId(a);
+            const bOid = new Types.ObjectId(b);
+
+            const friendship = await friendshipModel.findOne({
+                $or: [
+                    { userId: aOid, friendId: bOid },
+                    { userId: bOid, friendId: aOid },
+                ],
+            });
+
+            if (!friendship) {
+                const result = await pingModel.deleteMany({
+                    $or: [
+                        { userId: aOid, senderId: bOid },
+                        { userId: bOid, senderId: aOid },
+                    ],
+                    serverId: { $exists: false },
+                });
+                deletedCount += result.deletedCount;
+            }
+        }
+
+        if (deletedCount === 0) {
+            logger.info('[DeadPingCleanup] No dead DM pings found.');
+        } else {
+            logger.info(
+                `[DeadPingCleanup] Deleted ${deletedCount} dead DM ping(s) across ${seenPairs.size} unique user pair(s).`,
+            );
+        }
+    } catch (error) {
+        logger.error(
+            '[DeadPingCleanup] Error while cleaning up dead pings:',
             error,
         );
     }

@@ -44,13 +44,11 @@ describe('ServerMessageController Manual Instance', () => {
             mockServerMessageRepo,
             mockMemberRepo as unknown as IServerMemberRepository,
             {
-                findById: jest
-                    .fn()
-                    .mockResolvedValue({
-                        _id: '507f1f77bcf86cd799439012',
-                        serverId: '507f1f77bcf86cd799439011',
-                        type: 'text',
-                    }),
+                findById: jest.fn().mockResolvedValue({
+                    _id: '507f1f77bcf86cd799439012',
+                    serverId: '507f1f77bcf86cd799439011',
+                    type: 'text',
+                }),
             } as unknown as IChannelRepository,
             mockReactionRepo,
             mockPermissionService,

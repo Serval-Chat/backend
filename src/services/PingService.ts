@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Injectable, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { IPingRepository } from '@/di/interfaces/IPingRepository';
+import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IPing } from '@/di/interfaces/IPingRepository';
 import {
     PingMentionMessageDTO,
@@ -30,6 +31,9 @@ export class PingService {
         @inject(TYPES.PingRepository)
         @Inject(TYPES.PingRepository)
         private pingRepo: IPingRepository,
+        @inject(TYPES.FriendshipRepository)
+        @Inject(TYPES.FriendshipRepository)
+        private friendshipRepo: IFriendshipRepository,
     ) {}
 
     // Store a ping for a user (both online and offline)
@@ -118,7 +122,36 @@ export class PingService {
         userId: mongoose.Types.ObjectId,
     ): Promise<PingNotification[]> {
         const pings = await this.pingRepo.findByUserId(userId, this.maxAge);
-        return pings.map((p) => this.mapToNotification(p));
+
+        const dmPings = pings.filter((p) => !p.serverId);
+        const senderIds = [
+            ...new Set(dmPings.map((p) => p.senderId.toString())),
+        ];
+
+        const validSenderIds = new Set<string>();
+        await Promise.all(
+            senderIds.map(async (senderIdStr) => {
+                const senderOid = new mongoose.Types.ObjectId(senderIdStr);
+                const areFriends = await this.friendshipRepo.areFriends(
+                    userId,
+                    senderOid,
+                );
+                if (areFriends) {
+                    validSenderIds.add(senderIdStr);
+                } else {
+                    await this.pingRepo.deleteBetweenUsers(userId, senderOid);
+                }
+            }),
+        );
+
+        const filteredPings = pings.filter((p) => {
+            if (!p.serverId) {
+                return validSenderIds.has(p.senderId.toString());
+            }
+            return true;
+        });
+
+        return filteredPings.map((p) => this.mapToNotification(p));
     }
 
     // Remove a specific ping
@@ -147,6 +180,14 @@ export class PingService {
     // Clear all pings for a user
     public async clearAllPings(userId: mongoose.Types.ObjectId): Promise<void> {
         await this.pingRepo.deleteByUserId(userId);
+    }
+
+    // Clear all DM pings between two users
+    public async clearPingsBetweenUsers(
+        user1: mongoose.Types.ObjectId,
+        user2: mongoose.Types.ObjectId,
+    ): Promise<number> {
+        return await this.pingRepo.deleteBetweenUsers(user1, user2);
     }
 
     // Map database ping to notification format

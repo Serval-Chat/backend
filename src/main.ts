@@ -14,6 +14,7 @@ import { startMetricsUpdater } from '@/utils/metrics-updater';
 import { initWebPush } from '@/services/pushService';
 import {
     cleanupOrphanedPings,
+    cleanupDeadPings,
     repairEveryoneRoles,
 } from '@/utils/startup-tasks';
 import { container } from '@/di/container';
@@ -46,6 +47,7 @@ async function bootstrap() {
     }
 
     await cleanupOrphanedPings();
+    await cleanupDeadPings();
     await repairEveryoneRoles();
 
     // Configure HTTPS if enabl

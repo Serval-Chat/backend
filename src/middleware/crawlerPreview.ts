@@ -69,7 +69,7 @@ export const discordCrawlerPreview = async (
             );
             const imageUrl =
                 server.icon !== undefined && server.icon !== ''
-                    ? `${SERVER_URL}/api/v1/file-proxy?url=${encodeURIComponent(server.icon)}`
+                    ? server.icon
                     : `${SERVER_URL}/logo.png`;
             const url = escapeHtml(`${SERVER_URL}/invite/${inviteCode}`);
             const themeColor = '#5865F2';

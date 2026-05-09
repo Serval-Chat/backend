@@ -53,6 +53,7 @@ import {
     ServerEditMessageRequestDTO,
     BulkDeleteMessagesRequestDTO,
 } from './dto/server-message.request.dto';
+import { PollVoteRequestDTO } from './dto/poll-vote.request.dto';
 
 @injectable()
 @Controller('api/v1/servers/:serverId/channels/:channelId/messages')
@@ -307,6 +308,21 @@ export class ServerMessageController {
                 body.stickerId !== undefined && body.stickerId !== ''
                     ? new mongoose.Types.ObjectId(body.stickerId)
                     : undefined,
+            poll: body.poll
+                ? {
+                      ...body.poll,
+                      expiresAt:
+                          body.poll.expiresAt !== undefined &&
+                          body.poll.expiresAt !== ''
+                              ? new Date(body.poll.expiresAt)
+                              : undefined,
+                      options: body.poll.options.map((opt) => ({
+                          ...opt,
+                          id: new mongoose.Types.ObjectId().toString(),
+                          votes: [],
+                      })),
+                  }
+                : undefined,
         });
 
         await this.channelRepo.updateLastMessageAt(
@@ -345,6 +361,7 @@ export class ServerMessageController {
                         ? message.interaction
                         : undefined,
                 stickerId: message.stickerId?.toString(),
+                poll: message.poll,
             },
         };
         this.wsServer.broadcastToChannel(channelId, messagePayload);
@@ -676,6 +693,110 @@ export class ServerMessageController {
             metadata: {
                 channelId: message.channelId.toString(),
                 channelName: channelObj ? channelObj.name : 'Unknown Channel',
+            },
+        });
+
+        return updatedMessage;
+    }
+
+    @Post(':messageId/poll/vote')
+    @ApiOperation({ summary: 'Vote on a poll' })
+    @ApiResponse({ status: 200, description: 'Vote registered' })
+    @ApiResponse({ status: 400, description: 'Invalid vote or not a poll' })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
+    public async votePoll(
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @Param('messageId') messageId: string,
+        @Body() body: PollVoteRequestDTO,
+        @Req() req: ExpressRequest,
+    ): Promise<IServerMessage> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+        );
+        if (member === null) {
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
+        }
+
+        const canView = await this.permissionService.hasChannelPermission(
+            new mongoose.Types.ObjectId(serverId),
+            new mongoose.Types.ObjectId(userId),
+            new mongoose.Types.ObjectId(channelId),
+            'viewChannels',
+        );
+        if (canView !== true) {
+            throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
+        }
+
+        const message = await this.serverMessageRepo.findById(
+            new mongoose.Types.ObjectId(messageId),
+            false,
+        );
+        if (message === null || message.channelId.toString() !== channelId) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        if (!message.poll) {
+            throw new BadRequestException(
+                'This message does not contain a poll.',
+            );
+        }
+
+        const { poll } = message;
+        if (poll.expiresAt && new Date() > new Date(poll.expiresAt)) {
+            throw new BadRequestException(
+                'This poll has ended and can no longer be voted on.',
+            );
+        }
+
+        if (!poll.multiSelect && body.optionIds.length > 1) {
+            throw new BadRequestException(
+                'This poll does not allow multiple selections.',
+            );
+        }
+
+        const validOptionIds = poll.options.map((o) => o.id);
+        const allValid = body.optionIds.every((id) =>
+            validOptionIds.includes(id),
+        );
+        if (!allValid) {
+            throw new BadRequestException(
+                'One or more option IDs are invalid.',
+            );
+        }
+
+        const userObjId = new mongoose.Types.ObjectId(userId);
+
+        const newOptions = poll.options.map((opt) => {
+            const votes = opt.votes.filter((v) => v.toString() !== userId);
+            if (body.optionIds.includes(opt.id)) {
+                votes.push(userObjId);
+            }
+            return { ...opt, votes };
+        });
+
+        const updatedMessage = await this.serverMessageRepo.update(
+            new mongoose.Types.ObjectId(messageId),
+            {
+                poll: { ...poll, options: newOptions },
+            },
+        );
+
+        if (!updatedMessage) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        this.wsServer.broadcastToChannel(channelId, {
+            type: 'poll_vote_updated_server',
+            payload: {
+                messageId,
+                serverId,
+                channelId,
+                poll: updatedMessage.poll ?? poll,
             },
         });
 

@@ -100,7 +100,7 @@ import { ServerStickerController } from '@/controllers/ServerStickerController';
 import { StickerController } from '@/controllers/StickerController';
 import { WebhookController } from '@/controllers/WebhookController';
 import { MetricsController } from '@/controllers/MetricsController';
-import { FileProxyController } from '@/controllers/FileProxyController';
+
 import { ServerPublicController } from '@/controllers/ServerPublicController';
 import { UserWarningController } from '@/controllers/UserWarningController';
 import { UserPingController } from '@/controllers/UserPingController';
@@ -405,11 +405,6 @@ container
 
 container
     .bind<MetricsController>(MetricsController)
-    .toSelf()
-    .inTransientScope();
-
-container
-    .bind<FileProxyController>(FileProxyController)
     .toSelf()
     .inTransientScope();
 

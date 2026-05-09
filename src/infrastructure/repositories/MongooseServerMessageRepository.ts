@@ -7,6 +7,7 @@ import type { InteractionValue } from '@/types/interactions';
 import { ServerMessage } from '@/models/Server';
 import { IEmbed } from '@/models/Embed';
 import { Reaction } from '@/models/Reaction';
+import type { IPoll } from '@/models/Message';
 import { type FilterQuery, Types, ClientSession } from 'mongoose';
 import type { ReactionData } from '@/di/interfaces/IReactionRepository';
 
@@ -97,6 +98,7 @@ export class MongooseServerMessageRepository implements IServerMessageRepository
                 user: { id: string; username: string };
             };
             stickerId?: string | Types.ObjectId;
+            poll?: IPoll;
         },
         session?: ClientSession,
     ): Promise<IServerMessage> {

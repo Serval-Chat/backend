@@ -2,6 +2,7 @@ import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 import type { IEmbed } from './Embed';
 import type { InteractionValue } from '@/types/interactions';
+import type { IPoll } from './Message';
 
 // Server interface
 //
@@ -193,6 +194,7 @@ export interface IServerMessage {
         user: { id: string; username: string };
     };
     stickerId?: Types.ObjectId;
+    poll?: IPoll;
 }
 
 // Server ban interface
@@ -436,6 +438,27 @@ const serverMessageSchema = new Schema<IServerMessage>({
         },
     },
     stickerId: { type: Schema.Types.ObjectId, ref: 'Sticker', required: false },
+    poll: {
+        type: new Schema(
+            {
+                title: { type: String, required: true },
+                options: [
+                    {
+                        id: { type: String, required: true },
+                        text: { type: String, required: true },
+                        emoji: { type: String, required: false },
+                        emojiType: { type: String, required: false },
+                        emojiId: { type: String, required: false },
+                        votes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+                    },
+                ],
+                multiSelect: { type: Boolean, default: false },
+                expiresAt: { type: Date, required: false },
+            },
+            { _id: false },
+        ),
+        required: false,
+    },
 });
 serverMessageSchema.index({ channelId: 1, deletedAt: 1, createdAt: -1 });
 serverMessageSchema.index({ channelId: 1, createdAt: -1 });

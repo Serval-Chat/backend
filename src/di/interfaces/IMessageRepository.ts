@@ -1,4 +1,5 @@
 import type { Types, ClientSession } from 'mongoose';
+import type { IPoll } from '@/models/Message';
 
 // Message interface (domain model)
 //
@@ -19,6 +20,7 @@ export interface IMessage {
     anonymizedSender?: string;
     receiverDeleted?: boolean;
     anonymizedReceiver?: string;
+    poll?: IPoll;
 }
 
 // Message Repository Interface
@@ -44,6 +46,7 @@ export interface IMessageRepository {
             replyToId?: Types.ObjectId;
             repliedToMessageId?: Types.ObjectId;
             stickerId?: Types.ObjectId;
+            poll?: IPoll;
         },
         session?: ClientSession,
     ): Promise<IMessage>;

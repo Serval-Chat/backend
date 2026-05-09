@@ -2,6 +2,7 @@ import type { WsEvent } from '@/ws/protocol/event';
 import type { IEmbed } from '@/models/Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { Permissions } from '@/permissions/types';
+import type { IPoll } from '@/models/Message';
 
 // ============================================================================
 // Direct Message Events
@@ -18,6 +19,15 @@ export interface ISendMessageDmEvent extends WsEvent<
         text?: string; // Message content
         replyToId?: string; // Optional: Message ID being replied to
         stickerId?: string;
+        poll?: Omit<IPoll, 'options'> & {
+            options: {
+                text: string;
+                emoji?: string;
+                emojiType?: 'unicode' | 'custom';
+                emojiId?: string;
+            }[];
+            expiresAt?: string;
+        };
     }
 > {}
 
@@ -40,6 +50,7 @@ export interface IMessageDmSentEvent extends WsEvent<
             text: string;
         };
         stickerId?: string;
+        poll?: IPoll;
     }
 > {}
 
@@ -60,6 +71,7 @@ export interface IMessageDm {
     };
     isEdited: boolean;
     stickerId?: string;
+    poll?: IPoll;
 }
 
 /**
@@ -113,6 +125,18 @@ export interface IMessageDmDeletedEvent extends WsEvent<
     'message_dm_deleted',
     {
         messageId: string;
+    }
+> {}
+
+/**
+ * Server → Client (Broadcast)
+ * Poll vote updated.
+ */
+export interface IPollVoteUpdatedDmEvent extends WsEvent<
+    'poll_vote_updated_dm',
+    {
+        messageId: string;
+        poll: IPoll;
     }
 > {}
 
@@ -248,6 +272,15 @@ export interface ISendMessageServerEvent extends WsEvent<
         text?: string;
         replyToId?: string;
         stickerId?: string;
+        poll?: Omit<IPoll, 'options'> & {
+            options: {
+                text: string;
+                emoji?: string;
+                emojiType?: 'unicode' | 'custom';
+                emojiId?: string;
+            }[];
+            expiresAt?: string;
+        };
     }
 > {}
 
@@ -268,6 +301,7 @@ export interface IMessageServerSentEvent extends WsEvent<
         embeds?: IEmbed[];
         slowModeNextMessageAllowedAt?: string | null;
         stickerId?: string;
+        poll?: IPoll;
     }
 > {}
 
@@ -299,6 +333,7 @@ export interface IMessageServer {
         user?: { id: string; username: string };
     };
     stickerId?: string;
+    poll?: IPoll;
     _id?: string; // Optional internal ID for broadcasting consistency
 }
 
@@ -362,6 +397,20 @@ export interface IMessageServerDeletedEvent extends WsEvent<
         serverId: string;
         channelId: string;
         hard?: boolean;
+    }
+> {}
+
+/**
+ * Server → Client (Broadcast)
+ * Poll vote updated.
+ */
+export interface IPollVoteUpdatedServerEvent extends WsEvent<
+    'poll_vote_updated_server',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        poll: IPoll;
     }
 > {}
 

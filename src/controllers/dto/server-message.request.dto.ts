@@ -3,7 +3,17 @@ import { IsOptional } from 'class-validator';
 import { IsMessageContent, IsMessageId } from '@/validation/schemas/common';
 import { IEmbed } from '@/models/Embed';
 import { Type } from 'class-transformer';
-import { ValidateNested, IsString, IsArray, IsDefined } from 'class-validator';
+import {
+    ValidateNested,
+    IsString,
+    IsArray,
+    IsDefined,
+    IsBoolean,
+    MaxLength,
+    MinLength,
+    ArrayMinSize,
+    ArrayMaxSize,
+} from 'class-validator';
 import { InteractionValue } from '@/types/interactions';
 
 export class SendMessageInteractionOptionDTO {
@@ -39,6 +49,46 @@ export class SendMessageInteractionMetadataDTO {
     public user!: SendMessageInteractionUserDTO;
 }
 
+export class SendMessagePollOptionDTO {
+    @IsString()
+    @MinLength(1)
+    @MaxLength(192)
+    public text!: string;
+
+    @IsString()
+    @IsOptional()
+    public emoji?: string;
+
+    @IsString()
+    @IsOptional()
+    public emojiType?: 'unicode' | 'custom';
+
+    @IsString()
+    @IsOptional()
+    public emojiId?: string;
+}
+
+export class SendMessagePollDTO {
+    @IsString()
+    @MinLength(1)
+    @MaxLength(192)
+    public title!: string;
+
+    @IsArray()
+    @ArrayMinSize(1)
+    @ArrayMaxSize(10)
+    @ValidateNested({ each: true })
+    @Type(() => SendMessagePollOptionDTO)
+    public options!: SendMessagePollOptionDTO[];
+
+    @IsBoolean()
+    public multiSelect!: boolean;
+
+    @IsString()
+    @IsOptional()
+    public expiresAt?: string;
+}
+
 export class SendMessageRequestDTO {
     @ApiPropertyOptional({ description: 'Message content (preferred)' })
     @IsOptional()
@@ -69,6 +119,12 @@ export class SendMessageRequestDTO {
     @IsOptional()
     @IsMessageId()
     public stickerId?: string;
+
+    @ApiPropertyOptional({ description: 'Poll details' })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => SendMessagePollDTO)
+    public poll?: SendMessagePollDTO;
 }
 
 export class ServerEditMessageRequestDTO {

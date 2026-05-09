@@ -550,7 +550,8 @@ export class ServerController {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
-        const { serverId, channelId, text, replyToId, stickerId } = payload;
+        const { serverId, channelId, text, replyToId, stickerId, poll } =
+            payload;
         const userId = authenticatedUser.userId;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -666,6 +667,22 @@ export class ServerController {
                                   ),
                               }
                             : {}),
+                        poll:
+                            poll !== undefined
+                                ? {
+                                      ...poll,
+                                      expiresAt:
+                                          poll.expiresAt !== undefined &&
+                                          poll.expiresAt !== ''
+                                              ? new Date(poll.expiresAt)
+                                              : undefined,
+                                      options: poll.options.map((opt) => ({
+                                          ...opt,
+                                          id: new mongoose.Types.ObjectId().toString(),
+                                          votes: [],
+                                      })),
+                                  }
+                                : undefined,
                     },
                     session,
                 );
@@ -705,6 +722,7 @@ export class ServerController {
             isSticky: false,
             isWebhook: false,
             stickerId: created.stickerId?.toString(),
+            poll: created.poll,
         };
 
         this.wsServer.broadcastToChannel(
@@ -825,6 +843,7 @@ export class ServerController {
             replyToId: created.replyToId?.toString(),
             slowModeNextMessageAllowedAt,
             stickerId: created.stickerId?.toString(),
+            poll: created.poll,
         };
     }
 

@@ -68,6 +68,12 @@ export interface IPingRepository {
     // Delete all pings for a user
     deleteByUserId(userId: Types.ObjectId): Promise<number>;
 
+    // Delete all pings between two users
+    deleteBetweenUsers(
+        user1: Types.ObjectId,
+        user2: Types.ObjectId,
+    ): Promise<number>;
+
     // Delete old pings (older than specified age)
     deleteOldPings(maxAge: number): Promise<number>;
 }

@@ -97,10 +97,7 @@ export interface IServerRepository {
 
     // Count all servers per day since the very first server (lifetime view)
     countAllByDay(): Promise<number[]>;
-    listAwaitingReview(options: {
-        limit: number;
-        offset: number;
-    }): Promise<
+    listAwaitingReview(options: { limit: number; offset: number }): Promise<
         (IServer & {
             memberCount?: number;
             realMessageCount?: number;

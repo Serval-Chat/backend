@@ -14,11 +14,35 @@ export const SendMessageDmSchema = z
             .default(''),
         replyToId: z.string().optional(),
         stickerId: z.string().optional(),
+        poll: z
+            .object({
+                title: z.string().min(1).max(192),
+                options: z
+                    .array(
+                        z.object({
+                            text: z.string().min(1).max(192),
+                            emoji: z.string().optional(),
+                            emojiType: z.enum(['unicode', 'custom']).optional(),
+                            emojiId: z.string().optional(),
+                        }),
+                    )
+                    .min(1)
+                    .max(10),
+                multiSelect: z.boolean(),
+                expiresAt: z.string().datetime().optional(),
+            })
+            .optional(),
     })
-    .refine((data) => data.text.length > 0 || data.stickerId, {
-        message: 'Message text or sticker is required',
-        path: ['text'],
-    });
+    .refine(
+        (data) =>
+            data.text.length > 0 ||
+            data.stickerId !== undefined ||
+            data.poll !== undefined,
+        {
+            message: 'Message text, sticker, or poll is required',
+            path: ['text'],
+        },
+    );
 
 export const EditMessageDmSchema = z.object({
     messageId: z.string().min(1, 'Message ID is required'),
@@ -91,11 +115,35 @@ export const SendMessageServerSchema = z
             .default(''),
         replyToId: z.string().optional(),
         stickerId: z.string().optional(),
+        poll: z
+            .object({
+                title: z.string().min(1).max(192),
+                options: z
+                    .array(
+                        z.object({
+                            text: z.string().min(1).max(192),
+                            emoji: z.string().optional(),
+                            emojiType: z.enum(['unicode', 'custom']).optional(),
+                            emojiId: z.string().optional(),
+                        }),
+                    )
+                    .min(1)
+                    .max(10),
+                multiSelect: z.boolean(),
+                expiresAt: z.string().datetime().optional(),
+            })
+            .optional(),
     })
-    .refine((data) => data.text.length > 0 || data.stickerId, {
-        message: 'Message text or sticker is required',
-        path: ['text'],
-    });
+    .refine(
+        (data) =>
+            data.text.length > 0 ||
+            data.stickerId !== undefined ||
+            data.poll !== undefined,
+        {
+            message: 'Message text, sticker, or poll is required',
+            path: ['text'],
+        },
+    );
 
 export const EditMessageServerSchema = z.object({
     messageId: z.string().min(1, 'Message ID is required'),

@@ -1,6 +1,24 @@
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
+export interface IPollOption {
+    _id?: Types.ObjectId;
+    id: string;
+    text: string;
+    emoji?: string;
+    emojiType?: 'unicode' | 'custom';
+    emojiId?: string;
+    votes: Types.ObjectId[]; // Array of User IDs
+}
+
+// Poll interface
+export interface IPoll {
+    title: string;
+    options: IPollOption[];
+    multiSelect: boolean;
+    expiresAt?: Date;
+}
+
 // Direct Message interface
 //
 // Represents a private message between two users
@@ -18,6 +36,7 @@ export interface IMessage extends Document {
     anonymizedSender?: string;
     receiverDeleted?: boolean;
     anonymizedReceiver?: string;
+    poll?: IPoll;
 }
 
 // Hard deletion fields preserved for backward compatibility
@@ -40,6 +59,27 @@ const messageSchema = new Schema<IMessage>({
     anonymizedSender: { type: String },
     receiverDeleted: { type: Boolean, default: false },
     anonymizedReceiver: { type: String },
+    poll: {
+        type: new Schema(
+            {
+                title: { type: String, required: true },
+                options: [
+                    {
+                        id: { type: String, required: true },
+                        text: { type: String, required: true },
+                        emoji: { type: String, required: false },
+                        emojiType: { type: String, required: false },
+                        emojiId: { type: String, required: false },
+                        votes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+                    },
+                ],
+                multiSelect: { type: Boolean, default: false },
+                expiresAt: { type: Date, required: false },
+            },
+            { _id: false },
+        ),
+        required: false,
+    },
 });
 
 // Indexing for performance

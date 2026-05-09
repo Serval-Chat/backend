@@ -2,6 +2,7 @@ import type { Types, ClientSession } from 'mongoose';
 import type { IEmbed } from '@/models/Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { ReactionData } from './IReactionRepository';
+import type { IPoll } from '@/models/Message';
 
 // Server Message interface (domain model)
 //
@@ -32,6 +33,7 @@ export interface IServerMessage {
         options: { name: string; value: InteractionValue }[];
         user: { id: string; username: string };
     };
+    poll?: IPoll;
 }
 
 // Server Message Repository Interface
@@ -56,6 +58,7 @@ export interface IServerMessageRepository {
                 options: { name: string; value: InteractionValue }[];
                 user: { id: string; username: string };
             };
+            poll?: IPoll;
         },
         session?: ClientSession,
     ): Promise<IServerMessage>;
