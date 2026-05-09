@@ -55,4 +55,17 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
             { upsert: true, new: true, session: undefined },
         );
     }
+
+    // Delete the unread count record for a user from a peer
+    public async delete(
+        userId: Types.ObjectId,
+        peerId: Types.ObjectId,
+    ): Promise<void> {
+        await DmUnread.deleteOne({ user: userId, peer: peerId });
+    }
+
+    // Delete all unread count records for a specific user
+    public async deleteByUser(userId: Types.ObjectId): Promise<void> {
+        await DmUnread.deleteMany({ user: userId });
+    }
 }

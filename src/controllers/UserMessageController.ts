@@ -92,15 +92,30 @@ export class UserMessageController {
     public async getUnreadCounts(
         @Req() req: ExpressRequest,
     ): Promise<UnreadCountsResponse> {
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-        const docs = await this.dmUnreadRepo.findByUser(
-            new Types.ObjectId(meId),
-        );
+        const meIdStr = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const meId = new Types.ObjectId(meIdStr);
+        const docs = await this.dmUnreadRepo.findByUser(meId);
 
         const unreadCounts: Record<string, number> = {};
-        docs.forEach((doc) => {
-            unreadCounts[doc.peer.toString()] = doc.count;
-        });
+
+        await Promise.all(
+            docs.map(async (doc) => {
+                const peerId = doc.peer;
+                const areFriends = await this.friendshipRepo.areFriends(
+                    meId,
+                    peerId,
+                );
+                if (areFriends === true) {
+                    unreadCounts[peerId.toString()] = doc.count;
+                } else if (doc.count > 0) {
+                    // Clean up orphaned unread records from non-friends
+                    this.logger.warn(
+                        `Cleaning up orphaned unread count for user ${meIdStr} from non-friend ${peerId.toString()}`,
+                    );
+                    await this.dmUnreadRepo.delete(meId, peerId);
+                }
+            }),
+        );
 
         return { counts: unreadCounts };
     }

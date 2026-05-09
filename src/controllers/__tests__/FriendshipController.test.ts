@@ -23,12 +23,14 @@ describe('FriendshipController', () => {
         findExistingRequest: jest.fn(),
         rejectRequest: jest.fn(),
         createRequest: jest.fn(),
+        remove: jest.fn(),
     };
     const mockMessageRepo = {};
     const mockWsServer = { broadcastToUser: jest.fn() };
     const mockLogger = { error: jest.fn() };
     const mockBlockRepo = { getActiveBlockFlags: jest.fn() };
     const mockPingService = { clearPingsBetweenUsers: jest.fn() };
+    const mockDmUnreadRepo = { delete: jest.fn() };
 
     let controller: FriendshipController;
 
@@ -42,7 +44,37 @@ describe('FriendshipController', () => {
             mockLogger as never,
             mockBlockRepo as never,
             mockPingService as never,
+            mockDmUnreadRepo as never,
         );
+    });
+
+    describe('removeFriend', () => {
+        it('removes friendship and cleans up pings and unread counts', async () => {
+            const friendIdStr = friendId.toHexString();
+            mockUserRepo.findById.mockResolvedValueOnce({
+                _id: friendId,
+                username: 'bob',
+            }); // friend
+            mockUserRepo.findById.mockResolvedValueOnce({
+                _id: meId,
+                username: 'alice',
+            }); // me
+
+            const result = await controller.removeFriend(friendIdStr, req);
+
+            expect(result.message).toBe('Friend removed successfully');
+            expect(mockFriendshipRepo.remove).toHaveBeenCalledWith(
+                meId,
+                friendId,
+            );
+            expect(mockPingService.clearPingsBetweenUsers).toHaveBeenCalledWith(
+                meId,
+                friendId,
+            );
+            expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(meId, friendId);
+            expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(friendId, meId);
+            expect(mockWsServer.broadcastToUser).toHaveBeenCalledTimes(2);
+        });
     });
 
     it('rejects friend requests targeting bot users', async () => {

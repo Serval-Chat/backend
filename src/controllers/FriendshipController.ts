@@ -17,6 +17,7 @@ import { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { WsServer } from '@/ws/server';
 import { ILogger } from '@/di/interfaces/ILogger';
 import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import type { IDmUnreadRepository } from '@/di/interfaces/IDmUnreadRepository';
 import { PingService } from '@/services/PingService';
 import {
     ApiTags,
@@ -71,6 +72,8 @@ export class FriendshipController {
         private blockRepo: IBlockRepository,
         @Inject(TYPES.PingService)
         private pingService: PingService,
+        @Inject(TYPES.DmUnreadRepository)
+        private dmUnreadRepo: IDmUnreadRepository,
     ) {}
 
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
@@ -566,6 +569,18 @@ export class FriendshipController {
             await this.pingService.clearPingsBetweenUsers(meOid, friendOid);
         } catch (err) {
             this.logger.error('Failed to clear pings after unfriend:', err);
+        }
+
+        try {
+            await Promise.all([
+                this.dmUnreadRepo.delete(meOid, friendOid),
+                this.dmUnreadRepo.delete(friendOid, meOid),
+            ]);
+        } catch (err) {
+            this.logger.error(
+                'Failed to clear unread counts after unfriend:',
+                err,
+            );
         }
 
         try {

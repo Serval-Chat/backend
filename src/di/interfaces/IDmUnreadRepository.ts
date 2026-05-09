@@ -36,4 +36,10 @@ export interface IDmUnreadRepository {
 
     // Reset the unread count for a user from a peer to zero
     reset(userId: Types.ObjectId, peerId: Types.ObjectId): Promise<void>;
+
+    // Delete the unread count record for a user from a peer
+    delete(userId: Types.ObjectId, peerId: Types.ObjectId): Promise<void>;
+
+    // Delete all unread count records for a specific user
+    deleteByUser(userId: Types.ObjectId): Promise<void>;
 }

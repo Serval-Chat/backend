@@ -35,6 +35,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
+import { PingService } from '@/services/PingService';
 
 import { mapUser } from '@/utils/user';
 import type { Request as ExpressRequest } from 'express';
@@ -80,7 +81,9 @@ export class ServerMemberController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
-    ) {}
+        @Inject(TYPES.PingService)
+        private pingService: PingService,
+    ) { }
 
     @Get('members')
     @ApiOperation({ summary: 'Get all server members' })
@@ -278,6 +281,12 @@ export class ServerMemberController {
         await this.cleanupManagedRole(serverOid, userOid);
         this.permissionService.invalidateCache(serverOid);
 
+        try {
+            await this.pingService.clearServerPings(userOid, serverOid);
+        } catch (err) {
+            this.logger.error('Failed to clear pings after leave:', err);
+        }
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
             payload: { serverId, userId },
@@ -361,6 +370,12 @@ export class ServerMemberController {
         await this.serverMemberRepo.remove(serverOid, targetOid);
         await this.cleanupManagedRole(serverOid, targetOid);
         this.permissionService.invalidateCache(serverOid);
+
+        try {
+            await this.pingService.clearServerPings(targetOid, serverOid);
+        } catch (err) {
+            this.logger.error('Failed to clear pings after kick:', err);
+        }
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
@@ -446,6 +461,12 @@ export class ServerMemberController {
         await this.serverMemberRepo.remove(serverOid, targetOid);
         await this.cleanupManagedRole(serverOid, targetOid);
         this.permissionService.invalidateCache(serverOid);
+
+        try {
+            await this.pingService.clearServerPings(targetOid, serverOid);
+        } catch (err) {
+            this.logger.error('Failed to clear pings after ban:', err);
+        }
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
