@@ -140,7 +140,8 @@ describe('Presence Blocking Integration', () => {
                 container.get<ConstructorParameters<typeof ServerMemberController>[6]>(TYPES.Logger),
                 mockWsServer as unknown as ConstructorParameters<typeof ServerMemberController>[7],
                 {} as ConstructorParameters<typeof ServerMemberController>[8], // serverAuditLogService
-                container.get<ConstructorParameters<typeof ServerMemberController>[9]>(TYPES.BlockRepository)
+                container.get<ConstructorParameters<typeof ServerMemberController>[9]>(TYPES.BlockRepository),
+                container.get<ConstructorParameters<typeof ServerMemberController>[10]>(TYPES.PingService)
             );
 
             await setupBlock(blocker._id, blocked._id, BlockFlags.HIDE_MY_PRESENCE);
