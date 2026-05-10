@@ -210,6 +210,7 @@ export class ServerStickerController {
                     width: 512,
                     height: 512,
                     fit: 'contain',
+                    background: { r: 0, g: 0, b: 0, alpha: 0 },
                     format: isAnimated ? 'gif' : 'webp',
                     animated: isAnimated,
                     quality: 90,
