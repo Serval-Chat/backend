@@ -46,6 +46,7 @@ import { KlipyController } from './controllers/KlipyController';
 import { ServerAuditLogController } from './controllers/ServerAuditLogController';
 import { BotController } from './controllers/BotController';
 import { WebhookController } from './controllers/WebhookController';
+import { EmbedController } from './controllers/EmbedController';
 import { InteractionController } from './controllers/InteractionController';
 import { ApplicationController } from './controllers/ApplicationController';
 
@@ -145,6 +146,7 @@ import { ApplicationController } from './controllers/ApplicationController';
         ServerAuditLogController,
         BotController,
         WebhookController,
+        EmbedController,
         InteractionController,
         ApplicationController,
     ],

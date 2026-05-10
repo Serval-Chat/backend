@@ -52,6 +52,8 @@ import type {
     IInteractionCreateServerEvent,
     IPollVoteUpdatedDmEvent,
     IPollVoteUpdatedServerEvent,
+    IMessageDmEmbedsUpdatedEvent,
+    IMessageServerEmbedsUpdatedEvent,
 } from './events/messages';
 import type {
     IPresenceSyncEvent,
@@ -168,6 +170,8 @@ export type AnyResponseWsEvent =
     | IInteractionCreateServerEvent
     | IPollVoteUpdatedDmEvent
     | IPollVoteUpdatedServerEvent
+    | IMessageDmEmbedsUpdatedEvent
+    | IMessageServerEmbedsUpdatedEvent
     // Server Notifications
     | IServerUpdatedEvent
     | IServerDeletedEvent

@@ -141,11 +141,7 @@ export function setupExpressApp(app: Application): Application {
                         'data:',
                     ],
                     objectSrc: ["'none'"],
-                    mediaSrc: [
-                        "'self'",
-                        'https://*.tenor.com',
-                        'https://*.googleapis.com',
-                    ],
+                    mediaSrc: ["'self'", 'https:', 'http:', 'data:', 'blob:'],
                     frameSrc: ["'none'"],
                     ...(PROJECT_LEVEL === 'production'
                         ? { upgradeInsecureRequests: [] }

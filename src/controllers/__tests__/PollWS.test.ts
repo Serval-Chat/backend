@@ -13,6 +13,7 @@ import type { PingService } from '@/services/PingService';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IWsUser } from '@/ws/types';
+import type { EmbedService } from '@/services/EmbedService';
 
 jest.mock('@/services/pushService', () => ({
     notifyUser: jest.fn().mockResolvedValue(undefined),
@@ -78,6 +79,10 @@ describe('Server WS Polls', () => {
         unsubscribeFromChannel: jest.Mock;
         on: jest.Mock;
     };
+    let embedService: {
+        processServerMessage: jest.Mock;
+        processUserMessage: jest.Mock;
+    };
 
     let serverController: ServerController;
 
@@ -138,6 +143,10 @@ describe('Server WS Polls', () => {
             unsubscribeFromChannel: jest.fn(),
             on: jest.fn(),
         };
+        embedService = {
+            processServerMessage: jest.fn(),
+            processUserMessage: jest.fn(),
+        };
 
         serverController = new ServerController(
             serverRepo as unknown as IServerRepository,
@@ -151,6 +160,7 @@ describe('Server WS Polls', () => {
             pingService as unknown as PingService,
             transactionManager as unknown as TransactionManager,
             redisService as unknown as IRedisService,
+            embedService as unknown as EmbedService,
         );
         (serverController as unknown as any).wsServer = wsServer;
     });

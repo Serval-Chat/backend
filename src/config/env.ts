@@ -43,6 +43,8 @@ const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 const INSTANCE_NAME =
     process.env.INSTANCE_NAME ?? `node-${crypto.randomUUID().split('-')[0]}`;
+const SCRAPER_HOST = process.env.SCRAPER_HOST ?? '';
+const SCRAPER_PORT = Number(process.env.SCRAPER_PORT ?? -1);
 
 if (MAILGUN_API_KEY === '')
     console.warn('MAILGUN_API_KEY not set. Password reset will fail.');
@@ -74,6 +76,8 @@ if (process.env.NODE_ENV !== 'test') {
     if (PUBLIC_FOLDER_PATH === '') throw new Error('PUBLIC_FOLDER not set.');
     if (USE_HTTPS === '') throw new Error('HTTPS not set.');
     if (SERVER_URL === '') throw new Error('SERVER_URL not set.');
+    if (SCRAPER_HOST === '') throw new Error('SCRAPER_HOST not set.');
+    if (SCRAPER_PORT === -1) throw new Error('SCRAPER_PORT not set.');
 }
 
 if (
@@ -139,4 +143,6 @@ export {
     REDIS_URL,
     INSTANCE_NAME,
     MAX_MESSAGE_LENGTH,
+    SCRAPER_HOST,
+    SCRAPER_PORT,
 };

@@ -78,6 +78,8 @@ import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { LiveKitService } from '@/services/LiveKitService';
 import { RedisService } from '@/services/RedisService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
+import { ScraperService } from '@/services/ScraperService';
+import { EmbedService } from '@/services/EmbedService';
 import { AdminController } from '@/controllers/AdminController';
 import { AuthController } from '@/controllers/AuthController';
 import { FileController } from '@/controllers/FileController';
@@ -308,6 +310,16 @@ container
 container
     .bind<ImageDeliveryService>(TYPES.ImageDeliveryService)
     .to(ImageDeliveryService)
+    .inSingletonScope();
+
+container
+    .bind<ScraperService>(TYPES.ScraperService)
+    .to(ScraperService)
+    .inSingletonScope();
+
+container
+    .bind<EmbedService>(TYPES.EmbedService)
+    .to(EmbedService)
     .inSingletonScope();
 
 container.bind(TYPES.MailConfig).toConstantValue({

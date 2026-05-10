@@ -11,6 +11,7 @@ import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { EmbedService } from '@/services/EmbedService';
 describe('ServerMessageController Manual Instance', () => {
     let controller: ServerMessageController;
 
@@ -61,6 +62,10 @@ describe('ServerMessageController Manual Instance', () => {
                     .fn()
                     .mockResolvedValue({ _id: '507f1f77bcf86cd799439011' }),
             } as unknown as IServerRepository,
+            {
+                processServerMessage: jest.fn().mockResolvedValue(undefined),
+                processUserMessage: jest.fn().mockResolvedValue(undefined),
+            } as unknown as EmbedService,
         );
     });
 

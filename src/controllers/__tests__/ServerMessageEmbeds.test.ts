@@ -52,6 +52,7 @@ describe('ServerMessageController embeds', () => {
             mockAuditLogRepo as never,
             mockServerAuditLogService as never,
             mockServerRepo as never,
+            {} as never, // EmbedService
         );
 
         mockServerRepo.findById.mockResolvedValue({

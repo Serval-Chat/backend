@@ -11,6 +11,8 @@ import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { LiveKitService } from '@/services/LiveKitService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { RegistrationInviteService } from '@/services/RegistrationInviteService';
+import { ScraperService } from '@/services/ScraperService';
+import { EmbedService } from '@/services/EmbedService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 
@@ -66,6 +68,14 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
             provide: TYPES.RegistrationInviteService,
             useClass: RegistrationInviteService,
         },
+        {
+            provide: TYPES.ScraperService,
+            useClass: ScraperService,
+        },
+        {
+            provide: TYPES.EmbedService,
+            useClass: EmbedService,
+        },
     ],
     exports: [
         TYPES.AuthService,
@@ -79,6 +89,8 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
         TYPES.ServerAuditLogService,
         TYPES.ImageDeliveryService,
         TYPES.RegistrationInviteService,
+        TYPES.ScraperService,
+        TYPES.EmbedService,
     ],
 })
 export class ServicesModule {}

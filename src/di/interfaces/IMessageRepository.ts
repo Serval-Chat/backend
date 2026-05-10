@@ -1,5 +1,6 @@
 import type { Types, ClientSession } from 'mongoose';
 import type { IPoll } from '@/models/Message';
+import type { IEmbed } from '@/models/Embed';
 
 // Message interface (domain model)
 //
@@ -21,6 +22,7 @@ export interface IMessage {
     receiverDeleted?: boolean;
     anonymizedReceiver?: string;
     poll?: IPoll;
+    embeds?: IEmbed[];
 }
 
 // Message Repository Interface
@@ -52,6 +54,11 @@ export interface IMessageRepository {
     ): Promise<IMessage>;
 
     update(id: Types.ObjectId, text: string): Promise<IMessage | null>;
+
+    updateMessage(
+        id: string | Types.ObjectId,
+        data: Partial<IMessage>,
+    ): Promise<IMessage | null>;
 
     delete(id: Types.ObjectId): Promise<boolean>;
 

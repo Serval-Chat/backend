@@ -34,6 +34,7 @@ import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import { PermissionService } from '@/permissions/PermissionService';
+import { EmbedService } from '@/services/EmbedService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type {
@@ -82,6 +83,8 @@ export class ServerMessageController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
+        @Inject(TYPES.EmbedService)
+        private embedService: EmbedService,
     ) {}
 
     @Get()
@@ -401,6 +404,17 @@ export class ServerMessageController {
             },
         );
 
+        if (message.text && message.text.includes('http')) {
+            Promise.resolve()
+                .then(() => this.embedService.processServerMessage(message))
+                .catch((err) =>
+                    this.logger.error(
+                        'Failed to process embeds for new message',
+                        err.stack,
+                    ),
+                );
+        }
+
         return message;
     }
 
@@ -695,6 +709,16 @@ export class ServerMessageController {
                 channelName: channelObj ? channelObj.name : 'Unknown Channel',
             },
         });
+
+        if (updatedMessage.text && updatedMessage.text.includes('http')) {
+            Promise.resolve()
+                .then(() =>
+                    this.embedService.processServerMessage(updatedMessage),
+                )
+                .catch((err) =>
+                    this.logger.error('Failed to process embeds', err.stack),
+                );
+        }
 
         return updatedMessage;
     }

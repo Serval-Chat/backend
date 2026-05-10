@@ -48,6 +48,8 @@ export const TYPES = {
     ServerAuditLogService: Symbol.for('ServerAuditLogService'),
     RedisService: Symbol.for('RedisService'),
     ImageDeliveryService: Symbol.for('ImageDeliveryService'),
+    ScraperService: Symbol.for('ScraperService'),
+    EmbedService: Symbol.for('EmbedService'),
 
     // Application
     ExpressApp: Symbol.for('ExpressApp'),

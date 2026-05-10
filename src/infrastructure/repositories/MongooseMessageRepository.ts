@@ -241,6 +241,20 @@ export class MongooseMessageRepository implements IMessageRepository {
         return msg ? this.transformMessage(msg) : null;
     }
 
+    public async updateMessage(
+        id: string | Types.ObjectId,
+        data: Partial<IMessage>,
+    ): Promise<IMessage | null> {
+        const msg = (await this.messageModel
+            .findByIdAndUpdate(new Types.ObjectId(id), data, { new: true })
+            .populate({
+                path: 'repliedToMessageId',
+                populate: { path: 'repliedToMessageId' },
+            })
+            .lean()) as unknown as PopulatedMessageDoc | null;
+        return msg ? this.transformMessage(msg) : null;
+    }
+
     public async delete(id: Types.ObjectId): Promise<boolean> {
         const result = await this.messageModel.deleteOne({ _id: id });
         return result.deletedCount > 0;

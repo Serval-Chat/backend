@@ -9,6 +9,7 @@ import type { IDmUnreadRepository } from '@/di/interfaces/IDmUnreadRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { WsServer } from '@/ws/server';
+import type { EmbedService } from '@/services/EmbedService';
 
 describe('UserMessageController', () => {
     const meId = new Types.ObjectId();
@@ -55,6 +56,10 @@ describe('UserMessageController', () => {
             mockReactionRepo as unknown as IReactionRepository,
             mockLogger as unknown as ILogger,
             mockWsServer as unknown as WsServer,
+            {
+                processServerMessage: jest.fn().mockResolvedValue(undefined),
+                processUserMessage: jest.fn().mockResolvedValue(undefined),
+            } as unknown as EmbedService,
         );
     });
 

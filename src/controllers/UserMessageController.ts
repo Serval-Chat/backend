@@ -40,6 +40,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { JWTPayload } from '@/utils/jwt';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { WsServer } from '@/ws/server';
+import { EmbedService } from '@/services/EmbedService';
 import {
     UserEditMessageRequestDTO,
     GetMessagesQueryDTO,
@@ -84,6 +85,8 @@ export class UserMessageController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: WsServer,
+        @Inject(TYPES.EmbedService)
+        private embedService: EmbedService,
     ) {}
 
     @Get('unread')
@@ -362,6 +365,14 @@ export class UserMessageController {
             type: 'message_dm_edited',
             payload: broadcastPayload,
         });
+
+        if (updated.text && updated.text.includes('http')) {
+            Promise.resolve()
+                .then(() => this.embedService.processUserMessage(updated))
+                .catch((err) =>
+                    this.logger.error('Failed to process embeds', err.stack),
+                );
+        }
 
         return updated;
     }

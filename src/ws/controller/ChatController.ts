@@ -39,6 +39,7 @@ import logger from '@/utils/logger';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import { Types } from 'mongoose';
 import { notifyUser } from '@/services/pushService';
+import { EmbedService } from '@/services/EmbedService';
 
 /**
  * Controller for handling direct message events
@@ -58,6 +59,8 @@ export class ChatController {
         private friendshipRepo: IFriendshipRepository,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
+        @inject(TYPES.EmbedService)
+        private embedService: EmbedService,
     ) {}
 
     /**
@@ -213,6 +216,16 @@ export class ChatController {
             payload: unreadPayload,
         });
 
+        if (created.text && created.text.includes('http')) {
+            Promise.resolve()
+                .then(() => this.embedService.processUserMessage(created))
+                .catch((err) =>
+                    logger.error(
+                        `[ChatController] Failed to process embeds: ${err}`,
+                    ),
+                );
+        }
+
         return {
             messageId: created._id.toString(),
             senderId,
@@ -299,6 +312,16 @@ export class ChatController {
             type: 'message_dm_edited',
             payload: broadcastPayload,
         });
+
+        if (updated.text && updated.text.includes('http')) {
+            Promise.resolve()
+                .then(() => this.embedService.processUserMessage(updated))
+                .catch((err) =>
+                    logger.error(
+                        `[ChatController] Failed to process embeds: ${err}`,
+                    ),
+                );
+        }
 
         return broadcastPayload;
     }

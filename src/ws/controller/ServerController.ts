@@ -67,6 +67,7 @@ import logger from '@/utils/logger';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { notifyUser } from '@/services/pushService';
+import { EmbedService } from '@/services/EmbedService';
 
 /**
  * Controller for handling server/channel message events.
@@ -94,6 +95,7 @@ export class ServerController {
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
         @inject(TYPES.RedisService) private redisService: IRedisService,
+        @inject(TYPES.EmbedService) private embedService: EmbedService,
     ) {}
 
     @postConstruct()
@@ -833,6 +835,16 @@ export class ServerController {
             ).toISOString();
         }
 
+        if (created.text && created.text.includes('http')) {
+            Promise.resolve()
+                .then(() => this.embedService.processServerMessage(created))
+                .catch((err) =>
+                    logger.error(
+                        `[ServerController] Failed to process embeds: ${err}`,
+                    ),
+                );
+        }
+
         return {
             messageId: created._id.toString(),
             serverId,
@@ -929,6 +941,16 @@ export class ServerController {
             ws,
             { onlyBots: true },
         );
+
+        if (updated.text && updated.text.includes('http')) {
+            Promise.resolve()
+                .then(() => this.embedService.processServerMessage(updated))
+                .catch((err) =>
+                    logger.error(
+                        `[ServerController] Failed to process embeds: ${err}`,
+                    ),
+                );
+        }
 
         return broadcastPayload;
     }

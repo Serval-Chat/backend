@@ -142,6 +142,7 @@ describe('DM Polls', () => {
             reactionRepo as unknown as IReactionRepository,
             logger as unknown as ILogger,
             wsServer as unknown as any,
+            {} as any,
         );
 
         chatController = new ChatController(
@@ -150,6 +151,7 @@ describe('DM Polls', () => {
             dmUnreadRepo as unknown as IDmUnreadRepository,
             friendshipRepo as unknown as IFriendshipRepository,
             transactionManager as unknown as TransactionManager,
+            {} as any, // EmbedService
         );
         (chatController as unknown as any).wsServer =
             wsServer as unknown as IWsServer;

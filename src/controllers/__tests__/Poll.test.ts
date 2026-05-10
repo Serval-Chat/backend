@@ -23,6 +23,7 @@ import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { SendMessageRequestDTO } from '../dto/server-message.request.dto';
 import type { PollVoteRequestDTO } from '../dto/poll-vote.request.dto';
 import type { IPoll, IPollOption } from '@/models/Message';
+import type { EmbedService } from '@/services/EmbedService';
 
 const hex = () => new Types.ObjectId().toHexString();
 
@@ -107,6 +108,10 @@ function buildController(): void {
                 ownerId: new Types.ObjectId(),
             }),
         } as unknown as IServerRepository,
+        {
+            processServerMessage: jest.fn().mockResolvedValue(undefined),
+            processUserMessage: jest.fn().mockResolvedValue(undefined),
+        } as unknown as EmbedService,
     );
 }
 
