@@ -21,8 +21,10 @@ export interface IChannel {
     createdAt: Date;
     lastMessageAt?: Date;
     lastExportAt?: Date;
-    icon?: string;
     description?: string;
+    icon?: string;
+    emoji?: string;
+    emojiType?: 'custom' | 'unicode';
     link?: string;
     slowMode?: number;
 }
@@ -44,6 +46,8 @@ export interface CreateChannelDTO {
     };
     description?: string;
     icon?: string;
+    emoji?: string;
+    emojiType?: 'custom' | 'unicode';
     link?: string;
     slowMode?: number;
 }

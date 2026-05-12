@@ -55,6 +55,16 @@ export class CreateChannelRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
+    @IsString()
+    public emoji?: string;
+
+    @ApiPropertyOptional({ enum: ['custom', 'unicode'] })
+    @IsOptional()
+    @IsEnum(['custom', 'unicode'])
+    public emojiType?: 'custom' | 'unicode';
+
+    @ApiPropertyOptional()
+    @IsOptional()
     @IsUrlField()
     public link?: string;
     @ApiPropertyOptional({
@@ -104,6 +114,16 @@ export class UpdateChannelRequestDTO {
     @IsOptional()
     @IsString()
     public icon?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    public emoji?: string;
+
+    @ApiPropertyOptional({ enum: ['custom', 'unicode'] })
+    @IsOptional()
+    @IsEnum(['custom', 'unicode'])
+    public emojiType?: 'custom' | 'unicode';
 
     @ApiPropertyOptional()
     @IsOptional()

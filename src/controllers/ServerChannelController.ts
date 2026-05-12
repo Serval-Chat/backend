@@ -297,6 +297,9 @@ export class ServerChannelController {
                 body.description !== '' && { description: body.description }),
             ...(body.icon !== undefined &&
                 body.icon !== '' && { icon: body.icon }),
+            ...(body.emoji !== undefined &&
+                body.emoji !== '' && { emoji: body.emoji }),
+            ...(body.emojiType !== undefined && { emojiType: body.emojiType }),
             ...(body.link !== undefined &&
                 body.link !== '' && { link: body.link }),
             ...(body.slowMode !== undefined && { slowMode: body.slowMode }),
@@ -495,6 +498,10 @@ export class ServerChannelController {
             }
             updates.icon = body.icon;
         }
+
+        if (body.emoji !== undefined) updates.emoji = body.emoji;
+        if (body.emojiType !== undefined) updates.emojiType = body.emojiType;
+
         if (body.slowMode !== undefined) updates.slowMode = body.slowMode;
 
         if (body.link !== undefined) updates.link = body.link;
@@ -567,6 +574,23 @@ export class ServerChannelController {
                 field: 'slowMode',
                 before: existingChannel.slowMode ?? 0,
                 after: body.slowMode,
+            });
+        }
+        if (body.emoji !== undefined && body.emoji !== existingChannel.emoji) {
+            changes.push({
+                field: 'emoji',
+                before: existingChannel.emoji ?? null,
+                after: body.emoji ?? null,
+            });
+        }
+        if (
+            body.emojiType !== undefined &&
+            body.emojiType !== existingChannel.emojiType
+        ) {
+            changes.push({
+                field: 'emojiType',
+                before: existingChannel.emojiType ?? null,
+                after: body.emojiType ?? null,
             });
         }
 

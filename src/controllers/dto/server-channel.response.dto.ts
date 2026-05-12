@@ -22,6 +22,15 @@ export class ChannelResponseDTO {
     @ApiProperty({ required: false })
     public description?: string;
 
+    @ApiProperty({ required: false })
+    public icon?: string;
+
+    @ApiProperty({ required: false })
+    public emoji?: string;
+
+    @ApiProperty({ required: false, enum: ['custom', 'unicode'] })
+    public emojiType?: 'custom' | 'unicode';
+
     @ApiProperty()
     public position!: number;
 

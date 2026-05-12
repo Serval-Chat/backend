@@ -86,6 +86,8 @@ export interface IChannel extends Document {
     lastMessageAt?: Date;
     lastExportAt?: Date;
     icon?: string;
+    emoji?: string;
+    emojiType?: 'custom' | 'unicode';
     description?: string;
     link?: string;
     slowMode?: number;
@@ -325,6 +327,8 @@ const channelSchema = new Schema<IChannel>({
     lastMessageAt: { type: Date, default: Date.now },
     lastExportAt: { type: Date },
     icon: { type: String },
+    emoji: { type: String },
+    emojiType: { type: String, enum: ['custom', 'unicode'] },
     description: { type: String, maxlength: 200 },
     link: { type: String, required: false },
     slowMode: { type: Number, default: 0 },
