@@ -277,6 +277,7 @@ export class ServerMessageController {
 
         const messageText = (body.content ?? body.text ?? '').trim();
         const embeds = body.embeds;
+        const attachments = body.attachments ?? [];
 
         if (embeds !== undefined && embeds.length > 0) {
             const isBot =
@@ -291,7 +292,8 @@ export class ServerMessageController {
 
         if (
             messageText === '' &&
-            (embeds === undefined || embeds.length === 0)
+            (embeds === undefined || embeds.length === 0) &&
+            attachments.length === 0
         ) {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
@@ -306,6 +308,7 @@ export class ServerMessageController {
                     ? new mongoose.Types.ObjectId(body.replyToId)
                     : undefined,
             embeds,
+            attachments,
             interaction: body.interaction,
             stickerId:
                 body.stickerId !== undefined && body.stickerId !== ''
@@ -358,6 +361,7 @@ export class ServerMessageController {
                 webhookUsername: message.webhookUsername,
                 webhookAvatarUrl: message.webhookAvatarUrl,
                 embeds: message.embeds || [],
+                attachments: message.attachments || [],
                 interaction:
                     message.interaction?.command !== undefined &&
                     message.interaction.command !== ''
@@ -668,6 +672,7 @@ export class ServerMessageController {
                 text: messageText,
                 editedAt: new Date().toISOString(),
                 isEdited: true,
+                attachments: updatedMessage.attachments || [],
             },
         };
 

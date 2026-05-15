@@ -3,6 +3,7 @@ import type { IEmbed } from '@/models/Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { ReactionData } from './IReactionRepository';
 import type { IPoll } from '@/models/Message';
+import type { IMessageAttachment } from '@/models/Attachment';
 
 // Server Message interface (domain model)
 //
@@ -27,6 +28,7 @@ export interface IServerMessage {
     webhookUsername?: string;
     webhookAvatarUrl?: string;
     embeds?: IEmbed[];
+    attachments?: IMessageAttachment[];
     reactions?: ReactionData[];
     interaction?: {
         command: string;
@@ -52,6 +54,7 @@ export interface IServerMessageRepository {
             replyToId?: string | Types.ObjectId;
             repliedToMessageId?: Types.ObjectId;
             embeds?: IEmbed[];
+            attachments?: IMessageAttachment[];
             stickerId?: string | Types.ObjectId;
             interaction?: {
                 command: string;

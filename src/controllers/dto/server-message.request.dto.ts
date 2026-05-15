@@ -13,8 +13,13 @@ import {
     MinLength,
     ArrayMinSize,
     ArrayMaxSize,
+    IsNumber,
+    IsIn,
+    IsPositive,
+    ValidateIf,
 } from 'class-validator';
 import { InteractionValue } from '@/types/interactions';
+import type { MessageAttachmentType } from '@/models/Attachment';
 
 export class SendMessageInteractionOptionDTO {
     @IsString()
@@ -89,6 +94,45 @@ export class SendMessagePollDTO {
     public expiresAt?: string;
 }
 
+export class MessageAttachmentDTO {
+    @IsString()
+    public attachmentId!: string;
+
+    @IsIn(['image', 'video', 'audio', 'text', 'file'])
+    public type!: MessageAttachmentType;
+
+    @IsString()
+    public mimeType!: string;
+
+    @IsString()
+    public name!: string;
+
+    @IsNumber()
+    public size!: number;
+
+    @ValidateIf(
+        (attachment: MessageAttachmentDTO) =>
+            attachment.type === 'image' || attachment.type === 'video',
+    )
+    @IsDefined()
+    @IsNumber()
+    @IsPositive()
+    public width?: number;
+
+    @ValidateIf(
+        (attachment: MessageAttachmentDTO) =>
+            attachment.type === 'image' || attachment.type === 'video',
+    )
+    @IsDefined()
+    @IsNumber()
+    @IsPositive()
+    public height?: number;
+
+    @IsBoolean()
+    @IsOptional()
+    public spoiler?: boolean;
+}
+
 export class SendMessageRequestDTO {
     @ApiPropertyOptional({ description: 'Message content (preferred)' })
     @IsOptional()
@@ -108,6 +152,13 @@ export class SendMessageRequestDTO {
     @ApiPropertyOptional({ description: 'Rich embeds for the message' })
     @IsOptional()
     public embeds?: IEmbed[];
+
+    @ApiPropertyOptional({ description: 'Structured file attachments' })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => MessageAttachmentDTO)
+    public attachments?: MessageAttachmentDTO[];
 
     @ApiPropertyOptional({ description: 'Slash command interaction metadata' })
     @IsOptional()

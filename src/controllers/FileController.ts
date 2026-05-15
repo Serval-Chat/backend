@@ -9,6 +9,7 @@ import {
     UseInterceptors,
     UploadedFile,
     Inject,
+    BadRequestException,
 } from '@nestjs/common';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -41,6 +42,7 @@ import {
 } from './dto/file.response.dto';
 import { injectable } from 'inversify';
 import { isText } from 'istextorbinary';
+import { buildAttachmentMetadata } from '@/utils/attachments';
 
 @ApiTags('Files')
 @injectable()
@@ -83,11 +85,40 @@ export class FileController {
     @ApiOperation({ summary: 'Upload a file' })
     @ApiResponse({ status: 201, type: FileUploadResponseDTO })
     public async uploadFile(
-        @UploadedFile() file: Express.Multer.File,
+        @UploadedFile() file: Express.Multer.File | undefined,
         @Req() _req: Request,
     ): Promise<FileUploadResponseDTO> {
+        if (file === undefined) {
+            throw new BadRequestException(ErrorMessages.FILE.NO_FILE_UPLOADED);
+        }
+
         const fileUrl = `${SERVER_URL}/api/v1/files/download/${file.filename}`;
-        return { url: fileUrl };
+        let attachment: FileUploadResponseDTO['attachment'];
+        try {
+            attachment = await buildAttachmentMetadata(file.filename);
+        } catch (error) {
+            await fsPromises
+                .unlink(
+                    path.join(this.uploadsDir, path.basename(file.filename)),
+                )
+                .catch((unlinkError: unknown) => {
+                    this.logger.warn('Failed to remove invalid upload', {
+                        filename: file.filename,
+                        error:
+                            unlinkError instanceof Error
+                                ? unlinkError.message
+                                : String(unlinkError),
+                    });
+                });
+
+            this.logger.warn('Rejected invalid attachment upload', {
+                filename: file.filename,
+                error: error instanceof Error ? error.message : String(error),
+            });
+            throw new BadRequestException('Invalid attachment file');
+        }
+
+        return { url: fileUrl, attachment };
     }
 
     @Get('metadata/:filename')

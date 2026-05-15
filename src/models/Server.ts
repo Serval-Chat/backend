@@ -3,6 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 import type { IEmbed } from './Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { IPoll } from './Message';
+import { messageAttachmentSchema, type IMessageAttachment } from './Attachment';
 
 // Server interface
 //
@@ -190,6 +191,7 @@ export interface IServerMessage {
     webhookUsername?: string;
     webhookAvatarUrl?: string;
     embeds?: IEmbed[];
+    attachments?: IMessageAttachment[];
     interaction?: {
         command: string;
         options: { name: string; value: InteractionValue }[];
@@ -428,6 +430,7 @@ const serverMessageSchema = new Schema<IServerMessage>({
     webhookUsername: { type: String, required: false },
     webhookAvatarUrl: { type: String, required: false },
     embeds: { type: [Schema.Types.Mixed], default: [] },
+    attachments: { type: [messageAttachmentSchema], default: [] },
     interaction: {
         command: { type: String, required: false },
         options: [

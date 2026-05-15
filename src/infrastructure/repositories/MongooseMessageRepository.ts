@@ -6,6 +6,7 @@ import {
 } from '@/di/interfaces/IMessageRepository';
 import { Message, type IPoll } from '@/models/Message';
 import { injectable } from 'inversify';
+import type { IMessageAttachment } from '@/models/Attachment';
 
 type PopulatedMessageDoc = Omit<
     IMessage,
@@ -199,6 +200,7 @@ export class MongooseMessageRepository implements IMessageRepository {
             replyToId?: Types.ObjectId;
             repliedToMessageId?: Types.ObjectId;
             poll?: IPoll;
+            attachments?: IMessageAttachment[];
         },
         session?: ClientSession,
     ): Promise<IMessage> {

@@ -10,6 +10,7 @@ import { Reaction } from '@/models/Reaction';
 import type { IPoll } from '@/models/Message';
 import { type FilterQuery, Types, ClientSession } from 'mongoose';
 import type { ReactionData } from '@/di/interfaces/IReactionRepository';
+import type { IMessageAttachment } from '@/models/Attachment';
 
 type PopulatedServerMessageDoc = Omit<IServerMessage, 'repliedToMessageId'> & {
     repliedToMessageId?: Types.ObjectId | PopulatedServerMessageDoc;
@@ -19,7 +20,9 @@ type PopulatedServerMessageDoc = Omit<IServerMessage, 'repliedToMessageId'> & {
 //
 // Implements IServerMessageRepository using Mongoose ServerMessage model
 @injectable()
-export class MongooseServerMessageRepository implements IServerMessageRepository {
+export class MongooseServerMessageRepository
+    implements IServerMessageRepository
+{
     private transformMessage(msg: PopulatedServerMessageDoc): IServerMessage {
         const transformed = { ...msg } as unknown as IServerMessage;
 
@@ -92,6 +95,7 @@ export class MongooseServerMessageRepository implements IServerMessageRepository
             replyToId?: string | Types.ObjectId;
             repliedToMessageId?: Types.ObjectId;
             embeds?: IEmbed[];
+            attachments?: IMessageAttachment[];
             interaction?: {
                 command: string;
                 options: { name: string; value: InteractionValue }[];

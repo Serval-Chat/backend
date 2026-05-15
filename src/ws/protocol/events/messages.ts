@@ -3,6 +3,7 @@ import type { IEmbed } from '@/models/Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { Permissions } from '@/permissions/types';
 import type { IPoll } from '@/models/Message';
+import type { IMessageAttachment } from '@/models/Attachment';
 
 // ============================================================================
 // Direct Message Events
@@ -20,6 +21,7 @@ export interface ISendMessageDmEvent
             text?: string; // Message content
             replyToId?: string; // Optional: Message ID being replied to
             stickerId?: string;
+            attachments?: IMessageAttachment[];
             poll?: Omit<IPoll, 'options'> & {
                 options: {
                     text: string;
@@ -51,6 +53,7 @@ export interface IMessageDmSentEvent
                 senderId: string;
                 text: string;
             };
+            attachments?: IMessageAttachment[];
             stickerId?: string;
             poll?: IPoll;
         }
@@ -74,6 +77,7 @@ export interface IMessageDm {
     isEdited: boolean;
     stickerId?: string;
     poll?: IPoll;
+    attachments?: IMessageAttachment[];
 }
 
 /**
@@ -108,6 +112,7 @@ export interface IMessageDmEditedEvent
             editedAt: string;
             isEdited: boolean;
             embeds?: IEmbed[];
+            attachments?: IMessageAttachment[];
         }
     > {}
 
@@ -303,6 +308,7 @@ export interface ISendMessageServerEvent
             text?: string;
             replyToId?: string;
             stickerId?: string;
+            attachments?: IMessageAttachment[];
             poll?: Omit<IPoll, 'options'> & {
                 options: {
                     text: string;
@@ -331,6 +337,7 @@ export interface IMessageServerSentEvent
             createdAt: string;
             replyToId?: string;
             embeds?: IEmbed[];
+            attachments?: IMessageAttachment[];
             slowModeNextMessageAllowedAt?: string | null;
             stickerId?: string;
             poll?: IPoll;
@@ -359,6 +366,7 @@ export interface IMessageServer {
     webhookUsername?: string;
     webhookAvatarUrl?: string;
     embeds?: IEmbed[];
+    attachments?: IMessageAttachment[];
     interaction?: {
         command: string;
         options: { name: string; value: InteractionValue }[];
@@ -404,6 +412,7 @@ export interface IMessageServerEditedEvent
             editedAt: string;
             isEdited: boolean;
             embeds?: IEmbed[];
+            attachments?: IMessageAttachment[];
         }
     > {}
 

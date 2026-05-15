@@ -1,6 +1,7 @@
 import type { Types, ClientSession } from 'mongoose';
 import type { IPoll } from '@/models/Message';
 import type { IEmbed } from '@/models/Embed';
+import type { IMessageAttachment } from '@/models/Attachment';
 
 // Message interface (domain model)
 //
@@ -23,6 +24,7 @@ export interface IMessage {
     anonymizedReceiver?: string;
     poll?: IPoll;
     embeds?: IEmbed[];
+    attachments?: IMessageAttachment[];
 }
 
 // Message Repository Interface
@@ -49,6 +51,7 @@ export interface IMessageRepository {
             repliedToMessageId?: Types.ObjectId;
             stickerId?: Types.ObjectId;
             poll?: IPoll;
+            attachments?: IMessageAttachment[];
         },
         session?: ClientSession,
     ): Promise<IMessage>;

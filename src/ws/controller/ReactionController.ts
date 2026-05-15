@@ -165,6 +165,7 @@ export class ReactionController {
                             ).toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited ?? false,
+                            attachments: message.attachments || [],
                         },
                     };
 
@@ -284,6 +285,7 @@ export class ReactionController {
                             isPinned: message.isPinned ?? false,
                             isSticky: message.isSticky ?? false,
                             isWebhook: message.isWebhook ?? false,
+                            attachments: message.attachments || [],
                         },
                     };
 

@@ -5,11 +5,22 @@ import {
     usernameSchema,
 } from '@/validation/schemas/common';
 
+const attachmentSchema = z.object({
+    attachmentId: z.string().min(1),
+    type: z.enum(['image', 'video', 'audio', 'text', 'file']),
+    mimeType: z.string().min(1),
+    name: z.string().min(1),
+    size: z.number().nonnegative(),
+    width: z.number().positive().optional(),
+    height: z.number().positive().optional(),
+    spoiler: z.boolean().optional(),
+});
+
 // Send message validation
 export const sendMessageSchema = z.object({
     to: usernameSchema,
     content: messageContentSchema,
-    attachments: z.array(z.string().url()).optional(),
+    attachments: z.array(attachmentSchema).optional(),
 });
 
 // Edit message validation

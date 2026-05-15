@@ -639,8 +639,15 @@ export class ServerController {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
-        const { serverId, channelId, text, replyToId, stickerId, poll } =
-            payload;
+        const {
+            serverId,
+            channelId,
+            text,
+            replyToId,
+            stickerId,
+            poll,
+            attachments,
+        } = payload;
         const userId = authenticatedUser.userId;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -742,6 +749,7 @@ export class ServerController {
                         channelId: new mongoose.Types.ObjectId(channelId),
                         senderId: new mongoose.Types.ObjectId(userId),
                         text: text ?? '',
+                        attachments,
                         ...(replyToId !== undefined && replyToId !== ''
                             ? {
                                   replyToId: new mongoose.Types.ObjectId(
@@ -810,6 +818,7 @@ export class ServerController {
             isPinned: false,
             isSticky: false,
             isWebhook: false,
+            attachments: created.attachments || [],
             stickerId: created.stickerId?.toString(),
             poll: created.poll,
         };
@@ -941,6 +950,7 @@ export class ServerController {
             createdAt: created.createdAt.toISOString(),
             replyToId: created.replyToId?.toString(),
             slowModeNextMessageAllowedAt,
+            attachments: created.attachments || [],
             stickerId: created.stickerId?.toString(),
             poll: created.poll,
         };
@@ -1001,6 +1011,7 @@ export class ServerController {
             editedAt:
                 updated.editedAt?.toISOString() ?? new Date().toISOString(),
             isEdited: true,
+            attachments: updated.attachments || [],
         };
 
         this.wsServer.broadcastToChannel(

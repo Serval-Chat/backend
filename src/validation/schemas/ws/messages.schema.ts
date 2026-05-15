@@ -1,6 +1,36 @@
 import { z } from 'zod';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
 
+const MessageAttachmentSchema = z
+    .object({
+        attachmentId: z.string().min(1),
+        type: z.enum(['image', 'video', 'audio', 'text', 'file']),
+        mimeType: z.string().min(1),
+        name: z.string().min(1),
+        size: z.number().nonnegative(),
+        width: z.number().positive().optional(),
+        height: z.number().positive().optional(),
+        spoiler: z.boolean().optional(),
+    })
+    .refine(
+        (data) =>
+            data.type !== 'image' ||
+            (data.width !== undefined && data.height !== undefined),
+        {
+            message: 'Image attachments require width and height',
+            path: ['width'],
+        },
+    )
+    .refine(
+        (data) =>
+            data.type !== 'video' ||
+            (data.width !== undefined && data.height !== undefined),
+        {
+            message: 'Video attachments require width and height',
+            path: ['width'],
+        },
+    );
+
 export const SendMessageDmSchema = z
     .object({
         receiverId: z.string().min(1, 'Receiver ID is required'),
@@ -14,6 +44,7 @@ export const SendMessageDmSchema = z
             .default(''),
         replyToId: z.string().optional(),
         stickerId: z.string().optional(),
+        attachments: z.array(MessageAttachmentSchema).optional().default([]),
         poll: z
             .object({
                 title: z.string().min(1).max(192),
@@ -37,6 +68,7 @@ export const SendMessageDmSchema = z
         (data) =>
             data.text.length > 0 ||
             data.stickerId !== undefined ||
+            data.attachments.length > 0 ||
             data.poll !== undefined,
         {
             message: 'Message text, sticker, or poll is required',
@@ -115,6 +147,7 @@ export const SendMessageServerSchema = z
             .default(''),
         replyToId: z.string().optional(),
         stickerId: z.string().optional(),
+        attachments: z.array(MessageAttachmentSchema).optional().default([]),
         poll: z
             .object({
                 title: z.string().min(1).max(192),
@@ -138,6 +171,7 @@ export const SendMessageServerSchema = z
         (data) =>
             data.text.length > 0 ||
             data.stickerId !== undefined ||
+            data.attachments.length > 0 ||
             data.poll !== undefined,
         {
             message: 'Message text, sticker, or poll is required',
