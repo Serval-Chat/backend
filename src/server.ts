@@ -102,6 +102,8 @@ export function setupExpressApp(app: Application): Application {
                     ],
                     connectSrc: [
                         "'self'",
+                        'https://ser.chat',
+                        'wss://ser.chat',
                         'https://catfla.re',
                         'https://rolling.catfla.re',
                         'wss://catfla.re',
@@ -197,6 +199,8 @@ export function setupExpressApp(app: Application): Application {
     // CORS
     const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
     const PROD_ALLOWED_ORIGINS = [
+        'https://ser.chat',
+        'wss://ser.chat',
         'https://catfla.re',
         'https://rolling.catfla.re',
         'http://localhost:5173',
