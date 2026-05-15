@@ -2,6 +2,8 @@ import type { Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import type { RedisReply } from 'rate-limit-redis';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '@/config/env';
 import type { JWTPayload } from '@/utils/jwt';
 import { container } from '@/di/container';
 import { TYPES } from '@/di/types';
@@ -143,4 +145,63 @@ export const webhookExecutionLimiter = rateLimit({
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: 'Too many webhook requests, please try again later.',
+});
+
+function authenticatedUserKey(req: Request): string {
+    const guardedUserId = (req as Request & { user?: JWTPayload }).user?.id;
+    if (guardedUserId !== undefined) return guardedUserId;
+
+    const header = req.headers.authorization;
+    if (typeof header === 'string' && header.startsWith('Bearer ')) {
+        try {
+            const payload = jwt.verify(
+                header.slice('Bearer '.length),
+                JWT_SECRET,
+            ) as JWTPayload;
+            if (payload.type === undefined || payload.type === 'access') {
+                return payload.id;
+            }
+        } catch {
+            // Fall back to IP for malformed or expired tokens.
+        }
+    }
+
+    return req.ip ?? 'unknown';
+}
+
+export const websiteConnectionCreateLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:website-connection:create:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many website connection requests, please try again later.',
+});
+
+export const websiteConnectionVerifyLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:website-connection:verify:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many website verification attempts, please try again later.',
+});
+
+export const websiteConnectionRemoveLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:website-connection:remove:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message:
+        'Too many website connection removal requests, please try again later.',
 });

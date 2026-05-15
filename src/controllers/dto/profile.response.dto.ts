@@ -40,6 +40,32 @@ export class UserLookupResponseDTO {
     public _id!: string;
 }
 
+export class UserConnectionResponseDTO {
+    @ApiProperty()
+    public id!: string;
+
+    @ApiProperty({ enum: ['Website'] })
+    public type!: 'Website';
+
+    @ApiProperty()
+    public value!: string;
+
+    @ApiPropertyOptional({ enum: ['pending', 'verified'] })
+    public status?: 'pending' | 'verified';
+
+    @ApiPropertyOptional()
+    public recordType?: 'TXT';
+
+    @ApiPropertyOptional()
+    public recordName?: string;
+
+    @ApiPropertyOptional()
+    public recordValue?: string;
+
+    @ApiPropertyOptional()
+    public expiresAt?: Date;
+}
+
 export class UserProfileResponseDTO {
     @ApiProperty()
     @IsMongoId()
@@ -95,6 +121,9 @@ export class UserProfileResponseDTO {
 
     @ApiPropertyOptional({ type: UserSettingsDTO })
     public settings?: UserSettingsDTO;
+
+    @ApiPropertyOptional({ type: [UserConnectionResponseDTO] })
+    public connections?: UserConnectionResponseDTO[];
 }
 
 export class UpdateProfilePictureResponseDTO {
@@ -119,4 +148,24 @@ export class BadgeOperationResponseDTO {
 
     @ApiProperty({ type: [BadgeResponseDTO] })
     public badges!: BadgeResponseDTO[];
+}
+
+export class CreateWebsiteConnectionResponseDTO {
+    @ApiProperty()
+    public message!: string;
+
+    @ApiProperty()
+    public connectionId!: string;
+
+    @ApiProperty()
+    public recordType!: 'TXT';
+
+    @ApiProperty()
+    public recordName!: string;
+
+    @ApiProperty()
+    public recordValue!: string;
+
+    @ApiProperty()
+    public expiresAt!: Date;
 }

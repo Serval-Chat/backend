@@ -32,6 +32,7 @@ import {
     UpdateProfilePictureResponseDTO,
     UpdateBannerResponseDTO,
     BadgeOperationResponseDTO,
+    CreateWebsiteConnectionResponseDTO,
 } from './dto/profile.response.dto';
 import {
     UpdateBioRequestDTO,
@@ -44,6 +45,8 @@ import {
     UpdateLanguageRequestDTO,
     AssignBadgesRequestDTO,
     FilenameParamDTO,
+    CreateWebsiteConnectionRequestDTO,
+    ConnectionParamDTO,
 } from './dto/profile.request.dto';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
@@ -71,6 +74,17 @@ import { NoBot } from '@/modules/auth/bot.decorator';
 import { Badge } from '@/models/Badge';
 import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import type { WsServer } from '@/ws/server';
+import { UserConnection, IUserConnection } from '@/models/UserConnection';
+import {
+    createWebsiteVerificationToken,
+    hashWebsiteVerificationToken,
+    normalizeWebsite,
+    resolveTxtRecordsViaDoh,
+    verifyWebsiteTokenHash,
+    WEBSITE_CONNECTION_TYPE,
+    WEBSITE_VERIFICATION_FAILURE,
+    WEBSITE_VERIFICATION_PREFIX,
+} from '@/utils/websiteConnections';
 import {
     processAndSaveImage,
     ImagePresets,
@@ -101,6 +115,83 @@ export class ProfileController {
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
     ) {}
+
+    private mapConnection(connection: IUserConnection) {
+        return {
+            id: connection._id.toString(),
+            type: connection.type,
+            value: connection.value,
+            status: connection.status,
+        };
+    }
+
+    private async getVerifiedConnections(userId: Types.ObjectId) {
+        const connections = await UserConnection.find({
+            userId,
+            status: 'verified',
+        })
+            .sort({ verifiedAt: 1, createdAt: 1 })
+            .exec();
+
+        return connections.map((connection) => ({
+            id: connection._id.toString(),
+            type: connection.type,
+            value: connection.value,
+        }));
+    }
+
+    private async getOwnConnections(userId: Types.ObjectId) {
+        const connections = await UserConnection.find({ userId })
+            .sort({ status: 1, verifiedAt: 1, createdAt: 1 })
+            .exec();
+
+        return connections.map((connection) => ({
+            ...this.mapConnection(connection),
+            recordType:
+                connection.status === 'pending' ? ('TXT' as const) : undefined,
+            recordName:
+                connection.status === 'pending'
+                    ? connection.verificationRecordName
+                    : undefined,
+            expiresAt:
+                connection.status === 'pending'
+                    ? connection.expiresAt
+                    : undefined,
+        }));
+    }
+
+    private async broadcastProfileConnections(userId: string): Promise<void> {
+        const userOid = new Types.ObjectId(userId);
+        const connections = await this.getVerifiedConnections(userOid);
+        const payload = { userId, connections };
+
+        const serverIds =
+            await this.serverMemberRepo.findServerIdsByUserId(userOid);
+        const friendships = await this.friendshipRepo.findAllByUserId(userOid);
+
+        serverIds.forEach((serverId) => {
+            this.wsServer.broadcastToServer(serverId.toString(), {
+                type: 'user_updated',
+                payload,
+            });
+        });
+
+        friendships.forEach((friendship) => {
+            const friendId =
+                friendship.userId.toString() === userId
+                    ? friendship.friendId.toString()
+                    : friendship.userId.toString();
+            this.wsServer.broadcastToUser(friendId, {
+                type: 'user_updated',
+                payload,
+            });
+        });
+
+        this.wsServer.broadcastToUser(userId, {
+            type: 'user_updated',
+            payload,
+        });
+    }
 
     private async mapToProfile(
         user: IUser,
@@ -135,6 +226,10 @@ export class ProfileController {
         }
 
         mapped.serverSettings = user.serverSettings;
+        mapped.connections =
+            options.viewerId === user._id.toString()
+                ? await this.getOwnConnections(user._id)
+                : await this.getVerifiedConnections(user._id);
 
         if (
             options.viewerId !== undefined &&
@@ -183,6 +278,205 @@ export class ProfileController {
             includeTotp: true,
             viewerId: userId,
         });
+    }
+
+    @Post('connections/website')
+    @NoBot()
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Create a pending website connection' })
+    @ApiResponse({ status: 201, type: CreateWebsiteConnectionResponseDTO })
+    public async createWebsiteConnection(
+        @Req() req: Request,
+        @Body() body: CreateWebsiteConnectionRequestDTO,
+    ): Promise<CreateWebsiteConnectionResponseDTO> {
+        const userId = (req as unknown as RequestWithUser).user.id;
+        const userOid = new Types.ObjectId(userId);
+        let website: ReturnType<typeof normalizeWebsite>;
+        try {
+            website = normalizeWebsite(body.website);
+        } catch {
+            throw new ApiError(400, 'Invalid website');
+        }
+
+        const ownedByAnotherUser = await UserConnection.findOne({
+            type: WEBSITE_CONNECTION_TYPE,
+            normalizedValue: website.normalizedValue,
+            status: 'verified',
+            userId: { $ne: userOid },
+        })
+            .lean()
+            .exec();
+        if (ownedByAnotherUser !== null) {
+            throw new ApiError(409, 'Website is already connected');
+        }
+
+        const alreadyVerified = await UserConnection.findOne({
+            userId: userOid,
+            type: WEBSITE_CONNECTION_TYPE,
+            normalizedValue: website.normalizedValue,
+            status: 'verified',
+        })
+            .lean()
+            .exec();
+        if (alreadyVerified !== null) {
+            throw new ApiError(409, 'Website is already connected');
+        }
+
+        const token = createWebsiteVerificationToken();
+        const tokenHash = hashWebsiteVerificationToken(token);
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        const connection = await UserConnection.findOneAndUpdate(
+            {
+                userId: userOid,
+                type: WEBSITE_CONNECTION_TYPE,
+                normalizedValue: website.normalizedValue,
+            },
+            {
+                $set: {
+                    userId: userOid,
+                    type: WEBSITE_CONNECTION_TYPE,
+                    value: website.value,
+                    normalizedValue: website.normalizedValue,
+                    status: 'pending',
+                    verificationTokenHash: tokenHash,
+                    verificationRecordName: website.verificationRecordName,
+                    expiresAt,
+                },
+                $unset: { verifiedAt: 1 },
+            },
+            { new: true, upsert: true, setDefaultsOnInsert: true },
+        ).exec();
+
+        return {
+            message: 'Please add this TXT to the DNS records of your website.',
+            connectionId: connection._id.toString(),
+            recordType: 'TXT',
+            recordName: website.verificationRecordName,
+            recordValue: `${WEBSITE_VERIFICATION_PREFIX}${token}`,
+            expiresAt,
+        };
+    }
+
+    @Post('connections/:connectionId/verify')
+    @NoBot()
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Verify a pending website connection' })
+    @ApiResponse({ status: 201, description: 'Website verified' })
+    public async verifyWebsiteConnection(
+        @Req() req: Request,
+        @Param() params: ConnectionParamDTO,
+    ): Promise<{
+        message: string;
+        connection: { id: string; type: 'Website'; value: string };
+    }> {
+        const userId = (req as unknown as RequestWithUser).user.id;
+        const connection = await UserConnection.findOne({
+            _id: new Types.ObjectId(params.connectionId),
+            userId: new Types.ObjectId(userId),
+            type: WEBSITE_CONNECTION_TYPE,
+        }).exec();
+
+        if (connection === null) {
+            throw new ApiError(404, 'Connection not found');
+        }
+
+        if (connection.status !== 'pending') {
+            return {
+                message: 'Website is already verified',
+                connection: {
+                    id: connection._id.toString(),
+                    type: connection.type,
+                    value: connection.value,
+                },
+            };
+        }
+
+        if (
+            connection.expiresAt !== undefined &&
+            connection.expiresAt.getTime() < Date.now()
+        ) {
+            throw new ApiError(400, WEBSITE_VERIFICATION_FAILURE);
+        }
+
+        const tokenHash = connection.verificationTokenHash;
+        const recordName = connection.verificationRecordName;
+        if (tokenHash === undefined || recordName === undefined) {
+            throw new ApiError(400, WEBSITE_VERIFICATION_FAILURE);
+        }
+
+        let records: string[] = [];
+        try {
+            records = await resolveTxtRecordsViaDoh(recordName);
+        } catch {
+            throw new ApiError(400, WEBSITE_VERIFICATION_FAILURE);
+        }
+
+        const hasVerificationRecord = records.some((record) => {
+            if (!record.startsWith(WEBSITE_VERIFICATION_PREFIX)) return false;
+            const token = record.slice(WEBSITE_VERIFICATION_PREFIX.length);
+            return verifyWebsiteTokenHash(token, tokenHash);
+        });
+
+        if (!hasVerificationRecord) {
+            throw new ApiError(400, WEBSITE_VERIFICATION_FAILURE);
+        }
+
+        connection.status = 'verified';
+        connection.verificationTokenHash = undefined;
+        connection.expiresAt = undefined;
+        connection.verifiedAt = new Date();
+        try {
+            await connection.save();
+        } catch {
+            throw new ApiError(409, 'Website is already connected');
+        }
+
+        try {
+            await this.broadcastProfileConnections(userId);
+        } catch (err) {
+            this.logger.error('Failed to emit connection update:', err);
+        }
+
+        return {
+            message: 'Website verified successfully',
+            connection: {
+                id: connection._id.toString(),
+                type: connection.type,
+                value: connection.value,
+            },
+        };
+    }
+
+    @Delete('connections/:connectionId')
+    @NoBot()
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Remove a profile connection' })
+    @ApiResponse({ status: 200, description: 'Connection removed' })
+    public async removeConnection(
+        @Req() req: Request,
+        @Param() params: ConnectionParamDTO,
+    ): Promise<{ message: string }> {
+        const userId = (req as unknown as RequestWithUser).user.id;
+        const deleted = await UserConnection.findOneAndDelete({
+            _id: new Types.ObjectId(params.connectionId),
+            userId: new Types.ObjectId(userId),
+        }).exec();
+
+        if (deleted === null) {
+            throw new ApiError(404, 'Connection not found');
+        }
+
+        try {
+            await this.broadcastProfileConnections(userId);
+        } catch (err) {
+            this.logger.error('Failed to emit connection removal:', err);
+        }
+
+        return { message: 'Connection removed successfully' };
     }
 
     @Get(':userId')

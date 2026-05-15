@@ -14,6 +14,7 @@ import {
     MinLength,
     ArrayMaxSize,
     IsIn,
+    IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -162,4 +163,18 @@ export class FilenameParamDTO {
     @ApiProperty()
     @IsFilename()
     public filename!: string;
+}
+
+export class CreateWebsiteConnectionRequestDTO {
+    @ApiProperty()
+    @IsString()
+    @MinLength(1)
+    @MaxLength(253)
+    public website!: string;
+}
+
+export class ConnectionParamDTO {
+    @ApiProperty()
+    @IsMongoId()
+    public connectionId!: string;
 }

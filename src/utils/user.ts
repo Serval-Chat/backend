@@ -27,6 +27,18 @@ export interface ServerFolder {
 export interface ServerSettings {
     order: (string | ServerFolder)[];
 }
+
+export interface UserConnection {
+    id: string;
+    type: 'Website';
+    value: string;
+    status?: 'pending' | 'verified';
+    recordType?: 'TXT';
+    recordName?: string;
+    recordValue?: string;
+    expiresAt?: Date;
+}
+
 export interface DBUser {
     _id: { toString(): string };
     id?: string;
@@ -66,6 +78,7 @@ export interface DBUser {
     totpEnabled?: boolean;
     serverSettings?: ServerSettings;
     permissions?: AdminPermissions;
+    connections?: UserConnection[];
 }
 
 export interface MappedUser {
@@ -91,6 +104,7 @@ export interface MappedUser {
     settings?: DBUser['settings'];
     totpEnabled?: boolean;
     serverSettings?: ServerSettings;
+    connections?: UserConnection[];
 }
 
 export interface MapUserOptions {
@@ -161,5 +175,6 @@ export function mapUser(
             totpEnabled: u.totpEnabled ?? false,
         }),
         serverSettings: u.serverSettings,
+        connections: u.connections,
     };
 }

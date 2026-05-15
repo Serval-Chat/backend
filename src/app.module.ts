@@ -55,6 +55,9 @@ import {
     passwordResetLimiter,
     registrationLimiter,
     sensitiveOperationLimiter,
+    websiteConnectionCreateLimiter,
+    websiteConnectionRemoveLimiter,
+    websiteConnectionVerifyLimiter,
     webhookExecutionLimiter,
 } from './middleware/rateLimiting';
 
@@ -190,6 +193,21 @@ export class AppModule {
         consumer.apply(webhookExecutionLimiter).forRoutes({
             path: 'api/v1/webhooks/:token',
             method: RequestMethod.POST,
+        });
+
+        consumer.apply(websiteConnectionCreateLimiter).forRoutes({
+            path: 'api/v1/profile/connections/website',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(websiteConnectionVerifyLimiter).forRoutes({
+            path: 'api/v1/profile/connections/:connectionId/verify',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(websiteConnectionRemoveLimiter).forRoutes({
+            path: 'api/v1/profile/connections/:connectionId',
+            method: RequestMethod.DELETE,
         });
 
         consumer.apply(sensitiveOperationLimiter).forRoutes(
