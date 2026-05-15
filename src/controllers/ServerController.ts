@@ -45,7 +45,7 @@ import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { IChannel } from '@/di/interfaces/IChannelRepository';
-import { storage, imageFileFilter } from '@/config/multer';
+import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
@@ -824,7 +824,11 @@ export class ServerController {
         },
     })
     @UseInterceptors(
-        FileInterceptor('icon', { storage, fileFilter: imageFileFilter }),
+        FileInterceptor('icon', {
+            storage,
+            fileFilter: imageFileFilter,
+            limits: imageUploadLimits,
+        }),
     )
     @ApiResponse({ status: 201, type: UploadIconResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
@@ -922,7 +926,11 @@ export class ServerController {
         },
     })
     @UseInterceptors(
-        FileInterceptor('banner', { storage, fileFilter: imageFileFilter }),
+        FileInterceptor('banner', {
+            storage,
+            fileFilter: imageFileFilter,
+            limits: imageUploadLimits,
+        }),
     )
     @ApiResponse({ status: 201, type: UploadBannerResponseDTO })
     @ApiResponse({ status: 400, description: 'Bad Request' })
@@ -1131,7 +1139,17 @@ export class ServerController {
                             channelId !== undefined &&
                             channelId !== ''
                         ) {
-                            voiceStates[channelId] = members;
+                            const canView =
+                                Types.ObjectId.isValid(channelId) &&
+                                (await this.permissionService.hasChannelPermission(
+                                    serverOid,
+                                    userOid,
+                                    new Types.ObjectId(channelId),
+                                    'viewChannels',
+                                ));
+                            if (canView) {
+                                voiceStates[channelId] = members;
+                            }
                         }
                     }
                 }

@@ -52,7 +52,10 @@ import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type {
+    IChannel,
+    IChannelRepository,
+} from '@/di/interfaces/IChannelRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { PermissionService } from '@/permissions/PermissionService';
@@ -190,6 +193,113 @@ export class ServerController {
         );
     }
 
+    private toObjectId(value: string, label: string): mongoose.Types.ObjectId {
+        if (!mongoose.Types.ObjectId.isValid(value)) {
+            throw new Error(`BAD_REQUEST: Invalid ${label}`);
+        }
+        return new mongoose.Types.ObjectId(value);
+    }
+
+    private async requireServerMember(
+        serverId: string,
+        userId: string,
+    ): Promise<{
+        serverOid: mongoose.Types.ObjectId;
+        userOid: mongoose.Types.ObjectId;
+    }> {
+        const serverOid = this.toObjectId(serverId, 'serverId');
+        const userOid = this.toObjectId(userId, 'userId');
+
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            serverOid,
+            userOid,
+        );
+        if (!member) {
+            throw new Error('FORBIDDEN: Not a member of this server');
+        }
+
+        return { serverOid, userOid };
+    }
+
+    private async requireAccessibleChannel(
+        serverId: string,
+        channelId: string,
+        userId: string,
+        permission: string = 'viewChannels',
+    ): Promise<{
+        serverOid: mongoose.Types.ObjectId;
+        userOid: mongoose.Types.ObjectId;
+        channelOid: mongoose.Types.ObjectId;
+        channel: IChannel;
+    }> {
+        const { serverOid, userOid } = await this.requireServerMember(
+            serverId,
+            userId,
+        );
+        const channelOid = this.toObjectId(channelId, 'channelId');
+        const channel = await this.channelRepo.findByIdAndServer(
+            channelOid,
+            serverOid,
+        );
+
+        if (channel === null) {
+            throw new Error('NOT_FOUND: Channel not found');
+        }
+
+        if (channel.type === 'link') {
+            throw new Error('FORBIDDEN: Cannot join a link channel');
+        }
+
+        const allowed = await this.permissionService.hasChannelPermission(
+            serverOid,
+            userOid,
+            channelOid,
+            permission,
+        );
+        if (!allowed) {
+            throw new Error(
+                `FORBIDDEN: Missing ${permission} permission for this channel`,
+            );
+        }
+
+        return { serverOid, userOid, channelOid, channel };
+    }
+
+    private async requireVoiceAccess(
+        serverId: string,
+        channelId: string,
+        userId: string,
+        options: { requireCurrentRoom?: boolean } = {},
+    ): Promise<void> {
+        const { serverOid, userOid, channelOid, channel } =
+            await this.requireAccessibleChannel(serverId, channelId, userId);
+
+        if (channel.type !== 'voice') {
+            throw new Error('FORBIDDEN: Channel is not a voice channel');
+        }
+
+        const canConnect = await this.permissionService.hasChannelPermission(
+            serverOid,
+            userOid,
+            channelOid,
+            'connect',
+        );
+        if (!canConnect) {
+            throw new Error(
+                'FORBIDDEN: No permission to join this voice channel',
+            );
+        }
+
+        if (options.requireCurrentRoom === true) {
+            const currentRoom = await this.redisService
+                .getClient()
+                .get(`user_voice:${userId}`);
+            if (currentRoom !== `${serverId}:${channelId}`) {
+                throw new Error('FORBIDDEN: Not in this voice channel');
+            }
+        }
+    }
+
     /**
      * Handles 'join_server' event.
      * Subscribes the socket to server-wide events.
@@ -254,7 +364,17 @@ export class ServerController {
                             channelId !== undefined &&
                             channelId !== ''
                         ) {
-                            voiceStates[channelId] = members;
+                            const canView =
+                                mongoose.Types.ObjectId.isValid(channelId) &&
+                                (await this.permissionService.hasChannelPermission(
+                                    serverOid,
+                                    userOid,
+                                    new mongoose.Types.ObjectId(channelId),
+                                    'viewChannels',
+                                ));
+                            if (canView) {
+                                voiceStates[channelId] = members;
+                            }
                         }
                     }
                 }
@@ -311,20 +431,7 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-        const member = await this.serverMemberRepo.findByServerAndUser(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
-        );
-        if (!member) {
-            throw new Error('FORBIDDEN: Not a member of this server');
-        }
-
-        const channel = await this.channelRepo.findById(
-            new mongoose.Types.ObjectId(channelId),
-        );
-        if (channel?.type === 'link') {
-            throw new Error('FORBIDDEN: Cannot join a link channel');
-        }
+        await this.requireAccessibleChannel(serverId, channelId, userId);
 
         this.wsServer.subscribeToChannel(ws, channelId);
         logger.debug(
@@ -371,35 +478,7 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
-        const member = await this.serverMemberRepo.findByServerAndUser(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
-        );
-        if (!member) {
-            throw new Error('FORBIDDEN: Not a member of this server');
-        }
-
-        const [hasView, hasConnect] = await Promise.all([
-            this.permissionService.hasChannelPermission(
-                new mongoose.Types.ObjectId(serverId),
-                new mongoose.Types.ObjectId(userId),
-                new mongoose.Types.ObjectId(channelId),
-                'viewChannels',
-            ),
-            this.permissionService.hasChannelPermission(
-                new mongoose.Types.ObjectId(serverId),
-                new mongoose.Types.ObjectId(userId),
-                new mongoose.Types.ObjectId(channelId),
-                'connect',
-            ),
-        ]);
-
-        if (!hasView || !hasConnect) {
-            throw new ApiError(
-                403,
-                'FORBIDDEN: No permission to join this voice channel',
-            );
-        }
+        await this.requireVoiceAccess(serverId, channelId, userId);
 
         const redis = this.redisService.getClient();
         const ttl = 86400; // 24 hours
@@ -493,6 +572,10 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
+        await this.requireVoiceAccess(serverId, channelId, userId, {
+            requireCurrentRoom: true,
+        });
+
         await this._internalLeaveVoice(userId, serverId, channelId);
 
         return { success: true };
@@ -511,6 +594,10 @@ export class ServerController {
 
         const { serverId, channelId, isMuted, isDeafened } = payload;
         const userId = authenticatedUser.userId;
+
+        await this.requireVoiceAccess(serverId, channelId, userId, {
+            requireCurrentRoom: true,
+        });
 
         const redis = this.redisService.getClient();
         const hkey = `voice_states:${serverId}:${channelId}`;

@@ -754,7 +754,7 @@ export class BotController {
         FileInterceptor('profilePicture', {
             storage,
             fileFilter: imageFileFilter,
-            limits: { fileSize: 5 * 1024 * 1024 },
+            limits: { fileSize: 5 * 1024 * 1024, files: 1 },
         }),
     )
     @ApiConsumes('multipart/form-data')
@@ -878,7 +878,7 @@ export class BotController {
         FileInterceptor('banner', {
             storage,
             fileFilter: imageFileFilter,
-            limits: { fileSize: 5 * 1024 * 1024 },
+            limits: { fileSize: 5 * 1024 * 1024, files: 1 },
         }),
     )
     @ApiConsumes('multipart/form-data')

@@ -83,3 +83,64 @@ export const sensitiveOperationLimiter = rateLimit({
     message: 'Too many password change attempts, please try again later.',
     skipSuccessfulRequests: true, // Don't count successful operations
 });
+
+// Rate limiter for password reset email requests.
+//
+// Limits to 5 attempts per hour per IP+email combination.
+export const passwordResetLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:password-reset:') }
+        : {}),
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    keyGenerator: (req: Request) => {
+        const email =
+            typeof req.body?.email === 'string'
+                ? req.body.email.toLowerCase()
+                : '';
+        const ip = req.ip ?? req.socket.remoteAddress ?? 'ip';
+        return `${ip}:${email}`;
+    },
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many password reset attempts, please try again later.',
+});
+
+// Rate limiter for bot client-credentials exchanges.
+//
+// Limits to 10 attempts per minute per IP+client_id combination.
+export const botTokenLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:bot-token:') }
+        : {}),
+    windowMs: 60_000,
+    max: 10,
+    keyGenerator: (req: Request) => {
+        const clientId =
+            typeof req.body?.client_id === 'string' ? req.body.client_id : '';
+        const ip = req.ip ?? req.socket.remoteAddress ?? 'ip';
+        return `${ip}:${clientId}`;
+    },
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many bot token attempts, please try again later.',
+});
+
+// Rate limiter for public webhook execution.
+//
+// Limits each webhook token to 60 deliveries per minute, with an IP fallback.
+export const webhookExecutionLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:webhook:') }
+        : {}),
+    windowMs: 60_000,
+    max: 60,
+    keyGenerator: (req: Request) => {
+        const token =
+            typeof req.params.token === 'string' ? req.params.token : '';
+        return token !== '' ? token : (req.ip ?? 'unknown');
+    },
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many webhook requests, please try again later.',
+});

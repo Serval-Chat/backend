@@ -412,14 +412,22 @@ export class ServerChannelController {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        if (
-            (await this.permissionService.hasChannelPermission(
+        const [canView] = await Promise.all([
+            this.permissionService.hasChannelPermission(
                 serverOid,
                 userOid,
                 channelOid,
                 'viewChannels',
-            )) !== true
-        ) {
+            ),
+            this.permissionService.hasChannelPermission(
+                serverOid,
+                userOid,
+                channelOid,
+                'connect',
+            ),
+        ]);
+
+        if (canView !== true) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
@@ -1245,10 +1253,11 @@ export class ServerChannelController {
     ): Promise<Record<string, string[]>> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverOid,
-            new Types.ObjectId(userId),
+            userOid,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
@@ -1277,7 +1286,17 @@ export class ServerChannelController {
             if (channelId !== undefined && channelId !== '') {
                 const members = await redis.smembers(key);
                 if (members.length > 0) {
-                    result[channelId] = members;
+                    const canView =
+                        Types.ObjectId.isValid(channelId) &&
+                        (await this.permissionService.hasChannelPermission(
+                            serverOid,
+                            userOid,
+                            new Types.ObjectId(channelId),
+                            'viewChannels',
+                        ));
+                    if (canView) {
+                        result[channelId] = members;
+                    }
                 }
             }
         }
@@ -1310,14 +1329,22 @@ export class ServerChannelController {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        if (
-            (await this.permissionService.hasChannelPermission(
+        const [canView, canConnect] = await Promise.all([
+            this.permissionService.hasChannelPermission(
                 serverOid,
                 userOid,
                 channelOid,
                 'viewChannels',
-            )) !== true
-        ) {
+            ),
+            this.permissionService.hasChannelPermission(
+                serverOid,
+                userOid,
+                channelOid,
+                'connect',
+            ),
+        ]);
+
+        if (canView !== true) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
@@ -1328,6 +1355,13 @@ export class ServerChannelController {
 
         if (channel.type !== 'voice') {
             throw new ApiError(400, 'Channel is not a voice channel');
+        }
+
+        if (canConnect !== true) {
+            throw new ApiError(
+                403,
+                ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
+            );
         }
 
         const roomName = `${serverId}:${channelId}`;

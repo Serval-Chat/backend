@@ -49,7 +49,7 @@ import {
     ReorderRolesRequestDTO,
 } from './dto/server-role.request.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { storage } from '@/config/multer';
+import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import {
     processAndSaveImage,
     ImagePresets,
@@ -623,7 +623,13 @@ export class ServerRoleController {
     @Post(':roleId/icon')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @UseInterceptors(FileInterceptor('icon', { storage }))
+    @UseInterceptors(
+        FileInterceptor('icon', {
+            storage,
+            fileFilter: imageFileFilter,
+            limits: imageUploadLimits,
+        }),
+    )
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {

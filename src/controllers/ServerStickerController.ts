@@ -45,7 +45,7 @@ import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { storage } from '@/config/multer';
+import { imageFileFilter, storage } from '@/config/multer';
 import { STICKER_MAX_SIZE_BYTES } from '@/constants/stickers';
 import { StickerResponseDTO } from './dto/sticker.response.dto';
 import { UploadStickerRequestDTO } from './dto/sticker.request.dto';
@@ -127,7 +127,8 @@ export class ServerStickerController {
     @UseInterceptors(
         FileInterceptor('sticker', {
             storage,
-            limits: { fileSize: STICKER_MAX_SIZE_BYTES },
+            fileFilter: imageFileFilter,
+            limits: { fileSize: STICKER_MAX_SIZE_BYTES, files: 1 },
         }),
     )
     @ApiOperation({ summary: 'Upload a server sticker' })

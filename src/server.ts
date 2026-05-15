@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction, Application } from 'express';
 import express from 'express';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { container } from '@/di/container';
 import { TYPES } from '@/di/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -9,7 +9,7 @@ import { register } from '@/utils/metrics';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
-import { PROJECT_LEVEL, FRONTEND_URL } from '@/config/env';
+import { METRICS_TOKEN, PROJECT_LEVEL, FRONTEND_URL } from '@/config/env';
 import routes from '@/routes/index';
 
 interface ValidateError {
@@ -252,6 +252,21 @@ export function setupExpressApp(app: Application): Application {
         const ip = req.ip ?? '';
         if (!METRICS_ALLOWED_RE.test(ip)) {
             res.status(403).end('Forbidden');
+            return;
+        }
+        const expectedAuth = `Bearer ${METRICS_TOKEN}`;
+        const actualAuth =
+            typeof req.headers.authorization === 'string'
+                ? req.headers.authorization
+                : '';
+        const expectedBuffer = Buffer.from(expectedAuth);
+        const actualBuffer = Buffer.from(actualAuth);
+        const hasValidToken =
+            METRICS_TOKEN !== '' &&
+            expectedBuffer.length === actualBuffer.length &&
+            timingSafeEqual(expectedBuffer, actualBuffer);
+        if (!hasValidToken) {
+            res.status(401).end('Unauthorized');
             return;
         }
         try {

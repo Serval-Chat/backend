@@ -57,7 +57,7 @@ import {
     WebhookTokenParamDTO,
     FilenameParamDTO,
 } from './dto/webhook.request.dto';
-import { storage } from '@/config/multer';
+import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import { processAndSaveImage, ImagePresets } from '@/utils/imageProcessing';
 
 @injectable()
@@ -264,7 +264,13 @@ export class WebhookController {
     @Post('servers/:serverId/channels/:channelId/webhooks/:webhookId/avatar')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @UseInterceptors(FileInterceptor('avatar', { storage }))
+    @UseInterceptors(
+        FileInterceptor('avatar', {
+            storage,
+            fileFilter: imageFileFilter,
+            limits: imageUploadLimits,
+        }),
+    )
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {

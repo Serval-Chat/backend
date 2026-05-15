@@ -5,6 +5,21 @@ import fs from 'fs';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import type { Request as ExpressRequest } from 'express';
 
+export const genericFileUploadLimits: NonNullable<MulterOptions['limits']> = {
+    fileSize: 60 * 1024 * 1024 + 1, // +1 to avoid edge-case rejection at exactly 60MiB
+    files: 1,
+};
+
+export const imageUploadLimits: NonNullable<MulterOptions['limits']> = {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+};
+
+export const emojiUploadLimits: NonNullable<MulterOptions['limits']> = {
+    fileSize: 10 * 1024 * 1024,
+    files: 1,
+};
+
 function sanitizeFilename(filename: string): string {
     let sanitized = filename.replace(/[/\\:\0]/g, '_');
     sanitized = sanitized.replace(/\s+/g, '_');
@@ -48,10 +63,7 @@ function fileFilter(
 
 export const upload = multer({
     storage,
-    limits: {
-        fileSize: 60 * 1024 * 1024 + 1, // +1 to avoid edge-case rejection at exactly 60MiB
-        files: 1,
-    },
+    limits: genericFileUploadLimits,
     fileFilter,
 });
 
@@ -105,8 +117,5 @@ export const profilePictureUpload = multer({
 
 export const memoryUpload = multer({
     storage: multer.memoryStorage(),
-    limits: {
-        fileSize: 60 * 1024 * 1024 + 1, // +1 to avoid edge-case rejection at exactly 60MiB
-        files: 1,
-    },
+    limits: genericFileUploadLimits,
 });

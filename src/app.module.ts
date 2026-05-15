@@ -1,4 +1,4 @@
-import { Module, MiddlewareConsumer } from '@nestjs/common';
+import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -49,6 +49,14 @@ import { WebhookController } from './controllers/WebhookController';
 import { EmbedController } from './controllers/EmbedController';
 import { InteractionController } from './controllers/InteractionController';
 import { ApplicationController } from './controllers/ApplicationController';
+import {
+    botTokenLimiter,
+    loginLimiter,
+    passwordResetLimiter,
+    registrationLimiter,
+    sensitiveOperationLimiter,
+    webhookExecutionLimiter,
+} from './middleware/rateLimiting';
 
 @Module({
     imports: [
@@ -158,5 +166,53 @@ import { ApplicationController } from './controllers/ApplicationController';
     ],
 })
 export class AppModule {
-    public configure(_consumer: MiddlewareConsumer) {}
+    public configure(consumer: MiddlewareConsumer) {
+        consumer.apply(loginLimiter).forRoutes({
+            path: 'api/v1/auth/login',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(registrationLimiter).forRoutes({
+            path: 'api/v1/auth/register',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(passwordResetLimiter).forRoutes({
+            path: 'api/v1/auth/password/reset',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(botTokenLimiter).forRoutes({
+            path: 'api/v1/bots/token',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(webhookExecutionLimiter).forRoutes({
+            path: 'api/v1/webhooks/:token',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(sensitiveOperationLimiter).forRoutes(
+            {
+                path: 'api/v1/auth/login',
+                method: RequestMethod.PATCH,
+            },
+            {
+                path: 'api/v1/auth/password',
+                method: RequestMethod.PATCH,
+            },
+            {
+                path: 'api/v1/auth/2fa/verify',
+                method: RequestMethod.POST,
+            },
+            {
+                path: 'api/v1/auth/2fa/backup-codes/regenerate',
+                method: RequestMethod.POST,
+            },
+            {
+                path: 'api/v1/auth/2fa/disable',
+                method: RequestMethod.POST,
+            },
+        );
+    }
 }

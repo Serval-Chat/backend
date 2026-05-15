@@ -65,4 +65,7 @@ export class TotpSensitiveActionRequestDTO {
 export class TotpSetupConfirmResponseDTO {
     @ApiProperty({ type: [String] })
     public backupCodes!: string[];
+
+    @ApiProperty({ required: false })
+    public token?: string;
 }

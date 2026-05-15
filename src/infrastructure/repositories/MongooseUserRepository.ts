@@ -14,6 +14,14 @@ import { ErrorMessages } from '@/constants/errorMessages';
 
 import { injectable } from 'inversify';
 
+function escapeRegex(input: string): string {
+    return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeRegexSearch(input: string): string {
+    return escapeRegex(input.trim().slice(0, 64));
+}
+
 // Mongoose User repository
 //
 // Implements IUserRepository using Mongoose User model
@@ -75,11 +83,14 @@ export class MongooseUserRepository implements IUserRepository {
         prefix: string,
         limit: number = 10,
     ): Promise<IUser[]> {
+        const safePrefix = normalizeRegexSearch(prefix);
+        if (safePrefix === '') return [];
+
         return this.toDomainList(
             await this.userModel
                 .find({
                     _id: { $in: userIds },
-                    username: { $regex: `^${prefix}`, $options: 'i' },
+                    username: { $regex: `^${safePrefix}`, $options: 'i' },
                 })
                 .select(
                     'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
@@ -278,7 +289,10 @@ export class MongooseUserRepository implements IUserRepository {
         }
 
         if (search !== undefined && search !== '') {
-            query.username = { $regex: search, $options: 'i' };
+            const safeSearch = normalizeRegexSearch(search);
+            if (safeSearch !== '') {
+                query.username = { $regex: safeSearch, $options: 'i' };
+            }
         }
 
         if (filter === 'banned') {
@@ -340,6 +354,8 @@ export class MongooseUserRepository implements IUserRepository {
             showYouLabel?: boolean;
             ownMessageColor?: string;
             otherMessageColor?: string;
+            customFontUrl?: string;
+            customFontFamily?: string;
         },
     ): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, {

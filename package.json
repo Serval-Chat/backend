@@ -27,10 +27,10 @@
     "@nestjs/platform-express": "^11.1.11",
     "@nestjs/swagger": "^11.2.3",
     "@nestjs/websockets": "^11.1.11",
-    "@opentelemetry/auto-instrumentations-node": "^0.71.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.213.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.76.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.218.0",
     "@opentelemetry/resources": "^2.6.0",
-    "@opentelemetry/sdk-node": "^0.213.0",
+    "@opentelemetry/sdk-node": "^0.218.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
     "@types/bcrypt": "^6.0.0",
     "@types/dotenv": "^8.2.3",
@@ -47,7 +47,7 @@
     "esbuild": "^0.25.12",
     "express": "^4.21.2",
     "express-rate-limit": "^6.11.2",
-    "firebase-admin": "^13.8.0",
+    "firebase-admin": "^13.10.0",
     "helmet": "^8.1.0",
     "inversify": "^6.2.2",
     "ioredis": "^5.10.1",
@@ -104,6 +104,14 @@
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0"
+  },
+  "overrides": {
+    "@google-cloud/firestore": "^8.6.0",
+    "google-gax": "^5.0.6",
+    "retry-request": "^8.0.2",
+    "teeny-request": "^10.1.2",
+    "http-proxy-agent": "^7.0.2",
+    "@tootallnate/once": "^3.0.1"
   },
   "repository": "https://github.com/Serval-Chat/backend",
   "lint-staged": {

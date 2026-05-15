@@ -180,7 +180,29 @@ export class AuthController {
         @Body() body: TotpSetupConfirmRequestDTO,
     ): Promise<TotpSetupConfirmResponseDTO> {
         const user = (req as unknown as RequestWithUser).user;
-        return await this.authService.confirmTotpSetup(user.id, body.code);
+        const result = await this.authService.confirmTotpSetup(
+            user.id,
+            body.code,
+        );
+        const userOid = new Types.ObjectId(user.id);
+        await this.userRepo.incrementTokenVersion(userOid);
+
+        const updatedUser = await this.userRepo.findById(userOid);
+        if (updatedUser === null || updatedUser.deletedAt !== undefined) {
+            throw new ApiError(401, ErrorMessages.AUTH.INVALID_TOKEN);
+        }
+
+        return {
+            ...result,
+            token: generateJWT({
+                id: updatedUser._id.toString(),
+                login: updatedUser.login ?? user.login,
+                username: updatedUser.username ?? user.username,
+                tokenVersion: updatedUser.tokenVersion ?? 0,
+                permissions: updatedUser.permissions,
+                isBot: updatedUser.isBot ?? false,
+            }),
+        };
     }
 
     @Post('2fa/verify')
@@ -254,14 +276,33 @@ export class AuthController {
     public async disableTwoFactor(
         @Req() req: Request,
         @Body() body: TotpSensitiveActionRequestDTO,
-    ): Promise<{ message: string }> {
+    ): Promise<{ message: string; token: string }> {
         const user = (req as unknown as RequestWithUser).user;
         await this.authService.disableTwoFactor(
             user.id,
             body.code,
             body.backupCode,
         );
-        return { message: 'Two-factor authentication disabled successfully' };
+
+        const userOid = new Types.ObjectId(user.id);
+        await this.userRepo.incrementTokenVersion(userOid);
+
+        const updatedUser = await this.userRepo.findById(userOid);
+        if (updatedUser === null || updatedUser.deletedAt !== undefined) {
+            throw new ApiError(401, ErrorMessages.AUTH.INVALID_TOKEN);
+        }
+
+        return {
+            message: 'Two-factor authentication disabled successfully',
+            token: generateJWT({
+                id: updatedUser._id.toString(),
+                login: updatedUser.login ?? user.login,
+                username: updatedUser.username ?? user.username,
+                tokenVersion: updatedUser.tokenVersion ?? 0,
+                permissions: updatedUser.permissions,
+                isBot: updatedUser.isBot ?? false,
+            }),
+        };
     }
 
     @Post('register')
@@ -484,14 +525,20 @@ export class AuthController {
         }
 
         await this.userRepo.updatePassword(userOid, newPassword);
+        await this.userRepo.incrementTokenVersion(userOid);
+
+        const updatedUser = await this.userRepo.findById(userOid);
+        if (updatedUser === null) {
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
 
         const token = generateJWT({
-            id: user._id.toString(),
-            login: user.login ?? '',
-            username: user.username ?? '',
-            tokenVersion: user.tokenVersion ?? 0,
-            permissions: user.permissions,
-            isBot: user.isBot ?? false,
+            id: updatedUser._id.toString(),
+            login: updatedUser.login ?? '',
+            username: updatedUser.username ?? '',
+            tokenVersion: updatedUser.tokenVersion ?? 0,
+            permissions: updatedUser.permissions,
+            isBot: updatedUser.isBot ?? false,
         });
 
         return {

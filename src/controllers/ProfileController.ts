@@ -69,7 +69,7 @@ import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { NoBot } from '@/modules/auth/bot.decorator';
 
 import { Badge } from '@/models/Badge';
-import { storage } from '@/config/multer';
+import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import type { WsServer } from '@/ws/server';
 import {
     processAndSaveImage,
@@ -333,7 +333,13 @@ export class ProfileController {
     @Post('picture')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
-    @UseInterceptors(FileInterceptor('profilePicture', { storage }))
+    @UseInterceptors(
+        FileInterceptor('profilePicture', {
+            storage,
+            fileFilter: imageFileFilter,
+            limits: imageUploadLimits,
+        }),
+    )
     @ApiConsumes('multipart/form-data')
     @NoBot()
     @ApiBody({
@@ -545,7 +551,13 @@ export class ProfileController {
     @NoBot()
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
-    @UseInterceptors(FileInterceptor('banner', { storage }))
+    @UseInterceptors(
+        FileInterceptor('banner', {
+            storage,
+            fileFilter: imageFileFilter,
+            limits: imageUploadLimits,
+        }),
+    )
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {

@@ -72,6 +72,8 @@ export interface IUser {
         showYouLabel?: boolean;
         ownMessageColor?: string;
         otherMessageColor?: string;
+        customFontUrl?: string;
+        customFontFamily?: string;
     };
     banner?: string;
     serverSettings?: {
@@ -214,6 +216,8 @@ export interface IUserRepository {
             showYouLabel?: boolean;
             ownMessageColor?: string;
             otherMessageColor?: string;
+            customFontUrl?: string;
+            customFontFamily?: string;
         },
     ): Promise<void>;
 

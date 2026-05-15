@@ -39,6 +39,8 @@ interface UserSettings {
     disableCustomUsernameFonts?: boolean;
     disableCustomUsernameColors?: boolean;
     disableCustomUsernameGlow?: boolean;
+    customFontUrl?: string;
+    customFontFamily?: string;
     serverSettings?: {
         order: (
             | string
@@ -88,6 +90,8 @@ export class SettingsController {
             showYouLabel: true,
             ownMessageColor: '#5865f2',
             otherMessageColor: '#2a2d31',
+            customFontUrl: '',
+            customFontFamily: '',
         };
 
         if (user.serverSettings) {

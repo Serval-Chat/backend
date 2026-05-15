@@ -28,7 +28,11 @@ import path from 'path';
 import fs, { promises as fsPromises } from 'fs';
 import mime from 'mime-types';
 import { SERVER_URL } from '@/config/env';
-import { extractOriginalFilename, storage } from '@/config/multer';
+import {
+    extractOriginalFilename,
+    genericFileUploadLimits,
+    storage,
+} from '@/config/multer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import {
@@ -58,7 +62,12 @@ export class FileController {
     @Post('upload')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
-    @UseInterceptors(FileInterceptor('file', { storage }))
+    @UseInterceptors(
+        FileInterceptor('file', {
+            storage,
+            limits: genericFileUploadLimits,
+        }),
+    )
     @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {

@@ -10,6 +10,14 @@ import { ServerMember } from '@/models/Server';
 import { User } from '@/models/User';
 import { injectable } from 'inversify';
 
+function escapeRegex(input: string): string {
+    return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeRegexSearch(input: string): string {
+    return escapeRegex(input.trim().slice(0, 64));
+}
+
 // Mongoose Server Member repository
 //
 // Implements IServerMemberRepository using Mongoose ServerMember model
@@ -210,11 +218,14 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         serverId: Types.ObjectId,
         query: string,
     ): Promise<(IServerMember & { user: MappedUser | null })[]> {
+        const safeQuery = normalizeRegexSearch(query);
+        if (safeQuery === '') return [];
+
         const users = await this.userModel
             .find({
                 $or: [
-                    { username: { $regex: query, $options: 'i' } },
-                    { displayName: { $regex: query, $options: 'i' } },
+                    { username: { $regex: safeQuery, $options: 'i' } },
+                    { displayName: { $regex: safeQuery, $options: 'i' } },
                 ],
             })
             .select('_id')

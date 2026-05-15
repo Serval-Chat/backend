@@ -45,7 +45,7 @@ import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { storage } from '@/config/multer';
+import { emojiUploadLimits, imageFileFilter, storage } from '@/config/multer';
 import {
     processAndSaveImage,
     ImagePresets,
@@ -113,7 +113,13 @@ export class ServerEmojiController {
     }
 
     @Post()
-    @UseInterceptors(FileInterceptor('emoji', { storage }))
+    @UseInterceptors(
+        FileInterceptor('emoji', {
+            storage,
+            fileFilter: imageFileFilter,
+            limits: emojiUploadLimits,
+        }),
+    )
     @ApiOperation({ summary: 'Upload a server emoji' })
     @ApiConsumes('multipart/form-data')
     @ApiBody({
