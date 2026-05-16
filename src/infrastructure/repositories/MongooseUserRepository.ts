@@ -356,10 +356,22 @@ export class MongooseUserRepository implements IUserRepository {
             otherMessageColor?: string;
             customFontUrl?: string;
             customFontFamily?: string;
+            notificationSounds?: {
+                id: string;
+                name: string;
+                url: string;
+                enabled: boolean;
+            }[];
+            useDefaultSounds?: boolean;
         },
     ): Promise<void> {
+        const update: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(settings)) {
+            update[`settings.${key}`] = value;
+        }
+
         await this.userModel.findByIdAndUpdate(id, {
-            $set: { settings },
+            $set: update,
         });
     }
 

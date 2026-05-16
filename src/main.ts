@@ -31,6 +31,7 @@ async function bootstrap() {
         'uploads/servers',
         'uploads/webhooks',
         'uploads/emojis',
+        'uploads/sounds',
     ];
     for (const dir of uploadDirs) {
         const fullPath = path.join(process.cwd(), dir);

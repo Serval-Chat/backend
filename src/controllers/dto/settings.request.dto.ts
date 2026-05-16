@@ -6,9 +6,30 @@ import {
     Matches,
     IsString,
     MaxLength,
+    IsArray,
+    ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { IsColor } from '@/validation/schemas/common';
 import { MessageAlignmentDTO } from './common.request.dto';
+
+export class NotificationSoundDTO {
+    @ApiPropertyOptional()
+    @IsString()
+    public id!: string;
+
+    @ApiPropertyOptional()
+    @IsString()
+    public name!: string;
+
+    @ApiPropertyOptional()
+    @IsString()
+    public url!: string;
+
+    @ApiPropertyOptional()
+    @IsBoolean()
+    public enabled!: boolean;
+}
 
 export class UpdateSettingsRequestDTO {
     @ApiPropertyOptional()
@@ -73,4 +94,16 @@ export class UpdateSettingsRequestDTO {
     @IsString()
     @MaxLength(100)
     public customFontFamily?: string;
+
+    @ApiPropertyOptional({ type: [NotificationSoundDTO] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => NotificationSoundDTO)
+    public notificationSounds?: NotificationSoundDTO[];
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public useDefaultSounds?: boolean;
 }

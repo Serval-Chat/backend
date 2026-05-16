@@ -112,6 +112,7 @@ import type {
     IFriendRemovedEvent,
 } from './events/friendship';
 import type { IExportCompletedEvent } from './events/export';
+import type { INotificationSoundsUpdatedEvent } from './events/notification_sounds';
 
 export type AnyMessageWsEvent =
     | IWsPingMessageEvent
@@ -222,7 +223,8 @@ export type AnyResponseWsEvent =
     | IReactionRemovedEvent
     // Notifications
     | IMentionEvent
-    | IExportCompletedEvent;
+    | IExportCompletedEvent
+    | INotificationSoundsUpdatedEvent;
 
 export interface IWsEnvelope {
     /**

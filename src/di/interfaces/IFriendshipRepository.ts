@@ -75,8 +75,11 @@ export interface IFriendshipRepository {
         toId: Types.ObjectId,
     ): Promise<IFriendRequest | null>;
 
-    // Get pending requests for a user
+    // Get pending requests for a user (incoming)
     findPendingRequestsFor(userId: Types.ObjectId): Promise<IFriendRequest[]>;
+
+    // Get pending requests from a user (outgoing)
+    findPendingRequestsFrom(userId: Types.ObjectId): Promise<IFriendRequest[]>;
 
     // Find friendships by user ID
     findAllByUserId(userId: Types.ObjectId): Promise<IFriendship[]>;

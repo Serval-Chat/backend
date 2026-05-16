@@ -46,6 +46,24 @@ export class IncomingFriendRequestResponseDTO {
     public createdAt!: Date;
 }
 
+export class OutgoingFriendRequestResponseDTO {
+    @ApiProperty()
+    @IsMongoId()
+    @IsString()
+    public _id!: string;
+
+    @ApiPropertyOptional()
+    public to?: string;
+
+    @ApiPropertyOptional()
+    @IsMongoId()
+    @IsString()
+    public toId?: string;
+
+    @ApiProperty()
+    public createdAt!: Date;
+}
+
 export class SendFriendRequestResponseDTO {
     @ApiProperty()
     public message!: string;

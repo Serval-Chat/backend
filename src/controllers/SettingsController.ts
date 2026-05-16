@@ -41,6 +41,13 @@ interface UserSettings {
     disableCustomUsernameGlow?: boolean;
     customFontUrl?: string;
     customFontFamily?: string;
+    notificationSounds?: {
+        id: string;
+        name: string;
+        url: string;
+        enabled: boolean;
+    }[];
+    useDefaultSounds?: boolean;
     serverSettings?: {
         order: (
             | string

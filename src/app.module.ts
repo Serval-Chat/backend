@@ -23,6 +23,7 @@ import { ApiErrorFilter } from './filters/ApiErrorFilter';
 import { EmojiController } from './controllers/EmojiController';
 import { FileController } from './controllers/FileController';
 import { FileCompatibilityController } from './controllers/FileCompatibilityController';
+import { NotificationSoundController } from './controllers/NotificationSoundController';
 
 import { FriendshipController } from './controllers/FriendshipController';
 import { MetricsController } from './controllers/MetricsController';
@@ -133,6 +134,7 @@ import {
         EmojiController,
         FileController,
         FileCompatibilityController,
+        NotificationSoundController,
 
         FriendshipController,
         MetricsController,

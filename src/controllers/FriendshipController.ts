@@ -41,6 +41,7 @@ import {
     SendFriendRequestResponseDTO,
     AcceptFriendRequestResponseDTO,
     FriendshipMessageResponseDTO,
+    OutgoingFriendRequestResponseDTO,
 } from './dto/friendship.response.dto';
 import { injectable } from 'inversify';
 
@@ -309,6 +310,37 @@ export class FriendshipController {
         );
     }
 
+    @Get('outgoing')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Get outgoing friend requests' })
+    @ApiResponse({ status: 200, type: [OutgoingFriendRequestResponseDTO] })
+    public async getOutgoingRequests(
+        @Req() req: Request,
+    ): Promise<OutgoingFriendRequestResponseDTO[]> {
+        const userId = (req as unknown as RequestWithUser).user.id;
+        const outgoing = await this.friendshipRepo.findPendingRequestsFrom(
+            new Types.ObjectId(userId),
+        );
+
+        return await Promise.all(
+            outgoing.map(async (r) => {
+                let toUsername = r.to;
+                if (toUsername === undefined || toUsername === '') {
+                    const toUser = await this.userRepo.findById(r.toId);
+                    toUsername = toUser !== null ? toUser.username : undefined;
+                }
+
+                return {
+                    _id: r._id.toString(),
+                    to: toUsername,
+                    toId: r.toId.toString(),
+                    createdAt: r.createdAt || new Date(),
+                };
+            }),
+        );
+    }
+
     @Post()
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
@@ -535,6 +567,44 @@ export class FriendshipController {
         }
 
         return { message: 'friend request rejected' };
+    }
+
+    @Post(':id/cancel')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Cancel a friend request' })
+    @ApiResponse({ status: 201, type: FriendshipMessageResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Request not found' })
+    public async cancelFriendRequest(
+        @Param('id') id: string,
+        @Req() req: Request,
+    ): Promise<FriendshipMessageResponseDTO> {
+        const meId = (req as unknown as RequestWithUser).user.id;
+        const requestOid = new Types.ObjectId(id);
+        const fr = await this.friendshipRepo.findRequestById(requestOid);
+
+        if (fr === null) {
+            throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
+        }
+
+        if (fr.fromId.toString() !== meId) {
+            throw new ApiError(403, ErrorMessages.FRIENDSHIP.NOT_ALLOWED);
+        }
+
+        if (fr.status !== 'pending') {
+            throw new ApiError(
+                400,
+                ErrorMessages.FRIENDSHIP.REQUEST_NOT_PENDING,
+            );
+        }
+
+        const success = await this.friendshipRepo.rejectRequest(requestOid);
+        if (!success) {
+            throw new ApiError(404, ErrorMessages.FRIENDSHIP.REQUEST_NOT_FOUND);
+        }
+
+        return { message: 'friend request cancelled' };
     }
 
     @Delete(':friendId')

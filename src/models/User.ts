@@ -3,6 +3,11 @@ import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
 import type { AdminPermissions } from '@/permissions/AdminPermissions';
 
+export enum MessageAlignment {
+    LEFT = 'left',
+    RIGHT = 'right',
+}
+
 // User interface
 //
 // Represents a registered user in the system
@@ -56,8 +61,8 @@ export interface IUser extends Document {
     settings?: {
         muteNotifications?: boolean;
         useDiscordStyleMessages?: boolean;
-        ownMessagesAlign?: 'left' | 'right';
-        otherMessagesAlign?: 'left' | 'right';
+        ownMessagesAlign?: MessageAlignment;
+        otherMessagesAlign?: MessageAlignment;
         showYouLabel?: boolean;
         ownMessageColor?: string;
         otherMessageColor?: string;
@@ -66,6 +71,13 @@ export interface IUser extends Document {
         disableCustomUsernameGlow?: boolean;
         customFontUrl?: string;
         customFontFamily?: string;
+        notificationSounds?: {
+            id: string;
+            name: string;
+            url: string;
+            enabled: boolean;
+        }[];
+        useDefaultSounds?: boolean;
     };
     banner?: string;
     bannerColor?: string;
@@ -158,13 +170,13 @@ const schema = new Schema<IUser>(
             useDiscordStyleMessages: { type: Boolean, default: false },
             ownMessagesAlign: {
                 type: String,
-                enum: ['left', 'right'],
-                default: 'right',
+                enum: Object.values(MessageAlignment),
+                default: MessageAlignment.RIGHT,
             },
             otherMessagesAlign: {
                 type: String,
-                enum: ['left', 'right'],
-                default: 'left',
+                enum: Object.values(MessageAlignment),
+                default: MessageAlignment.LEFT,
             },
             showYouLabel: { type: Boolean, default: true },
             ownMessageColor: { type: String, default: '#5865f2' },
@@ -174,6 +186,21 @@ const schema = new Schema<IUser>(
             disableCustomUsernameGlow: { type: Boolean, default: false },
             customFontUrl: { type: String, default: '' },
             customFontFamily: { type: String, default: '' },
+            notificationSounds: {
+                type: [
+                    new Schema(
+                        {
+                            id: { type: String, required: true },
+                            name: { type: String, required: true },
+                            url: { type: String, required: true },
+                            enabled: { type: Boolean, default: true },
+                        },
+                        { _id: false },
+                    ),
+                ],
+                default: [],
+            },
+            useDefaultSounds: { type: Boolean, default: true },
         },
         notificationPreferences: {
             type: {

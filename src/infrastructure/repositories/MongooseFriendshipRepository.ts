@@ -128,6 +128,17 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
             .lean();
     }
 
+    public async findPendingRequestsFrom(
+        userId: Types.ObjectId,
+    ): Promise<IFriendRequest[]> {
+        return await this.friendRequestModel
+            .find({
+                fromId: userId,
+                status: 'pending',
+            })
+            .lean();
+    }
+
     public async findExistingRequest(
         fromId: Types.ObjectId,
         toId: Types.ObjectId,

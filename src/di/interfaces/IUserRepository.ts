@@ -74,6 +74,13 @@ export interface IUser {
         otherMessageColor?: string;
         customFontUrl?: string;
         customFontFamily?: string;
+        notificationSounds?: {
+            id: string;
+            name: string;
+            url: string;
+            enabled: boolean;
+        }[];
+        useDefaultSounds?: boolean;
     };
     banner?: string;
     serverSettings?: {
@@ -218,6 +225,13 @@ export interface IUserRepository {
             otherMessageColor?: string;
             customFontUrl?: string;
             customFontFamily?: string;
+            notificationSounds?: {
+                id: string;
+                name: string;
+                url: string;
+                enabled: boolean;
+            }[];
+            useDefaultSounds?: boolean;
         },
     ): Promise<void>;
 
