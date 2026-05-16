@@ -3,6 +3,8 @@ import { ApiProperty } from '@nestjs/swagger';
 export class GifMetadataResponseDTO {
     @ApiProperty({ description: 'Klipy GIF identifier' })
     public klipyId!: string;
+    @ApiProperty({ description: 'Klipy GIF slug', required: false })
+    public slug?: string;
 
     @ApiProperty({ description: 'Full-resolution GIF URL' })
     public url!: string;
@@ -29,6 +31,9 @@ export class GifMetadataResponseDTO {
 export class FavoriteGifResponseDTO {
     @ApiProperty({ description: 'Klipy GIF identifier' })
     public klipyId!: string;
+
+    @ApiProperty({ description: 'Klipy GIF slug', required: false })
+    public slug?: string;
 
     @ApiProperty({ description: 'Full-resolution GIF URL' })
     public url!: string;

@@ -3,6 +3,7 @@ import { Schema } from 'mongoose';
 
 export interface IKlipyCache extends Document {
     klipyId: string;
+    slug?: string;
     url: string;
     previewUrl: string;
     width: number;
@@ -14,6 +15,7 @@ export interface IKlipyCache extends Document {
 const schema = new Schema<IKlipyCache>(
     {
         klipyId: { type: String, required: true, unique: true },
+        slug: { type: String, required: false },
         url: { type: String, required: true },
         previewUrl: { type: String, required: true },
         width: { type: Number, required: true },

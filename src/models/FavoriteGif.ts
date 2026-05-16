@@ -4,6 +4,7 @@ import { Schema } from 'mongoose';
 export interface IFavoriteGif extends Document {
     userId: Types.ObjectId;
     klipyId: string;
+    slug?: string;
     url: string;
     previewUrl: string;
     width: number;
@@ -20,6 +21,7 @@ const schema = new Schema<IFavoriteGif>(
             index: true,
         },
         klipyId: { type: String, required: true },
+        slug: { type: String, required: false },
         url: { type: String, required: true },
         previewUrl: { type: String, required: true },
         width: { type: Number, required: true },

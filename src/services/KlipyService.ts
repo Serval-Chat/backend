@@ -112,7 +112,12 @@ export class KlipyService {
             const cached = await this.klipyCacheModel.findOne({
                 klipyId,
             });
-            if (cached) return cached;
+            if (
+                cached !== null &&
+                typeof cached.slug === 'string' &&
+                cached.slug !== ''
+            )
+                return cached;
 
             this.logger.info(`Resolving Klipy ${contentType} ${klipyId}`);
             const response = await axios.get(
@@ -121,6 +126,7 @@ export class KlipyService {
                 ),
             );
             const data = response.data.data as {
+                slug?: string;
                 file?: {
                     hd?: {
                         gif?: { url: string; width: number; height: number };
@@ -146,6 +152,7 @@ export class KlipyService {
 
             const metadata = {
                 klipyId,
+                slug: data.slug,
                 url:
                     (data.file.hd?.gif?.url as string | undefined) ??
                     (data.file.md?.gif?.url as string | undefined) ??
@@ -217,23 +224,39 @@ export class KlipyService {
         const existing = await this.favoriteGifModel.findOne({
             userId: userOid,
             klipyId,
-            contentType,
         });
 
         if (existing) {
             await this.favoriteGifModel.deleteOne({ _id: existing._id });
             return { favorited: false };
         } else {
-            await this.favoriteGifModel.create({
-                userId: userOid,
-                klipyId,
-                url,
-                previewUrl,
-                width,
-                height,
-                contentType,
-            });
-            return { favorited: true };
+            try {
+                await this.favoriteGifModel.create({
+                    userId: userOid,
+                    klipyId,
+                    slug: gifData.slug,
+                    url,
+                    previewUrl,
+                    width,
+                    height,
+                    contentType,
+                });
+                return { favorited: true };
+            } catch (error: unknown) {
+                if (
+                    typeof error === 'object' &&
+                    error !== null &&
+                    'code' in error &&
+                    error.code === 11000
+                ) {
+                    await this.favoriteGifModel.deleteOne({
+                        userId: userOid,
+                        klipyId,
+                    });
+                    return { favorited: false };
+                }
+                throw error;
+            }
         }
     }
 }

@@ -13,6 +13,11 @@ export class ToggleFavoriteGifRequestDTO {
     @IsString()
     public klipyId!: string;
 
+    @ApiProperty({ description: 'Klipy GIF slug', required: false })
+    @IsString()
+    @IsOptional()
+    public slug?: string;
+
     @ApiProperty({ description: 'Full-resolution GIF URL' })
     @IsUrl()
     public url!: string;
