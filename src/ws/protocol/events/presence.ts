@@ -120,6 +120,17 @@ export interface IUserUpdatedEvent
                 disableCustomUsernameColors?: boolean;
                 disableCustomUsernameGlow?: boolean;
             };
+            serverSettings?: {
+                order: (
+                    | string
+                    | {
+                          id: string;
+                          name: string;
+                          color: string;
+                          serverIds: string[];
+                      }
+                )[];
+            };
             connections?: Array<{
                 id: string;
                 type: 'Website';

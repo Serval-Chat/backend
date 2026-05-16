@@ -175,6 +175,21 @@ export class SettingsController {
             serverSettings: { order: body.order },
         });
 
+        try {
+            this.wsServer.broadcastToUser(userId, {
+                type: 'user_updated',
+                payload: {
+                    userId,
+                    serverSettings: { order: body.order },
+                },
+            });
+        } catch (err) {
+            this.logger.error(
+                'Failed to broadcast server settings update:',
+                err,
+            );
+        }
+
         return {
             message: 'Server settings updated successfully',
             serverSettings: { order: body.order },
