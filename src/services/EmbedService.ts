@@ -55,8 +55,16 @@ export class EmbedService {
         const text = message.text || '';
         const urls = text.match(this.urlRegex);
 
-        if (!urls || urls.length === 0) return;
+        if (!urls || urls.length === 0) {
+            this.logger.debug(
+                `No URLs found in message text: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`,
+            );
+            return;
+        }
 
+        this.logger.debug(
+            `Found ${urls.length} URLs in message text: ${urls.join(', ')}`,
+        );
         const textUrls = urls;
         const existingEmbeds = message.embeds || [];
         const MAX_EMBEDS = 5;
@@ -201,15 +209,27 @@ export class EmbedService {
                 embeds: allEmbeds,
             });
 
-            this.wsServer.broadcastToChannel(serverMsg.channelId.toString(), {
-                type: 'message_server_embeds_updated',
-                payload: {
-                    messageId: serverMsg._id.toString(),
-                    serverId: serverMsg.serverId.toString(),
-                    channelId: serverMsg.channelId.toString(),
-                    embeds: allEmbeds,
+            this.logger.debug(
+                `Broadcasting updated embeds for message ${serverMsg._id} in channel ${serverMsg.channelId}`,
+            );
+
+            await this.wsServer.broadcastToServerWithPermission(
+                serverMsg.serverId.toString(),
+                {
+                    type: 'message_server_embeds_updated',
+                    payload: {
+                        messageId: serverMsg._id.toString(),
+                        serverId: serverMsg.serverId.toString(),
+                        channelId: serverMsg.channelId.toString(),
+                        embeds: allEmbeds,
+                    },
                 },
-            });
+                {
+                    type: 'channel',
+                    targetId: serverMsg.channelId.toString(),
+                    permission: 'viewChannels',
+                },
+            );
         } else {
             const userMsg = message as IMessage;
             await this.messageRepo.updateMessage(userMsg._id.toString(), {
