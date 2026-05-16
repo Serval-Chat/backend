@@ -53,6 +53,14 @@ describe('ServerMessageController embeds', () => {
             mockServerAuditLogService as never,
             mockServerRepo as never,
             {} as never, // EmbedService
+            {
+                getClient: jest.fn().mockReturnValue({
+                    pipeline: jest.fn().mockReturnValue({
+                        set: jest.fn(),
+                        exec: jest.fn().mockResolvedValue([]),
+                    }),
+                }),
+            } as never, // IRedisService
         );
 
         mockServerRepo.findById.mockResolvedValue({

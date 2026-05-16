@@ -23,6 +23,8 @@ import {
 } from '@nestjs/swagger';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
+import crypto from 'crypto';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type {
     IServerMessageRepository,
     IServerMessage,
@@ -85,7 +87,41 @@ export class ServerMessageController {
         private serverRepo: IServerRepository,
         @Inject(TYPES.EmbedService)
         private embedService: EmbedService,
+        @Inject(TYPES.RedisService)
+        private redisService: IRedisService,
     ) {}
+
+    private allowlistWebhookAvatars(msgs: IServerMessage[]): void {
+        const pipeline = this.redisService.getClient().pipeline();
+        let added = false;
+        for (const msg of msgs) {
+            if (
+                msg.isWebhook === true &&
+                msg.webhookAvatarUrl !== undefined &&
+                msg.webhookAvatarUrl.startsWith('https://')
+            ) {
+                const hash = crypto
+                    .createHash('sha256')
+                    .update(msg.webhookAvatarUrl)
+                    .digest('hex');
+                pipeline.set(
+                    `proxy:allow:${hash}`,
+                    msg.webhookAvatarUrl,
+                    'EX',
+                    60 * 60 * 24 * 7,
+                );
+                added = true;
+            }
+        }
+        if (added) {
+            pipeline.exec().catch((err: unknown) => {
+                this.logger.error(
+                    'Failed to allowlist webhook avatars during fetch',
+                    (err as Error).stack,
+                );
+            });
+        }
+    }
 
     @Get()
     @ApiOperation({ summary: 'Get channel messages' })
@@ -157,6 +193,8 @@ export class ServerMessageController {
             'server',
             new mongoose.Types.ObjectId(userId),
         );
+
+        this.allowlistWebhookAvatars(msgs);
 
         return msgs.map((msg) => {
             const msgObj = msg as unknown as Record<string, unknown>;
@@ -472,6 +510,8 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(userId),
         );
 
+        this.allowlistWebhookAvatars(pins as unknown as IServerMessage[]);
+
         return pins.map((pin) => ({
             ...pin,
             reactions:
@@ -574,12 +614,26 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(userId),
         );
 
+        const msgObj = {
+            ...('toObject' in message && typeof message.toObject === 'function'
+                ? message.toObject()
+                : message),
+        } as IServerMessage;
+
+        const messagesToAllowlist = [msgObj];
+        if (repliedMessage !== null) {
+            messagesToAllowlist.push({
+                ...('toObject' in repliedMessage &&
+                typeof repliedMessage.toObject === 'function'
+                    ? repliedMessage.toObject()
+                    : repliedMessage),
+            } as IServerMessage);
+        }
+        this.allowlistWebhookAvatars(messagesToAllowlist);
+
         return {
             message: {
-                ...('toObject' in message &&
-                typeof message.toObject === 'function'
-                    ? message.toObject()
-                    : message),
+                ...msgObj,
                 reactions,
             },
             repliedMessage,

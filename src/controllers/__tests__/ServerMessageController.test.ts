@@ -66,6 +66,14 @@ describe('ServerMessageController Manual Instance', () => {
                 processServerMessage: jest.fn().mockResolvedValue(undefined),
                 processUserMessage: jest.fn().mockResolvedValue(undefined),
             } as unknown as EmbedService,
+            {
+                getClient: jest.fn().mockReturnValue({
+                    pipeline: jest.fn().mockReturnValue({
+                        set: jest.fn(),
+                        exec: jest.fn().mockResolvedValue([]),
+                    }),
+                }),
+            } as never,
         );
     });
 
