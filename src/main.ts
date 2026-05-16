@@ -16,7 +16,9 @@ import {
     cleanupOrphanedPings,
     cleanupDeadPings,
     repairEveryoneRoles,
+    flushAllCaches,
 } from '@/utils/startup-tasks';
+import { KlipyCache } from '@/models/KlipyCache';
 import { container } from '@/di/container';
 import type { WsServer } from '@/ws/server';
 import { TYPES } from '@/di/types';
@@ -50,6 +52,9 @@ async function bootstrap() {
     await cleanupOrphanedPings();
     await cleanupDeadPings();
     await repairEveryoneRoles();
+
+    const redisService = container.get<IRedisService>(TYPES.RedisService);
+    await flushAllCaches(redisService, KlipyCache);
 
     // Configure HTTPS if enabl
     let httpsOptions: HttpsOptions | undefined;

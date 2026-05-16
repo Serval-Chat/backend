@@ -5,8 +5,14 @@ import {
     Role as RoleModel,
     ServerMember as ServerMemberModel,
 } from '@/models/Server';
+import { KlipyCache as KlipyCacheSchema } from '@/models/KlipyCache';
+import type { IKlipyCache } from '@/models/KlipyCache';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
+import type { Model } from 'mongoose';
 import logger from '@/utils/logger';
 import { Types } from 'mongoose';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface PingModelLike {
     distinct(field: string, query: object): Promise<Types.ObjectId[]>;
@@ -196,5 +202,26 @@ export async function cleanupDeadPings(
             '[DeadPingCleanup] Error while cleaning up dead pings:',
             error,
         );
+    }
+}
+
+export async function flushAllCaches(
+    redisService: IRedisService,
+    klipyCacheModel: Model<IKlipyCache>,
+): Promise<void> {
+    try {
+        logger.info('[CacheFlush] Flushing all caches...');
+
+        await redisService.getClient().flushdb();
+        logger.info('[CacheFlush] Redis database flushed.');
+
+        const result = await klipyCacheModel.deleteMany({});
+        logger.info(
+            `[CacheFlush] KlipyCache cleared (${result.deletedCount} items).`,
+        );
+
+        logger.info('[CacheFlush] Done.');
+    } catch (error) {
+        logger.error('[CacheFlush] Error while flushing caches:', error);
     }
 }

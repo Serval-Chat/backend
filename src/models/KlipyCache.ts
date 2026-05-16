@@ -1,5 +1,5 @@
-import type { Document } from 'mongoose';
-import { Schema } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
+import type { Document, Model } from 'mongoose';
 
 export interface IKlipyCache extends Document {
     klipyId: string;
@@ -26,6 +26,7 @@ const schema = new Schema<IKlipyCache>(
     { timestamps: true },
 );
 
-export const KlipyCache = {
+export const KlipyCache: Model<IKlipyCache> = mongoose.model(
+    'KlipyCache',
     schema,
-};
+);

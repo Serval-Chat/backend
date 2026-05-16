@@ -79,7 +79,8 @@ export async function createTestServer(ownerId: string, overrides: Record<string
             manageServer: false,
             administrator: false,
             addReactions: true,
-            manageReactions: false
+            manageReactions: false,
+            viewChannels: true
         }
     });
 
