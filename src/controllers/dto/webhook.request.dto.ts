@@ -4,7 +4,6 @@ import {
     IsName,
     IsUrlField,
     IsMessageContent,
-    IsUsername,
     IsWebhookToken,
     IsFilename,
 } from '@/validation/schemas/common';
@@ -30,7 +29,7 @@ export class ExecuteWebhookRequestDTO {
 
     @ApiPropertyOptional({ description: 'Custom username for the webhook' })
     @IsOptional()
-    @IsUsername()
+    @IsName()
     @Transform(({ value }) =>
         typeof value === 'string' ? value.substring(0, 100) : value,
     )
