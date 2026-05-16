@@ -10,9 +10,13 @@ import crypto from 'node:crypto';
 import { SCRAPER_HOST, SCRAPER_PORT } from '@/config/env';
 import {
     FetchResult,
+    TextFetchResult,
+    FetchFailure,
     IWsEnvelope,
     OutgoingWsEvent,
     ScrapeEvent,
+    FetchTextEvent,
+    ScraperSuccessResult,
 } from '@/types/scraper';
 
 @Injectable()
@@ -31,7 +35,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
     private readonly pendingRequests = new Map<
         string,
         {
-            resolve: (value: FetchResult) => void;
+            resolve: (value: ScraperSuccessResult) => void;
             reject: (reason?: unknown) => void;
         }
     >();
@@ -105,20 +109,36 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
     }
 
     public async scrape(url: string): Promise<FetchResult> {
+        return this.sendJob<ScrapeEvent, FetchResult>({
+            type: 'scrape',
+            payload: { url },
+        });
+    }
+
+    public async fetchText(
+        url: string,
+    ): Promise<TextFetchResult | FetchFailure> {
+        return this.sendJob<FetchTextEvent, TextFetchResult | FetchFailure>({
+            type: 'fetchText',
+            payload: { url },
+        });
+    }
+
+    private async sendJob<TEvent extends ScrapeEvent | FetchTextEvent, TResult>(
+        event: TEvent,
+    ): Promise<TResult> {
         if (!this.isConnected || !this.ws) {
             throw new Error('Not connected to scraper service');
         }
 
         const id = crypto.randomUUID();
-        const event: ScrapeEvent = {
-            type: 'scrape',
-            payload: { url },
-        };
-
-        const envelope: IWsEnvelope<ScrapeEvent> = { id, event };
+        const envelope: IWsEnvelope<TEvent> = { id, event };
 
         return new Promise((resolve, reject) => {
-            this.pendingRequests.set(id, { resolve, reject });
+            this.pendingRequests.set(id, {
+                resolve: (value) => resolve(value as TResult),
+                reject,
+            });
 
             try {
                 if (this.ws) {

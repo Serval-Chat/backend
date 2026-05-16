@@ -21,9 +21,9 @@ import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Request, Response } from 'express';
 import path from 'path';
 import { promises as fsPromises, constants as fsConstants } from 'fs';
+import { randomUUID } from 'crypto';
 import { SERVER_URL } from '@/config/env';
 import { processAudio } from '@/utils/audio';
-import { v4 as uuidv4 } from 'uuid';
 import { Types } from 'mongoose';
 import { WsServer } from '@/ws/server';
 import { JWTPayload } from '@/utils/jwt';
@@ -96,7 +96,7 @@ export class NotificationSoundController {
             throw new BadRequestException('Max 10 notification sounds allowed');
         }
 
-        const soundId = uuidv4();
+        const soundId = randomUUID();
         const tempInputPath = path.join(this.soundsDir, `${soundId}_temp`);
         const outputPath = path.join(this.soundsDir, `${soundId}.ogg`);
 

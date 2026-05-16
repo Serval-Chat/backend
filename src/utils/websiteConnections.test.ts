@@ -1,5 +1,8 @@
 import {
     hashWebsiteVerificationToken,
+    getWebsiteVerificationFileUrl,
+    isWebsiteVerificationFileContent,
+    isWebsiteVerificationRecord,
     normalizeWebsite,
     resolveTxtRecordsViaDoh,
     verifyWebsiteTokenHash,
@@ -7,10 +10,7 @@ import {
 } from './websiteConnections';
 
 describe('websiteConnections', () => {
-    const originalFetch = global.fetch;
-
     afterEach(() => {
-        global.fetch = originalFetch;
         jest.restoreAllMocks();
     });
 
@@ -19,12 +19,16 @@ describe('websiteConnections', () => {
             value: 'ser.chat',
             normalizedValue: 'ser.chat',
             verificationRecordName: '_serchat.ser.chat',
+            verificationFilePath: '/.well-known/serchat',
+            verificationFileUrl: 'https://ser.chat/.well-known/serchat',
         });
 
         expect(normalizeWebsite('https://SER.chat/')).toMatchObject({
             value: 'ser.chat',
             normalizedValue: 'ser.chat',
             verificationRecordName: '_serchat.ser.chat',
+            verificationFilePath: '/.well-known/serchat',
+            verificationFileUrl: 'https://ser.chat/.well-known/serchat',
         });
     });
 
@@ -48,10 +52,32 @@ describe('websiteConnections', () => {
         expect(verifyWebsiteTokenHash('wrong-token', hash)).toBe(false);
     });
 
+    it('matches DNS TXT records and HTTPS file contents against token hashes', () => {
+        const token = 'secret-token';
+        const hash = hashWebsiteVerificationToken(token);
+
+        expect(
+            isWebsiteVerificationRecord(
+                `${WEBSITE_VERIFICATION_PREFIX}${token}`,
+                hash,
+            ),
+        ).toBe(true);
+        expect(isWebsiteVerificationRecord('unrelated', hash)).toBe(false);
+        expect(isWebsiteVerificationFileContent(`${token}\n`, hash)).toBe(true);
+        expect(isWebsiteVerificationFileContent('wrong-token', hash)).toBe(
+            false,
+        );
+    });
+
+    it('builds HTTPS verification file URLs', () => {
+        expect(getWebsiteVerificationFileUrl('ser.chat')).toBe(
+            'https://ser.chat/.well-known/serchat',
+        );
+    });
+
     it('resolves TXT records from Cloudflare DoH', async () => {
-        global.fetch = jest.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({
+        const fetchText = jest.fn().mockResolvedValue(
+            JSON.stringify({
                 Answer: [
                     {
                         type: 16,
@@ -59,24 +85,22 @@ describe('websiteConnections', () => {
                     },
                 ],
             }),
-        } as Response);
+        );
 
         await expect(
-            resolveTxtRecordsViaDoh('_serchat.ser.chat'),
+            resolveTxtRecordsViaDoh('_serchat.ser.chat', fetchText),
         ).resolves.toEqual([`${WEBSITE_VERIFICATION_PREFIX}abc`]);
-        expect(global.fetch).toHaveBeenCalledWith(
+        expect(fetchText).toHaveBeenCalledWith(
             'https://1.1.1.1/dns-query?name=_serchat.ser.chat&type=TXT',
-            { headers: { accept: 'application/dns-json' } },
         );
     });
 
     it('falls back to Google DoH when Cloudflare fails', async () => {
-        global.fetch = jest
+        const fetchText = jest
             .fn()
             .mockRejectedValueOnce(new Error('primary failed'))
-            .mockResolvedValueOnce({
-                ok: true,
-                json: async () => ({
+            .mockResolvedValueOnce(
+                JSON.stringify({
                     Answer: [
                         {
                             type: 16,
@@ -84,12 +108,12 @@ describe('websiteConnections', () => {
                         },
                     ],
                 }),
-            } as Response);
+            );
 
         await expect(
-            resolveTxtRecordsViaDoh('_serchat.ser.chat'),
+            resolveTxtRecordsViaDoh('_serchat.ser.chat', fetchText),
         ).resolves.toEqual([`${WEBSITE_VERIFICATION_PREFIX}fallback`]);
-        expect(global.fetch).toHaveBeenLastCalledWith(
+        expect(fetchText).toHaveBeenLastCalledWith(
             'https://8.8.8.8/resolve?name=_serchat.ser.chat&type=TXT',
         );
     });

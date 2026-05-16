@@ -4,6 +4,7 @@ import { domainToASCII } from 'url';
 
 export const WEBSITE_CONNECTION_TYPE = 'Website' as const;
 export const WEBSITE_VERIFICATION_PREFIX = 'serchat-site-verification=';
+export const WEBSITE_VERIFICATION_FILE_PATH = '/.well-known/serchat';
 export const WEBSITE_VERIFICATION_FAILURE =
     'Failed to validate the website is yours';
 
@@ -11,6 +12,8 @@ export interface NormalizedWebsite {
     value: string;
     normalizedValue: string;
     verificationRecordName: string;
+    verificationFilePath: string;
+    verificationFileUrl: string;
 }
 
 export function normalizeWebsite(input: string): NormalizedWebsite {
@@ -65,6 +68,8 @@ export function normalizeWebsite(input: string): NormalizedWebsite {
         value: asciiHost,
         normalizedValue: asciiHost,
         verificationRecordName: `_serchat.${asciiHost}`,
+        verificationFilePath: WEBSITE_VERIFICATION_FILE_PATH,
+        verificationFileUrl: `https://${asciiHost}${WEBSITE_VERIFICATION_FILE_PATH}`,
     };
 }
 
@@ -85,30 +90,58 @@ export function verifyWebsiteTokenHash(token: string, hash: string): boolean {
     );
 }
 
-export async function resolveTxtRecordsViaDoh(name: string): Promise<string[]> {
+export function isWebsiteVerificationRecord(
+    record: string,
+    tokenHash: string,
+): boolean {
+    if (!record.startsWith(WEBSITE_VERIFICATION_PREFIX)) return false;
+    const token = record.slice(WEBSITE_VERIFICATION_PREFIX.length);
+    return verifyWebsiteTokenHash(token, tokenHash);
+}
+
+export function isWebsiteVerificationFileContent(
+    body: string,
+    tokenHash: string,
+): boolean {
+    return verifyWebsiteTokenHash(body.trim(), tokenHash);
+}
+
+export function getWebsiteVerificationFileUrl(normalizedValue: string): string {
+    return `https://${normalizedValue}${WEBSITE_VERIFICATION_FILE_PATH}`;
+}
+
+export type FetchText = (url: string) => Promise<string>;
+
+export async function resolveTxtRecordsViaDoh(
+    name: string,
+    fetchText: FetchText,
+): Promise<string[]> {
     try {
-        const cloudflareRecords = await queryCloudflareTxt(name);
+        const cloudflareRecords = await queryCloudflareTxt(name, fetchText);
         return cloudflareRecords;
     } catch {
-        return queryGoogleTxt(name);
+        return queryGoogleTxt(name, fetchText);
     }
 }
 
-async function queryCloudflareTxt(name: string): Promise<string[]> {
-    const response = await fetch(
+async function queryCloudflareTxt(
+    name: string,
+    fetchText: FetchText,
+): Promise<string[]> {
+    const body = await fetchText(
         `https://1.1.1.1/dns-query?name=${encodeURIComponent(name)}&type=TXT`,
-        { headers: { accept: 'application/dns-json' } },
     );
-    if (!response.ok) throw new Error('Cloudflare DoH failed');
-    return parseDohTxtResponse((await response.json()) as DohResponse);
+    return parseDohTxtResponse(JSON.parse(body) as DohResponse);
 }
 
-async function queryGoogleTxt(name: string): Promise<string[]> {
-    const response = await fetch(
+async function queryGoogleTxt(
+    name: string,
+    fetchText: FetchText,
+): Promise<string[]> {
+    const body = await fetchText(
         `https://8.8.8.8/resolve?name=${encodeURIComponent(name)}&type=TXT`,
     );
-    if (!response.ok) throw new Error('Google DoH failed');
-    return parseDohTxtResponse((await response.json()) as DohResponse);
+    return parseDohTxtResponse(JSON.parse(body) as DohResponse);
 }
 
 interface DohResponse {

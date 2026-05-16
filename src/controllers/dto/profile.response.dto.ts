@@ -54,13 +54,22 @@ export class UserConnectionResponseDTO {
     public status?: 'pending' | 'verified';
 
     @ApiPropertyOptional()
-    public recordType?: 'TXT';
+    public recordType?: 'TXT' | 'HTTPS';
 
     @ApiPropertyOptional()
     public recordName?: string;
 
     @ApiPropertyOptional()
     public recordValue?: string;
+
+    @ApiPropertyOptional()
+    public filePath?: string;
+
+    @ApiPropertyOptional()
+    public fileUrl?: string;
+
+    @ApiPropertyOptional()
+    public fileContent?: string;
 
     @ApiPropertyOptional()
     public expiresAt?: Date;
@@ -165,6 +174,15 @@ export class CreateWebsiteConnectionResponseDTO {
 
     @ApiProperty()
     public recordValue!: string;
+
+    @ApiProperty()
+    public filePath!: string;
+
+    @ApiProperty()
+    public fileUrl!: string;
+
+    @ApiProperty()
+    public fileContent!: string;
 
     @ApiProperty()
     public expiresAt!: Date;

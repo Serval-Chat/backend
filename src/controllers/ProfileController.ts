@@ -77,14 +77,18 @@ import type { WsServer } from '@/ws/server';
 import { UserConnection, IUserConnection } from '@/models/UserConnection';
 import {
     createWebsiteVerificationToken,
+    getWebsiteVerificationFileUrl,
     hashWebsiteVerificationToken,
+    isWebsiteVerificationFileContent,
+    isWebsiteVerificationRecord,
     normalizeWebsite,
     resolveTxtRecordsViaDoh,
-    verifyWebsiteTokenHash,
     WEBSITE_CONNECTION_TYPE,
+    WEBSITE_VERIFICATION_FILE_PATH,
     WEBSITE_VERIFICATION_FAILURE,
     WEBSITE_VERIFICATION_PREFIX,
 } from '@/utils/websiteConnections';
+import { ScraperService } from '@/services/ScraperService';
 import {
     processAndSaveImage,
     ImagePresets,
@@ -114,6 +118,8 @@ export class ProfileController {
         private imageDeliveryService: ImageDeliveryService,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
+        @Inject(TYPES.ScraperService)
+        private scraperService: ScraperService,
     ) {}
 
     private mapConnection(connection: IUserConnection) {
@@ -153,6 +159,14 @@ export class ProfileController {
                 connection.status === 'pending'
                     ? connection.verificationRecordName
                     : undefined,
+            filePath:
+                connection.status === 'pending'
+                    ? WEBSITE_VERIFICATION_FILE_PATH
+                    : undefined,
+            fileUrl:
+                connection.status === 'pending'
+                    ? getWebsiteVerificationFileUrl(connection.normalizedValue)
+                    : undefined,
             expiresAt:
                 connection.status === 'pending'
                     ? connection.expiresAt
@@ -191,6 +205,46 @@ export class ProfileController {
             type: 'user_updated',
             payload,
         });
+    }
+
+    private async verifyWebsiteTxtRecord(
+        recordName: string,
+        tokenHash: string,
+    ): Promise<boolean> {
+        try {
+            const records = await resolveTxtRecordsViaDoh(
+                recordName,
+                async (url) => {
+                    const result = await this.scraperService.fetchText(url);
+                    if ('ok' in result && result.ok === false) {
+                        throw new Error(result.reason);
+                    }
+                    return result.body;
+                },
+            );
+            const verified = records.some((record) =>
+                isWebsiteVerificationRecord(record, tokenHash),
+            );
+            return verified;
+        } catch {
+            return false;
+        }
+    }
+
+    private async verifyWebsiteHttpsFile(
+        normalizedValue: string,
+        tokenHash: string,
+    ): Promise<boolean> {
+        try {
+            const fileUrl = getWebsiteVerificationFileUrl(normalizedValue);
+            const result = await this.scraperService.fetchText(fileUrl);
+            if ('ok' in result && result.ok === false) {
+                return false;
+            }
+            return isWebsiteVerificationFileContent(result.body, tokenHash);
+        } catch {
+            return false;
+        }
     }
 
     private async mapToProfile(
@@ -355,6 +409,9 @@ export class ProfileController {
             recordType: 'TXT',
             recordName: website.verificationRecordName,
             recordValue: `${WEBSITE_VERIFICATION_PREFIX}${token}`,
+            filePath: website.verificationFilePath,
+            fileUrl: website.verificationFileUrl,
+            fileContent: token,
             expiresAt,
         };
     }
@@ -407,25 +464,22 @@ export class ProfileController {
             throw new ApiError(400, WEBSITE_VERIFICATION_FAILURE);
         }
 
-        let records: string[] = [];
-        try {
-            records = await resolveTxtRecordsViaDoh(recordName);
-        } catch {
-            throw new ApiError(400, WEBSITE_VERIFICATION_FAILURE);
-        }
+        const [hasTxtVerificationRecord, hasHttpsVerificationFile] =
+            await Promise.all([
+                this.verifyWebsiteTxtRecord(recordName, tokenHash),
+                this.verifyWebsiteHttpsFile(
+                    connection.normalizedValue,
+                    tokenHash,
+                ),
+            ]);
 
-        const hasVerificationRecord = records.some((record) => {
-            if (!record.startsWith(WEBSITE_VERIFICATION_PREFIX)) return false;
-            const token = record.slice(WEBSITE_VERIFICATION_PREFIX.length);
-            return verifyWebsiteTokenHash(token, tokenHash);
-        });
-
-        if (!hasVerificationRecord) {
+        if (!hasTxtVerificationRecord && !hasHttpsVerificationFile) {
             throw new ApiError(400, WEBSITE_VERIFICATION_FAILURE);
         }
 
         connection.status = 'verified';
         connection.verificationTokenHash = undefined;
+        connection.verificationRecordName = undefined;
         connection.expiresAt = undefined;
         connection.verifiedAt = new Date();
         try {
