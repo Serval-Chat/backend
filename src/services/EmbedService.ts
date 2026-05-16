@@ -1,6 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
+import crypto from 'crypto';
 import { ScraperService } from './ScraperService';
 import type {
     IServerMessageRepository,
@@ -167,6 +168,21 @@ export class EmbedService {
                     await this.redisService
                         .getClient()
                         .set(cacheKey, JSON.stringify(embed), 'EX', 3600);
+                }
+
+                if (url.startsWith('https://')) {
+                    const proxyHash = crypto
+                        .createHash('sha256')
+                        .update(url)
+                        .digest('hex');
+                    await this.redisService
+                        .getClient()
+                        .set(
+                            `proxy:allow:${proxyHash}`,
+                            url,
+                            'EX',
+                            60 * 60 * 24 * 7,
+                        );
                 }
             } catch (err) {
                 this.logger.warn(

@@ -48,7 +48,9 @@ import type { Request as ExpressRequest, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { ErrorMessages } from '@/constants/errorMessages';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { JWTPayload } from '@/utils/jwt';
 import {
@@ -85,6 +87,8 @@ export class WebhookController {
         private logger: ILogger,
         @Inject(TYPES.WsServer)
         private wsServer: IWsServer,
+        @Inject(TYPES.RedisService)
+        private redisService: IRedisService,
     ) {
         // Ensure the uploads directory exists for webhook avatars
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -406,6 +410,24 @@ export class WebhookController {
 
         const webhookUsername = username ?? webhook.name;
         const webhookAvatarUrl = avatarUrl ?? webhook.avatarUrl;
+
+        if (
+            webhookAvatarUrl !== undefined &&
+            webhookAvatarUrl.startsWith('https://')
+        ) {
+            const hash = crypto
+                .createHash('sha256')
+                .update(webhookAvatarUrl)
+                .digest('hex');
+            await this.redisService
+                .getClient()
+                .set(
+                    `proxy:allow:${hash}`,
+                    webhookAvatarUrl,
+                    'EX',
+                    60 * 60 * 24 * 7,
+                );
+        }
 
         const webhookSystemUserId = new mongoose.Types.ObjectId(
             '000000000000000000000000',
