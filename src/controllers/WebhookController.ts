@@ -35,6 +35,7 @@ import type {
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import { EmbedService } from '@/services/EmbedService';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { generateWebhookToken } from '@/services/WebhookService';
@@ -89,6 +90,8 @@ export class WebhookController {
         private wsServer: IWsServer,
         @Inject(TYPES.RedisService)
         private redisService: IRedisService,
+        @Inject(TYPES.EmbedService)
+        private embedService: EmbedService,
     ) {
         // Ensure the uploads directory exists for webhook avatars
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -504,6 +507,17 @@ export class WebhookController {
             webhook.serverId.toString(),
             unreadPayload,
         );
+
+        if (message.text && message.text.includes('http')) {
+            Promise.resolve()
+                .then(() => this.embedService.processServerMessage(message))
+                .catch((err) =>
+                    this.logger.error(
+                        'Failed to process embeds for webhook message',
+                        err.stack,
+                    ),
+                );
+        }
 
         return {
             id: message._id.toString(),
