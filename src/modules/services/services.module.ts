@@ -13,6 +13,7 @@ import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { RegistrationInviteService } from '@/services/RegistrationInviteService';
 import { ScraperService } from '@/services/ScraperService';
 import { EmbedService } from '@/services/EmbedService';
+import { ServerVerificationService } from '@/services/ServerVerificationService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 
@@ -76,6 +77,10 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
             provide: TYPES.EmbedService,
             useClass: EmbedService,
         },
+        {
+            provide: TYPES.ServerVerificationService,
+            useClass: ServerVerificationService,
+        },
     ],
     exports: [
         TYPES.AuthService,
@@ -91,6 +96,7 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
         TYPES.RegistrationInviteService,
         TYPES.ScraperService,
         TYPES.EmbedService,
+        TYPES.ServerVerificationService,
     ],
 })
 export class ServicesModule {}

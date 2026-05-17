@@ -16,6 +16,11 @@ export interface IServer {
     disableCustomFonts?: boolean;
     disableUsernameGlowAndCustomColor?: boolean;
     verified?: boolean;
+    verificationScore?: number;
+    verificationEligible?: boolean;
+    verificationLastComputedAt?: Date;
+    verificationFailureReasons?: string[];
+    verificationOverride?: 'verified' | 'unverified' | null;
     verificationRequested?: boolean;
     createdAt?: Date;
     updatedAt?: Date;

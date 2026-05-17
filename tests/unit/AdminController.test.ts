@@ -21,6 +21,7 @@ describe('AdminController', () => {
     let mockChannelRepo: Record<string, jest.Mock>;
     let mockInviteRepo: Record<string, jest.Mock>;
     let mockAdminNoteRepo: Record<string, jest.Mock>;
+    let mockServerVerificationService: Record<string, jest.Mock>;
 
     let controller: AdminController;
     const getMockServerRepo = (): Record<string, jest.Mock> => mockServerRepo;
@@ -58,6 +59,10 @@ describe('AdminController', () => {
         };
         mockInviteRepo = {} as Record<string, jest.Mock>;
         mockAdminNoteRepo = {} as Record<string, jest.Mock>;
+        mockServerVerificationService = {
+            getStats: jest.fn(),
+            recompute: jest.fn(),
+        };
 
         controller = new AdminController(
             mockUserRepo as unknown as ConstructorParameters<typeof AdminController>[0],
@@ -73,7 +78,8 @@ describe('AdminController', () => {
             mockServerMemberRepo as unknown as ConstructorParameters<typeof AdminController>[10],
             mockChannelRepo as unknown as ConstructorParameters<typeof AdminController>[11],
             mockInviteRepo as unknown as ConstructorParameters<typeof AdminController>[12],
-            mockAdminNoteRepo as unknown as ConstructorParameters<typeof AdminController>[13]
+            mockAdminNoteRepo as unknown as ConstructorParameters<typeof AdminController>[13],
+            mockServerVerificationService as unknown as ConstructorParameters<typeof AdminController>[14]
         );
     });
 
@@ -156,6 +162,7 @@ describe('AdminController', () => {
             expect(mockServerRepo.findById).toHaveBeenCalledWith(new Types.ObjectId(serverId), true);
             expect(mockServerRepo.update).toHaveBeenCalledWith(new Types.ObjectId(serverId), { 
                 verified: true,
+                verificationOverride: 'verified',
                 verificationRequested: false
             });
             expect(mockAuditLogRepo.create).toHaveBeenCalled();
@@ -184,7 +191,10 @@ describe('AdminController', () => {
             const result = await controller.unverifyServer(serverId, mockReq);
 
             expect(mockServerRepo.findById).toHaveBeenCalledWith(new Types.ObjectId(serverId), true);
-            expect(mockServerRepo.update).toHaveBeenCalledWith(new Types.ObjectId(serverId), { verified: false });
+            expect(mockServerRepo.update).toHaveBeenCalledWith(new Types.ObjectId(serverId), {
+                verified: false,
+                verificationOverride: 'unverified',
+            });
             expect(mockAuditLogRepo.create).toHaveBeenCalled();
             expect(mockAuditLogRepo.create.mock.calls[0][0]).toMatchObject({
                 actionType: 'unverify_server'

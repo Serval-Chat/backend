@@ -104,9 +104,14 @@ import {
     AdminServerListItemDTO,
 } from './dto/admin-servers.response.dto';
 import {
+    AdminServerVerificationOverrideRequestDTO,
+    AdminServerVerificationStatsDTO,
+} from './dto/admin-server-verification.dto';
+import {
     AdminServerDetailsDTO,
     AdminChannelShortDTO,
 } from './dto/admin-servers-details.response.dto';
+import type { ServerVerificationService } from '@/services/ServerVerificationService';
 import {
     CreateAdminNoteRequestDTO,
     UpdateAdminNoteRequestDTO,
@@ -158,6 +163,8 @@ export class AdminController {
         private inviteRepo: IInviteRepository,
         @Inject(TYPES.AdminNoteRepository)
         private adminNoteRepo: IAdminNoteRepository,
+        @Inject(TYPES.ServerVerificationService)
+        private serverVerificationService: ServerVerificationService,
     ) {}
 
     @Get('stats')
@@ -1209,6 +1216,14 @@ export class AdminController {
                 item.createdAt = server.createdAt ?? new Date();
                 item.deletedAt = server.deletedAt;
                 item.verified = server.verified ?? false;
+                item.verificationScore = server.verificationScore ?? 0;
+                item.verificationEligible =
+                    server.verificationEligible ?? false;
+                item.verificationLastComputedAt =
+                    server.verificationLastComputedAt;
+                item.verificationFailureReasons =
+                    server.verificationFailureReasons ?? [];
+                item.verificationOverride = server.verificationOverride ?? null;
                 item.verificationRequested =
                     server.verificationRequested ?? false;
                 item.realMessageCount = enrichedServer.realMessageCount;
@@ -1230,6 +1245,32 @@ export class AdminController {
         );
 
         return enrichedServers;
+    }
+
+    @Get('servers/verification')
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Get server verification scoring stats' })
+    @ApiResponse({ status: 200, type: AdminServerVerificationStatsDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async getServerVerificationStats(): Promise<AdminServerVerificationStatsDTO> {
+        return await this.serverVerificationService.getStats();
+    }
+
+    @Post('servers/verification/run')
+    @HttpCode(200)
+    @Permissions('manageServer')
+    @ApiOperation({ summary: 'Recompute server verification scores now' })
+    @ApiResponse({ status: 200, type: AdminServerVerificationStatsDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async runServerVerificationNow(
+        @Request() req: AuthenticatedRequest,
+    ): Promise<AdminServerVerificationStatsDTO> {
+        const stats = await this.serverVerificationService.recompute();
+        await this.logAdminAction(req, 'run_server_verification', undefined, {
+            eligibleServerCount: stats.eligibleServerCount,
+            verifiedServerCount: stats.verifiedServerCount,
+        });
+        return stats;
     }
 
     @Delete('servers/:serverId')
@@ -1425,6 +1466,12 @@ export class AdminController {
             item.createdAt = server.createdAt ?? new Date();
             item.deletedAt = server.deletedAt;
             item.verified = server.verified ?? false;
+            item.verificationScore = server.verificationScore ?? 0;
+            item.verificationEligible = server.verificationEligible ?? false;
+            item.verificationLastComputedAt = server.verificationLastComputedAt;
+            item.verificationFailureReasons =
+                server.verificationFailureReasons ?? [];
+            item.verificationOverride = server.verificationOverride ?? null;
             item.verificationRequested = server.verificationRequested ?? false;
             item.realMessageCount = server.realMessageCount ?? 0;
             item.weightScore = server.weightScore ?? 0;
@@ -1500,6 +1547,12 @@ export class AdminController {
         details.createdAt = server.createdAt ?? new Date();
         details.deletedAt = server.deletedAt;
         details.verified = server.verified ?? false;
+        details.verificationScore = server.verificationScore ?? 0;
+        details.verificationEligible = server.verificationEligible ?? false;
+        details.verificationLastComputedAt = server.verificationLastComputedAt;
+        details.verificationFailureReasons =
+            server.verificationFailureReasons ?? [];
+        details.verificationOverride = server.verificationOverride ?? null;
         details.verificationRequested = server.verificationRequested ?? false;
 
         if (owner !== null) {
@@ -1619,6 +1672,58 @@ export class AdminController {
         return { message: 'Verification application declined.' };
     }
 
+    @Put('servers/:serverId/verification-override')
+    @Permissions('manageServer')
+    @ApiOperation({
+        summary: 'Set or clear a manual server verification override',
+    })
+    @ApiResponse({ status: 200 })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server not found' })
+    public async setServerVerificationOverride(
+        @Path('serverId') serverId: string,
+        @Body() body: AdminServerVerificationOverrideRequestDTO,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<{
+        verified: boolean;
+        override: 'verified' | 'unverified' | null;
+    }> {
+        const serverOid = new Types.ObjectId(serverId);
+        const server = await this.serverRepo.findById(serverOid, true);
+        if (server === null) {
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        const override = body.override ?? null;
+        const verified =
+            override === 'verified'
+                ? true
+                : override === 'unverified'
+                  ? false
+                  : (server.verified ?? false);
+
+        await this.serverRepo.update(serverOid, {
+            verified,
+            verificationOverride: override,
+            verificationRequested:
+                override === null
+                    ? (server.verificationRequested ?? false)
+                    : false,
+        });
+        await this.logAdminAction(
+            req,
+            'set_server_verification_override',
+            server.ownerId.toString(),
+            {
+                serverId,
+                serverName: server.name,
+                content: override ?? 'cleared',
+            },
+        );
+
+        return { verified, override };
+    }
+
     @Post('servers/:serverId/verify')
     @HttpCode(200)
     @Permissions('manageServer')
@@ -1643,6 +1748,7 @@ export class AdminController {
         }
         await this.serverRepo.update(serverOid, {
             verified: true,
+            verificationOverride: 'verified',
             verificationRequested: false,
         });
         await this.logAdminAction(
@@ -1672,7 +1778,10 @@ export class AdminController {
         if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
-        await this.serverRepo.update(serverOid, { verified: false });
+        await this.serverRepo.update(serverOid, {
+            verified: false,
+            verificationOverride: 'unverified',
+        });
         await this.logAdminAction(
             req,
             'unverify_server',

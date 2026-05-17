@@ -50,6 +50,7 @@ export const TYPES = {
     ImageDeliveryService: Symbol.for('ImageDeliveryService'),
     ScraperService: Symbol.for('ScraperService'),
     EmbedService: Symbol.for('EmbedService'),
+    ServerVerificationService: Symbol.for('ServerVerificationService'),
 
     // Application
     ExpressApp: Symbol.for('ExpressApp'),

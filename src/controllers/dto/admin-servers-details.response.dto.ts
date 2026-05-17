@@ -61,6 +61,21 @@ export class AdminServerDetailsDTO {
     @ApiProperty({ default: false })
     public verified!: boolean;
 
+    @ApiPropertyOptional()
+    public verificationScore?: number;
+
+    @ApiPropertyOptional()
+    public verificationEligible?: boolean;
+
+    @ApiPropertyOptional()
+    public verificationLastComputedAt?: Date;
+
+    @ApiPropertyOptional({ type: [String] })
+    public verificationFailureReasons?: string[];
+
+    @ApiPropertyOptional({ enum: ['verified', 'unverified', null] })
+    public verificationOverride?: 'verified' | 'unverified' | null;
+
     @ApiProperty({ default: false })
     public verificationRequested!: boolean;
 }

@@ -21,11 +21,28 @@ export interface IServer extends Document {
     disableCustomFonts?: boolean;
     disableUsernameGlowAndCustomColor?: boolean;
     verified?: boolean;
+    verificationScore?: number;
+    verificationEligible?: boolean;
+    verificationLastComputedAt?: Date;
+    verificationFailureReasons?: string[];
+    verificationOverride?: 'verified' | 'unverified' | null;
     verificationRequested?: boolean;
     createdAt: Date;
     deletedAt?: Date;
     allTimeHigh?: number;
     tags?: string[];
+}
+
+export interface IServerVerificationStats extends Document {
+    key: string;
+    p80Threshold: number;
+    p65Threshold: number;
+    p95T: number;
+    p95M: number;
+    p95B: number;
+    eligibleServerCount: number;
+    verifiedServerCount: number;
+    lastRunAt: Date;
 }
 
 // Category interface
@@ -235,6 +252,15 @@ const serverSchema = new Schema<IServer>({
     disableCustomFonts: { type: Boolean, default: false },
     disableUsernameGlowAndCustomColor: { type: Boolean, default: false },
     verified: { type: Boolean, default: false },
+    verificationScore: { type: Number, default: 0 },
+    verificationEligible: { type: Boolean, default: false },
+    verificationLastComputedAt: { type: Date },
+    verificationFailureReasons: { type: [String], default: [] },
+    verificationOverride: {
+        type: String,
+        enum: ['verified', 'unverified', null],
+        default: null,
+    },
     verificationRequested: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     deletedAt: { type: Date },
@@ -249,6 +275,18 @@ const serverSchema = new Schema<IServer>({
             },
         ],
     },
+});
+
+const serverVerificationStatsSchema = new Schema<IServerVerificationStats>({
+    key: { type: String, required: true, unique: true },
+    p80Threshold: { type: Number, default: 0 },
+    p65Threshold: { type: Number, default: 0 },
+    p95T: { type: Number, default: 0 },
+    p95M: { type: Number, default: 0 },
+    p95B: { type: Number, default: 0 },
+    eligibleServerCount: { type: Number, default: 0 },
+    verifiedServerCount: { type: Number, default: 0 },
+    lastRunAt: { type: Date, default: Date.now },
 });
 
 const categorySchema = new Schema<ICategory>({
@@ -480,6 +518,8 @@ const serverBanSchema = new Schema<IServerBan>({
 serverBanSchema.index({ serverId: 1, userId: 1 }, { unique: true });
 
 export const Server: Model<IServer> = mongoose.model('Server', serverSchema);
+export const ServerVerificationStats: Model<IServerVerificationStats> =
+    mongoose.model('ServerVerificationStats', serverVerificationStatsSchema);
 export const Category: Model<ICategory> = mongoose.model(
     'Category',
     categorySchema,
