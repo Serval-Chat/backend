@@ -85,8 +85,15 @@ export class ChatController {
             throw new Error('UNAUTHORIZED: Authentication required');
         }
 
-        const { receiverId, text, replyToId, stickerId, poll, attachments } =
-            payload;
+        const {
+            receiverId,
+            text,
+            replyToId,
+            stickerId,
+            poll,
+            attachments,
+            noEmbeds,
+        } = payload;
         const senderId = authenticatedUser.userId;
 
         await assertWsNotMuted(this.muteRepo, senderId, 'send messages');
@@ -128,6 +135,7 @@ export class ChatController {
                         receiverId: new Types.ObjectId(receiverId),
                         text: text ?? '',
                         attachments,
+                        noEmbeds,
                         ...(replyToId !== undefined && replyToId !== ''
                             ? { replyToId: new Types.ObjectId(replyToId) }
                             : {}),
@@ -188,6 +196,7 @@ export class ChatController {
             attachments: created.attachments || [],
             stickerId: created.stickerId?.toString(),
             poll: created.poll,
+            noEmbeds: created.noEmbeds,
         };
 
         this.wsServer.broadcastToUser(

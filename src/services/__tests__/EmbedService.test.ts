@@ -39,6 +39,9 @@ describe('EmbedService', () => {
         mockWsServer = {
             broadcastToChannel: jest.fn(),
             broadcastToUser: jest.fn(),
+            broadcastToServerWithPermission: jest
+                .fn()
+                .mockResolvedValue(undefined),
         } as any;
 
         mockRedisClient = {
@@ -96,7 +99,9 @@ describe('EmbedService', () => {
                     ],
                 }),
             );
-            expect(mockWsServer.broadcastToChannel).toHaveBeenCalled();
+            expect(
+                mockWsServer.broadcastToServerWithPermission,
+            ).toHaveBeenCalled();
         });
 
         it('should allow multiple embeds for the same URL if it appears multiple times', async () => {
@@ -257,6 +262,22 @@ describe('EmbedService', () => {
             const updateArgs = mockServerMessageRepo.update.mock
                 .calls[0]![1] as any;
             expect(updateArgs.embeds.length).toBe(5);
+        });
+
+        it('should skip embed scraping completely if noEmbeds is true', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                serverId: new Types.ObjectId(),
+                channelId: new Types.ObjectId(),
+                text: 'Check this out: https://example.com',
+                embeds: [],
+                noEmbeds: true,
+            } as unknown as IServerMessage;
+
+            await service.processServerMessage(message);
+
+            expect(mockScraperService.scrape).not.toHaveBeenCalled();
+            expect(mockServerMessageRepo.update).not.toHaveBeenCalled();
         });
     });
 });

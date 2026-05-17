@@ -103,6 +103,7 @@ export class MongooseServerMessageRepository
             };
             stickerId?: string | Types.ObjectId;
             poll?: IPoll;
+            noEmbeds?: boolean;
         },
         session?: ClientSession,
     ): Promise<IServerMessage> {

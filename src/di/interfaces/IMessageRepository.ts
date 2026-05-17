@@ -25,6 +25,7 @@ export interface IMessage {
     poll?: IPoll;
     embeds?: IEmbed[];
     attachments?: IMessageAttachment[];
+    noEmbeds?: boolean;
 }
 
 // Message Repository Interface
@@ -52,6 +53,7 @@ export interface IMessageRepository {
             stickerId?: Types.ObjectId;
             poll?: IPoll;
             attachments?: IMessageAttachment[];
+            noEmbeds?: boolean;
         },
         session?: ClientSession,
     ): Promise<IMessage>;

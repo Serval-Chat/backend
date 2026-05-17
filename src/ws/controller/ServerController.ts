@@ -650,6 +650,7 @@ export class ServerController {
             stickerId,
             poll,
             attachments,
+            noEmbeds,
         } = payload;
         const userId = authenticatedUser.userId;
 
@@ -755,6 +756,7 @@ export class ServerController {
                         senderId: new mongoose.Types.ObjectId(userId),
                         text: text ?? '',
                         attachments,
+                        noEmbeds,
                         ...(replyToId !== undefined && replyToId !== ''
                             ? {
                                   replyToId: new mongoose.Types.ObjectId(
@@ -826,6 +828,7 @@ export class ServerController {
             attachments: created.attachments || [],
             stickerId: created.stickerId?.toString(),
             poll: created.poll,
+            noEmbeds: created.noEmbeds,
         };
 
         this.wsServer.broadcastToChannel(
@@ -958,6 +961,7 @@ export class ServerController {
             attachments: created.attachments || [],
             stickerId: created.stickerId?.toString(),
             poll: created.poll,
+            noEmbeds: created.noEmbeds,
         };
     }
 

@@ -367,6 +367,7 @@ export class ServerMessageController {
                       })),
                   }
                 : undefined,
+            noEmbeds: body.noEmbeds,
         });
 
         await this.channelRepo.updateLastMessageAt(
@@ -407,6 +408,7 @@ export class ServerMessageController {
                         : undefined,
                 stickerId: message.stickerId?.toString(),
                 poll: message.poll,
+                noEmbeds: message.noEmbeds,
             },
         };
         this.wsServer.broadcastToChannel(channelId, messagePayload);

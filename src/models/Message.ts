@@ -41,6 +41,7 @@ export interface IMessage extends Document {
     poll?: IPoll;
     embeds?: IEmbed[];
     attachments?: IMessageAttachment[];
+    noEmbeds?: boolean;
 }
 
 // Hard deletion fields preserved for backward compatibility
@@ -86,6 +87,7 @@ const messageSchema = new Schema<IMessage>({
     },
     embeds: { type: [Schema.Types.Mixed], default: [] },
     attachments: { type: [messageAttachmentSchema], default: [] },
+    noEmbeds: { type: Boolean, default: false },
 });
 
 // Indexing for performance

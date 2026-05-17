@@ -176,6 +176,11 @@ export class SendMessageRequestDTO {
     @ValidateNested()
     @Type(() => SendMessagePollDTO)
     public poll?: SendMessagePollDTO;
+
+    @ApiPropertyOptional({ description: 'Disable link embedding scraper' })
+    @IsOptional()
+    @IsBoolean()
+    public noEmbeds?: boolean;
 }
 
 export class ServerEditMessageRequestDTO {

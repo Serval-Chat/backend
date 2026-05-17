@@ -31,6 +31,7 @@ export interface ISendMessageDmEvent
                 }[];
                 expiresAt?: string;
             };
+            noEmbeds?: boolean;
         }
     > {}
 
@@ -56,6 +57,7 @@ export interface IMessageDmSentEvent
             attachments?: IMessageAttachment[];
             stickerId?: string;
             poll?: IPoll;
+            noEmbeds?: boolean;
         }
     > {}
 
@@ -78,6 +80,7 @@ export interface IMessageDm {
     stickerId?: string;
     poll?: IPoll;
     attachments?: IMessageAttachment[];
+    noEmbeds?: boolean;
 }
 
 /**
@@ -318,6 +321,7 @@ export interface ISendMessageServerEvent
                 }[];
                 expiresAt?: string;
             };
+            noEmbeds?: boolean;
         }
     > {}
 
@@ -341,6 +345,7 @@ export interface IMessageServerSentEvent
             slowModeNextMessageAllowedAt?: string | null;
             stickerId?: string;
             poll?: IPoll;
+            noEmbeds?: boolean;
         }
     > {}
 
@@ -375,6 +380,7 @@ export interface IMessageServer {
     stickerId?: string;
     poll?: IPoll;
     _id?: string; // Optional internal ID for broadcasting consistency
+    noEmbeds?: boolean;
 }
 
 /**

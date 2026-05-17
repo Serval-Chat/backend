@@ -36,6 +36,7 @@ export interface IServerMessage {
         user: { id: string; username: string };
     };
     poll?: IPoll;
+    noEmbeds?: boolean;
 }
 
 // Server Message Repository Interface
@@ -62,6 +63,7 @@ export interface IServerMessageRepository {
                 user: { id: string; username: string };
             };
             poll?: IPoll;
+            noEmbeds?: boolean;
         },
         session?: ClientSession,
     ): Promise<IServerMessage>;

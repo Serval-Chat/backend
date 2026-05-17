@@ -52,6 +52,13 @@ export class EmbedService {
         message: IServerMessage | IMessage,
         isServerMessage: boolean,
     ): Promise<void> {
+        if (message.noEmbeds === true) {
+            this.logger.debug(
+                `Skipping embed processing because noEmbeds is set to true on message: ${message._id}`,
+            );
+            return;
+        }
+
         const text = message.text || '';
         const urls = text.match(this.urlRegex);
 

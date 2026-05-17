@@ -63,6 +63,7 @@ export const SendMessageDmSchema = z
                 expiresAt: z.string().datetime().optional(),
             })
             .optional(),
+        noEmbeds: z.boolean().optional(),
     })
     .refine(
         (data) =>
@@ -166,6 +167,7 @@ export const SendMessageServerSchema = z
                 expiresAt: z.string().datetime().optional(),
             })
             .optional(),
+        noEmbeds: z.boolean().optional(),
     })
     .refine(
         (data) =>
