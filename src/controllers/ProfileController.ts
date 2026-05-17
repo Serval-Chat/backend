@@ -66,6 +66,7 @@ import { IUserRepository, IUser } from '@/di/interfaces/IUserRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
@@ -94,6 +95,7 @@ import {
     ImagePresets,
     getImageMetadata,
 } from '@/utils/imageProcessing';
+import { assertHttpNotMuted } from '@/utils/mute';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -120,6 +122,8 @@ export class ProfileController {
         private blockRepo: IBlockRepository,
         @Inject(TYPES.ScraperService)
         private scraperService: ScraperService,
+        @Inject(TYPES.MuteRepository)
+        private muteRepo: IMuteRepository,
     ) {}
 
     private mapConnection(connection: IUserConnection) {
@@ -253,6 +257,7 @@ export class ProfileController {
             includePermissions?: boolean;
             includeTotp?: boolean;
             viewerId?: string;
+            includeActiveMute?: boolean;
         } = {},
     ): Promise<UserProfileResponseDTO> {
         const mapped = mapUser(user, options);
@@ -284,6 +289,22 @@ export class ProfileController {
             options.viewerId === user._id.toString()
                 ? await this.getOwnConnections(user._id)
                 : await this.getVerifiedConnections(user._id);
+
+        if (
+            options.includeActiveMute === true &&
+            options.viewerId === user._id.toString()
+        ) {
+            await this.muteRepo.checkExpired(user._id);
+            const activeMute = await this.muteRepo.findActiveByUserId(user._id);
+            (mapped as UserProfileResponseDTO).activeMute =
+                activeMute !== null
+                    ? {
+                          reason: activeMute.reason,
+                          expirationTimestamp:
+                              activeMute.expirationTimestamp ?? null,
+                      }
+                    : null;
+        }
 
         if (
             options.viewerId !== undefined &&
@@ -330,6 +351,7 @@ export class ProfileController {
         return this.mapToProfile(user, {
             includePermissions: true,
             includeTotp: true,
+            includeActiveMute: true,
             viewerId: userId,
         });
     }
@@ -345,6 +367,11 @@ export class ProfileController {
         @Body() body: CreateWebsiteConnectionRequestDTO,
     ): Promise<CreateWebsiteConnectionResponseDTO> {
         const userId = (req as unknown as RequestWithUser).user.id;
+        await assertHttpNotMuted(
+            this.muteRepo,
+            userId,
+            'change profile connections',
+        );
         const userOid = new Types.ObjectId(userId);
         let website: ReturnType<typeof normalizeWebsite>;
         try {
@@ -430,6 +457,11 @@ export class ProfileController {
         connection: { id: string; type: 'Website'; value: string };
     }> {
         const userId = (req as unknown as RequestWithUser).user.id;
+        await assertHttpNotMuted(
+            this.muteRepo,
+            userId,
+            'change profile connections',
+        );
         const connection = await UserConnection.findOne({
             _id: new Types.ObjectId(params.connectionId),
             userId: new Types.ObjectId(userId),
@@ -515,6 +547,11 @@ export class ProfileController {
         @Param() params: ConnectionParamDTO,
     ): Promise<{ message: string }> {
         const userId = (req as unknown as RequestWithUser).user.id;
+        await assertHttpNotMuted(
+            this.muteRepo,
+            userId,
+            'change profile connections',
+        );
         const deleted = await UserConnection.findOneAndDelete({
             _id: new Types.ObjectId(params.connectionId),
             userId: new Types.ObjectId(userId),
@@ -712,6 +749,11 @@ export class ProfileController {
         try {
             const userPayload = (req as unknown as RequestWithUser).user;
             const userId = userPayload.id;
+            await assertHttpNotMuted(
+                this.muteRepo,
+                userId,
+                'change your profile picture',
+            );
 
             if (profilePicture === undefined) {
                 throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
@@ -930,6 +972,11 @@ export class ProfileController {
             const userPayload = (req as unknown as RequestWithUser).user;
             const username = userPayload.username;
             const userId = userPayload.id;
+            await assertHttpNotMuted(
+                this.muteRepo,
+                userId,
+                'change your profile banner',
+            );
 
             if (banner === undefined) {
                 throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
@@ -1151,6 +1198,7 @@ export class ProfileController {
         @Body() body: UpdateBioRequestDTO,
     ): Promise<{ message: string; bio: string }> {
         const userId = (req as unknown as RequestWithUser).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'change your bio');
         const { bio } = body;
 
         await this.userRepo.update(new Types.ObjectId(userId), {
@@ -1215,6 +1263,7 @@ export class ProfileController {
         @Body() body: UpdatePronounsRequestDTO,
     ): Promise<{ message: string; pronouns: string }> {
         const userId = (req as unknown as RequestWithUser).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'change your pronouns');
         const { pronouns } = body;
 
         await this.userRepo.update(new Types.ObjectId(userId), {
@@ -1282,6 +1331,11 @@ export class ProfileController {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
         const username = userPayload.username;
+        await assertHttpNotMuted(
+            this.muteRepo,
+            userId,
+            'change your display name',
+        );
         const { displayName } = body;
 
         await this.userRepo.updateDisplayName(
@@ -1355,6 +1409,7 @@ export class ProfileController {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
         const username = userPayload.username;
+        await assertHttpNotMuted(this.muteRepo, userId, 'change your status');
         const { text, emoji, expiresAt, expiresInMinutes, clear } = body;
         const userOid = new Types.ObjectId(userId);
 
@@ -1498,6 +1553,7 @@ export class ProfileController {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
         const username = userPayload.username;
+        await assertHttpNotMuted(this.muteRepo, userId, 'change your status');
         const userOid = new Types.ObjectId(userId);
 
         const user = await this.userRepo.findById(userOid);
@@ -1617,6 +1673,11 @@ export class ProfileController {
     }> {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
+        await assertHttpNotMuted(
+            this.muteRepo,
+            userId,
+            'change your profile style',
+        );
         const userOid = new Types.ObjectId(userId);
 
         const { usernameFont, usernameGradient, usernameGlow } = body;
@@ -1732,6 +1793,7 @@ export class ProfileController {
     ): Promise<{ message: string; username: string }> {
         const userPayload = (req as unknown as RequestWithUser).user;
         const userId = userPayload.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'change your username');
         const userOid = new Types.ObjectId(userId);
         const { newUsername } = body;
 

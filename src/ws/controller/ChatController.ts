@@ -31,6 +31,7 @@ import type {
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import type { IDmUnreadRepository } from '@/di/interfaces/IDmUnreadRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
@@ -40,6 +41,7 @@ import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import { Types } from 'mongoose';
 import { notifyUser } from '@/services/pushService';
 import { EmbedService } from '@/services/EmbedService';
+import { assertWsNotMuted } from '@/utils/mute';
 
 /**
  * Controller for handling direct message events
@@ -57,6 +59,8 @@ export class ChatController {
         private dmUnreadRepo: IDmUnreadRepository,
         @inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
+        @inject(TYPES.MuteRepository)
+        private muteRepo: IMuteRepository,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
         @inject(TYPES.EmbedService)
@@ -84,6 +88,8 @@ export class ChatController {
         const { receiverId, text, replyToId, stickerId, poll, attachments } =
             payload;
         const senderId = authenticatedUser.userId;
+
+        await assertWsNotMuted(this.muteRepo, senderId, 'send messages');
 
         const receiverUser = await this.userRepo.findById(
             new Types.ObjectId(receiverId),
@@ -267,6 +273,8 @@ export class ChatController {
 
         const { messageId, text } = payload;
         const userId = authenticatedUser.userId;
+
+        await assertWsNotMuted(this.muteRepo, userId, 'edit messages');
 
         const message = await this.messageRepo.findById(
             new Types.ObjectId(messageId),
@@ -454,6 +462,11 @@ export class ChatController {
 
         const { receiverId } = payload;
         const senderId = authenticatedUser.userId;
+        await assertWsNotMuted(
+            this.muteRepo,
+            senderId,
+            'send typing indicators',
+        );
 
         if (
             (await this.friendshipRepo.areFriends(

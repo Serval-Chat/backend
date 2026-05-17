@@ -7,6 +7,7 @@ import type { PermissionService } from '@/permissions/PermissionService';
 import type { WsServer } from '@/ws/server';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -85,6 +86,10 @@ describe('ServerStickerController', () => {
     const mockServerAuditLogService = {
         createAndBroadcast: jest.fn(),
     } as unknown as IServerAuditLogService;
+    const mockMuteRepo = {
+        checkExpired: jest.fn().mockResolvedValue(undefined),
+        findActiveByUserId: jest.fn().mockResolvedValue(null),
+    } as unknown as IMuteRepository;
 
     beforeEach(() => {
         controller = new ServerStickerController(
@@ -95,8 +100,10 @@ describe('ServerStickerController', () => {
             mockLogger,
             mockWsServer,
             mockServerAuditLogService,
+            mockMuteRepo,
         );
         jest.clearAllMocks();
+        (mockMuteRepo.findActiveByUserId as jest.Mock).mockResolvedValue(null);
         (path.join as jest.Mock).mockImplementation((...args) =>
             args.join('/'),
         );
@@ -214,6 +221,23 @@ describe('ServerStickerController', () => {
                     name: 'test',
                 }),
             ).rejects.toThrow(ForbiddenException);
+        });
+
+        it('should throw Forbidden before upload work when user is muted', async () => {
+            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            (mockMuteRepo.findActiveByUserId as jest.Mock).mockResolvedValue({
+                _id: new Types.ObjectId(),
+                userId: new Types.ObjectId(USER_ID),
+            });
+
+            await expect(
+                controller.uploadSticker(SERVER_ID, req, file, {
+                    name: 'test',
+                }),
+            ).rejects.toThrow(ForbiddenException);
+
+            expect(mockServerRepo.findById).not.toHaveBeenCalled();
+            expect(mockStickerRepo.create).not.toHaveBeenCalled();
         });
     });
 

@@ -75,6 +75,14 @@ export class UserConnectionResponseDTO {
     public expiresAt?: Date;
 }
 
+export class ActiveMuteResponseDTO {
+    @ApiProperty()
+    public reason!: string;
+
+    @ApiPropertyOptional({ nullable: true })
+    public expirationTimestamp?: Date | null;
+}
+
 export class UserProfileResponseDTO {
     @ApiProperty()
     @IsMongoId()
@@ -133,6 +141,9 @@ export class UserProfileResponseDTO {
 
     @ApiPropertyOptional({ type: [UserConnectionResponseDTO] })
     public connections?: UserConnectionResponseDTO[];
+
+    @ApiPropertyOptional({ type: ActiveMuteResponseDTO, nullable: true })
+    public activeMute?: ActiveMuteResponseDTO | null;
 }
 
 export class UpdateProfilePictureResponseDTO {

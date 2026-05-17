@@ -35,6 +35,7 @@ import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepos
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -54,6 +55,7 @@ import {
 } from '@/utils/imageProcessing';
 import { UploadEmojiRequestDTO } from './dto/emoji.request.dto';
 import { EmojiValidationPipe } from '@/validation/EmojiValidationPipe';
+import { assertHttpNotMuted } from '@/utils/mute';
 
 @injectable()
 @Controller('api/v1/servers/:serverId/emojis')
@@ -82,6 +84,8 @@ export class ServerEmojiController {
         private wsServer: WsServer,
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
+        @Inject(TYPES.MuteRepository)
+        private muteRepo: IMuteRepository,
     ) {
         // Ensure emoji upload directory exists at startup to avoid runtime write failures
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -150,6 +154,7 @@ export class ServerEmojiController {
     ): Promise<IEmoji> {
         const { name } = body;
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'upload emojis');
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
@@ -291,6 +296,7 @@ export class ServerEmojiController {
         @Req() req: ExpressRequest,
     ): Promise<void> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'delete emojis');
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const emojiOid = new Types.ObjectId(emojiId);

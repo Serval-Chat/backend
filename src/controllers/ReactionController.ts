@@ -30,8 +30,10 @@ import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepositor
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
 import { PermissionService } from '@/permissions/PermissionService';
+import { assertHttpNotMuted } from '@/utils/mute';
 
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -80,6 +82,8 @@ export class ReactionController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
+        @Inject(TYPES.MuteRepository)
+        private muteRepo: IMuteRepository,
     ) {}
 
     @Get('messages/:messageId/reactions')
@@ -139,6 +143,7 @@ export class ReactionController {
         body: AddUnicodeReactionRequestDTO | AddCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'add reactions');
         const { emoji, emojiType } = body;
         const emojiId =
             emojiType === 'custom'
@@ -257,6 +262,7 @@ export class ReactionController {
         body: RemoveUnicodeReactionRequestDTO | RemoveCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'remove reactions');
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
 
@@ -342,6 +348,7 @@ export class ReactionController {
         body: AddUnicodeReactionRequestDTO | AddCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'add reactions');
         const { emoji, emojiType } = body;
         const emojiId =
             emojiType === 'custom'
@@ -470,6 +477,7 @@ export class ReactionController {
         body: RemoveUnicodeReactionRequestDTO | RemoveCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
         const userId = (req as Request & { user: JWTPayload }).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'remove reactions');
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
         const scope = body.scope;

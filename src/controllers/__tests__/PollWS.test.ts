@@ -158,6 +158,9 @@ describe('Server WS Polls', () => {
             roleRepo as unknown as IRoleRepository,
             permissionService as unknown as PermissionService,
             pingService as unknown as PingService,
+            {
+                findActiveByUserId: jest.fn().mockResolvedValue(null),
+            } as any, // MuteRepository
             transactionManager as unknown as TransactionManager,
             redisService as unknown as IRedisService,
             embedService as unknown as EmbedService,

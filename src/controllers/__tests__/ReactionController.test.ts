@@ -14,6 +14,8 @@ import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
+import { ForbiddenException } from '@nestjs/common';
 
 describe('ReactionController', () => {
     let controller: ReactionController;
@@ -44,6 +46,10 @@ describe('ReactionController', () => {
     const mockBlockRepo = {
         getActiveBlockFlags: jest.fn().mockResolvedValue(0),
     } as unknown as IBlockRepository;
+    const mockMuteRepo = {
+        checkExpired: jest.fn().mockResolvedValue(undefined),
+        findActiveByUserId: jest.fn().mockResolvedValue(null),
+    } as unknown as IMuteRepository;
 
     beforeEach(() => {
         controller = new ReactionController(
@@ -58,8 +64,10 @@ describe('ReactionController', () => {
             {} as unknown as IAuditLogRepository, // auditLogRepo
             {} as unknown as IServerAuditLogService, // serverAuditLogService
             mockBlockRepo,
+            mockMuteRepo,
         );
         jest.clearAllMocks();
+        (mockMuteRepo.findActiveByUserId as jest.Mock).mockResolvedValue(null);
     });
 
     describe('addServerReaction', () => {
@@ -108,6 +116,40 @@ describe('ReactionController', () => {
                     }),
                 }),
             );
+        });
+
+        it('rejects muted users before adding reactions', async () => {
+            const SERVER_ID = new Types.ObjectId().toHexString();
+            const CHANNEL_ID = new Types.ObjectId().toHexString();
+            const MESSAGE_ID = new Types.ObjectId().toHexString();
+            const USER_ID = new Types.ObjectId().toHexString();
+
+            (mockMuteRepo.findActiveByUserId as jest.Mock).mockResolvedValue({
+                _id: new Types.ObjectId(),
+                userId: new Types.ObjectId(USER_ID),
+            });
+
+            const req = {
+                user: { id: USER_ID, username: 'testuser' },
+            } as unknown as Request;
+
+            await expect(
+                controller.addServerReaction(
+                    SERVER_ID,
+                    CHANNEL_ID,
+                    MESSAGE_ID,
+                    req,
+                    {
+                        emoji: '👍',
+                        emojiType: EmojiTypeDTO.UNICODE,
+                    },
+                ),
+            ).rejects.toThrow(ForbiddenException);
+
+            expect(
+                mockServerMemberRepo.findByServerAndUser,
+            ).not.toHaveBeenCalled();
+            expect(mockReactionRepo.addReaction).not.toHaveBeenCalled();
         });
     });
 });

@@ -36,6 +36,7 @@ import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepos
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -51,6 +52,7 @@ import { StickerResponseDTO } from './dto/sticker.response.dto';
 import { UploadStickerRequestDTO } from './dto/sticker.request.dto';
 import { StickerValidationPipe } from '@/validation/StickerValidationPipe';
 import { isAnimatedImage, processAndSaveImage } from '@/utils/imageProcessing';
+import { assertHttpNotMuted } from '@/utils/mute';
 
 @injectable()
 @Controller('api/v1/servers/:serverId/stickers')
@@ -79,6 +81,8 @@ export class ServerStickerController {
         private wsServer: WsServer,
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
+        @Inject(TYPES.MuteRepository)
+        private muteRepo: IMuteRepository,
     ) {
         // Ensure sticker upload directory exists at startup to avoid runtime write failures
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -165,6 +169,7 @@ export class ServerStickerController {
     ): Promise<StickerResponseDTO> {
         const { name } = body;
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'upload stickers');
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
@@ -328,6 +333,7 @@ export class ServerStickerController {
         @Req() req: ExpressRequest,
     ): Promise<void> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'delete stickers');
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const stickerOid = new Types.ObjectId(stickerId);

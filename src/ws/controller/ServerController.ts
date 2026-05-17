@@ -61,6 +61,7 @@ import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { PermissionService } from '@/permissions/PermissionService';
 import type { PingService } from '@/services/PingService';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -71,6 +72,7 @@ import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { notifyUser } from '@/services/pushService';
 import { EmbedService } from '@/services/EmbedService';
+import { assertWsNotMuted } from '@/utils/mute';
 
 /**
  * Controller for handling server/channel message events.
@@ -95,6 +97,7 @@ export class ServerController {
         @inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @inject(TYPES.PingService) private pingService: PingService,
+        @inject(TYPES.MuteRepository) private muteRepo: IMuteRepository,
         @inject(TYPES.TransactionManager)
         private transactionManager: TransactionManager,
         @inject(TYPES.RedisService) private redisService: IRedisService,
@@ -650,6 +653,8 @@ export class ServerController {
         } = payload;
         const userId = authenticatedUser.userId;
 
+        await assertWsNotMuted(this.muteRepo, userId, 'send messages');
+
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -975,6 +980,8 @@ export class ServerController {
         const { messageId, text } = payload;
         const userId = authenticatedUser.userId;
 
+        await assertWsNotMuted(this.muteRepo, userId, 'edit messages');
+
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
         );
@@ -1238,6 +1245,7 @@ export class ServerController {
 
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
+        await assertWsNotMuted(this.muteRepo, userId, 'send typing indicators');
 
         const canSend = await this.permissionService.hasChannelPermission(
             new mongoose.Types.ObjectId(serverId),

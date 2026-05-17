@@ -18,7 +18,9 @@ import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepos
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
+import { assertWsNotMuted } from '@/utils/mute';
 import logger from '@/utils/logger';
 
 /**
@@ -38,6 +40,8 @@ export class PresenceController {
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.BlockRepository)
         private blockRepo: IBlockRepository,
+        @inject(TYPES.MuteRepository)
+        private muteRepo: IMuteRepository,
     ) {}
 
     @postConstruct()
@@ -85,6 +89,7 @@ export class PresenceController {
 
         const { status: statusText } = payload;
         const userId = authenticatedUser.userId;
+        await assertWsNotMuted(this.muteRepo, userId, 'change your status');
 
         const newStatus = {
             text: statusText,

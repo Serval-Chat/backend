@@ -150,6 +150,9 @@ describe('DM Polls', () => {
             messageRepo as unknown as IMessageRepository,
             dmUnreadRepo as unknown as IDmUnreadRepository,
             friendshipRepo as unknown as IFriendshipRepository,
+            {
+                findActiveByUserId: jest.fn().mockResolvedValue(null),
+            } as any, // MuteRepository
             transactionManager as unknown as TransactionManager,
             {} as any, // EmbedService
         );

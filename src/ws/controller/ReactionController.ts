@@ -22,7 +22,9 @@ import type { PermissionService } from '@/permissions/PermissionService';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
+import { assertWsNotMuted } from '@/utils/mute';
 import logger from '@/utils/logger';
 
 /**
@@ -44,6 +46,7 @@ export class ReactionController {
         private permissionService: PermissionService,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.BlockRepository) private blockRepo: IBlockRepository,
+        @inject(TYPES.MuteRepository) private muteRepo: IMuteRepository,
     ) {}
 
     /**
@@ -64,6 +67,7 @@ export class ReactionController {
 
         const { messageId, emoji, emojiType, emojiId, messageType } = payload;
         const userId = authenticatedUser.userId;
+        await assertWsNotMuted(this.muteRepo, userId, 'add reactions');
 
         if (messageType === 'dm') {
             const message = await this.messageRepo.findById(
@@ -318,6 +322,7 @@ export class ReactionController {
 
         const { messageId, emoji, emojiType, emojiId, messageType } = payload;
         const userId = authenticatedUser.userId;
+        await assertWsNotMuted(this.muteRepo, userId, 'remove reactions');
 
         // Validate message exists and get context
         if (messageType === 'dm') {

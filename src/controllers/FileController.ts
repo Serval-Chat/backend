@@ -43,6 +43,9 @@ import {
 import { injectable } from 'inversify';
 import { isText } from 'istextorbinary';
 import { buildAttachmentMetadata } from '@/utils/attachments';
+import type { JWTPayload } from '@/utils/jwt';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
+import { assertHttpNotMuted } from '@/utils/mute';
 
 @ApiTags('Files')
 @injectable()
@@ -59,6 +62,8 @@ export class FileController {
         private logger: ILogger,
         @Inject(TYPES.ImageDeliveryService)
         private imageDeliveryService: ImageDeliveryService,
+        @Inject(TYPES.MuteRepository)
+        private muteRepo: IMuteRepository,
     ) {}
 
     @Post('upload')
@@ -86,8 +91,11 @@ export class FileController {
     @ApiResponse({ status: 201, type: FileUploadResponseDTO })
     public async uploadFile(
         @UploadedFile() file: Express.Multer.File | undefined,
-        @Req() _req: Request,
+        @Req() req: Request,
     ): Promise<FileUploadResponseDTO> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        await assertHttpNotMuted(this.muteRepo, userId, 'upload files');
+
         if (file === undefined) {
             throw new BadRequestException(ErrorMessages.FILE.NO_FILE_UPLOADED);
         }

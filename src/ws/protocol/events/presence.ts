@@ -136,6 +136,10 @@ export interface IUserUpdatedEvent
                 type: 'Website';
                 value: string;
             }>;
+            activeMute?: {
+                reason: string;
+                expirationTimestamp?: Date | string | null;
+            } | null;
         }
     > {}
 

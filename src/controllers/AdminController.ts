@@ -29,6 +29,7 @@ import type {
 } from '@/di/interfaces/IAuditLogRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IBanRepository } from '@/di/interfaces/IBanRepository';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import type {
     IServerRepository,
     IServer,
@@ -74,6 +75,7 @@ import {
     AdminUpdateUserPermissionsRequestDTO,
     AdminBanUserRequestDTO,
     AdminWarnUserRequestDTO,
+    AdminMuteUserRequestDTO,
 } from './dto/admin-user-actions.request.dto';
 import {
     AdminResetProfileResponseDTO,
@@ -84,6 +86,8 @@ import {
     AdminBanUserResponseDTO,
     AdminUnbanUserResponseDTO,
     AdminWarnUserResponseDTO,
+    AdminMuteUserResponseDTO,
+    AdminUnmuteUserResponseDTO,
 } from './dto/admin-user-actions.response.dto';
 import {
     AdminUserBanHistoryResponseDTO,
@@ -127,6 +131,13 @@ import { AuthenticatedRequest } from '@/middleware/auth';
 
 import { NoBot } from '@/modules/auth/bot.decorator';
 
+export enum AdminRank {
+    REGULAR_USER = 0,
+    MODERATOR = 1,
+    ADMIN = 2,
+    SUPER_ADMIN = 3,
+}
+
 @ApiTags('Admin')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -147,6 +158,8 @@ export class AdminController {
         private logger: ILogger,
         @Inject(TYPES.BanRepository)
         private banRepo: IBanRepository,
+        @Inject(TYPES.MuteRepository)
+        private muteRepo: IMuteRepository,
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
         @Inject(TYPES.MessageRepository)
@@ -298,6 +311,9 @@ export class AdminController {
                 const activeBan = await this.banRepo.findActiveByUserId(
                     user._id,
                 );
+                const activeMute = await this.muteRepo.findActiveByUserId(
+                    user._id,
+                );
                 const warningCount = await this.warningRepo.countByUserId(
                     user._id,
                 );
@@ -315,6 +331,9 @@ export class AdminController {
                     (user.permissions as AdminPermissions | undefined) ?? '0';
                 item.createdAt = user.createdAt ?? new Date();
                 item.banExpiry = activeBan?.expirationTimestamp;
+                item.muteExpiry = activeMute?.expirationTimestamp;
+                item.muteActive = activeMute !== null;
+                item.muteReason = activeMute?.reason;
                 item.warningCount = warningCount;
                 item.badges = user.badges ?? [];
                 return item;
@@ -369,6 +388,7 @@ export class AdminController {
             `Admin ${req.user.login} viewed user details for ${userId}`,
         );
         const activeBan = await this.banRepo.findActiveByUserId(userOid);
+        const activeMute = await this.muteRepo.findActiveByUserId(userOid);
         const warningCount = await this.warningRepo.countByUserId(userOid);
 
         let badges: unknown[] = [];
@@ -388,6 +408,9 @@ export class AdminController {
             (user.permissions as AdminPermissions | undefined) ?? '0';
         details.createdAt = user.createdAt ?? new Date();
         details.banExpiry = activeBan?.expirationTimestamp;
+        details.muteExpiry = activeMute?.expirationTimestamp;
+        details.muteActive = activeMute !== null;
+        details.muteReason = activeMute?.reason;
         details.warningCount = warningCount;
         details.bio = user.bio ?? '';
         details.pronouns = user.pronouns ?? '';
@@ -487,6 +510,48 @@ export class AdminController {
         response.message = 'User profile fields reset';
         response.fields = fields;
         return response;
+    }
+
+    private getAdminRank(permissions: AdminPermissions | undefined): AdminRank {
+        if (permissions === undefined) return AdminRank.REGULAR_USER;
+        if (permissions.adminAccess === true) return AdminRank.SUPER_ADMIN;
+        if (permissions.banUsers === true) return AdminRank.ADMIN;
+        const permsRecord = permissions as unknown as Record<string, unknown>;
+        const hasModPermissions = Object.keys(permsRecord).some(
+            (key) =>
+                key !== 'adminAccess' &&
+                key !== 'banUsers' &&
+                permsRecord[key] === true,
+        );
+        if (hasModPermissions) return AdminRank.MODERATOR;
+        return AdminRank.REGULAR_USER;
+    }
+
+    private async checkHierarchy(
+        callerId: string,
+        targetUserId: string,
+    ): Promise<void> {
+        const callerOid = new Types.ObjectId(callerId);
+        const targetOid = new Types.ObjectId(targetUserId);
+
+        const caller = await this.userRepo.findById(callerOid);
+        if (caller === null) {
+            throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
+        }
+
+        const target = await this.userRepo.findById(targetOid);
+        if (target === null) {
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        const callerRank = this.getAdminRank(caller.permissions);
+        const targetRank = this.getAdminRank(target.permissions);
+
+        if (callerRank <= targetRank) {
+            throw new ForbiddenException(
+                'Insufficient permissions: Cannot manage a user with an equal or higher rank',
+            );
+        }
     }
 
     private async logAdminAction(
@@ -736,6 +801,7 @@ export class AdminController {
             await this.friendshipRepo.deleteAllRequestsForUser(userOid);
             await this.warningRepo.deleteAllForUser(userOid);
             await this.banRepo.deleteAllForUser(userOid);
+            await this.muteRepo.deleteAllForUser(userOid);
             await this.userRepo.incrementTokenVersion(userOid);
 
             if (oldAvatar !== undefined && oldAvatar !== DELETED_AVATAR_PATH) {
@@ -831,6 +897,20 @@ export class AdminController {
             throw new BadRequestException('Cannot modify your own permissions');
         }
 
+        await this.checkHierarchy(req.user.id, userId);
+
+        const callerOid = new Types.ObjectId(req.user.id);
+        const caller = await this.userRepo.findById(callerOid);
+        if (caller !== null) {
+            const callerRank = this.getAdminRank(caller.permissions);
+            const newTargetRank = this.getAdminRank(permissions);
+            if (callerRank <= newTargetRank) {
+                throw new ForbiddenException(
+                    'Insufficient permissions: Cannot promote a user to a rank equal or higher than your own',
+                );
+            }
+        }
+
         await this.userRepo.updatePermissions(userOid, permissions);
         await this.logAdminAction(req, 'update_permissions', userId, {
             permissions,
@@ -860,6 +940,8 @@ export class AdminController {
         if (targetUser === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
+
+        await this.checkHierarchy(req.user.id, userId);
 
         const expirationTimestamp = new Date(Date.now() + duration * 60 * 1000);
         const issuedByIdStr = req.user.id;
@@ -942,6 +1024,11 @@ export class AdminController {
         @Request() req: AuthenticatedRequest,
     ): Promise<AdminUnbanUserResponseDTO> {
         const userOid = new Types.ObjectId(userId);
+        const targetUser = await this.userRepo.findById(userOid);
+        if (targetUser === null) {
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+        await this.checkHierarchy(req.user.id, userId);
         await this.banRepo.deactivateAllForUser(userOid);
         await this.logAdminAction(req, 'unban_user', userId);
         const response = new AdminUnbanUserResponseDTO();
@@ -1023,6 +1110,166 @@ export class AdminController {
             sample: serverBansSample as unknown as AdminBanSampleDTO[],
         };
         return response;
+    }
+
+    @Post('users/:userId/mute')
+    @HttpCode(200)
+    @Permissions('banUsers') // Reusing banUsers permission for mutes
+    @ApiOperation({ summary: 'Mute a user globally' })
+    @ApiResponse({ status: 200, type: AdminMuteUserResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'User not found' })
+    public async muteUser(
+        @Path('userId') userId: string,
+        @Body() body: AdminMuteUserRequestDTO,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<AdminMuteUserResponseDTO> {
+        const { reason, duration } = body;
+        const userOid = new Types.ObjectId(userId);
+        const issuedByIdStr = req.user.id;
+        if (issuedByIdStr === '') {
+            throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
+        }
+
+        const user = await this.userRepo.findById(userOid);
+        if (user === null) {
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        await this.checkHierarchy(req.user.id, userId);
+
+        let expirationTimestamp: Date | undefined;
+        if (duration > 0) {
+            expirationTimestamp = new Date();
+            expirationTimestamp.setMinutes(
+                expirationTimestamp.getMinutes() + duration,
+            );
+        }
+
+        const mute = await this.muteRepo.createOrUpdateWithHistory({
+            userId: userOid,
+            reason,
+            issuedBy: new Types.ObjectId(issuedByIdStr),
+            expirationTimestamp,
+        });
+
+        await this.logAdminAction(req, 'mute_user', userId, {
+            reason,
+            duration,
+        });
+
+        this.wsServer.broadcastToUser(userId, {
+            type: 'user_updated',
+            payload: {
+                userId,
+                activeMute: {
+                    reason: mute.reason,
+                    expirationTimestamp: mute.expirationTimestamp ?? null,
+                },
+            },
+        } as IUserUpdatedEvent);
+
+        const response = new AdminMuteUserResponseDTO();
+        response._id = mute._id.toString();
+        response.userId = mute.userId.toString();
+        response.reason = mute.reason;
+        response.issuedBy =
+            mute.issuedBy !== undefined ? mute.issuedBy.toString() : 'unknown';
+        response.expirationTimestamp =
+            mute.expirationTimestamp !== undefined
+                ? mute.expirationTimestamp
+                : new Date(8640000000000000); // Max date if permanent
+        response.active = mute.active;
+        response.history = (mute.history ?? []).map((h) => ({
+            _id: '',
+            reason: String(h.reason),
+            timestamp: h.timestamp,
+            expirationTimestamp: h.expirationTimestamp as Date,
+            issuedBy: String(h.issuedBy),
+            active: false,
+        }));
+        return response;
+    }
+
+    @Post('users/:userId/unmute')
+    @HttpCode(200)
+    @Permissions('banUsers')
+    @ApiOperation({ summary: 'Unmute a user globally' })
+    @ApiResponse({ status: 200, type: AdminUnmuteUserResponseDTO })
+    public async unmuteUser(
+        @Path('userId') userId: string,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<AdminUnmuteUserResponseDTO> {
+        const userOid = new Types.ObjectId(userId);
+        const targetUser = await this.userRepo.findById(userOid);
+        if (targetUser === null) {
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+        await this.checkHierarchy(req.user.id, userId);
+        await this.muteRepo.deactivateAllForUser(userOid);
+        await this.logAdminAction(req, 'unmute_user', userId);
+        this.wsServer.broadcastToUser(userId, {
+            type: 'user_updated',
+            payload: {
+                userId,
+                activeMute: null,
+            },
+        } as IUserUpdatedEvent);
+        const response = new AdminUnmuteUserResponseDTO();
+        response.message = 'User unmuted';
+        return response;
+    }
+
+    @Get('users/:userId/mutes')
+    @Permissions('viewBans')
+    @ApiOperation({ summary: 'Retrieve mute history for a user' })
+    @ApiResponse({ status: 200, type: [AdminBanHistoryItemDTO] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async getUserMuteHistory(
+        @Path('userId') userId: string,
+    ): Promise<AdminUserBanHistoryResponseDTO> {
+        const userOid = new Types.ObjectId(userId);
+        const mute = await this.muteRepo.findByUserIdWithHistory(userOid);
+        if (
+            mute === null ||
+            mute.history === undefined ||
+            mute.history.length === 0
+        ) {
+            return [];
+        }
+
+        const historyWithStatus: AdminUserBanHistoryResponseDTO =
+            mute.history.map((entry, index: number) => {
+                const item = new AdminBanHistoryItemDTO();
+                const e = entry as Record<string, unknown>;
+                item._id = String(e._id ?? '');
+                item.reason = String(e.reason ?? '');
+                item.timestamp = e.timestamp as Date;
+                item.expirationTimestamp = e.expirationTimestamp as Date;
+                item.issuedBy = String(e.issuedBy ?? 'unknown');
+                item.active =
+                    index === (mute.history as unknown[]).length - 1 &&
+                    mute.active === true;
+                return item;
+            });
+        return historyWithStatus;
+    }
+
+    @Get('mutes')
+    @Permissions('viewBans')
+    @ApiOperation({ summary: 'List all mutes with pagination' })
+    @ApiResponse({ status: 200, type: [Object] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async listMutes(
+        @Query('limit') limit: number = 50,
+        @Query('offset') offset: number = 0,
+    ): Promise<AdminBanListResponseDTO> {
+        const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
+        const mutes = await this.muteRepo.findAll({
+            limit: safeLimit,
+            offset: Number(offset),
+        });
+        return mutes;
     }
 
     @Post('users/:userId/warn')
@@ -1398,6 +1645,7 @@ export class AdminController {
         );
 
         const activeBan = await this.banRepo.findActiveByUserId(userOid);
+        const activeMute = await this.muteRepo.findActiveByUserId(userOid);
         const warningCount = await this.warningRepo.countByUserId(userOid);
 
         let badges: unknown[] = [];
@@ -1415,6 +1663,9 @@ export class AdminController {
             user.permissions !== undefined ? user.permissions : '0';
         response.createdAt = user.createdAt ?? new Date();
         response.banExpiry = activeBan?.expirationTimestamp;
+        response.muteExpiry = activeMute?.expirationTimestamp;
+        response.muteActive = activeMute !== null;
+        response.muteReason = activeMute?.reason;
         response.warningCount = warningCount;
         response.bio = user.bio ?? '';
         response.pronouns = user.pronouns ?? '';

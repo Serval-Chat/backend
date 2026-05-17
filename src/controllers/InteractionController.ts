@@ -22,6 +22,7 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Bot } from '@/models/Bot';
 import type { AuthenticatedRequest } from '@/middleware/auth';
@@ -36,6 +37,7 @@ import { User } from '@/models/User';
 import { PermissionService } from '@/permissions/PermissionService';
 import { CreateInteractionRequestDTO } from './dto/interaction.request.dto';
 import { InteractionOptionValue } from './dto/types.dto';
+import { assertHttpNotMuted } from '@/utils/mute';
 
 interface InteractionOption {
     name: string;
@@ -129,6 +131,8 @@ export class InteractionController {
         private permissionService: PermissionService,
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
+        @Inject(TYPES.MuteRepository)
+        private muteRepo: IMuteRepository,
     ) {}
 
     @UseGuards(JwtAuthGuard)
@@ -189,6 +193,11 @@ export class InteractionController {
         @Body() body: CreateInteractionRequestDTO,
     ) {
         const { command, options, serverId, channelId } = body;
+        await assertHttpNotMuted(
+            this.muteRepo,
+            req.user.id,
+            'use slash commands',
+        );
 
         if (
             !Types.ObjectId.isValid(serverId) ||

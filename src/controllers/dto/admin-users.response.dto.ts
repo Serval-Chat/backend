@@ -21,6 +21,12 @@ export class AdminUserListItemDTO {
     public createdAt!: Date;
     @ApiPropertyOptional()
     public banExpiry?: Date;
+    @ApiPropertyOptional()
+    public muteExpiry?: Date;
+    @ApiProperty()
+    public muteActive!: boolean;
+    @ApiPropertyOptional()
+    public muteReason?: string;
     @ApiProperty()
     public warningCount!: number;
     @ApiProperty({ type: [String] })

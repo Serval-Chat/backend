@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Types } from 'mongoose';
 
 jest.mock('@/models/Bot', () => ({
@@ -39,6 +39,10 @@ const serverMemberRepo = {
     findByServerAndUser: jest.fn(),
     findById: jest.fn(),
 };
+const muteRepo = {
+    checkExpired: jest.fn().mockResolvedValue(undefined),
+    findActiveByUserId: jest.fn().mockResolvedValue(null),
+};
 
 const req = {
     user: {
@@ -64,7 +68,29 @@ describe('InteractionController', () => {
             slashCommandRepo as never,
             permissionService as never,
             serverMemberRepo as never,
+            muteRepo as never,
         );
+        muteRepo.findActiveByUserId.mockResolvedValue(null);
+    });
+
+    it('rejects muted users before command validation', async () => {
+        const userId = (req as { user: { id: string } }).user.id;
+        muteRepo.findActiveByUserId.mockResolvedValue({
+            _id: new Types.ObjectId(),
+            userId: new Types.ObjectId(userId),
+        });
+
+        await expect(
+            controller.createInteraction(req, {
+                command: 'ban',
+                options: [],
+                serverId: new Types.ObjectId().toHexString(),
+                channelId: new Types.ObjectId().toHexString(),
+            }),
+        ).rejects.toThrow(ForbiddenException);
+
+        expect(ServerMember.findOne).not.toHaveBeenCalled();
+        expect(slashCommandRepo.findByNameAndBotIds).not.toHaveBeenCalled();
     });
 
     it('rejects createInteraction when required option is missing', async () => {

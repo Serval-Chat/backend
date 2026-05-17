@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
 import { Types } from 'mongoose';
 import { AdminController } from '../../src/controllers/AdminController';
@@ -22,6 +23,7 @@ describe('AdminController', () => {
     let mockInviteRepo: Record<string, jest.Mock>;
     let mockAdminNoteRepo: Record<string, jest.Mock>;
     let mockServerVerificationService: Record<string, jest.Mock>;
+    let mockMuteRepo: Record<string, jest.Mock>;
 
     let controller: AdminController;
     const getMockServerRepo = (): Record<string, jest.Mock> => mockServerRepo;
@@ -29,18 +31,27 @@ describe('AdminController', () => {
     beforeEach(() => {
         mockUserRepo = {
             findById: jest.fn(),
-            update: jest.fn()
+            update: jest.fn(),
+            updatePermissions: jest.fn(),
         };
-        mockAuditLogRepo = {} as Record<string, jest.Mock>;
+        mockAuditLogRepo = {
+            create: jest.fn(),
+        } as unknown as Record<string, jest.Mock>;
         mockFriendshipRepo = {} as Record<string, jest.Mock>;
-        mockWsServer = {} as Record<string, jest.Mock>;
+        mockWsServer = {
+            getUserSockets: jest.fn().mockReturnValue([]),
+            broadcastToServer: jest.fn(),
+        } as unknown as Record<string, jest.Mock>;
         mockLogger = {
             info: jest.fn(),
             error: jest.fn(),
             warn: jest.fn(),
             debug: jest.fn()
         };
-        mockBanRepo = {} as Record<string, jest.Mock>;
+        mockBanRepo = {
+            createOrUpdateWithHistory: jest.fn(),
+            deactivateAllForUser: jest.fn(),
+        } as unknown as Record<string, jest.Mock>;
         mockServerRepo = {
             findById: jest.fn(),
             update: jest.fn(),
@@ -52,8 +63,9 @@ describe('AdminController', () => {
         mockServerMessageRepo = {} as Record<string, jest.Mock>;
         mockWarningRepo = {} as Record<string, jest.Mock>;
         mockServerMemberRepo = {
-            countByServerId: jest.fn()
-        };
+            countByServerId: jest.fn(),
+            findAllByUserId: jest.fn().mockResolvedValue([]),
+        } as unknown as Record<string, jest.Mock>;
         mockChannelRepo = {
             findByServerId: jest.fn()
         };
@@ -63,23 +75,31 @@ describe('AdminController', () => {
             getStats: jest.fn(),
             recompute: jest.fn(),
         };
+        mockMuteRepo = {
+            findActiveByUserId: jest.fn(),
+            findByUserId: jest.fn(),
+            createOrUpdateWithHistory: jest.fn(),
+            deactivateAllForUser: jest.fn(),
+            checkExpired: jest.fn(),
+        };
 
         controller = new AdminController(
-            mockUserRepo as unknown as ConstructorParameters<typeof AdminController>[0],
-            mockAuditLogRepo as unknown as ConstructorParameters<typeof AdminController>[1],
-            mockFriendshipRepo as unknown as ConstructorParameters<typeof AdminController>[2],
-            mockWsServer as unknown as ConstructorParameters<typeof AdminController>[3],
-            mockLogger as unknown as ConstructorParameters<typeof AdminController>[4],
-            mockBanRepo as unknown as ConstructorParameters<typeof AdminController>[5],
-            mockServerRepo as unknown as ConstructorParameters<typeof AdminController>[6],
-            mockMessageRepo as unknown as ConstructorParameters<typeof AdminController>[7],
-            mockServerMessageRepo as unknown as ConstructorParameters<typeof AdminController>[8],
-            mockWarningRepo as unknown as ConstructorParameters<typeof AdminController>[9],
-            mockServerMemberRepo as unknown as ConstructorParameters<typeof AdminController>[10],
-            mockChannelRepo as unknown as ConstructorParameters<typeof AdminController>[11],
-            mockInviteRepo as unknown as ConstructorParameters<typeof AdminController>[12],
-            mockAdminNoteRepo as unknown as ConstructorParameters<typeof AdminController>[13],
-            mockServerVerificationService as unknown as ConstructorParameters<typeof AdminController>[14]
+            mockUserRepo as any,
+            mockAuditLogRepo as any,
+            mockFriendshipRepo as any,
+            mockWsServer as any,
+            mockLogger as any,
+            mockBanRepo as any,
+            mockMuteRepo as any,
+            mockServerRepo as any,
+            mockMessageRepo as any,
+            mockServerMessageRepo as any,
+            mockWarningRepo as any,
+            mockServerMemberRepo as any,
+            mockChannelRepo as any,
+            mockInviteRepo as any,
+            mockAdminNoteRepo as any,
+            mockServerVerificationService as any,
         );
     });
 
@@ -200,6 +220,148 @@ describe('AdminController', () => {
                 actionType: 'unverify_server'
             });
             expect(result).toEqual({ verified: false });
+        });
+    });
+
+    describe('Administrative Hierarchy Controls', () => {
+        let superAdminUser: any;
+        let adminUser: any;
+        let adminUser2: any;
+        let moderatorUser: any;
+
+        beforeEach(() => {
+            superAdminUser = createTestUser({
+                _id: new Types.ObjectId(),
+                permissions: { adminAccess: true, banUsers: true, warnUsers: true },
+            });
+            adminUser = createTestUser({
+                _id: new Types.ObjectId(),
+                permissions: { adminAccess: false, banUsers: true, warnUsers: true },
+            });
+            adminUser2 = createTestUser({
+                _id: new Types.ObjectId(),
+                permissions: { adminAccess: false, banUsers: true, warnUsers: true },
+            });
+            moderatorUser = createTestUser({
+                _id: new Types.ObjectId(),
+                permissions: { adminAccess: false, banUsers: false, warnUsers: true },
+            });
+        });
+
+        it('should allow Super Admin to ban Admin', async () => {
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
+                if (id.equals(superAdminUser._id)) return superAdminUser;
+                if (id.equals(adminUser._id)) return adminUser;
+                return null;
+            });
+
+            (mockBanRepo.createOrUpdateWithHistory as jest.Mock).mockResolvedValue({
+                _id: new Types.ObjectId(),
+                userId: adminUser._id,
+                reason: 'ban test',
+                active: true,
+            });
+
+            const mockReq = createMockRequest({
+                user: { id: superAdminUser._id.toString() },
+            }) as unknown as AuthenticatedRequest;
+
+            const result = await controller.banUser(
+                adminUser._id.toString(),
+                { reason: 'ban test', duration: 60 },
+                mockReq,
+            );
+
+            expect(result.userId).toBe(adminUser._id.toString());
+        });
+
+        it('should prevent Admin from banning another Admin', async () => {
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
+                if (id.equals(adminUser._id)) return adminUser;
+                if (id.equals(adminUser2._id)) return adminUser2;
+                return null;
+            });
+
+            const mockReq = createMockRequest({
+                user: { id: adminUser._id.toString() },
+            }) as unknown as AuthenticatedRequest;
+
+            await expect(
+                controller.banUser(
+                    adminUser2._id.toString(),
+                    { reason: 'fail ban', duration: 60 },
+                    mockReq,
+                ),
+            ).rejects.toThrow('Insufficient permissions');
+        });
+
+        it('should prevent Admin from banning Super Admin', async () => {
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
+                if (id.equals(adminUser._id)) return adminUser;
+                if (id.equals(superAdminUser._id)) return superAdminUser;
+                return null;
+            });
+
+            const mockReq = createMockRequest({
+                user: { id: adminUser._id.toString() },
+            }) as unknown as AuthenticatedRequest;
+
+            await expect(
+                controller.banUser(
+                    superAdminUser._id.toString(),
+                    { reason: 'fail ban', duration: 60 },
+                    mockReq,
+                ),
+            ).rejects.toThrow('Insufficient permissions');
+        });
+
+        it('should allow Admin to ban Moderator', async () => {
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
+                if (id.equals(adminUser._id)) return adminUser;
+                if (id.equals(moderatorUser._id)) return moderatorUser;
+                return null;
+            });
+
+            (mockBanRepo.createOrUpdateWithHistory as jest.Mock).mockResolvedValue({
+                _id: new Types.ObjectId(),
+                userId: moderatorUser._id,
+                reason: 'ban mod',
+                active: true,
+            });
+
+            const mockReq = createMockRequest({
+                user: { id: adminUser._id.toString() },
+            }) as unknown as AuthenticatedRequest;
+
+            const result = await controller.banUser(
+                moderatorUser._id.toString(),
+                { reason: 'ban mod', duration: 60 },
+                mockReq,
+            );
+
+            expect(result.userId).toBe(moderatorUser._id.toString());
+        });
+
+        it('should prevent Admin from promoting target to a rank equal or higher than their own', async () => {
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
+                if (id.equals(adminUser._id)) return adminUser;
+                if (id.equals(moderatorUser._id)) return moderatorUser;
+                return null;
+            });
+
+            const mockReq = createMockRequest({
+                user: { id: adminUser._id.toString() },
+            }) as unknown as AuthenticatedRequest;
+
+            await expect(
+                controller.updateUserPermissions(
+                    moderatorUser._id.toString(),
+                    {
+                        permissions: { adminAccess: true, banUsers: true, warnUsers: true } as any,
+                    },
+                    mockReq,
+                ),
+            ).rejects.toThrow('Insufficient permissions: Cannot promote a user to a rank equal or higher than your own');
         });
     });
 });

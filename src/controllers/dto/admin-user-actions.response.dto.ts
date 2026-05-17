@@ -91,3 +91,31 @@ export class AdminWarnUserResponseDTO {
     @ApiPropertyOptional()
     public acknowledgedAt?: Date;
 }
+
+export class AdminMuteUserResponseDTO {
+    @ApiProperty()
+    @IsMongoId()
+    @IsString()
+    public _id!: string;
+    @ApiProperty()
+    @IsMongoId()
+    @IsString()
+    public userId!: string;
+    @ApiProperty()
+    public reason!: string;
+    @ApiProperty()
+    @IsMongoId()
+    @IsString()
+    public issuedBy!: string;
+    @ApiProperty()
+    public expirationTimestamp!: Date;
+    @ApiProperty()
+    public active!: boolean;
+    @ApiPropertyOptional({ type: [AdminBanHistoryItemDTO] })
+    public history?: AdminBanHistoryItemDTO[];
+}
+
+export class AdminUnmuteUserResponseDTO {
+    @ApiProperty()
+    public message!: string;
+}

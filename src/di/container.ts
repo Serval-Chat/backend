@@ -8,6 +8,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IBanRepository } from '@/di/interfaces/IBanRepository';
+import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
@@ -39,6 +40,7 @@ import { TransactionManager } from '@/infrastructure/TransactionManager';
 // Repository implementations
 import { MongooseUserRepository } from '@/infrastructure/repositories/MongooseUserRepository';
 import { MongooseBanRepository } from '@/infrastructure/repositories/MongooseBanRepository';
+import { MongooseMuteRepository } from '@/infrastructure/repositories/MongooseMuteRepository';
 import { MongooseServerRepository } from '@/infrastructure/repositories/MongooseServerRepository';
 import { MongooseMessageRepository } from '@/infrastructure/repositories/MongooseMessageRepository';
 import { MongooseFriendshipRepository } from '@/infrastructure/repositories/MongooseFriendshipRepository';
@@ -142,6 +144,11 @@ container
 container
     .bind<IBanRepository>(TYPES.BanRepository)
     .to(MongooseBanRepository)
+    .inTransientScope();
+
+container
+    .bind<IMuteRepository>(TYPES.MuteRepository)
+    .to(MongooseMuteRepository)
     .inTransientScope();
 
 container

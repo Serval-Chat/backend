@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { MongooseUserRepository } from '@/infrastructure/repositories/MongooseUserRepository';
 import { MongooseBanRepository } from '@/infrastructure/repositories/MongooseBanRepository';
+import { MongooseMuteRepository } from '@/infrastructure/repositories/MongooseMuteRepository';
 import { MongooseAuditLogRepository } from '@/infrastructure/repositories/MongooseAuditLogRepository';
 import { MongooseFriendshipRepository } from '@/infrastructure/repositories/MongooseFriendshipRepository';
 import { MongooseServerRepository } from '@/infrastructure/repositories/MongooseServerRepository';
@@ -37,6 +38,10 @@ import { SlashCommandRepository } from '@/infrastructure/repositories/SlashComma
         {
             provide: TYPES.BanRepository,
             useClass: MongooseBanRepository,
+        },
+        {
+            provide: TYPES.MuteRepository,
+            useClass: MongooseMuteRepository,
         },
         {
             provide: TYPES.AuditLogRepository,
@@ -138,6 +143,7 @@ import { SlashCommandRepository } from '@/infrastructure/repositories/SlashComma
     exports: [
         TYPES.UserRepository,
         TYPES.BanRepository,
+        TYPES.MuteRepository,
         TYPES.AuditLogRepository,
         TYPES.FriendshipRepository,
         TYPES.ServerRepository,

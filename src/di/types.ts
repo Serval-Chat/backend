@@ -11,6 +11,7 @@ export const TYPES = {
     ServerRepository: Symbol.for('ServerRepository'),
     MessageRepository: Symbol.for('MessageRepository'),
     BanRepository: Symbol.for('BanRepository'),
+    MuteRepository: Symbol.for('MuteRepository'),
     ServerMemberRepository: Symbol.for('ServerMemberRepository'),
     RoleRepository: Symbol.for('RoleRepository'),
     DmUnreadRepository: Symbol.for('DmUnreadRepository'),

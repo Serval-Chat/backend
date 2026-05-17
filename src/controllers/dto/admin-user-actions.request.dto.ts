@@ -46,3 +46,14 @@ export class AdminWarnUserRequestDTO {
     @IsMessageContent()
     public message!: string;
 }
+
+export class AdminMuteUserRequestDTO {
+    @ApiProperty()
+    @IsReason()
+    public reason!: string;
+
+    @ApiProperty()
+    @IsInt()
+    @IsPositive()
+    public duration!: number; // in minutes
+}
