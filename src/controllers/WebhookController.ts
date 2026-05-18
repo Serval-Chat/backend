@@ -63,6 +63,7 @@ import {
     CreateWebhookRequestDTO,
     ExecuteWebhookRequestDTO,
     WebhookTokenParamDTO,
+    WebhookMessageParamDTO,
     FilenameParamDTO,
 } from './dto/webhook.request.dto';
 import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
@@ -552,11 +553,10 @@ export class WebhookController {
     @ApiResponse({ status: 200, description: 'Webhook message edited' })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async editWebhookMessage(
-        @Param() params: WebhookTokenParamDTO,
-        @Param('messageId') messageId: string,
+        @Param() params: WebhookMessageParamDTO,
         @Body() body: ExecuteWebhookRequestDTO,
     ): Promise<{ message: string }> {
-        const { token } = params;
+        const { token, messageId } = params;
         const webhook = await this.webhookRepo.findByToken(token);
         if (webhook === null || !Types.ObjectId.isValid(messageId)) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
@@ -660,10 +660,9 @@ export class WebhookController {
     @ApiResponse({ status: 200, description: 'Webhook message deleted' })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async deleteWebhookMessage(
-        @Param() params: WebhookTokenParamDTO,
-        @Param('messageId') messageId: string,
+        @Param() params: WebhookMessageParamDTO,
     ): Promise<{ message: string }> {
-        const { token } = params;
+        const { token, messageId } = params;
         const webhook = await this.webhookRepo.findByToken(token);
         if (webhook === null || !Types.ObjectId.isValid(messageId)) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);

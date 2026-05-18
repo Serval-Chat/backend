@@ -61,10 +61,10 @@ describe('WebhookController', () => {
     });
 
     it('deletes a webhook message and broadcasts deletion to channel subscribers and bots', async () => {
-        const result = await controller.deleteWebhookMessage(
-            { token },
-            messageId.toString(),
-        );
+        const result = await controller.deleteWebhookMessage({
+            token,
+            messageId: messageId.toString(),
+        });
 
         expect(result).toEqual({
             message: 'Webhook message deleted successfully',
