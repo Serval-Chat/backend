@@ -114,6 +114,9 @@ export class WsServer extends EventEmitter implements IWsServer {
     private authTimeouts = new WeakMap<WebSocket, NodeJS.Timeout>();
     private readonly AUTH_TIMEOUT_MS = WS_AUTH_TIMEOUT;
     public readonly instanceId = INSTANCE_NAME;
+    private heartbeatInterval?: NodeJS.Timeout;
+    private socketLiveness = new WeakMap<WebSocket, boolean>();
+    private static readonly SOCKET_HEARTBEAT_INTERVAL_MS = 30000;
 
     /**
      * Per-socket UUID map. We maintain this ourselves rather than casting ws.id
@@ -285,6 +288,7 @@ export class WsServer extends EventEmitter implements IWsServer {
             path: '/ws',
             maxPayload: 1024 * 1024, // 1MB limit
         });
+        this.startSocketHeartbeat();
 
         server.on('upgrade', (request, socket, head) => {
             const pathname = new URL(
@@ -303,6 +307,7 @@ export class WsServer extends EventEmitter implements IWsServer {
         this.wss.on('connection', (ws: WebSocket) => {
             logger.info('[WsServer] New connection established');
             this.unauthenticatedConnections.add(ws);
+            this.socketLiveness.set(ws, true);
             websocketConnectionsGauge.inc();
 
             // Register connection with dispatcher for unique ID assignment
@@ -383,10 +388,16 @@ export class WsServer extends EventEmitter implements IWsServer {
                 });
             });
 
-            ws.on('close', () => {
-                logger.info('[WsServer] Connection closed');
+            ws.on('close', (code, reason) => {
+                logger.info(
+                    `[WsServer] Connection closed (code: ${code}, reason: ${reason.length > 0 ? reason.toString() : 'None'})`,
+                );
                 void this.removeConnection(ws);
                 websocketConnectionsGauge.dec();
+            });
+
+            ws.on('pong', () => {
+                this.socketLiveness.set(ws, true);
             });
 
             ws.on('error', (error) => {
@@ -397,6 +408,39 @@ export class WsServer extends EventEmitter implements IWsServer {
         });
 
         logger.info('[WsServer] WebSocket server initialized on /ws');
+    }
+
+    private startSocketHeartbeat(): void {
+        if (this.heartbeatInterval !== undefined) return;
+
+        this.heartbeatInterval = setInterval(() => {
+            this.wss?.clients.forEach((ws) => {
+                if (ws.readyState !== ws.OPEN) return;
+
+                const isAlive = this.socketLiveness.get(ws) ?? true;
+                if (isAlive === false) {
+                    const user = this.socketToUser.get(ws);
+                    logger.warn(
+                        `[WsServer] Terminating stale WebSocket connection${user !== undefined ? ` for user ${user.userId}` : ''}`,
+                    );
+                    ws.terminate();
+                    return;
+                }
+
+                this.socketLiveness.set(ws, false);
+                try {
+                    ws.ping();
+                } catch (err) {
+                    logger.warn(
+                        '[WsServer] Failed to send heartbeat ping',
+                        err,
+                    );
+                    ws.terminate();
+                }
+            });
+        }, WsServer.SOCKET_HEARTBEAT_INTERVAL_MS);
+
+        this.heartbeatInterval.unref();
     }
 
     /**
@@ -986,6 +1030,7 @@ export class WsServer extends EventEmitter implements IWsServer {
         if (socketId !== undefined) {
             this.socketsById.delete(socketId);
         }
+        this.socketLiveness.delete(ws);
 
         this.dispatcher.cleanup(ws);
 
@@ -1168,6 +1213,11 @@ export class WsServer extends EventEmitter implements IWsServer {
      */
     public async shutdown(): Promise<void> {
         logger.info('[WsServer] Shutting down WebSocket server...');
+
+        if (this.heartbeatInterval !== undefined) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = undefined;
+        }
 
         if (this.wss !== undefined) {
             this.wss.clients.forEach((client) => {
