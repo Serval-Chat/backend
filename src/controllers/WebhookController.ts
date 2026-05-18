@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Patch,
     Delete,
     Body,
     Param,
@@ -13,6 +14,7 @@ import {
     Res,
     NotFoundException,
     ForbiddenException,
+    BadRequestException,
     InternalServerErrorException,
     StreamableFile,
 } from '@nestjs/common';
@@ -42,6 +44,8 @@ import { generateWebhookToken } from '@/services/WebhookService';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type {
     IMessageServerEvent,
+    IMessageServerEditedEvent,
+    IMessageServerDeletedEvent,
     IChannelUnreadUpdatedEvent,
 } from '@/ws/protocol/events/messages';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
@@ -51,6 +55,7 @@ import fs from 'fs';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { MAX_MESSAGE_LENGTH } from '@/config/env';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { JWTPayload } from '@/utils/jwt';
@@ -96,6 +101,38 @@ export class WebhookController {
         // Ensure the uploads directory exists for webhook avatars
         if (!fs.existsSync(this.UPLOADS_DIR)) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
+        }
+    }
+
+    private async allowlistWebhookAvatarUrl(
+        webhookAvatarUrl?: string,
+    ): Promise<void> {
+        if (
+            webhookAvatarUrl === undefined ||
+            !webhookAvatarUrl.startsWith('https://')
+        ) {
+            return;
+        }
+
+        const hash = crypto
+            .createHash('sha256')
+            .update(webhookAvatarUrl)
+            .digest('hex');
+        await this.redisService
+            .getClient()
+            .set(
+                `proxy:allow:${hash}`,
+                webhookAvatarUrl,
+                'EX',
+                60 * 60 * 24 * 7,
+            );
+    }
+
+    private validateWebhookMessageContent(content?: string): void {
+        if (content !== undefined && content.length > MAX_MESSAGE_LENGTH) {
+            throw new BadRequestException(
+                `Message content must be at most ${MAX_MESSAGE_LENGTH} characters`,
+            );
         }
     }
 
@@ -410,27 +447,12 @@ export class WebhookController {
         }
 
         const { content, username, avatarUrl, embeds } = body;
+        this.validateWebhookMessageContent(content);
 
         const webhookUsername = username ?? webhook.name;
         const webhookAvatarUrl = avatarUrl ?? webhook.avatarUrl;
 
-        if (
-            webhookAvatarUrl !== undefined &&
-            webhookAvatarUrl.startsWith('https://')
-        ) {
-            const hash = crypto
-                .createHash('sha256')
-                .update(webhookAvatarUrl)
-                .digest('hex');
-            await this.redisService
-                .getClient()
-                .set(
-                    `proxy:allow:${hash}`,
-                    webhookAvatarUrl,
-                    'EX',
-                    60 * 60 * 24 * 7,
-                );
-        }
+        await this.allowlistWebhookAvatarUrl(webhookAvatarUrl);
 
         const webhookSystemUserId = new mongoose.Types.ObjectId(
             '000000000000000000000000',
@@ -523,5 +545,172 @@ export class WebhookController {
             id: message._id.toString(),
             timestamp: message.createdAt,
         };
+    }
+
+    @Patch('webhooks/:token/messages/:messageId')
+    @ApiOperation({ summary: 'Edit webhook message' })
+    @ApiResponse({ status: 200, description: 'Webhook message edited' })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
+    public async editWebhookMessage(
+        @Param() params: WebhookTokenParamDTO,
+        @Param('messageId') messageId: string,
+        @Body() body: ExecuteWebhookRequestDTO,
+    ): Promise<{ message: string }> {
+        const { token } = params;
+        const webhook = await this.webhookRepo.findByToken(token);
+        if (webhook === null || !Types.ObjectId.isValid(messageId)) {
+            throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
+        }
+
+        const message = await this.serverMessageRepo.findById(
+            new Types.ObjectId(messageId),
+        );
+        if (
+            message === null ||
+            message.isWebhook !== true ||
+            !message.serverId.equals(webhook.serverId) ||
+            !message.channelId.equals(webhook.channelId)
+        ) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        const webhookUsername = body.username ?? message.webhookUsername;
+        const webhookAvatarUrl = body.avatarUrl ?? message.webhookAvatarUrl;
+        this.validateWebhookMessageContent(body.content);
+        const updateData = {
+            ...(body.content !== undefined ? { text: body.content } : {}),
+            ...(body.username !== undefined ? { webhookUsername } : {}),
+            ...(body.avatarUrl !== undefined ? { webhookAvatarUrl } : {}),
+            ...(body.embeds !== undefined ? { embeds: body.embeds } : {}),
+            isEdited: true,
+            editedAt: new Date(),
+        };
+
+        if (
+            body.content === undefined &&
+            body.username === undefined &&
+            body.avatarUrl === undefined &&
+            body.embeds === undefined
+        ) {
+            throw new BadRequestException(
+                'No webhook message changes provided',
+            );
+        }
+
+        await this.allowlistWebhookAvatarUrl(webhookAvatarUrl);
+
+        const updatedMessage = await this.serverMessageRepo.update(
+            new Types.ObjectId(messageId),
+            updateData,
+        );
+        if (updatedMessage === null) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        const event: IMessageServerEditedEvent = {
+            type: 'message_server_edited',
+            payload: {
+                messageId,
+                serverId: webhook.serverId.toString(),
+                channelId: webhook.channelId.toString(),
+                text: updatedMessage.text,
+                editedAt:
+                    updatedMessage.editedAt instanceof Date
+                        ? updatedMessage.editedAt.toISOString()
+                        : new Date().toISOString(),
+                isEdited: true,
+                embeds: updatedMessage.embeds || [],
+                attachments: updatedMessage.attachments || [],
+            },
+        };
+
+        this.wsServer.broadcastToChannel(webhook.channelId.toString(), event);
+
+        await this.wsServer.broadcastToServerWithPermission(
+            webhook.serverId.toString(),
+            event,
+            {
+                type: 'channel',
+                targetId: webhook.channelId.toString(),
+                permission: 'viewChannels',
+            },
+            undefined,
+            undefined,
+            { onlyBots: true },
+        );
+
+        if (updatedMessage.text && updatedMessage.text.includes('http')) {
+            Promise.resolve()
+                .then(() =>
+                    this.embedService.processServerMessage(updatedMessage),
+                )
+                .catch((err) =>
+                    this.logger.error(
+                        'Failed to process embeds for edited webhook message',
+                        err.stack,
+                    ),
+                );
+        }
+
+        return { message: 'Webhook message edited successfully' };
+    }
+
+    @Delete('webhooks/:token/messages/:messageId')
+    @ApiOperation({ summary: 'Delete webhook message' })
+    @ApiResponse({ status: 200, description: 'Webhook message deleted' })
+    @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
+    public async deleteWebhookMessage(
+        @Param() params: WebhookTokenParamDTO,
+        @Param('messageId') messageId: string,
+    ): Promise<{ message: string }> {
+        const { token } = params;
+        const webhook = await this.webhookRepo.findByToken(token);
+        if (webhook === null || !Types.ObjectId.isValid(messageId)) {
+            throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
+        }
+
+        const message = await this.serverMessageRepo.findById(
+            new Types.ObjectId(messageId),
+            true,
+        );
+        if (
+            message === null ||
+            message.isWebhook !== true ||
+            !message.serverId.equals(webhook.serverId) ||
+            !message.channelId.equals(webhook.channelId)
+        ) {
+            throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
+        }
+
+        if (message.deletedAt === undefined) {
+            await this.serverMessageRepo.delete(new Types.ObjectId(messageId));
+        }
+
+        const event: IMessageServerDeletedEvent = {
+            type: 'message_server_deleted',
+            payload: {
+                messageId,
+                serverId: webhook.serverId.toString(),
+                channelId: webhook.channelId.toString(),
+                hard: true,
+            },
+        };
+
+        this.wsServer.broadcastToChannel(webhook.channelId.toString(), event);
+
+        await this.wsServer.broadcastToServerWithPermission(
+            webhook.serverId.toString(),
+            event,
+            {
+                type: 'channel',
+                targetId: webhook.channelId.toString(),
+                permission: 'viewChannels',
+            },
+            undefined,
+            undefined,
+            { onlyBots: true },
+        );
+
+        return { message: 'Webhook message deleted successfully' };
     }
 }

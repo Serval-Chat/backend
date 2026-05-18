@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsOptional } from 'class-validator';
 import {
     IsName,
     IsUrlField,
@@ -43,6 +43,20 @@ export class ExecuteWebhookRequestDTO {
     @ApiPropertyOptional({ description: 'Rich embeds for the message' })
     @IsOptional()
     public embeds?: IEmbed[];
+
+    @ApiPropertyOptional({
+        description: 'URLs that should not generate embeds',
+        type: [String],
+        maxItems: 25,
+    })
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(25)
+    @IsUrlField({ each: true })
+    @Transform(({ value }) =>
+        Array.isArray(value) ? value.slice(0, 25) : value,
+    )
+    public noEmbedsUrls?: string[];
 }
 
 export class WebhookTokenParamDTO {

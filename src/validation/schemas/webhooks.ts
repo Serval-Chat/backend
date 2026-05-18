@@ -4,6 +4,7 @@ import {
     objectIdSchema,
     optionalUrlSchema,
 } from '@/validation/schemas/common';
+import { MAX_MESSAGE_LENGTH } from '@/config/env';
 
 // Webhook channel parameters validation
 export const webhookChannelParamsSchema = z.object({
@@ -39,7 +40,10 @@ export const executeWebhookSchema = z.object({
     content: z
         .string()
         .min(1, 'Message content is required')
-        .max(5000, 'Message content must be 5000 characters or less')
+        .max(
+            MAX_MESSAGE_LENGTH,
+            `Message content must be at most ${MAX_MESSAGE_LENGTH} characters`,
+        )
         .trim(),
     username: z.string().max(100).optional(),
     avatarUrl: z.string().url().optional(),
