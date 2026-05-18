@@ -14,6 +14,7 @@ import type {
     IChannelRepository,
     IChannel,
 } from '@/di/interfaces/IChannelRepository';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { PermissionResolver } from '@/permissions/PermissionResolver';
 import type {
@@ -104,12 +105,15 @@ interface CachedResolver {
     expiresAt: number;
 }
 
+const PERMISSION_INVALIDATION_CHANNEL = 'SERCHAT_PERMISSION_INVALIDATE';
+
 @injectable()
 @Injectable()
 export class PermissionService {
     private readonly resolverCache = new Map<string, CachedResolver>();
 
     private readonly cacheTtlMs: number;
+    private readonly instanceId = Math.random().toString(36).slice(2);
 
     public constructor(
         @inject(TYPES.ServerRepository)
@@ -130,12 +134,68 @@ export class PermissionService {
         @inject(TYPES.Logger)
         @Inject(TYPES.Logger)
         private logger: ILogger,
+        @inject(TYPES.RedisService)
+        @Inject(TYPES.RedisService)
+        private redisService?: IRedisService,
     ) {
         this.cacheTtlMs = 1 * 60 * 1000;
+        this.subscribeToInvalidations();
     }
 
     public invalidateCache(serverId: Types.ObjectId): void {
-        this.resolverCache.delete(serverId.toString());
+        const serverIdStr = serverId.toString();
+        this.invalidateLocal(serverIdStr);
+        this.publishInvalidation(serverIdStr);
+    }
+
+    private invalidateLocal(serverId: string): void {
+        this.resolverCache.delete(serverId);
+    }
+
+    private subscribeToInvalidations(): void {
+        const subscriber = this.redisService?.getSubscriber();
+        if (subscriber === undefined) return;
+
+        void subscriber.subscribe(PERMISSION_INVALIDATION_CHANNEL);
+        subscriber.on('message', (channel, message) => {
+            if (channel !== PERMISSION_INVALIDATION_CHANNEL) return;
+
+            try {
+                const payload = JSON.parse(message) as {
+                    serverId?: unknown;
+                    origin?: unknown;
+                };
+                if (
+                    payload.origin === this.instanceId ||
+                    typeof payload.serverId !== 'string'
+                ) {
+                    return;
+                }
+                this.invalidateLocal(payload.serverId);
+            } catch (err) {
+                this.logger.warn(
+                    '[PermissionService] Failed to process permission cache invalidation',
+                    { error: err instanceof Error ? err.message : String(err) },
+                );
+            }
+        });
+    }
+
+    private publishInvalidation(serverId: string): void {
+        const publisher = this.redisService?.getPublisher();
+        if (publisher === undefined) return;
+
+        publisher
+            .publish(
+                PERMISSION_INVALIDATION_CHANNEL,
+                JSON.stringify({ serverId, origin: this.instanceId }),
+            )
+            .catch((err) =>
+                this.logger.warn(
+                    '[PermissionService] Failed to publish permission cache invalidation',
+                    err,
+                ),
+            );
     }
 
     public async getHighestRolePosition(

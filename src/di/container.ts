@@ -278,7 +278,7 @@ container
 container
     .bind<PermissionService>(TYPES.PermissionService)
     .to(PermissionService)
-    .inTransientScope();
+    .inSingletonScope();
 
 container
     .bind<PingService>(TYPES.PingService)

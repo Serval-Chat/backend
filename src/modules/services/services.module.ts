@@ -16,6 +16,7 @@ import { EmbedService } from '@/services/EmbedService';
 import { ServerVerificationService } from '@/services/ServerVerificationService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
+import { container } from '@/di/container';
 
 @Global()
 @Module({
@@ -27,7 +28,8 @@ import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.mo
         },
         {
             provide: TYPES.PermissionService,
-            useClass: PermissionService,
+            useFactory: () =>
+                container.get<PermissionService>(TYPES.PermissionService),
         },
         {
             provide: TYPES.PingService,
