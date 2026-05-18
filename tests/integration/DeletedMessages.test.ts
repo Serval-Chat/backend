@@ -67,7 +67,7 @@ describe('Deleted Message Visibility Integration', () => {
             .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
             .set('Authorization', `Bearer ${regularUserToken}`);
 
-        expect(fetchRegularRes.status).toBe(200);
+        console.log(fetchRegularRes.body); expect(fetchRegularRes.status).toBe(200);
         const regularMsgs = fetchRegularRes.body;
         expect(regularMsgs.some((m: { _id: string }) => m._id === messageId)).toBe(false);
 

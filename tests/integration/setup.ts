@@ -82,6 +82,10 @@ export async function setup() {
         hset: async () => 1,
         hdel: async () => 1,
         hlen: async () => 0,
+        pipeline: () => ({
+            set: () => {},
+            exec: async () => [],
+        }),
     };
     container.bind(TYPES.RedisService).toConstantValue({
         getClient: () => mockRedisClient,
@@ -91,7 +95,7 @@ export async function setup() {
         quit: async () => {}
     });
 
-    nextApp = await NestFactory.create(AppModule, { logger: false });
+    nextApp = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
     nextApp.useGlobalPipes(
         new ValidationPipe({
             transform: true,

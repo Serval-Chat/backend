@@ -152,6 +152,7 @@ describe('DM Polls', () => {
             friendshipRepo as unknown as IFriendshipRepository,
             {
                 findActiveByUserId: jest.fn().mockResolvedValue(null),
+                checkExpired: jest.fn().mockResolvedValue(undefined),
             } as any, // MuteRepository
             transactionManager as unknown as TransactionManager,
             {} as any, // EmbedService

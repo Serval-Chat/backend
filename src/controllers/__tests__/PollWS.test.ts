@@ -160,6 +160,7 @@ describe('Server WS Polls', () => {
             pingService as unknown as PingService,
             {
                 findActiveByUserId: jest.fn().mockResolvedValue(null),
+                checkExpired: jest.fn().mockResolvedValue(undefined),
             } as any, // MuteRepository
             transactionManager as unknown as TransactionManager,
             redisService as unknown as IRedisService,

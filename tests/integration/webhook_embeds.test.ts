@@ -20,6 +20,7 @@ import { Webhook } from '../../src/models/Webhook';
 import { TYPES } from '../../src/di/types';
 import { container } from '../../src/di/container';
 import { ServerMember } from '../../src/models/Server';
+import { ScraperService } from '../../src/services/ScraperService';
 
 type WsReceivedEnvelope = {
     id: string;
@@ -107,16 +108,14 @@ describe('Webhook Embed Updates Broadcast', () => {
     const DISCORD_URL = 'https://cdn.discordapp.com/attachments/1477747168180699284/1505310160070115348/image.png?ex=6a0a28d5&is=6a08d755&hm=49ff464b0a9c8f8136373f643f7d15e9dec0db1273e764355642fb736c5c8aec&';
 
     beforeAll(async () => {
-        container.rebind(TYPES.ScraperService).toConstantValue({
-            scrape: async (url: string) => ({
-                url: url,
-                mimeType: 'image/png',
-                title: 'image.png',
-                image: '74ecdda484e669fa60c5986d2d426d8f.webp',
-            }),
-            onModuleInit: () => {},
-            onModuleDestroy: () => {},
-        });
+        jest.spyOn(ScraperService.prototype, 'scrape').mockImplementation(async (url: string) => ({
+            url: url,
+            mimeType: 'image/png',
+            title: 'image.png',
+            image: '74ecdda484e669fa60c5986d2d426d8f.webp',
+            size: 1024,
+            contentType: 'image/png',
+        }));
 
         const result = await setup();
         app = result.app;
