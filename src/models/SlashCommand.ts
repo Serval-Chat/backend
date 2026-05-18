@@ -1,8 +1,9 @@
 import { Schema, model } from 'mongoose';
 import type { Document, Types } from 'mongoose';
+import type { SlashCommandOptionType } from '@/types/interactions';
 
 export interface ISlashCommandOption {
-    type: number;
+    type: SlashCommandOptionType;
     name: string;
     description: string;
     required?: boolean;

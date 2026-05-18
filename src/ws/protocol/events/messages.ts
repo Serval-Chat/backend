@@ -653,6 +653,7 @@ export interface IInteractionCreateServerEvent
         'interaction_create_server',
         {
             command: string;
+            commandId?: string;
             options: { name: string; value: InteractionValue }[];
             serverId: string;
             channelId: string;

@@ -1,3 +1,13 @@
+export enum SlashCommandOptionType {
+    SUB_COMMAND = 1,
+    STRING = 3,
+    INTEGER = 4,
+    BOOLEAN = 5,
+    USER = 6,
+    CHANNEL = 7,
+    ROLE = 8,
+}
+
 export interface InteractionResolvedUser {
     _id: string;
     id: string;

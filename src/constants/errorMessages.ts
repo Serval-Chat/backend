@@ -91,6 +91,7 @@ export const ErrorMessages = {
     ROLE: {
         NOT_FOUND: 'Role not found',
         CANNOT_DELETE_EVERYONE: 'Cannot delete @everyone role',
+        CANNOT_REMOVE_EVERYONE: 'Cannot remove @everyone role from a member',
         NO_PERMISSION_MANAGE: 'No permission to manage roles',
         NOT_IN_SERVER: 'Role does not belong to this server',
         CANNOT_SET_EVERYONE_DEFAULT: 'Cannot set @everyone as default role',

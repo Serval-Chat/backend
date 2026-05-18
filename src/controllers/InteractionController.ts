@@ -21,6 +21,7 @@ import { TYPES } from '@/di/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
+import type { ISlashCommand } from '@/models/SlashCommand';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -37,18 +38,19 @@ import { User } from '@/models/User';
 import { PermissionService } from '@/permissions/PermissionService';
 import { CreateInteractionRequestDTO } from './dto/interaction.request.dto';
 import { InteractionOptionValue } from './dto/types.dto';
+import { SlashCommandOptionType } from '@/types/interactions';
 import { assertHttpNotMuted } from '@/utils/mute';
 
 interface InteractionOption {
     name: string;
     value: InteractionOptionValue;
-    type?: number;
+    type?: SlashCommandOptionType;
 }
 
 interface InteractionOptionDef {
     name: string;
     description?: string;
-    type: number;
+    type: SlashCommandOptionType;
     required?: boolean;
 }
 
@@ -59,6 +61,21 @@ interface InteractionCommand {
     options: InteractionOptionDef[];
     shouldReply?: boolean;
 }
+
+const mapToInteractionCommand = (cmd: ISlashCommand): InteractionCommand => {
+    return {
+        id: cmd._id.toString(),
+        name: cmd.name,
+        description: cmd.description,
+        options: (cmd.options ?? []).map((opt) => ({
+            name: opt.name,
+            description: opt.description,
+            type: opt.type,
+            required: opt.required,
+        })),
+        shouldReply: cmd.shouldReply,
+    };
+};
 
 interface PopulatedUser {
     _id: Types.ObjectId;
@@ -75,7 +92,7 @@ interface PopulatedServerMember {
     communicationDisabledUntil?: Date;
 }
 
-const SYSTEM_COMMANDS = [
+const SYSTEM_COMMANDS: InteractionCommand[] = [
     {
         id: 'system-timeout',
         name: 'timeout',
@@ -84,19 +101,19 @@ const SYSTEM_COMMANDS = [
             {
                 name: 'user',
                 description: 'The username or ID of the user to time out',
-                type: 3, // STRING (for now, until we have a proper USER type in frontend)
+                type: SlashCommandOptionType.STRING,
                 required: true,
             },
             {
                 name: 'duration',
                 description: 'Duration in minutes',
-                type: 3, // STRING (Lexical currently sends everything as string)
+                type: SlashCommandOptionType.STRING,
                 required: true,
             },
             {
                 name: 'reason',
                 description: 'Reason for the timeout',
-                type: 3, // STRING
+                type: SlashCommandOptionType.STRING,
                 required: false,
             },
         ],
@@ -110,7 +127,7 @@ const SYSTEM_COMMANDS = [
             {
                 name: 'user',
                 description: 'The username or ID of the user to untimeout',
-                type: 3, // STRING
+                type: SlashCommandOptionType.STRING,
                 required: true,
             },
         ],
@@ -192,7 +209,7 @@ export class InteractionController {
         @Req() req: AuthenticatedRequest,
         @Body() body: CreateInteractionRequestDTO,
     ) {
-        const { command, options, serverId, channelId } = body;
+        const { command, commandId, options, serverId, channelId } = body;
         await assertHttpNotMuted(
             this.muteRepo,
             req.user.id,
@@ -251,16 +268,33 @@ export class InteractionController {
         const bots = await Bot.find({ userId: { $in: botUserIds } }).lean();
         const botIds = bots.map((b) => b._id);
 
-        let commandDef: InteractionCommand | null =
-            (SYSTEM_COMMANDS.find((c) => c.name === command) as unknown as
-                | InteractionCommand
-                | undefined) ?? null;
+        let commandDef: InteractionCommand | null = null;
+        if (commandId !== undefined) {
+            commandDef =
+                SYSTEM_COMMANDS.find((c) => c.id === commandId) ?? null;
+            if (commandDef === null && Types.ObjectId.isValid(commandId)) {
+                const dbCmd = await this.slashCommandRepo.findById(
+                    new Types.ObjectId(commandId),
+                );
+                if (dbCmd) {
+                    commandDef = mapToInteractionCommand(dbCmd);
+                }
+            }
+        }
 
         if (commandDef === null) {
-            commandDef = (await this.slashCommandRepo.findByNameAndBotIds(
-                command,
-                botIds,
-            )) as unknown as InteractionCommand | null;
+            commandDef =
+                SYSTEM_COMMANDS.find((c) => c.name === command) ?? null;
+
+            if (commandDef === null) {
+                const dbCmd = await this.slashCommandRepo.findByNameAndBotIds(
+                    command,
+                    botIds,
+                );
+                if (dbCmd) {
+                    commandDef = mapToInteractionCommand(dbCmd);
+                }
+            }
         }
 
         if (commandDef === null) {
@@ -320,12 +354,15 @@ export class InteractionController {
                 new Types.ObjectId(req.user.id),
             );
 
+        const resolvedCommandId = commandDef.id;
+
         await this.wsServer.broadcastToServerWithPermission(
             serverId,
             {
                 type: 'interaction_create_server',
                 payload: {
                     command,
+                    commandId: resolvedCommandId,
                     options: providedOptions,
                     serverId,
                     channelId,

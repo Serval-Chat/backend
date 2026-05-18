@@ -11,6 +11,7 @@ import {
     Inject,
     NotFoundException,
     ForbiddenException,
+    BadRequestException,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import {
@@ -819,6 +820,11 @@ export class ServerMemberController {
         const role = await this.roleRepo.findById(roleOid);
         if (role === null || role.serverId.equals(serverOid) === false) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
+        }
+        if (role.name === '@everyone') {
+            throw new BadRequestException(
+                ErrorMessages.ROLE.CANNOT_REMOVE_EVERYONE,
+            );
         }
         if (role.managed === true) {
             throw new ForbiddenException(

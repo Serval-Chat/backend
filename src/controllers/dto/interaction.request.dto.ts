@@ -28,6 +28,11 @@ export class CreateInteractionRequestDTO {
     @MaxLength(32)
     public command!: string;
 
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    public commandId?: string;
+
     @ApiPropertyOptional({ type: () => [InteractionOptionDTO] })
     @IsOptional()
     @IsArray()

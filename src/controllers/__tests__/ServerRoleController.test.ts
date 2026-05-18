@@ -157,4 +157,164 @@ describe('ServerRoleController', () => {
             ).not.toHaveBeenCalled();
         });
     });
+
+    describe('deleteRole', () => {
+        let SERVER_ID: Types.ObjectId;
+        let ROLE_ID: Types.ObjectId;
+        let USER_ID: Types.ObjectId;
+        let req: Request;
+
+        beforeEach(() => {
+            SERVER_ID = new Types.ObjectId();
+            ROLE_ID = new Types.ObjectId();
+            USER_ID = new Types.ObjectId();
+            req = {
+                user: { id: USER_ID.toHexString() },
+            } as unknown as Request;
+        });
+
+        it('should throw ForbiddenException if user lacks manageRoles permission', async () => {
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValueOnce(false);
+
+            await expect(
+                controller.deleteRole(
+                    SERVER_ID.toHexString(),
+                    ROLE_ID.toHexString(),
+                    req,
+                ),
+            ).rejects.toThrow('No permission to manage roles');
+        });
+
+        it('should throw BadRequestException if trying to delete @everyone role even if user is the server owner', async () => {
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValueOnce(true);
+            (mockRoleRepo.findById as jest.Mock).mockResolvedValueOnce({
+                _id: ROLE_ID,
+                serverId: SERVER_ID,
+                name: '@everyone',
+                position: 0,
+            });
+            (mockServerRepo.findById as jest.Mock).mockResolvedValueOnce({
+                ownerId: USER_ID,
+            });
+
+            await expect(
+                controller.deleteRole(
+                    SERVER_ID.toHexString(),
+                    ROLE_ID.toHexString(),
+                    req,
+                ),
+            ).rejects.toThrow('Cannot delete @everyone role');
+        });
+
+        it('should throw BadRequestException if trying to delete @everyone role when user has sufficient permissions but is not owner', async () => {
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValueOnce(true);
+            (mockRoleRepo.findById as jest.Mock).mockResolvedValueOnce({
+                _id: ROLE_ID,
+                serverId: SERVER_ID,
+                name: '@everyone',
+                position: 0,
+            });
+            (mockServerRepo.findById as jest.Mock).mockResolvedValueOnce({
+                ownerId: new Types.ObjectId(),
+            });
+            (
+                mockPermissionService.getHighestRolePosition as jest.Mock
+            ).mockResolvedValueOnce(10);
+
+            await expect(
+                controller.deleteRole(
+                    SERVER_ID.toHexString(),
+                    ROLE_ID.toHexString(),
+                    req,
+                ),
+            ).rejects.toThrow('Cannot delete @everyone role');
+        });
+
+        it('should throw ForbiddenException if user is not owner and has a role position lower than or equal to the target role', async () => {
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValueOnce(true);
+            (mockRoleRepo.findById as jest.Mock).mockResolvedValueOnce({
+                _id: ROLE_ID,
+                serverId: SERVER_ID,
+                name: 'Mod Role',
+                position: 10,
+            });
+            (mockServerRepo.findById as jest.Mock).mockResolvedValueOnce({
+                ownerId: new Types.ObjectId(),
+            });
+            (
+                mockPermissionService.getHighestRolePosition as jest.Mock
+            ).mockResolvedValueOnce(10);
+
+            await expect(
+                controller.deleteRole(
+                    SERVER_ID.toHexString(),
+                    ROLE_ID.toHexString(),
+                    req,
+                ),
+            ).rejects.toThrow(
+                'You cannot delete a role equal to or higher than your own highest role',
+            );
+        });
+
+        it('should delete a non-@everyone role if user is the server owner', async () => {
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValueOnce(true);
+            const role = {
+                _id: ROLE_ID,
+                serverId: SERVER_ID,
+                name: 'Mod Role',
+                position: 10,
+            };
+            (mockRoleRepo.findById as jest.Mock).mockResolvedValueOnce(role);
+            (mockServerRepo.findById as jest.Mock).mockResolvedValueOnce({
+                ownerId: USER_ID,
+            });
+
+            const result = await controller.deleteRole(
+                SERVER_ID.toHexString(),
+                ROLE_ID.toHexString(),
+                req,
+            );
+
+            expect(result).toEqual({ message: 'Role deleted' });
+            expect(mockRoleRepo.delete).toHaveBeenCalledWith(ROLE_ID);
+        });
+
+        it('should delete a non-@everyone role if user has manageRoles permission and higher role position', async () => {
+            (
+                mockPermissionService.hasPermission as jest.Mock
+            ).mockResolvedValueOnce(true);
+            const role = {
+                _id: ROLE_ID,
+                serverId: SERVER_ID,
+                name: 'Mod Role',
+                position: 10,
+            };
+            (mockRoleRepo.findById as jest.Mock).mockResolvedValueOnce(role);
+            (mockServerRepo.findById as jest.Mock).mockResolvedValueOnce({
+                ownerId: new Types.ObjectId(),
+            });
+            (
+                mockPermissionService.getHighestRolePosition as jest.Mock
+            ).mockResolvedValueOnce(15);
+
+            const result = await controller.deleteRole(
+                SERVER_ID.toHexString(),
+                ROLE_ID.toHexString(),
+                req,
+            );
+
+            expect(result).toEqual({ message: 'Role deleted' });
+            expect(mockRoleRepo.delete).toHaveBeenCalledWith(ROLE_ID);
+        });
+    });
 });
