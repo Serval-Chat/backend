@@ -73,6 +73,7 @@ import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { NoBot } from '@/modules/auth/bot.decorator';
 
 import { Badge } from '@/models/Badge';
+import { Bot } from '@/models/Bot';
 import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import type { WsServer } from '@/ws/server';
 import { UserConnection, IUserConnection } from '@/models/UserConnection';
@@ -588,6 +589,14 @@ export class ProfileController {
         }
 
         if (viewer.isBot === true && viewerId !== userId) {
+            const bot = await Bot.findOne({ userId: viewerId }).lean();
+            if (bot === null || bot.botPermissions.readUsers !== true) {
+                throw new ApiError(
+                    403,
+                    'Bot does not have readUsers permission',
+                );
+            }
+
             const botServerIds =
                 await this.serverMemberRepo.findServerIdsByUserId(
                     new Types.ObjectId(viewerId),

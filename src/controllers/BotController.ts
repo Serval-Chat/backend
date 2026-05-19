@@ -34,8 +34,11 @@ import { TYPES } from '@/di/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { Bot, DEFAULT_BOT_PERMISSIONS } from '@/models/Bot';
-import type { BotPermissions } from '@/models/Bot';
+import {
+    Bot,
+    BOT_PERMISSION_KEYS,
+    DEFAULT_BOT_PERMISSIONS,
+} from '@/models/Bot';
 import { User } from '@/models/User';
 import { Server, ServerMember, ServerBan, Role } from '@/models/Server';
 import { generateJWT } from '@/utils/jwt';
@@ -405,20 +408,7 @@ export class BotController {
             throw new ForbiddenException('Not your bot');
         }
 
-        const allowed: (keyof BotPermissions)[] = [
-            'readMessages',
-            'sendMessages',
-            'manageMessages',
-            'readUsers',
-            'joinServers',
-            'manageServer',
-            'manageChannels',
-            'manageMembers',
-            'readReactions',
-            'addReactions',
-        ];
-
-        for (const key of allowed) {
+        for (const key of BOT_PERMISSION_KEYS) {
             if (key in body && typeof body[key] === 'boolean') {
                 (bot.botPermissions as unknown as Record<string, boolean>)[
                     key
@@ -634,11 +624,7 @@ export class BotController {
             managedBotId: bot._id,
             position,
             separateFromOtherRoles: true,
-            permissions: {
-                ...serverPerms,
-                viewChannels: true, // Always allow viewing
-                connect: true, // Always allow connecting
-            },
+            permissions: serverPerms,
             glowEnabled: false,
         });
 

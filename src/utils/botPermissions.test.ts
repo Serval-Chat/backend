@@ -4,40 +4,26 @@ import {
     BOT_PERMISSION_BITS,
     mapBotToServerPermissions,
 } from './botPermissions';
+import { BOT_PERMISSION_KEYS } from '../models/Bot';
 import type { BotPermissions } from '../models/Bot';
 
 describe('botPermissions utility', () => {
-    const allOn: BotPermissions = {
-        readMessages: true,
-        sendMessages: true,
-        manageMessages: true,
-        readUsers: true,
-        joinServers: true,
-        manageServer: true,
-        manageChannels: true,
-        manageMembers: true,
-        readReactions: true,
-        addReactions: true,
-    };
+    const makePermissions = (value: boolean): BotPermissions =>
+        Object.fromEntries(
+            BOT_PERMISSION_KEYS.map((key) => [key, value]),
+        ) as BotPermissions;
 
-    const allOff: BotPermissions = {
-        readMessages: false,
-        sendMessages: false,
-        manageMessages: false,
-        readUsers: false,
-        joinServers: false,
-        manageServer: false,
-        manageChannels: false,
-        manageMembers: false,
-        readReactions: false,
-        addReactions: false,
-    };
+    const allOn = makePermissions(true);
+
+    const allOff = makePermissions(false);
 
     const partial: BotPermissions = {
         ...allOff,
         readMessages: true,
         sendMessages: true,
         manageServer: true,
+        manageRoles: true,
+        exportChannelMessages: true,
     };
 
     test('permissionsToBitmask should convert all true to correct bitmask', () => {
@@ -56,7 +42,9 @@ describe('botPermissions utility', () => {
         const expected =
             BOT_PERMISSION_BITS.readMessages |
             BOT_PERMISSION_BITS.sendMessages |
-            BOT_PERMISSION_BITS.manageServer;
+            BOT_PERMISSION_BITS.manageServer |
+            BOT_PERMISSION_BITS.manageRoles |
+            BOT_PERMISSION_BITS.exportChannelMessages;
         expect(permissionsToBitmask(partial)).toBe(expected);
     });
 
@@ -68,7 +56,9 @@ describe('botPermissions utility', () => {
         const mask =
             BOT_PERMISSION_BITS.readMessages |
             BOT_PERMISSION_BITS.sendMessages |
-            BOT_PERMISSION_BITS.manageServer;
+            BOT_PERMISSION_BITS.manageServer |
+            BOT_PERMISSION_BITS.manageRoles |
+            BOT_PERMISSION_BITS.exportChannelMessages;
         expect(bitmaskToPermissions(mask)).toEqual(partial);
     });
 
@@ -86,14 +76,17 @@ describe('botPermissions utility', () => {
             expect(mapped.viewChannels).toBe(true);
             expect(mapped.sendMessages).toBe(true);
             expect(mapped.manageServer).toBe(true);
+            expect(mapped.manageRoles).toBe(true);
+            expect(mapped.exportChannelMessages).toBe(true);
             expect(mapped.manageChannels).toBe(false);
             expect(mapped.moderateMembers).toBe(false);
             expect(mapBotToServerPermissions(allOn).moderateMembers).toBe(true);
         });
 
-        test('should always include default bot permissions', () => {
+        test('should preserve disabled bot permissions', () => {
             const mapped = mapBotToServerPermissions(allOff);
-            expect(mapped.connect).toBe(true);
+            expect(mapped.connect).toBe(false);
+            expect(mapped.viewChannels).toBe(false);
         });
     });
 });
