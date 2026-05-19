@@ -381,6 +381,7 @@ export interface IMessageServer {
     poll?: IPoll;
     _id?: string; // Optional internal ID for broadcasting consistency
     noEmbeds?: boolean;
+    senderIsBot?: boolean;
 }
 
 /**

@@ -481,6 +481,7 @@ export class WebhookController {
                 serverId: webhook.serverId.toString(),
                 channelId: webhook.channelId.toString(),
                 senderId: webhookSystemUserId.toHexString(),
+                senderIsBot: true,
                 senderUsername: webhookUsername,
                 text: content ?? '',
                 createdAt:

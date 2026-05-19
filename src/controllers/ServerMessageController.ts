@@ -385,6 +385,9 @@ export class ServerMessageController {
                 serverId: serverId,
                 channelId: channelId,
                 senderId: userId,
+                senderIsBot:
+                    (req as ExpressRequest & { user: JWTPayload }).user.isBot ??
+                    false,
                 senderUsername: (req as ExpressRequest & { user: JWTPayload })
                     .user.username,
                 text: messageText,
