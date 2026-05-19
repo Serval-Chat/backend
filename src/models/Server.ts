@@ -4,6 +4,12 @@ import type { IEmbed } from './Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { IPoll } from './Message';
 import { messageAttachmentSchema, type IMessageAttachment } from './Attachment';
+import {
+    getPermissionDefault,
+    PERMISSION_KEYS,
+    type PermissionKey,
+    type Permissions,
+} from '@/permissions/types';
 
 // Server interface
 //
@@ -55,24 +61,7 @@ export interface ICategory extends Document {
     name: string;
     position: number;
     permissions?: {
-        [roleId: string]: {
-            sendMessages?: boolean;
-            manageMessages?: boolean;
-            deleteMessagesOfOthers?: boolean;
-            manageChannels?: boolean;
-            manageRoles?: boolean;
-            banMembers?: boolean;
-            kickMembers?: boolean;
-            manageInvites?: boolean;
-            manageServer?: boolean;
-            administrator?: boolean;
-            manageReactions?: boolean;
-            addReactions?: boolean;
-            viewChannels?: boolean;
-            pinMessages?: boolean;
-            seeDeletedMessages?: boolean;
-            connect?: boolean;
-        };
+        [roleId: string]: Permissions;
     };
     createdAt: Date;
 }
@@ -88,17 +77,7 @@ export interface IChannel extends Document {
     type: 'text' | 'voice' | 'link';
     position: number;
     permissions?: {
-        [roleId: string]: {
-            sendMessages?: boolean;
-            manageMessages?: boolean;
-            deleteMessagesOfOthers?: boolean;
-            manageReactions?: boolean;
-            addReactions?: boolean;
-            viewChannels?: boolean;
-            pinMessages?: boolean;
-            seeDeletedMessages?: boolean;
-            connect?: boolean;
-        };
+        [roleId: string]: Permissions;
     };
     createdAt: Date;
     lastMessageAt?: Date;
@@ -136,28 +115,7 @@ export interface IRole extends Document {
     colors?: string[]; // Multi-color gradient array
     gradientRepeat?: number; // Number of times to repeat the gradient (1 = no repeat)
     position: number;
-    permissions: {
-        sendMessages: boolean;
-        manageMessages: boolean;
-        deleteMessagesOfOthers: boolean;
-        manageChannels: boolean;
-        manageRoles: boolean;
-        banMembers: boolean;
-        kickMembers: boolean;
-        manageInvites: boolean;
-        manageServer: boolean;
-        administrator: boolean;
-        manageWebhooks: boolean;
-        pingRolesAndEveryone: boolean;
-        manageReactions: boolean;
-        addReactions: boolean;
-        viewChannels: boolean;
-        pinMessages: boolean;
-        seeDeletedMessages: boolean;
-        connect: boolean;
-        moderateMembers: boolean;
-        manageStickers: boolean;
-    };
+    permissions: Record<PermissionKey, boolean>;
     separateFromOtherRoles?: boolean;
     icon?: string;
     managed: boolean;
@@ -290,36 +248,24 @@ const serverVerificationStatsSchema = new Schema<IServerVerificationStats>({
     lastRunAt: { type: Date, default: Date.now },
 });
 
+const permissionOverrideSchemaDefinition = Object.fromEntries(
+    PERMISSION_KEYS.map((key) => [key, { type: Boolean }]),
+);
+
+const rolePermissionSchemaDefinition = Object.fromEntries(
+    PERMISSION_KEYS.map((key) => [
+        key,
+        { type: Boolean, default: getPermissionDefault(key) },
+    ]),
+);
+
 const categorySchema = new Schema<ICategory>({
     serverId: { type: Schema.Types.ObjectId, ref: 'Server', required: true },
     name: { type: String, required: true },
     position: { type: Number, default: 0 },
     permissions: {
         type: Map,
-        of: new Schema(
-            {
-                sendMessages: { type: Boolean },
-                manageMessages: { type: Boolean },
-                deleteMessagesOfOthers: { type: Boolean },
-                manageChannels: { type: Boolean },
-                manageRoles: { type: Boolean },
-                banMembers: { type: Boolean },
-                kickMembers: { type: Boolean },
-                manageInvites: { type: Boolean },
-                manageServer: { type: Boolean },
-                administrator: { type: Boolean },
-                manageWebhooks: { type: Boolean },
-                pingRolesAndEveryone: { type: Boolean },
-                manageReactions: { type: Boolean },
-                addReactions: { type: Boolean },
-                viewChannels: { type: Boolean },
-                pinMessages: { type: Boolean },
-                seeDeletedMessages: { type: Boolean },
-                connect: { type: Boolean },
-                manageStickers: { type: Boolean },
-            },
-            { _id: false },
-        ),
+        of: new Schema(permissionOverrideSchemaDefinition, { _id: false }),
         default: {},
     },
     createdAt: { type: Date, default: Date.now },
@@ -338,30 +284,7 @@ const channelSchema = new Schema<IChannel>({
     position: { type: Number, default: 0 },
     permissions: {
         type: Map,
-        of: new Schema(
-            {
-                sendMessages: { type: Boolean },
-                manageMessages: { type: Boolean },
-                deleteMessagesOfOthers: { type: Boolean },
-                manageChannels: { type: Boolean },
-                manageRoles: { type: Boolean },
-                banMembers: { type: Boolean },
-                kickMembers: { type: Boolean },
-                manageInvites: { type: Boolean },
-                manageServer: { type: Boolean },
-                administrator: { type: Boolean },
-                manageWebhooks: { type: Boolean },
-                pingRolesAndEveryone: { type: Boolean },
-                manageReactions: { type: Boolean },
-                addReactions: { type: Boolean },
-                viewChannels: { type: Boolean },
-                pinMessages: { type: Boolean },
-                seeDeletedMessages: { type: Boolean },
-                connect: { type: Boolean },
-                manageStickers: { type: Boolean },
-            },
-            { _id: false },
-        ),
+        of: new Schema(permissionOverrideSchemaDefinition, { _id: false }),
         default: {},
     },
     createdAt: { type: Date, default: Date.now },
@@ -395,28 +318,7 @@ const roleSchema = new Schema<IRole>({
     colors: { type: [String], required: false }, // For multi-color gradients
     gradientRepeat: { type: Number, required: false, min: 1, max: 10 },
     position: { type: Number, default: 0 },
-    permissions: {
-        sendMessages: { type: Boolean, default: true },
-        manageMessages: { type: Boolean, default: false },
-        deleteMessagesOfOthers: { type: Boolean, default: false },
-        manageChannels: { type: Boolean, default: false },
-        manageRoles: { type: Boolean, default: false },
-        banMembers: { type: Boolean, default: false },
-        kickMembers: { type: Boolean, default: false },
-        manageInvites: { type: Boolean, default: false },
-        manageServer: { type: Boolean, default: false },
-        administrator: { type: Boolean, default: false },
-        manageWebhooks: { type: Boolean, default: false },
-        pingRolesAndEveryone: { type: Boolean, default: false },
-        manageReactions: { type: Boolean, default: false },
-        addReactions: { type: Boolean, default: true },
-        viewChannels: { type: Boolean, default: true },
-        pinMessages: { type: Boolean, default: false },
-        seeDeletedMessages: { type: Boolean, default: false },
-        connect: { type: Boolean, default: true },
-        moderateMembers: { type: Boolean, default: false },
-        manageStickers: { type: Boolean, default: false },
-    },
+    permissions: rolePermissionSchemaDefinition,
     separateFromOtherRoles: { type: Boolean, default: false },
     icon: { type: String, required: false },
     managed: { type: Boolean, default: false },

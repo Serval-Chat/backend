@@ -1,4 +1,5 @@
 import type { BotPermissions } from '../models/Bot';
+import type { Permissions } from '@/permissions/types';
 
 export const BOT_PERMISSION_BITS: Record<keyof BotPermissions, number> = {
     readMessages: 1 << 0,
@@ -45,17 +46,15 @@ export function bitmaskToPermissions(bitmask: number): BotPermissions {
  */
 export function mapBotToServerPermissions(
     botPerms: BotPermissions,
-): Record<string, boolean> {
+): Permissions {
     return {
         viewChannels: botPerms.readMessages,
         sendMessages: botPerms.sendMessages,
         manageMessages: botPerms.manageMessages,
         manageServer: botPerms.manageServer,
         manageChannels: botPerms.manageChannels,
-        manageMembers: botPerms.manageMembers,
-        readMessageHistory: botPerms.readMessages, // Generally bots need this if they can read messages
+        moderateMembers: botPerms.manageMembers,
         addReactions: botPerms.addReactions,
-        connect: true, // Default bot permissions
-        speak: botPerms.sendMessages, // Approximate
+        connect: true,
     };
 }

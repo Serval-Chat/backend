@@ -1,28 +1,8 @@
 import type { Types } from 'mongoose';
+import type { PermissionKey } from '@/permissions/types';
 
 // Role permissions structure
-export interface IRolePermissions {
-    sendMessages: boolean;
-    manageMessages: boolean;
-    deleteMessagesOfOthers: boolean;
-    manageChannels: boolean;
-    manageRoles: boolean;
-    banMembers: boolean;
-    kickMembers: boolean;
-    manageInvites: boolean;
-    manageServer: boolean;
-    administrator: boolean;
-    manageWebhooks: boolean;
-    pingRolesAndEveryone: boolean; // Permission to ping @everyone and roles
-    addReactions: boolean;
-    manageReactions: boolean;
-    viewChannels: boolean;
-    pinMessages: boolean;
-    connect: boolean;
-    seeDeletedMessages: boolean;
-    moderateMembers: boolean;
-    manageStickers: boolean;
-}
+export type IRolePermissions = Record<PermissionKey, boolean>;
 
 // Role interface (domain model)
 //

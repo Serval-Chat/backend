@@ -20,6 +20,7 @@ import {
     IsPermissionMap,
 } from '@/validation/schemas/common';
 import { ChannelTypeDTO } from './common.request.dto';
+import type { Permissions } from '@/permissions/types';
 
 export class CreateChannelRequestDTO {
     @ApiProperty()
@@ -84,7 +85,7 @@ export class CreateChannelRequestDTO {
     })
     @IsOptional()
     @IsPermissionMap()
-    public permissions?: Record<string, Record<string, boolean>>;
+    public permissions?: Record<string, Permissions>;
 }
 
 export class UpdateChannelRequestDTO {
@@ -208,5 +209,5 @@ export class UpdatePermissionsRequestDTO {
         example: { role_id: { sendMessages: true } },
     })
     @IsPermissionMap()
-    public permissions!: Record<string, Record<string, boolean>>;
+    public permissions!: Record<string, Permissions>;
 }

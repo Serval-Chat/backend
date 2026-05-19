@@ -7,6 +7,30 @@ import {
     optionalReasonSchema,
     colorHexSchema,
 } from '@/validation/schemas/common';
+import { PERMISSION_KEYS } from '@/permissions/types';
+
+const permissionShape = z
+    .object(
+        Object.fromEntries(
+            PERMISSION_KEYS.map((key) => [key, z.boolean().optional()]),
+        ),
+    )
+    .strict();
+
+const permissionsSchema = z.preprocess((value) => {
+    if (typeof value !== 'object' || value === null) return value;
+
+    const permissions = { ...(value as Record<string, unknown>) };
+    if (
+        permissions.exportChannelMessages === undefined &&
+        typeof permissions.export_channel_messages === 'boolean'
+    ) {
+        permissions.exportChannelMessages = permissions.export_channel_messages;
+    }
+    delete permissions.export_channel_messages;
+
+    return permissions;
+}, permissionShape);
 
 export const serverIdParamSchema = z.object({
     serverId: objectIdSchema,
@@ -70,24 +94,7 @@ export const createRoleSchema = z.object({
     gradientRepeat: z.number().int().min(1).max(10).optional(),
     position: z.number().int().min(0).optional(),
     separateFromOtherRoles: z.boolean().optional(),
-    permissions: z
-        .object({
-            sendMessages: z.boolean().optional(),
-            manageMessages: z.boolean().optional(),
-            deleteMessagesOfOthers: z.boolean().optional(),
-            manageChannels: z.boolean().optional(),
-            manageRoles: z.boolean().optional(),
-            banMembers: z.boolean().optional(),
-            kickMembers: z.boolean().optional(),
-            manageInvites: z.boolean().optional(),
-            manageServer: z.boolean().optional(),
-            administrator: z.boolean().optional(),
-            pingRolesAndEveryone: z.boolean().optional(),
-            addReactions: z.boolean().optional(),
-            manageReactions: z.boolean().optional(),
-            seeDeletedMessages: z.boolean().optional(),
-        })
-        .optional(),
+    permissions: permissionsSchema.optional(),
 });
 
 export const updateRoleSchema = z.object({
@@ -103,24 +110,7 @@ export const updateRoleSchema = z.object({
     gradientRepeat: z.number().int().min(1).max(10).optional(),
     position: z.number().int().min(0).optional(),
     separateFromOtherRoles: z.boolean().optional(),
-    permissions: z
-        .object({
-            sendMessages: z.boolean().optional(),
-            manageMessages: z.boolean().optional(),
-            deleteMessagesOfOthers: z.boolean().optional(),
-            manageChannels: z.boolean().optional(),
-            manageRoles: z.boolean().optional(),
-            banMembers: z.boolean().optional(),
-            kickMembers: z.boolean().optional(),
-            manageInvites: z.boolean().optional(),
-            manageServer: z.boolean().optional(),
-            administrator: z.boolean().optional(),
-            pingRolesAndEveryone: z.boolean().optional(),
-            addReactions: z.boolean().optional(),
-            manageReactions: z.boolean().optional(),
-            seeDeletedMessages: z.boolean().optional(),
-        })
-        .optional(),
+    permissions: permissionsSchema.optional(),
 });
 
 export const createInviteSchema = z.object({

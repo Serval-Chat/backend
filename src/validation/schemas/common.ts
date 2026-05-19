@@ -476,9 +476,7 @@ export function IsPermissionMap(validationOptions?: ValidationOptions) {
                         const perms = map[roleId];
                         if (typeof perms !== 'object') return false;
                         for (const key in perms) {
-                            // Unknown keys (e.g. _id) are skipped; the
-                            // controller whitelist discards them.
-                            if (!isPermissionKey(key)) continue;
+                            if (!isPermissionKey(key)) return false;
                             if (typeof perms[key] !== 'boolean') return false;
                         }
                     }
@@ -506,7 +504,7 @@ export function IsPermissions(validationOptions?: ValidationOptions) {
                         return false;
                     const perms = value as Record<string, unknown>;
                     for (const key in perms) {
-                        if (!isPermissionKey(key)) continue;
+                        if (!isPermissionKey(key)) return false;
                         if (typeof perms[key] !== 'boolean') return false;
                     }
                     return true;

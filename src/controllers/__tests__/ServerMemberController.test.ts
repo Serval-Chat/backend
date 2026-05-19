@@ -14,6 +14,21 @@ import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogServ
 import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import type { PingService } from '@/services/PingService';
 
+jest.mock('@/models/Bot', () => ({
+    Bot: {
+        findOne: jest.fn(),
+    },
+}));
+
+jest.mock('@/models/Server', () => ({
+    Role: {
+        findOne: jest.fn(),
+    },
+}));
+
+import { Bot } from '@/models/Bot';
+import { Role } from '@/models/Server';
+
 describe('ServerMemberController', () => {
     const meId = new Types.ObjectId();
     const serverId = new Types.ObjectId();
@@ -64,6 +79,12 @@ describe('ServerMemberController', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        (Bot.findOne as jest.Mock).mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null),
+        });
+        (Role.findOne as jest.Mock).mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null),
+        });
         controller = new ServerMemberController(
             mockServerMemberRepo as unknown as IServerMemberRepository,
             mockServerRepo as unknown as IServerRepository,

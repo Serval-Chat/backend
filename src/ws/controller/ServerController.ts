@@ -59,6 +59,7 @@ import type {
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { PermissionService } from '@/permissions/PermissionService';
+import type { PermissionKey } from '@/permissions/types';
 import type { PingService } from '@/services/PingService';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
@@ -228,7 +229,7 @@ export class ServerController {
         serverId: string,
         channelId: string,
         userId: string,
-        permission: string = 'viewChannels',
+        permission: PermissionKey = 'viewChannels',
     ): Promise<{
         serverOid: mongoose.Types.ObjectId;
         userOid: mongoose.Types.ObjectId;

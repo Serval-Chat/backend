@@ -87,7 +87,8 @@ describe('botPermissions utility', () => {
             expect(mapped.sendMessages).toBe(true);
             expect(mapped.manageServer).toBe(true);
             expect(mapped.manageChannels).toBe(false);
-            expect(mapped.readMessageHistory).toBe(true); // Based on readMessages
+            expect(mapped.moderateMembers).toBe(false);
+            expect(mapBotToServerPermissions(allOn).moderateMembers).toBe(true);
         });
 
         test('should always include default bot permissions', () => {

@@ -31,6 +31,9 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
 
     private reconnectTimer: NodeJS.Timeout | null = null;
     private pingTimer: NodeJS.Timeout | null = null;
+    private readonly shouldAutoConnect: boolean =
+        process.env.NODE_ENV !== 'test' ||
+        process.env.SCRAPER_CONNECT_IN_TEST === 'true';
 
     private readonly pendingRequests = new Map<
         string,
@@ -42,10 +45,13 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
 
     public constructor() {
         this.url = `ws://${SCRAPER_HOST}:${SCRAPER_PORT}`;
-        this.connect();
+        if (this.shouldAutoConnect) {
+            this.connect();
+        }
     }
 
     public onModuleInit() {
+        if (!this.shouldAutoConnect) return;
         this.logger.log(`Starting ScraperService connection to ${this.url}...`);
         this.connect();
     }
@@ -200,6 +206,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
             this.reconnectTimer = null;
             this.connect();
         }, 5000);
+        this.reconnectTimer.unref();
     }
 
     private startPing(): void {
@@ -213,6 +220,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
                 this.ws.send(JSON.stringify(envelope));
             }
         }, 30000);
+        this.pingTimer.unref();
     }
 
     private stopPing(): void {

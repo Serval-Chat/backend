@@ -17,6 +17,7 @@ import {
     IsRoleId,
     IsPermissions,
 } from '@/validation/schemas/common';
+import type { Permissions } from '@/permissions/types';
 
 export class CreateRoleRequestDTO {
     @ApiProperty()
@@ -66,7 +67,7 @@ export class CreateRoleRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsPermissions()
-    public permissions?: Record<string, boolean>;
+    public permissions?: Permissions;
 
     @ApiPropertyOptional()
     @IsOptional()
@@ -142,7 +143,7 @@ export class UpdateRoleRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
     @IsPermissions()
-    public permissions?: Record<string, boolean>;
+    public permissions?: Permissions;
 
     @ApiPropertyOptional()
     @IsOptional()

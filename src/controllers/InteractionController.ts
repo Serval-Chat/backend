@@ -56,6 +56,7 @@ interface InteractionOptionDef {
 
 interface InteractionCommand {
     id: string;
+    botId?: string;
     name: string;
     description: string;
     options: InteractionOptionDef[];
@@ -65,6 +66,7 @@ interface InteractionCommand {
 const mapToInteractionCommand = (cmd: ISlashCommand): InteractionCommand => {
     return {
         id: cmd._id.toString(),
+        botId: cmd.botId.toString(),
         name: cmd.name,
         description: cmd.description,
         options: (cmd.options ?? []).map((opt) => ({
@@ -266,6 +268,7 @@ export class InteractionController {
             .map((m) => m.userId._id);
 
         const bots = await Bot.find({ userId: { $in: botUserIds } }).lean();
+        const botsById = new Map(bots.map((b) => [b._id.toString(), b]));
         const botIds = bots.map((b) => b._id);
 
         let commandDef: InteractionCommand | null = null;
@@ -276,10 +279,19 @@ export class InteractionController {
                 const dbCmd = await this.slashCommandRepo.findById(
                     new Types.ObjectId(commandId),
                 );
-                if (dbCmd) {
+                if (
+                    dbCmd !== null &&
+                    botIds.some((botId) => botId.equals(dbCmd.botId))
+                ) {
                     commandDef = mapToInteractionCommand(dbCmd);
                 }
             }
+        }
+
+        if (commandId !== undefined && commandDef === null) {
+            throw new BadRequestException(
+                `Command "/${command}" not found in this server`,
+            );
         }
 
         if (commandDef === null) {
@@ -303,6 +315,7 @@ export class InteractionController {
             );
         }
 
+        const resolvedCommandName = commandDef.name;
         const providedOptions = await this.resolveOptions(
             serverId,
             options !== undefined ? options : [],
@@ -318,7 +331,7 @@ export class InteractionController {
                 senderId: new Types.ObjectId(req.user.id),
                 text: '',
                 interaction: {
-                    command,
+                    command: resolvedCommandName,
                     options: providedOptions,
                     user: { id: req.user.id, username: req.user.username },
                 },
@@ -340,7 +353,7 @@ export class InteractionController {
                     isSticky: false,
                     isWebhook: false,
                     interaction: {
-                        command,
+                        command: resolvedCommandName,
                         options: providedOptions,
                         user: { id: req.user.id, username: req.user.username },
                     },
@@ -356,35 +369,64 @@ export class InteractionController {
 
         const resolvedCommandId = commandDef.id;
 
-        await this.wsServer.broadcastToServerWithPermission(
-            serverId,
-            {
-                type: 'interaction_create_server',
-                payload: {
-                    command,
-                    commandId: resolvedCommandId,
-                    options: providedOptions,
-                    serverId,
-                    channelId,
-                    senderId: req.user.id,
-                    senderUsername: req.user.username,
-                    senderPermissions,
-                    invocationId,
-                },
+        const interactionEvent = {
+            type: 'interaction_create_server',
+            payload: {
+                command: resolvedCommandName,
+                commandId: resolvedCommandId,
+                options: providedOptions,
+                serverId,
+                channelId,
+                senderId: req.user.id,
+                senderUsername: req.user.username,
+                senderPermissions,
+                invocationId,
             },
-            {
-                type: 'channel',
-                targetId: channelId,
-                permission: 'viewChannels',
-            },
-        );
+        } as AnyResponseWsEvent;
 
-        if (command === 'timeout' || command === 'untimeout') {
+        if (commandDef.botId !== undefined) {
+            const targetBot = botsById.get(commandDef.botId);
+            if (targetBot === undefined) {
+                throw new BadRequestException(
+                    `Command "/${resolvedCommandName}" not found in this server`,
+                );
+            }
+
+            const targetBotUserId = targetBot.userId.toString();
+            const canBotView =
+                await this.permissionService.hasChannelPermission(
+                    new Types.ObjectId(serverId),
+                    new Types.ObjectId(targetBotUserId),
+                    new Types.ObjectId(channelId),
+                    'viewChannels',
+                );
+
+            if (canBotView !== true) {
+                throw new ForbiddenException('Bot cannot view this channel');
+            }
+
+            this.wsServer.broadcastToUser(targetBotUserId, interactionEvent);
+        } else {
+            await this.wsServer.broadcastToServerWithPermission(
+                serverId,
+                interactionEvent,
+                {
+                    type: 'channel',
+                    targetId: channelId,
+                    permission: 'viewChannels',
+                },
+            );
+        }
+
+        if (
+            resolvedCommandName === 'timeout' ||
+            resolvedCommandName === 'untimeout'
+        ) {
             await this.handleSystemCommand(
                 req.user.id,
                 serverId,
                 channelId,
-                command,
+                resolvedCommandName,
                 providedOptions,
                 invocationId,
             );

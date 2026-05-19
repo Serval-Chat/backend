@@ -19,18 +19,23 @@ import { ILogger } from '@/di/interfaces/ILogger';
 import { PermissionResolver } from '@/permissions/PermissionResolver';
 import type {
     Permissions,
+    PermissionKey,
     ServerData,
     ServerRole,
     Channel as ResolverChannel,
     Category as ResolverCategory,
     ServerMember as ResolverMember,
 } from '@/permissions/types';
-import { isPermissionKey, PERMISSION_KEYS } from '@/permissions/types';
+import { PERMISSION_KEYS } from '@/permissions/types';
 
 type PermissionOverrideSource =
     | Map<string, unknown>
     | Record<string, unknown>
     | undefined;
+
+const LEGACY_PERMISSION_ALIASES: Partial<Record<string, PermissionKey>> = {
+    export_channel_messages: 'exportChannelMessages',
+};
 
 function remapEveryoneOverrideKey(
     overrides: Map<string, Permissions> | undefined,
@@ -71,7 +76,8 @@ function extractPermissionsObject(value: unknown): Permissions {
     const out: Permissions = {};
     for (const [k, v] of Object.entries(value)) {
         if (isBoolean(v)) {
-            (out as Record<string, boolean>)[k] = v;
+            const key = LEGACY_PERMISSION_ALIASES[k] ?? k;
+            (out as Record<string, boolean>)[key] = v;
         }
     }
     return out;
@@ -235,11 +241,10 @@ export class PermissionService {
     public async hasPermission(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
-        permission: string,
+        permission: PermissionKey,
     ): Promise<boolean> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return false;
-        if (!isPermissionKey(permission)) return false;
         return resolver.hasServerPermission(userId.toString(), permission);
     }
 
@@ -261,11 +266,10 @@ export class PermissionService {
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         channelId: Types.ObjectId,
-        permission: string,
+        permission: PermissionKey,
     ): Promise<boolean> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return false;
-        if (!isPermissionKey(permission)) return false;
         const result = resolver.canUserDo(
             userId.toString(),
             channelId.toString(),
@@ -278,10 +282,10 @@ export class PermissionService {
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         channelIds: Types.ObjectId[],
-        permission: string,
+        permission: PermissionKey,
     ): Promise<Map<string, boolean>> {
         const resolver = await this.getResolver(serverId);
-        if (!resolver || !isPermissionKey(permission)) {
+        if (!resolver) {
             return new Map(channelIds.map((id) => [id.toString(), false]));
         }
         return resolver.canUserDoMultiple(

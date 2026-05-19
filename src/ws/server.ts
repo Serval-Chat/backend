@@ -20,6 +20,7 @@ import { EventEmitter } from 'node:events';
 import { trace, SpanStatusCode, context } from '@opentelemetry/api';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { PermissionService } from '@/permissions/PermissionService';
+import { isPermissionKey } from '@/permissions/types';
 import mongoose from 'mongoose';
 
 import type { IWsServer } from './interfaces/IWsServer';
@@ -115,6 +116,7 @@ export class WsServer extends EventEmitter implements IWsServer {
     private readonly AUTH_TIMEOUT_MS = WS_AUTH_TIMEOUT;
     public readonly instanceId = INSTANCE_NAME;
     private heartbeatInterval?: NodeJS.Timeout;
+    private isShuttingDown = false;
     private socketLiveness = new WeakMap<WebSocket, boolean>();
     private static readonly SOCKET_HEARTBEAT_INTERVAL_MS = 30000;
 
@@ -859,6 +861,8 @@ export class WsServer extends EventEmitter implements IWsServer {
         },
         serverId: string,
     ): Promise<boolean> {
+        if (!isPermissionKey(permissionCheck.permission)) return false;
+
         if (permissionCheck.type === 'server') {
             return this.permissionService.hasPermission(
                 new mongoose.Types.ObjectId(serverId),
@@ -1069,7 +1073,10 @@ export class WsServer extends EventEmitter implements IWsServer {
                                 )
                                     return;
                                 const countAfter = results[1][1] as number;
-                                if (countAfter === 0) {
+                                if (
+                                    countAfter === 0 &&
+                                    this.isShuttingDown === false
+                                ) {
                                     logger.info(
                                         `[WsServer] User ${user.username} went offline globally`,
                                     );
@@ -1213,6 +1220,7 @@ export class WsServer extends EventEmitter implements IWsServer {
      */
     public async shutdown(): Promise<void> {
         logger.info('[WsServer] Shutting down WebSocket server...');
+        this.isShuttingDown = true;
 
         if (this.heartbeatInterval !== undefined) {
             clearInterval(this.heartbeatInterval);

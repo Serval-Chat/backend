@@ -22,6 +22,7 @@ import { ServerMember, ServerMessage } from '@/models/Server';
 import { InteractionController } from '../InteractionController';
 
 const wsServer = {
+    broadcastToUser: jest.fn(),
     broadcastToChannel: jest.fn(),
     broadcastToServerWithPermission: jest.fn(),
 };
@@ -98,6 +99,7 @@ describe('InteractionController', () => {
         const serverId = new Types.ObjectId().toHexString();
         const channelId = new Types.ObjectId().toHexString();
         const botUserId = new Types.ObjectId();
+        const botId = new Types.ObjectId();
 
         (ServerMember.findOne as jest.Mock).mockReturnValue(
             chainResult({ _id: 'member' }),
@@ -106,14 +108,17 @@ describe('InteractionController', () => {
             chainResult([{ userId: { _id: botUserId, isBot: true } }]),
         );
         (Bot.find as jest.Mock).mockReturnValue(
-            chainResult([{ _id: new Types.ObjectId(), userId: botUserId }]),
+            chainResult([{ _id: botId, userId: botUserId }]),
         );
         (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(
             true,
         );
         (slashCommandRepo.findByNameAndBotIds as jest.Mock).mockResolvedValue({
             _id: new Types.ObjectId(),
-            options: [{ name: 'target', required: true }],
+            botId,
+            name: 'ban',
+            description: 'Ban',
+            options: [{ name: 'target', type: 3, required: true }],
             shouldReply: false,
         });
 
@@ -131,6 +136,7 @@ describe('InteractionController', () => {
         const serverId = new Types.ObjectId().toHexString();
         const channelId = new Types.ObjectId().toHexString();
         const botUserId = new Types.ObjectId();
+        const botId = new Types.ObjectId();
         const invocationId = new Types.ObjectId();
 
         (ServerMember.findOne as jest.Mock).mockReturnValue(
@@ -140,14 +146,17 @@ describe('InteractionController', () => {
             chainResult([{ userId: { _id: botUserId, isBot: true } }]),
         );
         (Bot.find as jest.Mock).mockReturnValue(
-            chainResult([{ _id: new Types.ObjectId(), userId: botUserId }]),
+            chainResult([{ _id: botId, userId: botUserId }]),
         );
         (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(
             true,
         );
         (slashCommandRepo.findByNameAndBotIds as jest.Mock).mockResolvedValue({
             _id: new Types.ObjectId(),
-            options: [{ name: 'target', required: false }],
+            botId,
+            name: 'wave',
+            description: 'Wave',
+            options: [{ name: 'target', type: 3, required: false }],
             shouldReply: true,
         });
         (ServerMessage.create as jest.Mock).mockResolvedValue({
@@ -175,10 +184,11 @@ describe('InteractionController', () => {
         );
     });
 
-    it('resolves command by commandId and includes commandId in WS broadcast', async () => {
+    it('resolves command by commandId and sends the interaction to that bot only', async () => {
         const serverId = new Types.ObjectId().toHexString();
         const channelId = new Types.ObjectId().toHexString();
         const botUserId = new Types.ObjectId();
+        const botId = new Types.ObjectId();
         const commandId = new Types.ObjectId();
 
         (ServerMember.findOne as jest.Mock).mockReturnValue(
@@ -188,13 +198,16 @@ describe('InteractionController', () => {
             chainResult([{ userId: { _id: botUserId, isBot: true } }]),
         );
         (Bot.find as jest.Mock).mockReturnValue(
-            chainResult([{ _id: new Types.ObjectId(), userId: botUserId }]),
+            chainResult([{ _id: botId, userId: botUserId }]),
         );
         (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(
             true,
         );
         (slashCommandRepo.findById as jest.Mock).mockResolvedValue({
             _id: commandId,
+            botId,
+            name: 'wave',
+            description: 'Wave',
             options: [],
             shouldReply: false,
         });
@@ -209,8 +222,8 @@ describe('InteractionController', () => {
 
         expect(res).toEqual({ success: true });
         expect(slashCommandRepo.findById).toHaveBeenCalledWith(commandId);
-        expect(wsServer.broadcastToServerWithPermission).toHaveBeenCalledWith(
-            serverId,
+        expect(wsServer.broadcastToUser).toHaveBeenCalledWith(
+            botUserId.toHexString(),
             expect.objectContaining({
                 type: 'interaction_create_server',
                 payload: expect.objectContaining({
@@ -218,7 +231,50 @@ describe('InteractionController', () => {
                     commandId: commandId.toHexString(),
                 }),
             }),
-            expect.anything(),
         );
+        expect(wsServer.broadcastToServerWithPermission).not.toHaveBeenCalled();
+    });
+
+    it('rejects commandId when the owning bot is not in the server', async () => {
+        const serverId = new Types.ObjectId().toHexString();
+        const channelId = new Types.ObjectId().toHexString();
+        const botUserId = new Types.ObjectId();
+        const serverBotId = new Types.ObjectId();
+        const otherBotId = new Types.ObjectId();
+        const commandId = new Types.ObjectId();
+
+        (ServerMember.findOne as jest.Mock).mockReturnValue(
+            chainResult({ _id: 'member' }),
+        );
+        (ServerMember.find as jest.Mock).mockReturnValue(
+            chainResult([{ userId: { _id: botUserId, isBot: true } }]),
+        );
+        (Bot.find as jest.Mock).mockReturnValue(
+            chainResult([{ _id: serverBotId, userId: botUserId }]),
+        );
+        (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(
+            true,
+        );
+        (slashCommandRepo.findById as jest.Mock).mockResolvedValue({
+            _id: commandId,
+            botId: otherBotId,
+            name: 'wave',
+            description: 'Wave',
+            options: [],
+            shouldReply: false,
+        });
+
+        await expect(
+            controller.createInteraction(req, {
+                command: 'wave',
+                commandId: commandId.toHexString(),
+                options: [],
+                serverId,
+                channelId,
+            }),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(wsServer.broadcastToUser).not.toHaveBeenCalled();
+        expect(wsServer.broadcastToServerWithPermission).not.toHaveBeenCalled();
     });
 });

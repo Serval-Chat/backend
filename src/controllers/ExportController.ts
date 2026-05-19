@@ -52,7 +52,7 @@ export class ExportController {
             (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
-                'export_channel_messages',
+                'exportChannelMessages',
             )) !== true
         ) {
             throw new ApiError(
@@ -82,7 +82,7 @@ export class ExportController {
             (await this.permissionService.hasPermission(
                 serverOid,
                 userOid,
-                'export_channel_messages',
+                'exportChannelMessages',
             )) !== true
         ) {
             throw new ApiError(

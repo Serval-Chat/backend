@@ -1,36 +1,19 @@
 import type { Types } from 'mongoose';
+import {
+    getPermissionDefault,
+    isPermissionKey,
+    PERMISSION_KEYS,
+    type PermissionKey,
+} from '@/permissions/registry';
 
-export const PERMISSION_KEYS = [
-    'sendMessages',
-    'manageMessages',
-    'deleteMessagesOfOthers',
-    'manageChannels',
-    'manageRoles',
-    'banMembers',
-    'kickMembers',
-    'manageInvites',
-    'manageServer',
-    'administrator',
-    'manageWebhooks',
-    'pingRolesAndEveryone',
-    'addReactions',
-    'manageReactions',
-    'export_channel_messages',
-    'viewChannels',
-    'bypassSlowmode',
-    'pinMessages',
-    'seeDeletedMessages',
-    'moderateMembers',
-    'manageStickers',
-] as const;
-
-export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+export {
+    getPermissionDefault,
+    isPermissionKey,
+    PERMISSION_KEYS,
+    type PermissionKey,
+};
 
 export type Permissions = Partial<Record<PermissionKey, boolean>>;
-
-export function isPermissionKey(key: string): key is PermissionKey {
-    return (PERMISSION_KEYS as readonly string[]).includes(key);
-}
 
 export interface ServerRole {
     id: Types.ObjectId;

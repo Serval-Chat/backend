@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsMongoId, IsOptional, IsString } from 'class-validator';
+import type { Permissions } from '@/permissions/types';
 
 export class ChannelResponseDTO {
     @ApiProperty({ required: false })
@@ -44,7 +45,7 @@ export class ChannelResponseDTO {
     public lastMessageAt?: Date;
 
     @ApiProperty({ required: false })
-    public permissions?: Record<string, Record<string, boolean>>;
+    public permissions?: Record<string, Permissions>;
 
     @ApiProperty({ required: false })
     public createdAt?: Date;
@@ -103,7 +104,7 @@ export class CategoryResponseDTO {
     public position!: number;
 
     @ApiProperty({ required: false })
-    public permissions?: Record<string, Record<string, boolean>>;
+    public permissions?: Record<string, Permissions>;
 
     @ApiProperty({ required: false })
     public createdAt?: Date;

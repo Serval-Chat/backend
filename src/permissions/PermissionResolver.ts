@@ -8,42 +8,16 @@ import type {
     ServerRole,
 } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
+import {
+    getPermissionDefault,
+    isTimeoutBlockedPermission,
+} from '@/permissions/registry';
 
 function getPermissionValue(
     permissions: Permissions | undefined,
     permission: PermissionKey,
 ): boolean | undefined {
     return permissions?.[permission];
-}
-
-function getPermissionDefault(permission: PermissionKey): boolean {
-    switch (permission) {
-        case 'viewChannels':
-        case 'sendMessages':
-        case 'addReactions':
-            return true;
-        case 'manageMessages':
-        case 'deleteMessagesOfOthers':
-        case 'manageChannels':
-        case 'manageRoles':
-        case 'banMembers':
-        case 'kickMembers':
-        case 'manageInvites':
-        case 'manageServer':
-        case 'administrator':
-        case 'manageWebhooks':
-        case 'pingRolesAndEveryone':
-        case 'manageReactions':
-        case 'export_channel_messages':
-        case 'bypassSlowmode':
-        case 'pinMessages':
-        case 'seeDeletedMessages':
-        case 'moderateMembers':
-        case 'manageStickers':
-            return false;
-        default:
-            return false;
-    }
 }
 
 function mergeHighestRolePermission(
@@ -156,7 +130,7 @@ export class PermissionResolver {
         if (!member) return false;
 
         if (
-            (permission === 'sendMessages' || permission === 'addReactions') &&
+            isTimeoutBlockedPermission(permission) &&
             member.communicationDisabledUntil &&
             new Date(member.communicationDisabledUntil) > new Date()
         ) {
@@ -220,7 +194,7 @@ export class PermissionResolver {
         }
 
         if (
-            (permission === 'sendMessages' || permission === 'addReactions') &&
+            isTimeoutBlockedPermission(permission) &&
             member.communicationDisabledUntil &&
             new Date(member.communicationDisabledUntil) > new Date()
         ) {
