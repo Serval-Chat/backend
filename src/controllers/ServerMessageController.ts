@@ -91,26 +91,38 @@ export class ServerMessageController {
         private redisService: IRedisService,
     ) {}
 
-    private allowlistWebhookAvatars(msgs: IServerMessage[]): void {
+    private allowlistProxyUrls(msgs: IServerMessage[]): void {
         const pipeline = this.redisService.getClient().pipeline();
         let added = false;
-        for (const msg of msgs) {
-            if (
-                msg.isWebhook === true &&
-                msg.webhookAvatarUrl !== undefined &&
-                msg.webhookAvatarUrl.startsWith('https://')
-            ) {
+
+        const addUrl = (url: string | undefined): boolean => {
+            if (url !== undefined && url !== '' && url.startsWith('https://')) {
                 const hash = crypto
                     .createHash('sha256')
-                    .update(msg.webhookAvatarUrl)
+                    .update(url)
                     .digest('hex');
                 pipeline.set(
                     `proxy:allow:${hash}`,
-                    msg.webhookAvatarUrl,
+                    url,
                     'EX',
                     60 * 60 * 24 * 7,
                 );
-                added = true;
+                return true;
+            }
+            return false;
+        };
+
+        for (const msg of msgs) {
+            if (msg.isWebhook === true && msg.webhookAvatarUrl !== undefined) {
+                if (addUrl(msg.webhookAvatarUrl)) added = true;
+            }
+            if (msg.embeds !== undefined) {
+                for (const embed of msg.embeds) {
+                    if (addUrl(embed.image?.url)) added = true;
+                    if (addUrl(embed.thumbnail?.url)) added = true;
+                    if (addUrl(embed.author?.icon_url)) added = true;
+                    if (addUrl(embed.footer?.icon_url)) added = true;
+                }
             }
         }
         if (added) {
@@ -194,7 +206,7 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(userId),
         );
 
-        this.allowlistWebhookAvatars(msgs);
+        this.allowlistProxyUrls(msgs);
 
         return msgs.map((msg) => {
             const msgObj = msg as unknown as Record<string, unknown>;
@@ -515,7 +527,7 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(userId),
         );
 
-        this.allowlistWebhookAvatars(pins as unknown as IServerMessage[]);
+        this.allowlistProxyUrls(pins as unknown as IServerMessage[]);
 
         return pins.map((pin) => ({
             ...pin,
@@ -634,7 +646,7 @@ export class ServerMessageController {
                     : repliedMessage),
             } as IServerMessage);
         }
-        this.allowlistWebhookAvatars(messagesToAllowlist);
+        this.allowlistProxyUrls(messagesToAllowlist);
 
         return {
             message: {
