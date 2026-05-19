@@ -90,6 +90,20 @@ export interface IUser extends Document {
     comparePassword(candidate: string): Promise<boolean>;
 }
 
+export const VALID_FONTS = [
+    'default',
+    'Audiowide',
+    'Bebas Neue',
+    'Betania Patmos',
+    'Google Sans Code',
+    'Noto Sans',
+    'Pacifico',
+    'Playpen Sans Deva',
+    'Rampart One',
+    'Roboto',
+    'Workbench',
+];
+
 const schema = new Schema<IUser>(
     {
         login: { type: String, required: true, unique: true },
@@ -100,19 +114,7 @@ const schema = new Schema<IUser>(
         profilePicture: { type: String, required: false },
         usernameFont: {
             type: String,
-            enum: [
-                'default',
-                'Audiowide',
-                'Bebas Neue',
-                'Betania Patmos',
-                'Google Sans Code',
-                'Noto Sans',
-                'Pacifico',
-                'Playpen Sans Deva',
-                'Rampart One',
-                'Roboto',
-                'Workbench',
-            ],
+            enum: VALID_FONTS,
             required: false,
             default: 'default',
         },
@@ -244,6 +246,25 @@ schema.virtual('displayUsername').get(function () {
         this.anonymizedUsername !== ''
         ? this.anonymizedUsername
         : this.username;
+});
+
+schema.post('init', function (doc) {
+    if (
+        typeof doc.usernameFont === 'string' &&
+        !VALID_FONTS.includes(doc.usernameFont)
+    ) {
+        doc.usernameFont = 'default';
+    }
+});
+
+schema.pre('validate', function (next) {
+    if (
+        typeof this.usernameFont === 'string' &&
+        !VALID_FONTS.includes(this.usernameFont)
+    ) {
+        this.usernameFont = 'default';
+    }
+    next();
 });
 
 schema.pre('save', async function (next) {
