@@ -110,6 +110,7 @@ export class FriendshipController {
 
         const friendships = await this.friendshipRepo.findByUserId(userOid);
         const friendIds = new Set<string>();
+        const friendshipCreatedAtByFriendId = new Map<string, Date>();
         const legacyUsernames = new Set<string>();
 
         friendships.forEach((rel) => {
@@ -119,6 +120,16 @@ export class FriendshipController {
 
             if (otherId !== '' && otherId !== userId) {
                 friendIds.add(otherId);
+                if (rel.createdAt !== undefined) {
+                    const existing = friendshipCreatedAtByFriendId.get(otherId);
+                    const createdAt = new Date(rel.createdAt);
+                    if (
+                        existing === undefined ||
+                        createdAt.getTime() > existing.getTime()
+                    ) {
+                        friendshipCreatedAtByFriendId.set(otherId, createdAt);
+                    }
+                }
             } else if (rel.friend !== undefined && rel.friend !== '') {
                 legacyUsernames.add(rel.friend);
             }
@@ -165,6 +176,8 @@ export class FriendshipController {
 
                 return {
                     friend,
+                    friendshipCreatedAt:
+                        friendshipCreatedAtByFriendId.get(friendId) ?? null,
                     latestMessageAt:
                         latestMessage !== undefined && latestMessage !== null
                             ? latestMessage.createdAt !== undefined
@@ -178,8 +191,21 @@ export class FriendshipController {
         );
 
         friendsWithLatestMessage.sort((a, b) => {
-            if (a.latestMessageAt === null && b.latestMessageAt === null)
-                return 0;
+            if (a.latestMessageAt === null && b.latestMessageAt === null) {
+                const aFriendshipCreatedAt = a.friendshipCreatedAt ?? null;
+                const bFriendshipCreatedAt = b.friendshipCreatedAt ?? null;
+                if (
+                    aFriendshipCreatedAt === null &&
+                    bFriendshipCreatedAt === null
+                )
+                    return 0;
+                if (aFriendshipCreatedAt === null) return 1;
+                if (bFriendshipCreatedAt === null) return -1;
+                return (
+                    bFriendshipCreatedAt.getTime() -
+                    aFriendshipCreatedAt.getTime()
+                );
+            }
             if (a.latestMessageAt === null) return 1;
             if (b.latestMessageAt === null) return -1;
             return (

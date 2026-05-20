@@ -20,12 +20,18 @@ describe('FriendshipController', () => {
     };
     const mockFriendshipRepo = {
         areFriends: jest.fn(),
+        findByUserId: jest.fn(),
         findExistingRequest: jest.fn(),
+        findRequestById: jest.fn(),
         rejectRequest: jest.fn(),
+        acceptRequest: jest.fn(),
+        create: jest.fn(),
         createRequest: jest.fn(),
         remove: jest.fn(),
     };
-    const mockMessageRepo = {};
+    const mockMessageRepo = {
+        findByConversation: jest.fn(),
+    };
     const mockWsServer = { broadcastToUser: jest.fn() };
     const mockLogger = { error: jest.fn() };
     const mockBlockRepo = { getActiveBlockFlags: jest.fn() };
@@ -80,6 +86,65 @@ describe('FriendshipController', () => {
                 meId,
             );
             expect(mockWsServer.broadcastToUser).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('getFriends', () => {
+        it('puts a newly accepted friend without messages above older friends', async () => {
+            const olderFriendId = new Types.ObjectId();
+            const newerFriendId = new Types.ObjectId();
+            const olderCreatedAt = new Date('2026-01-01T00:00:00.000Z');
+            const newerCreatedAt = new Date('2026-02-01T00:00:00.000Z');
+
+            mockUserRepo.findById.mockImplementation(
+                async (id: Types.ObjectId) => {
+                    const idStr = id.toHexString();
+                    if (idStr === meId.toHexString()) {
+                        return { _id: meId, username: 'alice' };
+                    }
+                    if (idStr === olderFriendId.toHexString()) {
+                        return {
+                            _id: olderFriendId,
+                            username: 'older-friend',
+                            createdAt: olderCreatedAt,
+                            profilePicture: null,
+                            customStatus: null,
+                        };
+                    }
+                    if (idStr === newerFriendId.toHexString()) {
+                        return {
+                            _id: newerFriendId,
+                            username: 'newer-friend',
+                            createdAt: newerCreatedAt,
+                            profilePicture: null,
+                            customStatus: null,
+                        };
+                    }
+                    return null;
+                },
+            );
+            mockFriendshipRepo.findByUserId.mockResolvedValue([
+                {
+                    _id: new Types.ObjectId(),
+                    userId: meId,
+                    friendId: olderFriendId,
+                    createdAt: olderCreatedAt,
+                },
+                {
+                    _id: new Types.ObjectId(),
+                    userId: meId,
+                    friendId: newerFriendId,
+                    createdAt: newerCreatedAt,
+                },
+            ]);
+            mockMessageRepo.findByConversation.mockResolvedValue([]);
+
+            const result = await controller.getFriends(req);
+
+            expect(result.map((friend) => friend.username)).toEqual([
+                'newer-friend',
+                'older-friend',
+            ]);
         });
     });
 
