@@ -46,6 +46,7 @@ import crypto from 'crypto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { CreateInviteRequestDTO } from './dto/server-invite.request.dto';
 import { InviteDetailsResponseDTO } from './dto/server-invite.response.dto';
+import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 
 @injectable()
 @Controller('api/v1')
@@ -74,6 +75,8 @@ export class ServerInviteController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
+        @Inject(TYPES.ServerDiscoveryService)
+        private discoveryService: ServerDiscoveryService,
     ) {}
 
     @Get('servers/:serverId/invites')
@@ -173,6 +176,10 @@ export class ServerInviteController {
         const invite = await this.inviteRepo.create({
             serverId: serverOid,
             code,
+            customPath:
+                customPath !== undefined && customPath !== ''
+                    ? customPath
+                    : undefined,
             maxUses: maxUses !== undefined ? maxUses : 0,
             expiresAt,
             createdByUserId: userOid,
@@ -201,6 +208,8 @@ export class ServerInviteController {
                 senderId: userId,
             },
         });
+
+        await this.discoveryService.refreshServer(serverOid);
 
         return invite;
     }
@@ -242,6 +251,7 @@ export class ServerInviteController {
         }
 
         await this.inviteRepo.delete(inviteOid);
+        await this.discoveryService.refreshServer(serverOid);
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverOid,
@@ -451,6 +461,8 @@ export class ServerInviteController {
                 inviteExpiresAt: invite.expiresAt,
             },
         });
+
+        await this.discoveryService.refreshServer(serverOid);
 
         return { serverId };
     }

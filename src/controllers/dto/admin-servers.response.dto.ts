@@ -15,8 +15,8 @@ export class AdminServerOwnerDTO {
 }
 
 export class AdminServerBannerDTO {
-    @ApiProperty({ enum: ['color', 'image', 'gif', 'gradient'] })
-    public type!: 'color' | 'image' | 'gif' | 'gradient';
+    @ApiProperty({ enum: ['color', 'image', 'gif'] })
+    public type!: 'color' | 'image' | 'gif';
     @ApiProperty()
     public value!: string;
 }
@@ -28,6 +28,8 @@ export class AdminServerListItemDTO {
     public _id!: string;
     @ApiProperty()
     public name!: string;
+    @ApiPropertyOptional()
+    public description?: string;
     @ApiProperty({ nullable: true })
     public icon!: string | null;
     @ApiPropertyOptional({ type: AdminServerBannerDTO })
@@ -58,6 +60,8 @@ export class AdminServerListItemDTO {
     public verificationOverride?: 'verified' | 'unverified' | null;
     @ApiProperty({ default: false })
     public verificationRequested!: boolean;
+    @ApiProperty({ default: false })
+    public discoveryEnabled!: boolean;
     @ApiPropertyOptional()
     public realMessageCount?: number;
     @ApiPropertyOptional()

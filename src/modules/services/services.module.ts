@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import path from 'path';
 import { TYPES } from '@/di/types';
 import { AuthService } from '@/services/AuthService';
 import { PermissionService } from '@/permissions/PermissionService';
@@ -14,9 +15,17 @@ import { RegistrationInviteService } from '@/services/RegistrationInviteService'
 import { ScraperService } from '@/services/ScraperService';
 import { EmbedService } from '@/services/EmbedService';
 import { ServerVerificationService } from '@/services/ServerVerificationService';
+import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 import { container } from '@/di/container';
+
+const esConfig = require(
+    path.join(__dirname, '../../config/elasticsearch.json'),
+) as {
+    settings: Record<string, unknown>;
+    mappings: Record<string, unknown>;
+};
 
 @Global()
 @Module({
@@ -83,6 +92,14 @@ import { container } from '@/di/container';
             provide: TYPES.ServerVerificationService,
             useClass: ServerVerificationService,
         },
+        {
+            provide: TYPES.ServerDiscoveryService,
+            useClass: ServerDiscoveryService,
+        },
+        {
+            provide: TYPES.ElasticsearchConfig,
+            useValue: esConfig,
+        },
     ],
     exports: [
         TYPES.AuthService,
@@ -99,6 +116,8 @@ import { container } from '@/di/container';
         TYPES.ScraperService,
         TYPES.EmbedService,
         TYPES.ServerVerificationService,
+        TYPES.ServerDiscoveryService,
+        TYPES.ElasticsearchConfig,
     ],
 })
 export class ServicesModule {}

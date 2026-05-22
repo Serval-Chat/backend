@@ -116,6 +116,7 @@ import {
     AdminChannelShortDTO,
 } from './dto/admin-servers-details.response.dto';
 import type { ServerVerificationService } from '@/services/ServerVerificationService';
+import type { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 import {
     CreateAdminNoteRequestDTO,
     UpdateAdminNoteRequestDTO,
@@ -178,6 +179,8 @@ export class AdminController {
         private adminNoteRepo: IAdminNoteRepository,
         @Inject(TYPES.ServerVerificationService)
         private serverVerificationService: ServerVerificationService,
+        @Inject(TYPES.ServerDiscoveryService)
+        private discoveryService: ServerDiscoveryService,
     ) {}
 
     @Get('stats')
@@ -1453,6 +1456,7 @@ export class AdminController {
 
                 item._id = server._id.toString();
                 item.name = server.name;
+                item.description = server.description;
                 item.icon =
                     server.icon !== undefined && server.icon !== ''
                         ? `${server.icon}`
@@ -1473,6 +1477,7 @@ export class AdminController {
                 item.verificationOverride = server.verificationOverride ?? null;
                 item.verificationRequested =
                     server.verificationRequested ?? false;
+                item.discoveryEnabled = server.discoveryEnabled ?? false;
                 item.realMessageCount = enrichedServer.realMessageCount;
                 item.weightScore = enrichedServer.weightScore;
                 if (owner) {
@@ -1513,6 +1518,7 @@ export class AdminController {
         @Request() req: AuthenticatedRequest,
     ): Promise<AdminServerVerificationStatsDTO> {
         const stats = await this.serverVerificationService.recompute();
+        await this.discoveryService.reindexPotentialServers();
         await this.logAdminAction(req, 'run_server_verification', undefined, {
             eligibleServerCount: stats.eligibleServerCount,
             verifiedServerCount: stats.verifiedServerCount,
@@ -1537,6 +1543,7 @@ export class AdminController {
         }
 
         await this.serverRepo.softDelete(serverOid);
+        await this.discoveryService.removeServer(serverOid);
 
         const event: IServerDeletedEvent = {
             type: 'server_deleted',
@@ -1581,6 +1588,7 @@ export class AdminController {
         }
 
         await this.serverRepo.restore(serverOid);
+        await this.discoveryService.refreshServer(serverOid);
 
         await this.logAdminAction(
             req,
@@ -1707,6 +1715,7 @@ export class AdminController {
             const item = new AdminServerListItemDTO();
             item._id = server._id.toString();
             item.name = server.name;
+            item.description = server.description;
             item.icon =
                 server.icon !== undefined && server.icon !== ''
                     ? `${server.icon}`
@@ -1724,6 +1733,7 @@ export class AdminController {
                 server.verificationFailureReasons ?? [];
             item.verificationOverride = server.verificationOverride ?? null;
             item.verificationRequested = server.verificationRequested ?? false;
+            item.discoveryEnabled = server.discoveryEnabled ?? false;
             item.realMessageCount = server.realMessageCount ?? 0;
             item.weightScore = server.weightScore ?? 0;
 
@@ -1785,6 +1795,7 @@ export class AdminController {
         const details = new AdminServerDetailsDTO();
         details._id = server._id.toString();
         details.name = server.name;
+        details.description = server.description;
         details.icon =
             server.icon !== undefined && server.icon !== ''
                 ? `${server.icon}`
@@ -1805,6 +1816,7 @@ export class AdminController {
             server.verificationFailureReasons ?? [];
         details.verificationOverride = server.verificationOverride ?? null;
         details.verificationRequested = server.verificationRequested ?? false;
+        details.discoveryEnabled = server.discoveryEnabled ?? false;
 
         if (owner !== null) {
             details.owner = {
@@ -1882,6 +1894,7 @@ export class AdminController {
         }
 
         await this.inviteRepo.delete(inviteOid);
+        await this.discoveryService.refreshServer(serverOid);
 
         await this.logAdminAction(
             req,
@@ -1911,6 +1924,7 @@ export class AdminController {
         await this.serverRepo.update(serverOid, {
             verificationRequested: false,
         });
+        await this.discoveryService.refreshServer(serverOid);
         await this.logAdminAction(
             req,
             'decline_server_verification',
@@ -1961,6 +1975,7 @@ export class AdminController {
                     ? (server.verificationRequested ?? false)
                     : false,
         });
+        await this.discoveryService.refreshServer(serverOid);
         await this.logAdminAction(
             req,
             'set_server_verification_override',
@@ -2002,6 +2017,7 @@ export class AdminController {
             verificationOverride: 'verified',
             verificationRequested: false,
         });
+        await this.discoveryService.refreshServer(serverOid);
         await this.logAdminAction(
             req,
             'verify_server',
@@ -2033,6 +2049,7 @@ export class AdminController {
             verified: false,
             verificationOverride: 'unverified',
         });
+        await this.discoveryService.refreshServer(serverOid);
         await this.logAdminAction(
             req,
             'unverify_server',

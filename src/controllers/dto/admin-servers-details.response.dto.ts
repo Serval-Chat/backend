@@ -11,6 +11,9 @@ export class AdminChannelShortDTO {
     @ApiProperty()
     public name!: string;
 
+    @ApiPropertyOptional()
+    public description?: string;
+
     @ApiProperty({ enum: ['text', 'voice', 'link'] })
     public type!: 'text' | 'voice' | 'link';
 
@@ -24,6 +27,9 @@ export class AdminServerDetailsDTO {
 
     @ApiProperty()
     public name!: string;
+
+    @ApiPropertyOptional()
+    public description?: string;
 
     @ApiProperty({ nullable: true })
     public icon!: string | null;
@@ -78,4 +84,7 @@ export class AdminServerDetailsDTO {
 
     @ApiProperty({ default: false })
     public verificationRequested!: boolean;
+
+    @ApiProperty({ default: false })
+    public discoveryEnabled!: boolean;
 }

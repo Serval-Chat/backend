@@ -52,6 +52,8 @@ export const TYPES = {
     ScraperService: Symbol.for('ScraperService'),
     EmbedService: Symbol.for('EmbedService'),
     ServerVerificationService: Symbol.for('ServerVerificationService'),
+    ServerDiscoveryService: Symbol.for('ServerDiscoveryService'),
+    ElasticsearchConfig: Symbol.for('ElasticsearchConfig'),
 
     // Application
     ExpressApp: Symbol.for('ExpressApp'),

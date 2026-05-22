@@ -20,6 +20,7 @@
   "author": "Catflare <catty@example.com>",
   "license": "ISC",
   "dependencies": {
+    "@elastic/elasticsearch": "^9.4.1",
     "@nestjs/common": "^11.1.11",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.11",

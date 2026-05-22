@@ -41,6 +41,12 @@ export class UpdateServerRequestDTO {
     @IsName()
     public name?: string;
 
+    @ApiPropertyOptional({ maxLength: 500 })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    public description?: string;
+
     @ApiPropertyOptional({ type: ServerBannerDTO })
     @IsOptional()
     @ValidateNested()
@@ -56,6 +62,11 @@ export class UpdateServerRequestDTO {
     @IsOptional()
     @IsBoolean()
     public disableUsernameGlowAndCustomColor?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public discoveryEnabled?: boolean;
 
     @ApiPropertyOptional({ nullable: true, type: String })
     @IsOptional()

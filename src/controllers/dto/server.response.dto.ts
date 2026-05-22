@@ -64,6 +64,9 @@ export class ServerResponseDTO {
     public description?: string;
 
     @ApiProperty({ required: false })
+    public discoveryEnabled?: boolean;
+
+    @ApiProperty({ required: false })
     @IsOptional()
     @IsMongoId()
     @IsString()

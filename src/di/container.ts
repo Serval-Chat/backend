@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import path from 'path';
 import { Container } from 'inversify';
 import { TYPES } from '@/di/types';
 
@@ -77,6 +78,7 @@ import { PingService } from '@/services/PingService';
 import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
+import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 import { LiveKitService } from '@/services/LiveKitService';
 import { RedisService } from '@/services/RedisService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
@@ -328,6 +330,17 @@ container
     .bind<EmbedService>(TYPES.EmbedService)
     .to(EmbedService)
     .inSingletonScope();
+
+container
+    .bind<ServerDiscoveryService>(TYPES.ServerDiscoveryService)
+    .to(ServerDiscoveryService)
+    .inSingletonScope();
+
+container
+    .bind(TYPES.ElasticsearchConfig)
+    .toConstantValue(
+        require(path.join(__dirname, '../config/elasticsearch.json')),
+    );
 
 container.bind(TYPES.MailConfig).toConstantValue({
     skipSending: process.env.NODE_ENV === 'test',

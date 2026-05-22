@@ -40,6 +40,11 @@ export interface IInviteRepository {
     // Find all invites for a server
     findByServerId(serverId: Types.ObjectId): Promise<IInvite[]>;
 
+    // Find a vanity invite eligible for public discovery
+    findDiscoveryInviteByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<IInvite | null>;
+
     // Find invite by custom path
     findByCustomPath(customPath: string): Promise<IInvite | null>;
 

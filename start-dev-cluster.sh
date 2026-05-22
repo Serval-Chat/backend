@@ -25,15 +25,8 @@ done
 
 PIDS=""
 cleanup() {
-    echo "Stopping cluster..."
+    echo "Stopping backend instances..."
     [[ -n "$PIDS" ]] && kill $PIDS 2>/dev/null || true
-    if [ "$FULL_STACK" = true ]; then
-        docker compose -f docker/docker-compose.dev.yml stop
-        docker compose -f docker/docker-compose.dev.yml rm -f
-    else
-        docker compose -f docker/docker-compose.dev.yml stop nginx redis
-        docker compose -f docker/docker-compose.dev.yml rm -f nginx redis
-    fi
     exit 0
 }
 trap cleanup INT TERM
@@ -58,17 +51,12 @@ done
 
 if [ "$FULL_STACK" = true ]; then
     echo "Starting full stack with docker/docker-compose.dev.yml..."
-    docker compose -f docker/docker-compose.dev.yml up -d
+    docker compose -f docker/docker-compose.dev.yml up -d --wait
 else
-    echo "Starting infrastructure (Redis, Nginx)..."
-    docker compose -f docker/docker-compose.dev.yml up -d redis nginx
+    echo "Starting infrastructure (Redis, Elasticsearch, Nginx)..."
+    docker compose -f docker/docker-compose.dev.yml up -d --wait redis elasticsearch nginx
 fi
-
-echo "Waiting for Redis..."
-until docker exec chat-redis-dev redis-cli ping 2>/dev/null | grep -q PONG; do
-    sleep 0.5
-done
-echo "Redis ready."
+echo "All services healthy."
 
 echo "Starting $REPLICAS backend instances..."
 for (( i=1; i<=REPLICAS; i++ )); do
@@ -77,6 +65,7 @@ for (( i=1; i<=REPLICAS; i++ )); do
     INSTANCE_NAME="node-$i" \
     LOG_LEVEL=warn \
     REDIS_URL="redis://localhost:16379" \
+    ELASTICSEARCH_URL="http://localhost:19200" \
     LOKI_HOST="http://localhost:13100" \
     OTEL_EXPORTER_OTLP_ENDPOINT="grpc://localhost:14317" \
     npm run dev > "instance$i.log" 2>&1 &

@@ -39,6 +39,7 @@ import { ServerStickerController } from './controllers/ServerStickerController';
 import { StickerController } from './controllers/StickerController';
 import { ServerMessageController } from './controllers/ServerMessageController';
 import { ServerPublicController } from './controllers/ServerPublicController';
+import { ServerDiscoveryController } from './controllers/ServerDiscoveryController';
 import { SystemController } from './controllers/SystemController';
 import { UserMessageController } from './controllers/UserMessageController';
 import { SettingsController } from './controllers/SettingsController';
@@ -52,6 +53,8 @@ import { InteractionController } from './controllers/InteractionController';
 import { ApplicationController } from './controllers/ApplicationController';
 import {
     botTokenLimiter,
+    discoverySearchLimiter,
+    discoverySettingsLimiter,
     loginLimiter,
     passwordResetLimiter,
     registrationLimiter,
@@ -150,6 +153,7 @@ import {
         StickerController,
         ServerMessageController,
         ServerPublicController,
+        ServerDiscoveryController,
         SystemController,
         UserMessageController,
         SettingsController,
@@ -195,6 +199,16 @@ export class AppModule {
         consumer.apply(webhookExecutionLimiter).forRoutes({
             path: 'api/v1/webhooks/:token',
             method: RequestMethod.POST,
+        });
+
+        consumer.apply(discoverySearchLimiter).forRoutes({
+            path: 'api/v1/discovery/servers',
+            method: RequestMethod.GET,
+        });
+
+        consumer.apply(discoverySettingsLimiter).forRoutes({
+            path: 'api/v1/servers/:serverId',
+            method: RequestMethod.PATCH,
         });
 
         consumer.apply(websiteConnectionCreateLimiter).forRoutes({

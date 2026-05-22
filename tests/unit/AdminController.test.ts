@@ -23,6 +23,7 @@ describe('AdminController', () => {
     let mockInviteRepo: Record<string, jest.Mock>;
     let mockAdminNoteRepo: Record<string, jest.Mock>;
     let mockServerVerificationService: Record<string, jest.Mock>;
+    let mockServerDiscoveryService: Record<string, jest.Mock>;
     let mockMuteRepo: Record<string, jest.Mock>;
 
     let controller: AdminController;
@@ -75,6 +76,11 @@ describe('AdminController', () => {
             getStats: jest.fn(),
             recompute: jest.fn(),
         };
+        mockServerDiscoveryService = {
+            reindexPotentialServers: jest.fn(),
+            refreshServer: jest.fn(),
+            removeServer: jest.fn(),
+        };
         mockMuteRepo = {
             findActiveByUserId: jest.fn(),
             findByUserId: jest.fn(),
@@ -100,6 +106,7 @@ describe('AdminController', () => {
             mockInviteRepo as any,
             mockAdminNoteRepo as any,
             mockServerVerificationService as any,
+            mockServerDiscoveryService as any,
         );
     });
 

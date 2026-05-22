@@ -41,6 +41,8 @@ const LOKI_HOST = process.env.LOKI_HOST ?? 'http://loki:3100';
 const APP_VERSION = process.env.APP_VERSION ?? '0.0.0';
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
+const ELASTICSEARCH_URL =
+    process.env.ELASTICSEARCH_URL ?? 'http://localhost:19200';
 const INSTANCE_NAME =
     process.env.INSTANCE_NAME ?? `node-${crypto.randomUUID().split('-')[0]}`;
 const SCRAPER_HOST = process.env.SCRAPER_HOST ?? '';
@@ -141,6 +143,7 @@ export {
     LOG_LEVEL,
     KLIPY_API_KEY,
     REDIS_URL,
+    ELASTICSEARCH_URL,
     INSTANCE_NAME,
     MAX_MESSAGE_LENGTH,
     SCRAPER_HOST,

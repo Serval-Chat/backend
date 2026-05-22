@@ -8,8 +8,9 @@ export interface IServer {
     name: string;
     ownerId: Types.ObjectId;
     icon?: string;
+    description?: string;
     banner?: {
-        type: 'image' | 'gradient' | 'color' | 'gif';
+        type: 'image' | 'color' | 'gif';
         value: string;
     };
     defaultRoleId?: Types.ObjectId;
@@ -22,6 +23,7 @@ export interface IServer {
     verificationFailureReasons?: string[];
     verificationOverride?: 'verified' | 'unverified' | null;
     verificationRequested?: boolean;
+    discoveryEnabled?: boolean;
     createdAt?: Date;
     updatedAt?: Date;
     deletedAt?: Date;
@@ -35,6 +37,7 @@ export interface CreateServerDTO {
     name: string;
     ownerId: Types.ObjectId;
     icon?: string;
+    description?: string;
     tags?: string[];
 }
 

@@ -20,7 +20,32 @@ services:
       - "16379:6379"
     # Dev Redis is intentionally passwordless to simplify local cluster setup
     command: redis-server --loglevel verbose
-    restart: unless-stopped
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.1
+    container_name: chat-elasticsearch-dev
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "127.0.0.1:19200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200 || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
 
   nginx:
     image: nginx:latest
@@ -126,6 +151,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  elasticsearch_data:
   prometheus_data:
   tempo_data:
   loki_data:

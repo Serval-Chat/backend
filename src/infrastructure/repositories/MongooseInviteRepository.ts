@@ -52,9 +52,35 @@ export class MongooseInviteRepository implements IInviteRepository {
         return (await Invite.find({ serverId }).lean()) as unknown as IInvite[];
     }
 
+    public async findDiscoveryInviteByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<IInvite | null> {
+        return (await Invite.findOne({
+            serverId,
+            $and: [
+                { $or: [{ maxUses: { $exists: false } }, { maxUses: 0 }] },
+                {
+                    $or: [
+                        { expiresAt: { $exists: false } },
+                        { expiresAt: null },
+                    ],
+                },
+                {
+                    $or: [
+                        { customPath: { $exists: true, $ne: '' } },
+                        { code: { $not: /^[0-9a-fA-F]{8}$/ } },
+                    ],
+                },
+            ],
+        })
+            .sort({ createdAt: 1 })
+            .lean()) as IInvite | null;
+    }
+
     public async create(data: CreateInviteDTO): Promise<IInvite> {
         const invite = new Invite({
             ...data,
+            customPath: data.customPath,
             uses: 0,
         });
         return (await invite.save()) as unknown as IInvite;

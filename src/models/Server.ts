@@ -19,6 +19,7 @@ export interface IServer extends Document {
     name: string;
     ownerId: mongoose.Types.ObjectId;
     icon?: string;
+    description?: string;
     banner?: {
         type: 'color' | 'image' | 'gif';
         value: string;
@@ -33,6 +34,7 @@ export interface IServer extends Document {
     verificationFailureReasons?: string[];
     verificationOverride?: 'verified' | 'unverified' | null;
     verificationRequested?: boolean;
+    discoveryEnabled?: boolean;
     createdAt: Date;
     deletedAt?: Date;
     allTimeHigh?: number;
@@ -193,6 +195,7 @@ const serverSchema = new Schema<IServer>({
     name: { type: String, required: true },
     ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     icon: { type: String },
+    description: { type: String, maxlength: 500, default: '' },
     banner: {
         type: new Schema(
             {
@@ -221,6 +224,7 @@ const serverSchema = new Schema<IServer>({
         default: null,
     },
     verificationRequested: { type: Boolean, default: false },
+    discoveryEnabled: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     deletedAt: { type: Date },
     allTimeHigh: { type: Number, default: 0 },

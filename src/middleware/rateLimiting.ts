@@ -147,6 +147,34 @@ export const webhookExecutionLimiter = rateLimit({
     message: 'Too many webhook requests, please try again later.',
 });
 
+export const discoverySearchLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:discovery:search:') }
+        : {}),
+    windowMs: 60_000,
+    max: 60,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many discovery searches, please try again later.',
+});
+
+export const discoverySettingsLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:discovery:settings:') }
+        : {}),
+    windowMs: 60_000,
+    max: 20,
+    keyGenerator: (req: Request) => {
+        const serverId =
+            typeof req.params.serverId === 'string' ? req.params.serverId : '';
+        return `${authenticatedUserKey(req)}:${serverId}`;
+    },
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many discovery setting updates, please try again later.',
+});
+
 function authenticatedUserKey(req: Request): string {
     const guardedUserId = (req as Request & { user?: JWTPayload }).user?.id;
     if (guardedUserId !== undefined) return guardedUserId;

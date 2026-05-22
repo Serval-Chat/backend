@@ -63,12 +63,18 @@ import {
     UploadIconResponseDTO,
     UploadBannerResponseDTO,
 } from './dto/server.response.dto';
+import { ServerDiscoveryStatusDTO } from './dto/server-discovery.dto';
 import { EmojiResponseDTO } from './dto/emoji.response.dto';
 import { PingService } from '@/services/PingService';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { NoBot } from '@/modules/auth/bot.decorator';
+import {
+    ServerDiscoveryService,
+    normalizeDiscoveryTags,
+} from '@/services/ServerDiscoveryService';
+
 @injectable()
 @Controller('api/v1/servers')
 @ApiTags('Servers')
@@ -114,6 +120,8 @@ export class ServerController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.RedisService)
         private redisService: IRedisService,
+        @Inject(TYPES.ServerDiscoveryService)
+        private discoveryService: ServerDiscoveryService,
     ) {
         if (fs.existsSync(this.UPLOADS_DIR) === false) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
@@ -536,14 +544,19 @@ export class ServerController {
         const updates: Record<string, unknown> = {};
         if (body.name !== undefined && body.name !== '')
             updates.name = body.name;
+        if (body.description !== undefined)
+            updates.description = body.description.trim();
         if (body.banner !== undefined) updates.banner = body.banner;
         if (body.disableCustomFonts !== undefined)
             updates.disableCustomFonts = body.disableCustomFonts;
         if (body.disableUsernameGlowAndCustomColor !== undefined)
             updates.disableUsernameGlowAndCustomColor =
                 body.disableUsernameGlowAndCustomColor;
+        if (body.discoveryEnabled !== undefined)
+            updates.discoveryEnabled = body.discoveryEnabled;
 
-        if (body.tags !== undefined) updates.tags = body.tags;
+        if (body.tags !== undefined)
+            updates.tags = normalizeDiscoveryTags(body.tags);
 
         if (body.defaultRoleId !== undefined) {
             const roleId = body.defaultRoleId;
@@ -618,7 +631,26 @@ export class ServerController {
                 changes.push({
                     field: 'tags',
                     before: existingServer.tags,
-                    after: body.tags,
+                    after: updates.tags,
+                });
+            if (
+                body.description !== undefined &&
+                body.description.trim() !== (existingServer.description ?? '')
+            )
+                changes.push({
+                    field: 'description',
+                    before: existingServer.description ?? '',
+                    after: body.description.trim(),
+                });
+            if (
+                body.discoveryEnabled !== undefined &&
+                body.discoveryEnabled !==
+                    (existingServer.discoveryEnabled ?? false)
+            )
+                changes.push({
+                    field: 'discoveryEnabled',
+                    before: existingServer.discoveryEnabled ?? false,
+                    after: body.discoveryEnabled,
                 });
         }
 
@@ -633,7 +665,34 @@ export class ServerController {
             });
         }
 
+        await this.discoveryService.refreshServer(serverOid);
+
         return server;
+    }
+
+    @Get(':serverId/discovery-status')
+    @ApiOperation({ summary: 'Get server discovery eligibility status' })
+    @ApiResponse({ status: 200, type: ServerDiscoveryStatusDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Server Not Found' })
+    public async getDiscoveryStatus(
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
+    ): Promise<ServerDiscoveryStatusDTO> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        if (
+            (await this.permissionService.hasPermission(
+                serverOid,
+                userOid,
+                'manageServer',
+            )) !== true
+        ) {
+            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
+        }
+
+        return await this.discoveryService.getStatus(serverOid);
     }
 
     @Post(':serverId/roles/default')
@@ -791,6 +850,7 @@ export class ServerController {
         await this.roleRepo.deleteByServerId(serverOid);
         await this.inviteRepo.deleteByServerId(serverOid);
         await this.serverMessageRepo.deleteByServerId(serverOid);
+        await this.discoveryService.removeServer(serverOid);
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_deleted',
@@ -903,6 +963,8 @@ export class ServerController {
                 ],
             });
 
+            await this.discoveryService.refreshServer(serverOid);
+
             return { icon: iconUrl };
         } finally {
             if (icon.path !== '' && fs.existsSync(icon.path) === true) {
@@ -1005,6 +1067,8 @@ export class ServerController {
                     },
                 ],
             });
+
+            await this.discoveryService.refreshServer(serverOid);
 
             return { banner: bannerUrl };
         } finally {

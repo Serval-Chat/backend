@@ -1,0 +1,48 @@
+{
+    "settings": {
+        "analysis": {
+            "filter": {
+                "autocomplete_filter": {
+                    "type": "edge_ngram",
+                    "min_gram": 2,
+                    "max_gram": 20
+                }
+            },
+            "analyzer": {
+                "autocomplete": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": ["lowercase", "autocomplete_filter"]
+                },
+                "autocomplete_search": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": ["lowercase"]
+                }
+            }
+        }
+    },
+    "mappings": {
+        "properties": {
+            "id": { "type": "keyword" },
+            "name": {
+                "type": "text",
+                "analyzer": "autocomplete",
+                "search_analyzer": "autocomplete_search",
+                "fields": {
+                    "keyword": { "type": "keyword" },
+                    "standard": { "type": "text", "analyzer": "standard" }
+                }
+            },
+            "description": {
+                "type": "text",
+                "analyzer": "standard"
+            },
+            "tags": { "type": "keyword" },
+            "verified": { "type": "boolean" },
+            "memberCount": { "type": "integer" },
+            "createdAt": { "type": "date" },
+            "inviteCode": { "type": "keyword" }
+        }
+    }
+}

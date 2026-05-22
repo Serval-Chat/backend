@@ -2,8 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMongoId, IsString } from 'class-validator';
 
 export class InviteServerBannerDTO {
-    @ApiProperty({ enum: ['image', 'gradient', 'color', 'gif'] })
-    public type!: 'image' | 'gradient' | 'color' | 'gif';
+    @ApiProperty({ enum: ['image', 'color', 'gif'] })
+    public type!: 'image' | 'color' | 'gif';
 
     @ApiProperty()
     public value!: string;
