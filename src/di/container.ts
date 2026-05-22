@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import path from 'path';
 import { Container } from 'inversify';
 import { TYPES } from '@/di/types';
+import elasticsearchConfig from '@/config/elasticsearch.json';
 
 // Interfaces
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
@@ -336,11 +336,7 @@ container
     .to(ServerDiscoveryService)
     .inSingletonScope();
 
-container
-    .bind(TYPES.ElasticsearchConfig)
-    .toConstantValue(
-        require(path.join(__dirname, '../config/elasticsearch.json')),
-    );
+container.bind(TYPES.ElasticsearchConfig).toConstantValue(elasticsearchConfig);
 
 container.bind(TYPES.MailConfig).toConstantValue({
     skipSending: process.env.NODE_ENV === 'test',

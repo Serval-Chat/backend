@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
-import path from 'path';
 import { TYPES } from '@/di/types';
+import elasticsearchConfig from '@/config/elasticsearch.json';
 import { AuthService } from '@/services/AuthService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
@@ -20,9 +20,7 @@ import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 import { container } from '@/di/container';
 
-const esConfig = require(
-    path.join(__dirname, '../../config/elasticsearch.json'),
-) as {
+const esConfig = elasticsearchConfig as {
     settings: Record<string, unknown>;
     mappings: Record<string, unknown>;
 };
