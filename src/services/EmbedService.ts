@@ -79,10 +79,16 @@ export class EmbedService {
         if (existingEmbeds.length >= MAX_EMBEDS) return;
 
         const textCounts: Record<string, number> = {};
+        const internalHostRegex =
+            /^https?:\/\/(?:[a-zA-Z0-9.-]*\.)?(?:ser\.chat|catfla\.re)(?::\d+)?(?:\/|$)/;
+        const isInternalUrl = (url: string): boolean =>
+            internalHostRegex.test(url) || url.startsWith('http://localhost:');
+
         for (const url of textUrls) {
             if (url.includes('/invite/')) continue;
             if (url.includes('/api/v1/files/download/')) continue;
             if (url.includes('/api/v1/files/proxy/')) continue;
+            if (isInternalUrl(url)) continue;
 
             const norm = url.replace(/\/$/, '');
             const currentCount = textCounts[norm] ?? 0;
