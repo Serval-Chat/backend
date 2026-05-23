@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { Types } from 'mongoose';
 
 jest.mock('@/models/Bot', () => ({
@@ -20,6 +21,7 @@ jest.mock('@/models/Server', () => ({
 import { Bot } from '@/models/Bot';
 import { ServerMember, ServerMessage } from '@/models/Server';
 import { InteractionController } from '../InteractionController';
+import { IsHumanGuard } from '@/modules/auth/bot.guard';
 
 const wsServer = {
     broadcastToUser: jest.fn(),
@@ -75,6 +77,16 @@ describe('InteractionController', () => {
         muteRepo.findActiveByUserId.mockResolvedValue(null);
     });
 
+    it('marks interaction creation as human-only', () => {
+        const guards =
+            Reflect.getMetadata(
+                GUARDS_METADATA,
+                InteractionController.prototype.createInteraction,
+            ) ?? [];
+
+        expect(guards).toContain(IsHumanGuard);
+    });
+
     it('rejects muted users before command validation', async () => {
         const userId = (req as { user: { id: string } }).user.id;
         muteRepo.findActiveByUserId.mockResolvedValue({
@@ -91,6 +103,29 @@ describe('InteractionController', () => {
             }),
         ).rejects.toThrow(ForbiddenException);
 
+        expect(ServerMember.findOne).not.toHaveBeenCalled();
+        expect(slashCommandRepo.findByNameAndBotIds).not.toHaveBeenCalled();
+    });
+
+    it('rejects bot users before command validation', async () => {
+        const botReq = {
+            user: {
+                id: new Types.ObjectId().toHexString(),
+                username: 'helper-bot',
+                isBot: true,
+            },
+        } as never;
+
+        await expect(
+            controller.createInteraction(botReq, {
+                command: 'wave',
+                options: [],
+                serverId: new Types.ObjectId().toHexString(),
+                channelId: new Types.ObjectId().toHexString(),
+            }),
+        ).rejects.toThrow(ForbiddenException);
+
+        expect(muteRepo.findActiveByUserId).not.toHaveBeenCalled();
         expect(ServerMember.findOne).not.toHaveBeenCalled();
         expect(slashCommandRepo.findByNameAndBotIds).not.toHaveBeenCalled();
     });

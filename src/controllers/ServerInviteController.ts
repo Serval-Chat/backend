@@ -432,6 +432,7 @@ export class ServerInviteController {
             serverId: serverOid,
             userId: userOid,
             roles,
+            onboardingRequired: server?.onboarding?.enabled === true,
         });
 
         // Increment invite usage count after successful join

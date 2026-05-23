@@ -25,6 +25,7 @@ import type { ISlashCommand } from '@/models/SlashCommand';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { NoBot } from '@/modules/auth/bot.decorator';
 import { Bot } from '@/models/Bot';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import {
@@ -205,6 +206,7 @@ export class InteractionController {
 
     @UseGuards(JwtAuthGuard)
     @Post('interactions')
+    @NoBot()
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Trigger a slash command interaction' })
     public async createInteraction(
@@ -212,6 +214,12 @@ export class InteractionController {
         @Body() body: CreateInteractionRequestDTO,
     ) {
         const { command, commandId, options, serverId, channelId } = body;
+        if (req.user.isBot === true) {
+            throw new ForbiddenException(
+                'Bots are not allowed to run interactions',
+            );
+        }
+
         await assertHttpNotMuted(
             this.muteRepo,
             req.user.id,

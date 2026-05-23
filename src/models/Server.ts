@@ -35,6 +35,13 @@ export interface IServer extends Document {
     verificationOverride?: 'verified' | 'unverified' | null;
     verificationRequested?: boolean;
     discoveryEnabled?: boolean;
+    onboarding?: {
+        enabled: boolean;
+        guidelines: string[];
+        selfAssignableRoleIds: mongoose.Types.ObjectId[];
+        landingChannelId?: mongoose.Types.ObjectId | null;
+        welcomeChannelIds: mongoose.Types.ObjectId[];
+    };
     createdAt: Date;
     deletedAt?: Date;
     allTimeHigh?: number;
@@ -102,6 +109,11 @@ export interface IServerMember extends Document {
     roles: mongoose.Types.ObjectId[];
     joinedAt: Date;
     communicationDisabledUntil?: Date;
+    onboardingRequired?: boolean;
+    rulesAcceptedAt?: Date | null;
+    onboardingCompletedAt?: Date | null;
+    hiddenChannelIds?: mongoose.Types.ObjectId[];
+    hiddenCategoryIds?: mongoose.Types.ObjectId[];
 }
 
 // Role interface
@@ -119,6 +131,7 @@ export interface IRole extends Document {
     position: number;
     permissions: Record<PermissionKey, boolean>;
     separateFromOtherRoles?: boolean;
+    description?: string;
     icon?: string;
     managed: boolean;
     managedBotId?: mongoose.Types.ObjectId;
@@ -225,6 +238,42 @@ const serverSchema = new Schema<IServer>({
     },
     verificationRequested: { type: Boolean, default: false },
     discoveryEnabled: { type: Boolean, default: false },
+    onboarding: {
+        type: new Schema(
+            {
+                enabled: { type: Boolean, default: false },
+                guidelines: {
+                    type: [{ type: String, maxlength: 500 }],
+                    validate: [
+                        {
+                            validator: (v: string[]) => v.length <= 20,
+                            message: 'Max 20 guidelines allowed',
+                        },
+                    ],
+                    default: [],
+                },
+                selfAssignableRoleIds: [
+                    { type: Schema.Types.ObjectId, ref: 'Role' },
+                ],
+                landingChannelId: {
+                    type: Schema.Types.ObjectId,
+                    ref: 'Channel',
+                    default: null,
+                },
+                welcomeChannelIds: [
+                    { type: Schema.Types.ObjectId, ref: 'Channel' },
+                ],
+            },
+            { _id: false },
+        ),
+        default: {
+            enabled: false,
+            guidelines: [],
+            selfAssignableRoleIds: [],
+            landingChannelId: null,
+            welcomeChannelIds: [],
+        },
+    },
     createdAt: { type: Date, default: Date.now },
     deletedAt: { type: Date },
     allTimeHigh: { type: Number, default: 0 },
@@ -310,6 +359,11 @@ const serverMemberSchema = new Schema<IServerMember>({
     roles: [{ type: Schema.Types.ObjectId, ref: 'Role' }],
     joinedAt: { type: Date, default: Date.now },
     communicationDisabledUntil: { type: Date, default: null },
+    onboardingRequired: { type: Boolean, default: false },
+    rulesAcceptedAt: { type: Date, default: null },
+    onboardingCompletedAt: { type: Date, default: null },
+    hiddenChannelIds: [{ type: Schema.Types.ObjectId, ref: 'Channel' }],
+    hiddenCategoryIds: [{ type: Schema.Types.ObjectId, ref: 'Category' }],
 });
 serverMemberSchema.index({ serverId: 1, userId: 1 }, { unique: true });
 
@@ -324,6 +378,7 @@ const roleSchema = new Schema<IRole>({
     position: { type: Number, default: 0 },
     permissions: rolePermissionSchemaDefinition,
     separateFromOtherRoles: { type: Boolean, default: false },
+    description: { type: String, maxlength: 200, required: false },
     icon: { type: String, required: false },
     managed: { type: Boolean, default: false },
     managedBotId: { type: Schema.Types.ObjectId, ref: 'Bot', required: false },

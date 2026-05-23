@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Patch,
     Delete,
     Body,
     Param,
@@ -28,8 +29,10 @@ import type {
     IServerMember,
 } from '@/di/interfaces/IServerMemberRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
+import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -48,12 +51,17 @@ import { Bot } from '@/models/Bot';
 import { Role } from '@/models/Server';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { NoBot } from '@/modules/auth/bot.decorator';
 import {
     KickMemberRequestDTO,
     BanMemberRequestDTO,
     TransferOwnershipRequestDTO,
     TimeoutMemberRequestDTO,
 } from './dto/server-member.request.dto';
+import {
+    ChannelPreferencesRequestDTO,
+    SelfRolesRequestDTO,
+} from './dto/server.request.dto';
 
 @injectable()
 @Controller('api/v1/servers/:serverId')
@@ -84,7 +92,263 @@ export class ServerMemberController {
         private blockRepo: IBlockRepository,
         @Inject(TYPES.PingService)
         private pingService: PingService,
+        @Inject(TYPES.ChannelRepository)
+        private channelRepo?: IChannelRepository,
+        @Inject(TYPES.CategoryRepository)
+        private categoryRepo?: ICategoryRepository,
     ) {}
+
+    private async requireMember(
+        serverOid: Types.ObjectId,
+        userOid: Types.ObjectId,
+    ): Promise<IServerMember> {
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            serverOid,
+            userOid,
+        );
+        if (member === null) {
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
+        }
+        return member;
+    }
+
+    private getOnboardingConfig(
+        server: Awaited<ReturnType<IServerRepository['findById']>>,
+    ): {
+        enabled: boolean;
+        guidelines: string[];
+        selfAssignableRoleIds: Types.ObjectId[];
+        landingChannelId?: Types.ObjectId | null;
+        welcomeChannelIds: Types.ObjectId[];
+    } {
+        return {
+            enabled: server?.onboarding?.enabled ?? false,
+            guidelines: server?.onboarding?.guidelines ?? [],
+            selfAssignableRoleIds:
+                server?.onboarding?.selfAssignableRoleIds ?? [],
+            landingChannelId: server?.onboarding?.landingChannelId ?? null,
+            welcomeChannelIds: server?.onboarding?.welcomeChannelIds ?? [],
+        };
+    }
+
+    private broadcastMemberUpdateToUser(
+        serverId: string,
+        userId: string,
+        member: IServerMember,
+    ): void {
+        this.wsServer.broadcastToUser(userId, {
+            type: 'member_updated',
+            payload: {
+                serverId,
+                userId,
+                member,
+            },
+        });
+    }
+
+    @Get('onboarding')
+    @NoBot()
+    @ApiOperation({ summary: 'Get current member onboarding state' })
+    @ApiResponse({ status: 200, description: 'Onboarding state retrieved' })
+    public async getOnboarding(
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
+    ): Promise<{
+        onboarding: ReturnType<ServerMemberController['getOnboardingConfig']>;
+        member: IServerMember;
+    }> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const member = await this.requireMember(serverOid, userOid);
+        const server = await this.serverRepo.findById(serverOid);
+        if (server === null) {
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        return {
+            onboarding: this.getOnboardingConfig(server),
+            member,
+        };
+    }
+
+    @Post('onboarding/accept-rules')
+    @NoBot()
+    @ApiOperation({ summary: 'Accept server onboarding rules' })
+    @ApiResponse({ status: 200, description: 'Rules accepted' })
+    public async acceptOnboardingRules(
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
+    ): Promise<IServerMember> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        await this.requireMember(serverOid, userOid);
+
+        const member = await this.serverMemberRepo.update(serverOid, userOid, {
+            rulesAcceptedAt: new Date(),
+        });
+        if (member === null) {
+            throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
+        }
+        this.broadcastMemberUpdateToUser(serverId, userId, member);
+        return member;
+    }
+
+    @Patch('self-roles')
+    @NoBot()
+    @ApiOperation({ summary: 'Update current member self-assignable roles' })
+    @ApiResponse({ status: 200, description: 'Self roles updated' })
+    public async updateSelfRoles(
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
+        @Body() body: SelfRolesRequestDTO,
+    ): Promise<IServerMember> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        const member = await this.requireMember(serverOid, userOid);
+        const server = await this.serverRepo.findById(serverOid);
+        if (server === null) {
+            throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        const config = this.getOnboardingConfig(server);
+        const allowedIds = new Set(
+            config.selfAssignableRoleIds.map((id) => id.toString()),
+        );
+        const requestedIds = new Set(body.roleIds);
+        for (const roleId of requestedIds) {
+            if (!allowedIds.has(roleId)) {
+                throw new ForbiddenException(
+                    'Role is not self-assignable in this server',
+                );
+            }
+        }
+
+        const roles = await this.roleRepo.findByServerId(serverOid);
+        const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+        for (const roleId of requestedIds) {
+            const role = roleMap.get(roleId);
+            if (
+                role === undefined ||
+                role.name.trim().toLowerCase() === '@everyone' ||
+                role.managed === true
+            ) {
+                throw new ForbiddenException(
+                    'Role is not self-assignable in this server',
+                );
+            }
+        }
+
+        const preservedRoleIds = member.roles
+            .map((id) => id.toString())
+            .filter((roleId) => !allowedIds.has(roleId));
+        const nextRoleIds = [...new Set([...preservedRoleIds, ...requestedIds])]
+            .filter((roleId) => roleMap.has(roleId))
+            .map((roleId) => new Types.ObjectId(roleId));
+
+        const updatedMember = await this.serverMemberRepo.updateRoles(
+            serverOid,
+            userOid,
+            nextRoleIds,
+        );
+        if (updatedMember === null) {
+            throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
+        }
+
+        this.permissionService.invalidateCache(serverOid);
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_updated',
+            payload: {
+                serverId,
+                userId,
+                member: updatedMember,
+            },
+        });
+
+        return updatedMember;
+    }
+
+    @Patch('channel-preferences')
+    @NoBot()
+    @ApiOperation({ summary: 'Update current member channel preferences' })
+    @ApiResponse({ status: 200, description: 'Channel preferences updated' })
+    public async updateChannelPreferences(
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
+        @Body() body: ChannelPreferencesRequestDTO,
+    ): Promise<IServerMember> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        await this.requireMember(serverOid, userOid);
+
+        if (!this.channelRepo || !this.categoryRepo) {
+            throw new Error('Required repositories are not initialized');
+        }
+        const channels = await this.channelRepo.findByServerId(serverOid);
+        const categories = await this.categoryRepo.findByServerId(serverOid);
+        const channelIds = new Set(channels.map((c) => c._id.toString()));
+        const categoryIds = new Set(categories.map((c) => c._id.toString()));
+        const hiddenChannelIds = [...new Set(body.hiddenChannelIds)].map(
+            (channelId) => {
+                if (!channelIds.has(channelId)) {
+                    throw new BadRequestException(
+                        'Hidden channel is not in server',
+                    );
+                }
+                return new Types.ObjectId(channelId);
+            },
+        );
+        const hiddenCategoryIds = [...new Set(body.hiddenCategoryIds)].map(
+            (categoryId) => {
+                if (!categoryIds.has(categoryId)) {
+                    throw new BadRequestException(
+                        'Hidden category is not in server',
+                    );
+                }
+                return new Types.ObjectId(categoryId);
+            },
+        );
+
+        const member = await this.serverMemberRepo.update(serverOid, userOid, {
+            hiddenChannelIds,
+            hiddenCategoryIds,
+        });
+        if (member === null) {
+            throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
+        }
+
+        this.broadcastMemberUpdateToUser(serverId, userId, member);
+        return member;
+    }
+
+    @Post('onboarding/complete')
+    @NoBot()
+    @ApiOperation({ summary: 'Complete server onboarding' })
+    @ApiResponse({ status: 200, description: 'Onboarding completed' })
+    public async completeOnboarding(
+        @Param('serverId') serverId: string,
+        @Req() req: ExpressRequest,
+    ): Promise<IServerMember> {
+        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        await this.requireMember(serverOid, userOid);
+
+        const now = new Date();
+        const member = await this.serverMemberRepo.update(serverOid, userOid, {
+            onboardingRequired: false,
+            onboardingCompletedAt: now,
+        });
+        if (member === null) {
+            throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
+        }
+
+        this.broadcastMemberUpdateToUser(serverId, userId, member);
+        return member;
+    }
 
     @Get('members')
     @ApiOperation({ summary: 'Get all server members' })

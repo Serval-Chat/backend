@@ -183,6 +183,7 @@ export class ServerRoleController {
             permissions: filteredPermissions,
             glowEnabled:
                 body.glowEnabled !== undefined ? body.glowEnabled : true,
+            description: body.description,
         });
         this.permissionService.invalidateCache(serverOid);
 
@@ -441,6 +442,8 @@ export class ServerRoleController {
         if (body.position !== undefined) updates.position = body.position;
         if (body.glowEnabled !== undefined)
             updates.glowEnabled = body.glowEnabled;
+        if (body.description !== undefined)
+            updates.description = body.description;
 
         const updatedRole = await this.roleRepo.update(roleOid, updates);
         if (updatedRole === null) {

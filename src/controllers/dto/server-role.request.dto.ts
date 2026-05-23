@@ -5,6 +5,8 @@ import {
     IsArray,
     ValidateNested,
     IsInt,
+    IsString,
+    MaxLength,
     Min,
     Max,
     ArrayMaxSize,
@@ -73,6 +75,15 @@ export class CreateRoleRequestDTO {
     @IsOptional()
     @IsBoolean()
     public glowEnabled?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Short description shown during onboarding role selection',
+        maxLength: 200,
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
+    public description?: string;
 }
 
 export class RolePositionDTO {
@@ -154,4 +165,13 @@ export class UpdateRoleRequestDTO {
     @IsOptional()
     @IsBoolean()
     public glowEnabled?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Short description shown during onboarding role selection',
+        maxLength: 200,
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
+    public description?: string;
 }

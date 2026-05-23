@@ -25,6 +25,7 @@ export interface IRole {
     separateFromOtherRoles?: boolean;
     position: number;
     permissions: IRolePermissions;
+    description?: string;
     icon?: string;
     managed: boolean;
     managedBotId?: Types.ObjectId;
@@ -51,6 +52,7 @@ export interface IRoleRepository {
         separateFromOtherRoles?: boolean;
         position?: number;
         permissions?: Partial<IRolePermissions>;
+        description?: string;
         icon?: string;
         managed?: boolean;
         managedBotId?: Types.ObjectId;

@@ -24,6 +24,13 @@ export interface IServer {
     verificationOverride?: 'verified' | 'unverified' | null;
     verificationRequested?: boolean;
     discoveryEnabled?: boolean;
+    onboarding?: {
+        enabled: boolean;
+        guidelines: string[];
+        selfAssignableRoleIds: Types.ObjectId[];
+        landingChannelId?: Types.ObjectId | null;
+        welcomeChannelIds: Types.ObjectId[];
+    };
     createdAt?: Date;
     updatedAt?: Date;
     deletedAt?: Date;

@@ -83,6 +83,61 @@ export class UpdateServerRequestDTO {
     public tags?: string[];
 }
 
+export class ServerOnboardingSettingsRequestDTO {
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public enabled?: boolean;
+
+    @ApiPropertyOptional({ type: [String] })
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(20, { message: 'Maximum 20 guidelines allowed' })
+    @IsString({ each: true })
+    @MaxLength(500, {
+        each: true,
+        message: 'Each guideline must be 500 characters or less',
+    })
+    public guidelines?: string[];
+
+    @ApiPropertyOptional({ type: [String] })
+    @IsOptional()
+    @IsArray()
+    @IsMongoId({ each: true })
+    public selfAssignableRoleIds?: string[];
+
+    @ApiPropertyOptional({ nullable: true, type: String })
+    @IsOptional()
+    @IsMongoId()
+    public landingChannelId?: string | null;
+
+    @ApiPropertyOptional({ type: [String] })
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(8)
+    @IsMongoId({ each: true })
+    public welcomeChannelIds?: string[];
+}
+
+export class SelfRolesRequestDTO {
+    @ApiPropertyOptional({ type: [String] })
+    @IsArray()
+    @IsMongoId({ each: true })
+    public roleIds!: string[];
+}
+
+export class ChannelPreferencesRequestDTO {
+    @ApiPropertyOptional({ type: [String] })
+    @IsArray()
+    @IsMongoId({ each: true })
+    public hiddenChannelIds!: string[];
+
+    @ApiPropertyOptional({ type: [String] })
+    @IsArray()
+    @IsMongoId({ each: true })
+    public hiddenCategoryIds!: string[];
+}
+
 export class SetDefaultRoleRequestDTO {
     @ApiProperty({ nullable: true, type: String })
     @IsOptional()

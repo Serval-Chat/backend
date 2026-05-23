@@ -1,3 +1,4 @@
+import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { Types } from 'mongoose';
 import { ServerMemberController } from '../ServerMemberController';
 import type { Request } from 'express';
@@ -13,6 +14,9 @@ import type { WsServer } from '@/ws/server';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import type { PingService } from '@/services/PingService';
+import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
+import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
+import { IsHumanGuard } from '@/modules/auth/bot.guard';
 
 jest.mock('@/models/Bot', () => ({
     Bot: {
@@ -39,6 +43,8 @@ describe('ServerMemberController', () => {
         findByServerAndUser: jest.fn(),
         remove: jest.fn(),
         removeRole: jest.fn(),
+        update: jest.fn(),
+        updateRoles: jest.fn(),
     };
     const mockServerRepo = {
         findById: jest.fn(),
@@ -48,6 +54,7 @@ describe('ServerMemberController', () => {
     };
     const mockRoleRepo = {
         findById: jest.fn(),
+        findByServerId: jest.fn(),
     };
     const mockServerBanRepo = {
         create: jest.fn(),
@@ -63,6 +70,7 @@ describe('ServerMemberController', () => {
     };
     const mockWsServer = {
         broadcastToServer: jest.fn(),
+        broadcastToUser: jest.fn(),
     };
     const mockServerAuditLogService = {
         createAndBroadcast: jest.fn(),
@@ -73,6 +81,12 @@ describe('ServerMemberController', () => {
     };
     const mockPingService = {
         clearServerPings: jest.fn(),
+    };
+    const mockChannelRepo = {
+        findByServerId: jest.fn(),
+    };
+    const mockCategoryRepo = {
+        findByServerId: jest.fn(),
     };
 
     let controller: ServerMemberController;
@@ -97,7 +111,189 @@ describe('ServerMemberController', () => {
             mockServerAuditLogService as unknown as IServerAuditLogService,
             mockBlockRepo as unknown as IBlockRepository,
             mockPingService as unknown as PingService,
+            mockChannelRepo as unknown as IChannelRepository,
+            mockCategoryRepo as unknown as ICategoryRepository,
         );
+    });
+
+    describe('onboarding bot guards', () => {
+        it('marks member-facing onboarding endpoints as human-only', () => {
+            const guardedMethods: Array<keyof ServerMemberController> = [
+                'getOnboarding',
+                'acceptOnboardingRules',
+                'updateSelfRoles',
+                'updateChannelPreferences',
+                'completeOnboarding',
+            ];
+
+            for (const methodName of guardedMethods) {
+                const guards =
+                    Reflect.getMetadata(
+                        GUARDS_METADATA,
+                        ServerMemberController.prototype[methodName],
+                    ) ?? [];
+                expect(guards).toContain(IsHumanGuard);
+            }
+        });
+    });
+
+    describe('onboarding member state', () => {
+        const req = {
+            user: { id: meIdStr } as JWTPayload,
+        } as unknown as Request;
+
+        it('broadcasts rules acceptance only to the current user', async () => {
+            const updatedMember = {
+                userId: meId,
+                serverId,
+                roles: [],
+                rulesAcceptedAt: new Date(),
+            };
+
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockServerMemberRepo.update.mockResolvedValueOnce(updatedMember);
+
+            const result = await controller.acceptOnboardingRules(
+                serverIdStr,
+                req,
+            );
+
+            expect(mockServerMemberRepo.update).toHaveBeenCalledWith(
+                serverId,
+                meId,
+                { rulesAcceptedAt: expect.any(Date) },
+            );
+            expect(mockWsServer.broadcastToUser).toHaveBeenCalledWith(meIdStr, {
+                type: 'member_updated',
+                payload: {
+                    serverId: serverIdStr,
+                    userId: meIdStr,
+                    member: updatedMember,
+                },
+            });
+            expect(mockWsServer.broadcastToServer).not.toHaveBeenCalled();
+            expect(result).toBe(updatedMember);
+        });
+
+        it('validates and broadcasts channel preferences only to the current user', async () => {
+            const channelId = new Types.ObjectId();
+            const categoryId = new Types.ObjectId();
+            const updatedMember = {
+                userId: meId,
+                serverId,
+                roles: [],
+                hiddenChannelIds: [channelId],
+                hiddenCategoryIds: [categoryId],
+            };
+
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockChannelRepo.findByServerId.mockResolvedValueOnce([
+                { _id: channelId, serverId },
+            ]);
+            mockCategoryRepo.findByServerId.mockResolvedValueOnce([
+                { _id: categoryId, serverId },
+            ]);
+            mockServerMemberRepo.update.mockResolvedValueOnce(updatedMember);
+
+            const result = await controller.updateChannelPreferences(
+                serverIdStr,
+                req,
+                {
+                    hiddenChannelIds: [channelId.toHexString()],
+                    hiddenCategoryIds: [categoryId.toHexString()],
+                },
+            );
+
+            expect(mockServerMemberRepo.update).toHaveBeenCalledWith(
+                serverId,
+                meId,
+                {
+                    hiddenChannelIds: [channelId],
+                    hiddenCategoryIds: [categoryId],
+                },
+            );
+            expect(mockWsServer.broadcastToUser).toHaveBeenCalledWith(meIdStr, {
+                type: 'member_updated',
+                payload: {
+                    serverId: serverIdStr,
+                    userId: meIdStr,
+                    member: updatedMember,
+                },
+            });
+            expect(mockWsServer.broadcastToServer).not.toHaveBeenCalled();
+            expect(result).toBe(updatedMember);
+        });
+
+        it('rejects channel preferences for channels outside the server', async () => {
+            const channelId = new Types.ObjectId();
+
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockChannelRepo.findByServerId.mockResolvedValueOnce([]);
+            mockCategoryRepo.findByServerId.mockResolvedValueOnce([]);
+
+            await expect(
+                controller.updateChannelPreferences(serverIdStr, req, {
+                    hiddenChannelIds: [channelId.toHexString()],
+                    hiddenCategoryIds: [],
+                }),
+            ).rejects.toThrow('Hidden channel is not in server');
+
+            expect(mockServerMemberRepo.update).not.toHaveBeenCalled();
+            expect(mockWsServer.broadcastToUser).not.toHaveBeenCalled();
+        });
+
+        it('broadcasts onboarding completion only to the current user', async () => {
+            const updatedMember = {
+                userId: meId,
+                serverId,
+                roles: [],
+                onboardingRequired: false,
+                onboardingCompletedAt: new Date(),
+            };
+
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockServerMemberRepo.update.mockResolvedValueOnce(updatedMember);
+
+            const result = await controller.completeOnboarding(
+                serverIdStr,
+                req,
+            );
+
+            expect(mockServerMemberRepo.update).toHaveBeenCalledWith(
+                serverId,
+                meId,
+                {
+                    onboardingRequired: false,
+                    onboardingCompletedAt: expect.any(Date),
+                },
+            );
+            expect(mockWsServer.broadcastToUser).toHaveBeenCalledWith(meIdStr, {
+                type: 'member_updated',
+                payload: {
+                    serverId: serverIdStr,
+                    userId: meIdStr,
+                    member: updatedMember,
+                },
+            });
+            expect(mockWsServer.broadcastToServer).not.toHaveBeenCalled();
+            expect(result).toBe(updatedMember);
+        });
     });
 
     describe('leaveServer', () => {
@@ -121,6 +317,92 @@ describe('ServerMemberController', () => {
                 meId,
                 serverId,
             );
+        });
+    });
+
+    describe('updateSelfRoles', () => {
+        const req = {
+            user: { id: meIdStr } as JWTPayload,
+        } as unknown as Request;
+
+        it('rejects roles outside the server allowlist', async () => {
+            const allowedRoleId = new Types.ObjectId();
+            const blockedRoleId = new Types.ObjectId();
+
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                roles: [],
+            });
+            mockServerRepo.findById.mockResolvedValueOnce({
+                _id: serverId,
+                onboarding: {
+                    enabled: true,
+                    guidelines: [],
+                    selfAssignableRoleIds: [allowedRoleId],
+                    landingChannelId: null,
+                    welcomeChannelIds: [],
+                },
+            });
+
+            await expect(
+                controller.updateSelfRoles(serverIdStr, req, {
+                    roleIds: [blockedRoleId.toHexString()],
+                }),
+            ).rejects.toThrow('Role is not self-assignable in this server');
+
+            expect(mockServerMemberRepo.updateRoles).not.toHaveBeenCalled();
+        });
+
+        it('preserves roles outside the allowlist when saving self roles', async () => {
+            const selfRoleId = new Types.ObjectId();
+            const keptRoleId = new Types.ObjectId();
+            const updatedMember = {
+                userId: meId,
+                roles: [keptRoleId, selfRoleId],
+            };
+
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                roles: [keptRoleId],
+            });
+            mockServerRepo.findById.mockResolvedValueOnce({
+                _id: serverId,
+                onboarding: {
+                    enabled: true,
+                    guidelines: [],
+                    selfAssignableRoleIds: [selfRoleId],
+                    landingChannelId: null,
+                    welcomeChannelIds: [],
+                },
+            });
+            mockRoleRepo.findByServerId.mockResolvedValueOnce([
+                {
+                    _id: selfRoleId,
+                    serverId,
+                    name: 'News',
+                    managed: false,
+                },
+                {
+                    _id: keptRoleId,
+                    serverId,
+                    name: 'Moderator',
+                    managed: false,
+                },
+            ]);
+            mockServerMemberRepo.updateRoles.mockResolvedValueOnce(
+                updatedMember,
+            );
+
+            const result = await controller.updateSelfRoles(serverIdStr, req, {
+                roleIds: [selfRoleId.toHexString()],
+            });
+
+            expect(mockServerMemberRepo.updateRoles).toHaveBeenCalledWith(
+                serverId,
+                meId,
+                expect.arrayContaining([keptRoleId, selfRoleId]),
+            );
+            expect(result).toBe(updatedMember);
         });
     });
 

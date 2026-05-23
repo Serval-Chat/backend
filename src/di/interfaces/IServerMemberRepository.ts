@@ -13,6 +13,11 @@ export interface IServerMember {
     // Timestamp of when the user joined the server
     joinedAt?: Date;
     communicationDisabledUntil?: Date;
+    onboardingRequired?: boolean;
+    rulesAcceptedAt?: Date | null;
+    onboardingCompletedAt?: Date | null;
+    hiddenChannelIds?: Types.ObjectId[];
+    hiddenCategoryIds?: Types.ObjectId[];
 }
 
 // Server Member Repository Interface
@@ -33,6 +38,7 @@ export interface IServerMemberRepository {
         serverId: Types.ObjectId;
         userId: Types.ObjectId;
         roles: Types.ObjectId[];
+        onboardingRequired?: boolean;
     }): Promise<IServerMember>;
 
     // Update member roles
@@ -40,6 +46,12 @@ export interface IServerMemberRepository {
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
         roles: Types.ObjectId[],
+    ): Promise<IServerMember | null>;
+
+    update(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        data: Partial<IServerMember>,
     ): Promise<IServerMember | null>;
 
     // Timeout (wow really?)

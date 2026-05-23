@@ -47,6 +47,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         serverId: Types.ObjectId;
         userId: Types.ObjectId;
         roles: Types.ObjectId[];
+        onboardingRequired?: boolean;
     }): Promise<IServerMember> {
         const member = new this.serverMemberModel(data);
         return (await member.save()).toObject();
@@ -59,6 +60,16 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
     ): Promise<IServerMember | null> {
         return await this.serverMemberModel
             .findOneAndUpdate({ serverId, userId }, { roles }, { new: true })
+            .lean();
+    }
+
+    public async update(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        data: Partial<IServerMember>,
+    ): Promise<IServerMember | null> {
+        return await this.serverMemberModel
+            .findOneAndUpdate({ serverId, userId }, data, { new: true })
             .lean();
     }
 

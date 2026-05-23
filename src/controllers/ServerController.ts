@@ -54,6 +54,7 @@ import {
     CreateServerRequestDTO,
     UpdateServerRequestDTO,
     SetDefaultRoleRequestDTO,
+    ServerOnboardingSettingsRequestDTO,
 } from './dto/server.request.dto';
 import { UpdateDefaultRoleRequestDTO } from './dto/server-default-role.request.dto';
 import {
@@ -126,6 +127,105 @@ export class ServerController {
         if (fs.existsSync(this.UPLOADS_DIR) === false) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
         }
+    }
+
+    private getOnboardingConfig(
+        server: IServer,
+    ): NonNullable<IServer['onboarding']> {
+        return {
+            enabled: server.onboarding?.enabled ?? false,
+            guidelines: server.onboarding?.guidelines ?? [],
+            selfAssignableRoleIds:
+                server.onboarding?.selfAssignableRoleIds ?? [],
+            landingChannelId: server.onboarding?.landingChannelId ?? null,
+            welcomeChannelIds: server.onboarding?.welcomeChannelIds ?? [],
+        };
+    }
+
+    private async validateOnboardingSettings(
+        serverId: string,
+        body: ServerOnboardingSettingsRequestDTO,
+        current: NonNullable<IServer['onboarding']>,
+    ): Promise<NonNullable<IServer['onboarding']>> {
+        const serverOid = new Types.ObjectId(serverId);
+        const next: NonNullable<IServer['onboarding']> = {
+            enabled: body.enabled ?? current.enabled,
+            guidelines:
+                body.guidelines !== undefined
+                    ? body.guidelines.map((r) => r.trim()).filter(Boolean)
+                    : current.guidelines,
+            selfAssignableRoleIds: current.selfAssignableRoleIds,
+            landingChannelId: current.landingChannelId ?? null,
+            welcomeChannelIds: current.welcomeChannelIds,
+        };
+
+        if (body.selfAssignableRoleIds !== undefined) {
+            const uniqueRoleIds = [...new Set(body.selfAssignableRoleIds)];
+            const roles = await this.roleRepo.findByServerId(serverOid);
+            const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+            next.selfAssignableRoleIds = uniqueRoleIds.map((roleId) => {
+                const role = roleMap.get(roleId);
+                if (role === undefined) {
+                    throw new ApiError(400, ErrorMessages.ROLE.NOT_IN_SERVER);
+                }
+                if (role.name.trim().toLowerCase() === '@everyone') {
+                    throw new ApiError(
+                        400,
+                        'The @everyone role cannot be self-assignable',
+                    );
+                }
+                if (role.managed === true) {
+                    throw new ApiError(
+                        400,
+                        'Managed roles cannot be self-assignable',
+                    );
+                }
+                return new Types.ObjectId(roleId);
+            });
+        }
+
+        if (body.landingChannelId !== undefined) {
+            if (
+                body.landingChannelId === null ||
+                body.landingChannelId === ''
+            ) {
+                next.landingChannelId = null;
+            } else {
+                const channel = await this.channelRepo.findByIdAndServer(
+                    new Types.ObjectId(body.landingChannelId),
+                    serverOid,
+                );
+                if (channel === null) {
+                    throw new ApiError(400, 'Landing channel is not in server');
+                }
+                if (channel.type === 'link') {
+                    throw new ApiError(
+                        400,
+                        'Landing channel cannot be a link channel',
+                    );
+                }
+                next.landingChannelId = new Types.ObjectId(
+                    body.landingChannelId,
+                );
+            }
+        }
+
+        if (body.welcomeChannelIds !== undefined) {
+            if (body.welcomeChannelIds.length > 8) {
+                throw new ApiError(400, 'Welcome channels cannot exceed 8');
+            }
+            const uniqueChannelIds = [...new Set(body.welcomeChannelIds)];
+            const channels = await this.channelRepo.findByServerId(serverOid);
+            const channelIds = new Set(channels.map((c) => c._id.toString()));
+            next.welcomeChannelIds = uniqueChannelIds.map((channelId) => {
+                if (!channelIds.has(channelId)) {
+                    throw new ApiError(400, 'Welcome channel is not in server');
+                }
+                return new Types.ObjectId(channelId);
+            });
+        }
+
+        return next;
     }
 
     @Get()
@@ -386,6 +486,99 @@ export class ServerController {
         await this.pingService.clearServerPings(userOid, serverOid);
 
         return { message: 'Server marked as read' };
+    }
+
+    @Get(':serverId/onboarding-settings')
+    @NoBot()
+    @ApiOperation({ summary: 'Get server onboarding settings' })
+    @ApiResponse({ status: 200, description: 'Onboarding settings retrieved' })
+    public async getOnboardingSettings(
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
+    ): Promise<NonNullable<IServer['onboarding']>> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        if (
+            (await this.permissionService.hasPermission(
+                serverOid,
+                userOid,
+                'manageServer',
+            )) !== true
+        ) {
+            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
+        }
+
+        const server = await this.serverRepo.findById(serverOid);
+        if (server === null) {
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        return this.getOnboardingConfig(server);
+    }
+
+    @Patch(':serverId/onboarding-settings')
+    @NoBot()
+    @ApiOperation({ summary: 'Update server onboarding settings' })
+    @ApiResponse({ status: 200, description: 'Onboarding settings updated' })
+    public async updateOnboardingSettings(
+        @Param('serverId') serverId: string,
+        @Req() req: Request,
+        @Body() body: ServerOnboardingSettingsRequestDTO,
+    ): Promise<NonNullable<IServer['onboarding']>> {
+        const userId = (req as Request & { user: JWTPayload }).user.id;
+        const serverOid = new Types.ObjectId(serverId);
+        const userOid = new Types.ObjectId(userId);
+        if (
+            (await this.permissionService.hasPermission(
+                serverOid,
+                userOid,
+                'manageServer',
+            )) !== true
+        ) {
+            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
+        }
+
+        const server = await this.serverRepo.findById(serverOid);
+        if (server === null) {
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        const current = this.getOnboardingConfig(server);
+        const onboarding = await this.validateOnboardingSettings(
+            serverId,
+            body,
+            current,
+        );
+
+        const updatedServer = await this.serverRepo.update(serverOid, {
+            onboarding,
+        });
+        if (updatedServer === null) {
+            throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
+        }
+
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'server_updated',
+            payload: { serverId, server: updatedServer, senderId: userId },
+        });
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: serverOid,
+            actorId: userOid,
+            actionType: 'update_server',
+            targetId: serverOid,
+            targetType: 'server',
+            changes: [
+                {
+                    field: 'onboarding',
+                    before: current,
+                    after: onboarding,
+                },
+            ],
+        });
+
+        return onboarding;
     }
 
     @Get(':serverId')
