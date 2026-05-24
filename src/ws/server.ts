@@ -114,6 +114,10 @@ export class WsServer extends EventEmitter implements IWsServer {
 
     private authTimeouts = new WeakMap<WebSocket, NodeJS.Timeout>();
     private readonly AUTH_TIMEOUT_MS = WS_AUTH_TIMEOUT;
+    private readonly AUTH_IN_PROGRESS_TIMEOUT_MS = Math.max(
+        WS_AUTH_TIMEOUT * 3,
+        30000,
+    );
     public readonly instanceId = INSTANCE_NAME;
     private heartbeatInterval?: NodeJS.Timeout;
     private isShuttingDown = false;
@@ -160,6 +164,21 @@ export class WsServer extends EventEmitter implements IWsServer {
         const id = crypto.randomUUID();
         this.socketIds.set(ws, id);
         return id;
+    }
+
+    private armAuthTimeout(ws: WebSocket, timeoutMs: number): void {
+        const existingTimeout = this.authTimeouts.get(ws);
+        if (existingTimeout !== undefined) {
+            clearTimeout(existingTimeout);
+        }
+
+        const timeout = setTimeout(() => {
+            if (this.socketToUser.has(ws) === false) {
+                ws.close(4001, 'Authentication timeout');
+            }
+        }, timeoutMs);
+        timeout.unref();
+        this.authTimeouts.set(ws, timeout);
     }
 
     private publishToRedis<T extends RedisBroadcastMessage>(
@@ -317,14 +336,7 @@ export class WsServer extends EventEmitter implements IWsServer {
             const socketId = this.assignSocketId(ws);
             this.socketsById.set(socketId, ws);
 
-            // Set authentication timeout
-            const timeout = setTimeout(() => {
-                if (this.socketToUser.has(ws) === false) {
-                    logger.warn('[WsServer] Connection authentication timeout');
-                    ws.close(4001, 'Authentication timeout');
-                }
-            }, this.AUTH_TIMEOUT_MS);
-            this.authTimeouts.set(ws, timeout);
+            this.armAuthTimeout(ws, this.AUTH_TIMEOUT_MS);
 
             ws.on('message', (data) => {
                 void (async () => {
@@ -353,6 +365,16 @@ export class WsServer extends EventEmitter implements IWsServer {
                                 const msgType =
                                     (message.event as { type?: string }).type ??
                                     'unknown';
+
+                                if (
+                                    msgType === 'authenticate' &&
+                                    this.socketToUser.has(ws) === false
+                                ) {
+                                    this.armAuthTimeout(
+                                        ws,
+                                        this.AUTH_IN_PROGRESS_TIMEOUT_MS,
+                                    );
+                                }
 
                                 wsMsgTotalCounter.inc({ type: msgType });
                                 wsMsgSizeBytesHistogram.observe(
