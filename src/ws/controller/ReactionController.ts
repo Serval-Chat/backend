@@ -158,6 +158,7 @@ export class ReactionController {
                         sender: authenticatedUser.username,
                         message: {
                             messageId: messageId,
+                            _id: messageId,
                             senderId: authorId,
                             senderUsername: author.username ?? 'Unknown User',
                             receiverId: message.receiverId.toString(),
@@ -169,7 +170,16 @@ export class ReactionController {
                             ).toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited ?? false,
+                            isPinned: false,
+                            isSticky: false,
+                            isWebhook: false,
+                            embeds: message.embeds || [],
                             attachments: message.attachments || [],
+                            reactions: [],
+                            interaction: null,
+                            stickerId: message.stickerId?.toString() ?? null,
+                            poll: message.poll ?? null,
+                            senderIsBot: false,
                         },
                     };
 
@@ -278,9 +288,11 @@ export class ReactionController {
                         channelId,
                         message: {
                             messageId: messageId,
+                            _id: messageId,
                             serverId,
                             channelId,
                             senderId: authorId,
+                            senderIsBot: false,
                             senderUsername: author.username ?? 'Unknown User',
                             text: message.text,
                             createdAt: message.createdAt.toISOString(),
@@ -289,7 +301,12 @@ export class ReactionController {
                             isPinned: message.isPinned ?? false,
                             isSticky: message.isSticky ?? false,
                             isWebhook: message.isWebhook ?? false,
+                            embeds: message.embeds || [],
                             attachments: message.attachments || [],
+                            reactions: [],
+                            interaction: message.interaction ?? null,
+                            stickerId: message.stickerId?.toString() ?? null,
+                            poll: message.poll ?? null,
                         },
                     };
 

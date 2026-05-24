@@ -394,6 +394,7 @@ export class ServerMessageController {
             type: 'message_server',
             payload: {
                 messageId: message._id.toString(),
+                _id: message._id.toString(),
                 serverId: serverId,
                 channelId: channelId,
                 senderId: userId,
@@ -416,13 +417,14 @@ export class ServerMessageController {
                 webhookAvatarUrl: message.webhookAvatarUrl,
                 embeds: message.embeds || [],
                 attachments: message.attachments || [],
+                reactions: [],
                 interaction:
                     message.interaction?.command !== undefined &&
                     message.interaction.command !== ''
                         ? message.interaction
-                        : undefined,
-                stickerId: message.stickerId?.toString(),
-                poll: message.poll,
+                        : null,
+                stickerId: message.stickerId?.toString() ?? null,
+                poll: message.poll ?? null,
                 noEmbeds: message.noEmbeds,
             },
         };

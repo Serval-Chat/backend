@@ -176,6 +176,7 @@ export class ChatController {
 
         const broadcastPayload: IMessageDmEvent['payload'] = {
             messageId: created._id.toString(),
+            _id: created._id.toString(),
             senderId,
             senderUsername: authenticatedUser.username,
             receiverId,
@@ -193,9 +194,16 @@ export class ChatController {
                   }
                 : undefined,
             isEdited: false,
+            isPinned: false,
+            isSticky: false,
+            isWebhook: false,
+            embeds: created.embeds || [],
             attachments: created.attachments || [],
-            stickerId: created.stickerId?.toString(),
-            poll: created.poll,
+            reactions: [],
+            interaction: null,
+            senderIsBot: authenticatedUser.isBot ?? false,
+            stickerId: created.stickerId?.toString() ?? null,
+            poll: created.poll ?? null,
             noEmbeds: created.noEmbeds,
         };
 
@@ -246,13 +254,23 @@ export class ChatController {
 
         return {
             messageId: created._id.toString(),
+            _id: created._id.toString(),
             senderId,
+            senderUsername: authenticatedUser.username,
             receiverId,
             text: created.text,
             createdAt:
                 created.createdAt?.toISOString() ?? new Date().toISOString(),
             replyToId: created.replyToId?.toString(),
             attachments: created.attachments || [],
+            embeds: created.embeds || [],
+            reactions: [],
+            interaction: null,
+            isEdited: false,
+            isPinned: false,
+            isSticky: false,
+            isWebhook: false,
+            senderIsBot: authenticatedUser.isBot ?? false,
             repliedTo: repliedToMessage
                 ? {
                       messageId: repliedToMessage._id.toString(),
@@ -260,8 +278,8 @@ export class ChatController {
                       text: repliedToMessage.text,
                   }
                 : undefined,
-            stickerId: created.stickerId?.toString(),
-            poll: created.poll,
+            stickerId: created.stickerId?.toString() ?? null,
+            poll: created.poll ?? null,
         };
     }
 

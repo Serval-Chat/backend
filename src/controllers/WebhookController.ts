@@ -478,6 +478,7 @@ export class WebhookController {
             type: 'message_server',
             payload: {
                 messageId: message._id.toString(),
+                _id: message._id.toString(),
                 serverId: webhook.serverId.toString(),
                 channelId: webhook.channelId.toString(),
                 senderId: webhookSystemUserId.toHexString(),
@@ -494,7 +495,12 @@ export class WebhookController {
                 isWebhook: true,
                 webhookUsername,
                 webhookAvatarUrl: webhookAvatarUrl ?? undefined,
-                embeds,
+                embeds: embeds ?? [],
+                attachments: message.attachments || [],
+                reactions: [],
+                interaction: null,
+                stickerId: message.stickerId?.toString() ?? null,
+                poll: message.poll ?? null,
             },
         };
         this.wsServer.broadcastToChannel(

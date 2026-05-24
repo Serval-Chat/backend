@@ -4,6 +4,7 @@ import type { InteractionValue } from '@/types/interactions';
 import type { Permissions } from '@/permissions/types';
 import type { IPoll } from '@/models/Message';
 import type { IMessageAttachment } from '@/models/Attachment';
+import type { ReactionData } from '@/di/interfaces/IReactionRepository';
 
 // ============================================================================
 // Direct Message Events
@@ -44,25 +45,36 @@ export interface IMessageDmSentEvent
         'message_dm_sent',
         {
             messageId: string;
+            _id: string;
             senderId: string;
+            senderUsername: string;
             receiverId: string;
             text: string;
             createdAt: string; // ISO 8601 timestamp
             replyToId?: string;
+            isEdited: false;
+            isPinned: false;
+            isSticky: false;
+            isWebhook: false;
             repliedTo?: {
                 messageId: string;
                 senderId: string;
                 text: string;
             };
-            attachments?: IMessageAttachment[];
-            stickerId?: string;
-            poll?: IPoll;
+            embeds: IEmbed[];
+            attachments: IMessageAttachment[];
+            reactions: [];
+            interaction: null;
+            senderIsBot: boolean;
+            stickerId: string | null;
+            poll: IPoll | null;
             noEmbeds?: boolean;
         }
     > {}
 
 export interface IMessageDm {
     messageId: string;
+    _id: string;
     senderId: string;
     senderUsername: string;
     receiverId: string;
@@ -77,9 +89,16 @@ export interface IMessageDm {
         text: string;
     };
     isEdited: boolean;
-    stickerId?: string;
-    poll?: IPoll;
-    attachments?: IMessageAttachment[];
+    isPinned: false;
+    isSticky: false;
+    isWebhook: false;
+    stickerId: string | null;
+    poll: IPoll | null;
+    embeds: IEmbed[];
+    attachments: IMessageAttachment[];
+    reactions: [];
+    interaction: null;
+    senderIsBot: boolean;
     noEmbeds?: boolean;
 }
 
@@ -334,17 +353,26 @@ export interface IMessageServerSentEvent
         'message_server_sent',
         {
             messageId: string;
+            _id: string;
             serverId: string;
             channelId: string;
             senderId: string;
+            senderUsername: string;
             text: string;
             createdAt: string;
             replyToId?: string;
-            embeds?: IEmbed[];
-            attachments?: IMessageAttachment[];
+            isEdited: false;
+            isPinned: false;
+            isSticky: false;
+            isWebhook: false;
+            embeds: IEmbed[];
+            attachments: IMessageAttachment[];
+            reactions: [];
+            interaction: null;
             slowModeNextMessageAllowedAt?: string | null;
-            stickerId?: string;
-            poll?: IPoll;
+            stickerId: string | null;
+            poll: IPoll | null;
+            senderIsBot: boolean;
             noEmbeds?: boolean;
         }
     > {}
@@ -370,18 +398,19 @@ export interface IMessageServer {
     isWebhook: boolean;
     webhookUsername?: string;
     webhookAvatarUrl?: string;
-    embeds?: IEmbed[];
-    attachments?: IMessageAttachment[];
-    interaction?: {
+    embeds: IEmbed[];
+    attachments: IMessageAttachment[];
+    reactions: ReactionData[];
+    interaction: {
         command: string;
         options: { name: string; value: InteractionValue }[];
-        user?: { id: string; username: string };
-    };
-    stickerId?: string;
-    poll?: IPoll;
-    _id?: string; // Optional internal ID for broadcasting consistency
+        user: { id: string; username: string };
+    } | null;
+    stickerId: string | null;
+    poll: IPoll | null;
+    _id: string;
     noEmbeds?: boolean;
-    senderIsBot?: boolean;
+    senderIsBot: boolean;
 }
 
 /**

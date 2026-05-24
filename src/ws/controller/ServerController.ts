@@ -814,9 +814,11 @@ export class ServerController {
 
         const broadcastPayload: IMessageServerEvent['payload'] = {
             messageId: created._id.toString(),
+            _id: created._id.toString(),
             serverId,
             channelId,
             senderId: userId,
+            senderIsBot: authenticatedUser.isBot ?? false,
             senderUsername: authenticatedUser.username,
             text: created.text,
             createdAt: created.createdAt.toISOString(),
@@ -826,9 +828,12 @@ export class ServerController {
             isPinned: false,
             isSticky: false,
             isWebhook: false,
+            embeds: created.embeds || [],
             attachments: created.attachments || [],
-            stickerId: created.stickerId?.toString(),
-            poll: created.poll,
+            reactions: [],
+            interaction: null,
+            stickerId: created.stickerId?.toString() ?? null,
+            poll: created.poll ?? null,
             noEmbeds: created.noEmbeds,
         };
 
@@ -952,16 +957,26 @@ export class ServerController {
 
         return {
             messageId: created._id.toString(),
+            _id: created._id.toString(),
             serverId,
             channelId,
             senderId: userId,
+            senderUsername: authenticatedUser.username,
             text: created.text,
             createdAt: created.createdAt.toISOString(),
             replyToId: created.replyToId?.toString(),
+            isEdited: false,
+            isPinned: false,
+            isSticky: false,
+            isWebhook: false,
             slowModeNextMessageAllowedAt,
+            embeds: created.embeds || [],
             attachments: created.attachments || [],
-            stickerId: created.stickerId?.toString(),
-            poll: created.poll,
+            reactions: [],
+            interaction: null,
+            stickerId: created.stickerId?.toString() ?? null,
+            poll: created.poll ?? null,
+            senderIsBot: authenticatedUser.isBot ?? false,
             noEmbeds: created.noEmbeds,
         };
     }

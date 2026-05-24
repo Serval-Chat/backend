@@ -350,9 +350,11 @@ export class InteractionController {
                 type: 'message_server',
                 payload: {
                     messageId: invocationId,
+                    _id: invocationId,
                     serverId,
                     channelId,
                     senderId: req.user.id,
+                    senderIsBot: req.user.isBot ?? false,
                     senderUsername: req.user.username,
                     text: '',
                     createdAt: serverMessage.createdAt.toISOString(),
@@ -360,11 +362,16 @@ export class InteractionController {
                     isPinned: false,
                     isSticky: false,
                     isWebhook: false,
+                    embeds: serverMessage.embeds ?? [],
+                    attachments: serverMessage.attachments ?? [],
+                    reactions: [],
                     interaction: {
                         command: resolvedCommandName,
                         options: providedOptions,
                         user: { id: req.user.id, username: req.user.username },
                     },
+                    stickerId: serverMessage.stickerId?.toString() ?? null,
+                    poll: serverMessage.poll ?? null,
                 },
             } as AnyResponseWsEvent);
         }
