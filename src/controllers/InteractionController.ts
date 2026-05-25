@@ -136,6 +136,27 @@ const SYSTEM_COMMANDS: InteractionCommand[] = [
         ],
         shouldReply: true,
     },
+    {
+        id: 'system-nick',
+        name: 'nick',
+        description: 'Set your nickname in this server',
+        options: [
+            {
+                name: 'nickname',
+                description: 'Your new nickname, or leave blank to clear',
+                type: SlashCommandOptionType.STRING,
+                required: false,
+            },
+            {
+                name: 'user',
+                description:
+                    'The username or ID of the user to change nickname for',
+                type: SlashCommandOptionType.STRING,
+                required: false,
+            },
+        ],
+        shouldReply: false,
+    },
 ];
 
 @ApiTags('Interactions')
@@ -435,7 +456,8 @@ export class InteractionController {
 
         if (
             resolvedCommandName === 'timeout' ||
-            resolvedCommandName === 'untimeout'
+            resolvedCommandName === 'untimeout' ||
+            resolvedCommandName === 'nick'
         ) {
             await this.handleSystemCommand(
                 req.user.id,
@@ -458,28 +480,65 @@ export class InteractionController {
         options: InteractionOption[],
         invocationId?: string,
     ) {
-        const canModerate = await this.permissionService.hasPermission(
-            new Types.ObjectId(serverId),
-            new Types.ObjectId(actorId),
-            'moderateMembers',
-        );
+        const userOption = options.find((o) => o.name === 'user')?.value;
+        const nicknameOption = options.find(
+            (o) => o.name === 'nickname',
+        )?.value;
 
-        if (canModerate !== true) {
-            await this.sendEphemeralResponse(
-                serverId,
-                channelId,
-                actorId,
-                'You do not have permission to use this command.',
-                invocationId,
-            );
-            return;
+        let isTargetingOther = false;
+        if (userOption !== undefined) {
+            if (
+                typeof userOption === 'object' &&
+                'id' in userOption &&
+                userOption.id !== actorId
+            ) {
+                isTargetingOther = true;
+            } else if (
+                typeof userOption === 'string' &&
+                userOption !== actorId
+            ) {
+                isTargetingOther = true;
+            }
         }
 
-        const userOption = options.find((o) => o.name === 'user')?.value;
-        if (userOption === undefined) return;
+        if (
+            command === 'timeout' ||
+            command === 'untimeout' ||
+            (command === 'nick' && isTargetingOther)
+        ) {
+            const canModerate = await this.permissionService.hasPermission(
+                new Types.ObjectId(serverId),
+                new Types.ObjectId(actorId),
+                'moderateMembers',
+            );
+
+            if (canModerate !== true) {
+                await this.sendEphemeralResponse(
+                    serverId,
+                    channelId,
+                    actorId,
+                    'You do not have permission to use this command on other users.',
+                    invocationId,
+                );
+                return;
+            }
+        }
+
+        if (
+            userOption === undefined &&
+            (command === 'timeout' || command === 'untimeout')
+        )
+            return;
 
         let targetMember: PopulatedServerMember | null = null;
-        if (typeof userOption === 'object' && 'id' in userOption) {
+        if (userOption === undefined) {
+            targetMember = (await ServerMember.findOne({
+                serverId: new Types.ObjectId(serverId),
+                userId: new Types.ObjectId(actorId),
+            }).populate<{ userId: PopulatedUser }>(
+                'userId',
+            )) as unknown as PopulatedServerMember;
+        } else if (typeof userOption === 'object' && 'id' in userOption) {
             targetMember = (await ServerMember.findOne({
                 serverId: new Types.ObjectId(serverId),
                 userId: new Types.ObjectId(userOption.id as string),
@@ -599,6 +658,64 @@ export class InteractionController {
                 `Timeout removed from **${targetMember.userId.username}**.`,
                 invocationId,
             );
+        } else if (command === 'nick') {
+            const nicknameStr =
+                typeof nicknameOption === 'string' ? nicknameOption.trim() : '';
+
+            if (nicknameStr.length > 32) {
+                await this.sendEphemeralResponse(
+                    serverId,
+                    channelId,
+                    actorId,
+                    'Nickname cannot exceed 32 characters.',
+                    invocationId,
+                );
+                return;
+            }
+
+            if (nicknameStr.length > 0) {
+                await ServerMember.updateOne(
+                    { _id: targetMember._id },
+                    { $set: { nickname: nicknameStr } },
+                );
+            } else {
+                await ServerMember.updateOne(
+                    { _id: targetMember._id },
+                    { $unset: { nickname: 1 } },
+                );
+            }
+
+            const updatedMember = await ServerMember.findById(
+                targetMember._id,
+            ).lean();
+            if (updatedMember !== null) {
+                this.wsServer.broadcastToServer(serverId, {
+                    type: 'member_updated',
+                    payload: {
+                        serverId,
+                        userId: targetUserId,
+                        member: updatedMember,
+                    },
+                });
+            }
+
+            if (nicknameStr.length > 0) {
+                await this.sendEphemeralResponse(
+                    serverId,
+                    channelId,
+                    actorId,
+                    `Nickname changed to **${nicknameStr}**.`,
+                    invocationId,
+                );
+            } else {
+                await this.sendEphemeralResponse(
+                    serverId,
+                    channelId,
+                    actorId,
+                    `Nickname cleared.`,
+                    invocationId,
+                );
+            }
         }
     }
 

@@ -106,6 +106,7 @@ export interface IServerMember extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: mongoose.Types.ObjectId;
     userId: mongoose.Types.ObjectId;
+    nickname?: string;
     roles: mongoose.Types.ObjectId[];
     joinedAt: Date;
     communicationDisabledUntil?: Date;
@@ -356,6 +357,7 @@ channelSchema.index({ serverId: 1, lastMessageAt: -1 });
 const serverMemberSchema = new Schema<IServerMember>({
     serverId: { type: Schema.Types.ObjectId, ref: 'Server', required: true },
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    nickname: { type: String, maxlength: 32, required: false },
     roles: [{ type: Schema.Types.ObjectId, ref: 'Role' }],
     joinedAt: { type: Date, default: Date.now },
     communicationDisabledUntil: { type: Date, default: null },

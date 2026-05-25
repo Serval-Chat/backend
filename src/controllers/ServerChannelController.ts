@@ -507,7 +507,12 @@ export class ServerChannelController {
             updates.icon = body.icon;
         }
 
-        if (body.emoji !== undefined) updates.emoji = body.emoji;
+        if (body.emoji !== undefined) {
+            updates.emoji = body.emoji !== '' ? body.emoji : undefined;
+            if (body.emoji === '') {
+                updates.emojiType = undefined;
+            }
+        }
         if (body.emojiType !== undefined) updates.emojiType = body.emojiType;
 
         if (body.slowMode !== undefined) updates.slowMode = body.slowMode;

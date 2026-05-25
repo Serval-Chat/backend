@@ -86,7 +86,23 @@ export class MongooseChannelRepository implements IChannelRepository {
         id: Types.ObjectId,
         data: Partial<IChannel>,
     ): Promise<IChannel | null> {
-        const result = await Channel.findByIdAndUpdate(id, data, {
+        const $set: Record<string, unknown> = {};
+        const $unset: Record<string, ''> = {};
+
+        for (const key of Object.keys(data)) {
+            const value = (data as Record<string, unknown>)[key];
+            if (value === undefined) {
+                $unset[key] = '';
+            } else {
+                $set[key] = value;
+            }
+        }
+
+        const updateOp: Record<string, unknown> = {};
+        if (Object.keys($set).length > 0) updateOp.$set = $set;
+        if (Object.keys($unset).length > 0) updateOp.$unset = $unset;
+
+        const result = await Channel.findByIdAndUpdate(id, updateOp, {
             new: true,
         }).lean();
         return transformChannel(result);
