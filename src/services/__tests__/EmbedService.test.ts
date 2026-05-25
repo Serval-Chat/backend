@@ -279,5 +279,27 @@ describe('EmbedService', () => {
             expect(mockScraperService.scrape).not.toHaveBeenCalled();
             expect(mockServerMessageRepo.update).not.toHaveBeenCalled();
         });
+
+        it('should not scrape URLs wrapped in angle brackets', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                serverId: new Types.ObjectId(),
+                channelId: new Types.ObjectId(),
+                text: 'Hidden <https://example.com> visible https://visible.example',
+                embeds: [],
+            } as unknown as IServerMessage;
+
+            mockScraperService.scrape.mockResolvedValue({
+                ...mockFetchResult,
+                url: 'https://visible.example/',
+            });
+
+            await service.processServerMessage(message);
+
+            expect(mockScraperService.scrape).toHaveBeenCalledTimes(1);
+            expect(mockScraperService.scrape).toHaveBeenCalledWith(
+                'https://visible.example',
+            );
+        });
     });
 });

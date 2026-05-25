@@ -20,7 +20,8 @@ import type { IRedisService } from '@/di/interfaces/IRedisService';
 @injectable()
 export class EmbedService {
     private readonly logger = new Logger(EmbedService.name);
-    private readonly urlRegex = /(?<!\[%file%\]\()https?:\/\/[^\s\)]+/g;
+    private readonly urlRegex =
+        /(?<!\[%file%\]\()(?<!<)https?:\/\/[^\s\)>]+(?!>)/g;
 
     public constructor(
         @Inject(TYPES.ScraperService)
