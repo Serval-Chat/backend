@@ -295,6 +295,23 @@ export class PermissionService {
         );
     }
 
+    public async hasCategoryPermissions(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        categoryIds: Types.ObjectId[],
+        permission: PermissionKey,
+    ): Promise<Map<string, boolean>> {
+        const resolver = await this.getResolver(serverId);
+        if (!resolver) {
+            return new Map(categoryIds.map((id) => [id.toString(), false]));
+        }
+        return resolver.canUserDoInCategoriesMultiple(
+            userId.toString(),
+            categoryIds.map((id) => id.toString()),
+            permission,
+        );
+    }
+
     private async getResolver(
         serverId: Types.ObjectId,
     ): Promise<PermissionResolver | null> {

@@ -262,6 +262,60 @@ export class PermissionResolver {
         return results;
     }
 
+    public canUserDoInCategory(
+        userId: string,
+        categoryId: string,
+        permission: PermissionKey,
+    ): boolean {
+        const category = this.categoryById.get(categoryId);
+        if (!category) return false;
+
+        // 1) Owner
+        if (userId === this.data.ownerId.toString()) return true;
+
+        const member = this.memberByUserId.get(userId);
+        if (!member) return false;
+
+        const rolesAsc = this.getMemberRolesByAscPosition(member);
+        const rolesAscForOverrides =
+            this.everyoneRoleId !== undefined && this.everyoneRoleId !== ''
+                ? this.appendEveryoneRole(rolesAsc)
+                : rolesAsc;
+
+        // 2) Administrator bypass
+        if (this.hasAdministrator(rolesAscForOverrides)) return true;
+
+        // 3) Category overrides
+        const categoryValue = applyOverridesForRoles(
+            rolesAscForOverrides,
+            category.overrides,
+            permission,
+        );
+        if (categoryValue !== undefined) return categoryValue;
+
+        // 4) Role permissions (merged)
+        const merged = mergeHighestRolePermission(
+            rolesAscForOverrides,
+            permission,
+        );
+        return merged ?? getPermissionDefault(permission);
+    }
+
+    public canUserDoInCategoriesMultiple(
+        userId: string,
+        categoryIds: string[],
+        permission: PermissionKey,
+    ): Map<string, boolean> {
+        const results = new Map<string, boolean>();
+        for (const categoryId of categoryIds) {
+            results.set(
+                categoryId,
+                this.canUserDoInCategory(userId, categoryId, permission),
+            );
+        }
+        return results;
+    }
+
     public getHighestRolePosition(userId: string): number {
         if (userId === this.data.ownerId.toString())
             return Number.MAX_SAFE_INTEGER;

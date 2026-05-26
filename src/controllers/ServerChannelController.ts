@@ -130,11 +130,30 @@ export class ServerChannelController {
                 channelIds as Types.ObjectId[],
                 'viewChannels',
             );
+        const categoryIds = [
+            ...new Map(
+                channels
+                    .map((c) => c.categoryId)
+                    .filter((id): id is Types.ObjectId => id != null)
+                    .map((id) => [id.toString(), id] as const),
+            ).values(),
+        ];
+        const categoryPermissionMap =
+            await this.permissionService.hasCategoryPermissions(
+                serverOid,
+                userOid,
+                categoryIds,
+                'viewCategories',
+            );
 
         const visibleChannels: IChannel[] = [];
         for (const c of channels) {
             const canView = permissionMap.get(c._id.toString());
-            if (canView === true) {
+            const categoryId = c.categoryId?.toString();
+            const canViewCategory =
+                categoryId === undefined ||
+                categoryPermissionMap.get(categoryId) === true;
+            if (canView === true && canViewCategory) {
                 visibleChannels.push(c);
             }
         }
@@ -227,7 +246,19 @@ export class ServerChannelController {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        return await this.categoryRepo.findByServerId(serverOid);
+        const categories = await this.categoryRepo.findByServerId(serverOid);
+        const categoryIds = categories.map((c) => c._id);
+        const permissionMap =
+            await this.permissionService.hasCategoryPermissions(
+                serverOid,
+                userOid,
+                categoryIds as Types.ObjectId[],
+                'viewCategories',
+            );
+
+        return categories.filter(
+            (category) => permissionMap.get(category._id.toString()) === true,
+        );
     }
 
     @Post('channels')

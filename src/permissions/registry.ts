@@ -7,6 +7,7 @@ export interface PermissionDefinition {
 }
 
 export const PERMISSION_REGISTRY = {
+    viewCategories: { scope: 'channel', default: true },
     viewChannels: { scope: 'channel', default: true },
     sendMessages: {
         scope: 'channel',

@@ -10,6 +10,7 @@ import type { BotPermissions } from '../src/models/Bot';
 describe('Permission registry', () => {
     it('keeps known production permission checks in the canonical registry', () => {
         expect(isPermissionKey('connect')).toBe(true);
+        expect(isPermissionKey('viewCategories')).toBe(true);
         expect(isPermissionKey('bypassSlowmode')).toBe(true);
         expect(isPermissionKey('exportChannelMessages')).toBe(true);
         expect(isPermissionKey('export_channel_messages')).toBe(false);
