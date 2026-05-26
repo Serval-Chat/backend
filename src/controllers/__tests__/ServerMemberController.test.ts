@@ -358,7 +358,13 @@ describe('ServerMemberController', () => {
             const keptRoleId = new Types.ObjectId();
             const updatedMember = {
                 userId: meId,
+                serverId,
                 roles: [keptRoleId, selfRoleId],
+                onboardingRequired: true,
+                rulesAcceptedAt: new Date(),
+                onboardingCompletedAt: new Date(),
+                hiddenChannelIds: [new Types.ObjectId()],
+                hiddenCategoryIds: [new Types.ObjectId()],
             };
 
             mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
@@ -401,6 +407,21 @@ describe('ServerMemberController', () => {
                 serverId,
                 meId,
                 expect.arrayContaining([keptRoleId, selfRoleId]),
+            );
+            expect(mockWsServer.broadcastToServer).toHaveBeenCalledWith(
+                serverIdStr,
+                {
+                    type: 'member_updated',
+                    payload: {
+                        serverId: serverIdStr,
+                        userId: meIdStr,
+                        member: {
+                            userId: meId,
+                            serverId,
+                            roles: [keptRoleId, selfRoleId],
+                        },
+                    },
+                },
             );
             expect(result).toBe(updatedMember);
         });

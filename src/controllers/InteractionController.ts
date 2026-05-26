@@ -41,6 +41,7 @@ import { CreateInteractionRequestDTO } from './dto/interaction.request.dto';
 import { InteractionOptionValue } from './dto/types.dto';
 import { SlashCommandOptionType } from '@/types/interactions';
 import { assertHttpNotMuted } from '@/utils/mute';
+import { mapPublicServerMember } from '@/utils/serverMember';
 
 interface InteractionOption {
     name: string;
@@ -622,7 +623,7 @@ export class InteractionController {
                     payload: {
                         serverId,
                         userId: targetUserId,
-                        member: updatedMember,
+                        member: mapPublicServerMember(updatedMember),
                     },
                 });
             }
@@ -648,7 +649,7 @@ export class InteractionController {
                     payload: {
                         serverId,
                         userId: targetUserId,
-                        member: updatedMember,
+                        member: mapPublicServerMember(updatedMember),
                     },
                 });
             }
@@ -694,7 +695,7 @@ export class InteractionController {
                     payload: {
                         serverId,
                         userId: targetUserId,
-                        member: updatedMember,
+                        member: mapPublicServerMember(updatedMember),
                     },
                 });
             }

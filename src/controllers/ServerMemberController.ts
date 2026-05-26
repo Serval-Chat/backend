@@ -42,6 +42,7 @@ import { BlockFlags } from '@/privacy/blockFlags';
 import { PingService } from '@/services/PingService';
 
 import { mapUser } from '@/utils/user';
+import { mapPublicServerMember } from '@/utils/serverMember';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { MappedUser } from '@/utils/user';
@@ -142,6 +143,21 @@ export class ServerMemberController {
                 serverId,
                 userId,
                 member,
+            },
+        });
+    }
+
+    private broadcastPublicMemberUpdateToServer(
+        serverId: string,
+        userId: string,
+        member: IServerMember,
+    ): void {
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'member_updated',
+            payload: {
+                serverId,
+                userId,
+                member: mapPublicServerMember(member),
             },
         });
     }
@@ -258,14 +274,11 @@ export class ServerMemberController {
         }
 
         this.permissionService.invalidateCache(serverOid);
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'member_updated',
-            payload: {
-                serverId,
-                userId,
-                member: updatedMember,
-            },
-        });
+        this.broadcastPublicMemberUpdateToServer(
+            serverId,
+            userId,
+            updatedMember,
+        );
 
         return updatedMember;
     }
@@ -824,14 +837,11 @@ export class ServerMemberController {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'member_updated',
-            payload: {
-                serverId,
-                userId,
-                member: updatedMember,
-            },
-        });
+        this.broadcastPublicMemberUpdateToServer(
+            serverId,
+            userId,
+            updatedMember,
+        );
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverOid,
@@ -1019,14 +1029,11 @@ export class ServerMemberController {
 
         this.permissionService.invalidateCache(serverOid);
 
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'member_updated',
-            payload: {
-                serverId,
-                userId,
-                member: updatedMember,
-            },
-        });
+        this.broadcastPublicMemberUpdateToServer(
+            serverId,
+            userId,
+            updatedMember,
+        );
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverOid,
@@ -1132,14 +1139,11 @@ export class ServerMemberController {
 
         this.permissionService.invalidateCache(serverOid);
 
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'member_updated',
-            payload: {
-                serverId,
-                userId,
-                member: updatedMember,
-            },
-        });
+        this.broadcastPublicMemberUpdateToServer(
+            serverId,
+            userId,
+            updatedMember,
+        );
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverOid,
