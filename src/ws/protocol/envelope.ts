@@ -79,6 +79,7 @@ import type {
     IServerDeletedEvent,
     IServerIconUpdatedEvent,
     IServerBannerUpdatedEvent,
+    ICommandsUpdatedEvent,
     IMemberAddedEvent,
     IMemberRemovedEvent,
     IMemberUpdatedEvent,
@@ -180,6 +181,7 @@ export type AnyResponseWsEvent =
     | IServerDeletedEvent
     | IServerIconUpdatedEvent
     | IServerBannerUpdatedEvent
+    | ICommandsUpdatedEvent
     | IMemberAddedEvent
     | IMemberRemovedEvent
     | IMemberUpdatedEvent

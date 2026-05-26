@@ -12,9 +12,12 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { injectable } from 'inversify';
+import { Types } from 'mongoose';
 
 import { TYPES } from '@/di/types';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
+import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Bot } from '@/models/Bot';
 import type { AuthenticatedRequest } from '@/middleware/auth';
@@ -28,7 +31,29 @@ export class ApplicationController {
     public constructor(
         @Inject(TYPES.SlashCommandRepository)
         private slashCommandRepo: ISlashCommandRepository,
+        @Inject(TYPES.ServerMemberRepository)
+        private serverMemberRepo: IServerMemberRepository,
+        @Inject(TYPES.WsServer) private wsServer: IWsServer,
     ) {}
+
+    private async broadcastCommandsUpdated(bot: {
+        _id: Types.ObjectId;
+        userId: Types.ObjectId;
+    }): Promise<void> {
+        const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
+            bot.userId,
+        );
+
+        serverIds.forEach((serverId) => {
+            this.wsServer.broadcastToServer(serverId.toString(), {
+                type: 'commands_updated',
+                payload: {
+                    serverId: serverId.toString(),
+                    botId: bot._id.toString(),
+                },
+            });
+        });
+    }
 
     @UseGuards(JwtAuthGuard)
     @Get('@me/commands')
@@ -71,6 +96,8 @@ export class ApplicationController {
                 }),
             );
         }
+
+        await this.broadcastCommandsUpdated(bot);
 
         return created;
     }

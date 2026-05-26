@@ -134,6 +134,26 @@ export class BotController {
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
     ) {}
+
+    private async broadcastCommandsUpdated(bot: {
+        _id: Types.ObjectId;
+        userId: Types.ObjectId;
+    }): Promise<void> {
+        const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
+            bot.userId,
+        );
+
+        serverIds.forEach((serverId) => {
+            this.wsServer.broadcastToServer(serverId.toString(), {
+                type: 'commands_updated',
+                payload: {
+                    serverId: serverId.toString(),
+                    botId: bot._id.toString(),
+                },
+            });
+        });
+    }
+
     @Get(':clientId/public')
     @ApiOperation({ summary: 'Public bot info (no auth)' })
     public async getPublicInfo(@Param('clientId') clientId: string) {
@@ -730,6 +750,8 @@ export class BotController {
                 }),
             );
         }
+
+        await this.broadcastCommandsUpdated(bot);
 
         return created;
     }

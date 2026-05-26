@@ -62,6 +62,15 @@ export interface IServerBannerUpdatedEvent
         }
     > {}
 
+export interface ICommandsUpdatedEvent
+    extends WsEvent<
+        'commands_updated',
+        {
+            serverId: string;
+            botId: string;
+        }
+    > {}
+
 // ============================================================================
 // Member Events
 // ============================================================================
