@@ -95,3 +95,101 @@ describe('PermissionResolver - seeDeletedMessages', () => {
         expect(overrideResolver.canUserDo(userId.toString(), channelId.toString(), 'seeDeletedMessages')).toBe(true);
     });
 });
+
+describe('PermissionResolver - sendMessages visibility gates', () => {
+    const ownerId = new Types.ObjectId();
+    const userId = new Types.ObjectId();
+    const serverId = new Types.ObjectId();
+    const everyoneRoleId = new Types.ObjectId();
+    const categoryId = new Types.ObjectId();
+    const channelId = new Types.ObjectId();
+
+    const baseData: ServerData = {
+        serverId,
+        ownerId,
+        everyoneRoleId,
+        roles: [
+            {
+                id: everyoneRoleId,
+                serverId,
+                name: '@everyone',
+                position: 0,
+                permissions: {
+                    viewCategories: true,
+                    viewChannels: true,
+                    sendMessages: true,
+                },
+            },
+        ],
+        channels: [
+            {
+                id: channelId,
+                serverId,
+                categoryId,
+                overrides: new Map(),
+            },
+        ],
+        categories: [
+            {
+                id: categoryId,
+                serverId,
+                overrides: new Map(),
+            },
+        ],
+        members: [
+            {
+                id: new Types.ObjectId(),
+                serverId,
+                userId,
+                roleIds: [],
+            },
+        ],
+    };
+
+    test('denies sendMessages when channel cannot be viewed', () => {
+        const resolver = new PermissionResolver({
+            ...baseData,
+            channels: [
+                {
+                    id: channelId,
+                    serverId,
+                    categoryId,
+                    overrides: new Map([
+                        [everyoneRoleId.toString(), { viewChannels: false }],
+                    ]),
+                },
+            ],
+        });
+
+        expect(
+            resolver.canUserDo(
+                userId.toString(),
+                channelId.toString(),
+                'sendMessages',
+            ),
+        ).toBe(false);
+    });
+
+    test('denies sendMessages when parent category cannot be viewed', () => {
+        const resolver = new PermissionResolver({
+            ...baseData,
+            categories: [
+                {
+                    id: categoryId,
+                    serverId,
+                    overrides: new Map([
+                        [everyoneRoleId.toString(), { viewCategories: false }],
+                    ]),
+                },
+            ],
+        });
+
+        expect(
+            resolver.canUserDo(
+                userId.toString(),
+                channelId.toString(),
+                'sendMessages',
+            ),
+        ).toBe(false);
+    });
+});

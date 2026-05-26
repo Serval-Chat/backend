@@ -148,6 +148,17 @@ export class PermissionResolver {
         // 2) Administrator bypass
         if (this.hasAdministrator(rolesAscForOverrides)) return true;
 
+        if (
+            permission === 'sendMessages' &&
+            !this.canUserViewChannelAndCategory(
+                channel,
+                rolesAscForOverrides,
+                permission,
+            )
+        ) {
+            return false;
+        }
+
         // 3) Channel overrides
         const channelValue = applyOverridesForRoles(
             rolesAscForOverrides,
@@ -218,6 +229,18 @@ export class PermissionResolver {
 
             const channel = this.channelById.get(channelId);
             if (!channel) {
+                results.set(channelId, false);
+                continue;
+            }
+
+            if (
+                permission === 'sendMessages' &&
+                !this.canUserViewChannelAndCategory(
+                    channel,
+                    rolesAscForOverrides,
+                    permission,
+                )
+            ) {
                 results.set(channelId, false);
                 continue;
             }
@@ -348,6 +371,88 @@ export class PermissionResolver {
             if (role.permissions.administrator === true) return true;
         }
         return false;
+    }
+
+    private canUserViewChannelAndCategory(
+        channel: Channel,
+        rolesAscForOverrides: readonly ServerRole[],
+        requestedPermission: PermissionKey,
+    ): boolean {
+        const channelView = this.resolveChannelPermissionForRoles(
+            channel,
+            rolesAscForOverrides,
+            'viewChannels',
+        );
+        if (channelView === false) return false;
+
+        const categoryId = channel.categoryId?.toString();
+        if (categoryId === undefined || categoryId === '') return true;
+
+        const category = this.categoryById.get(categoryId);
+        if (!category) return true;
+
+        const categoryView = this.resolveCategoryPermissionForRoles(
+            category,
+            rolesAscForOverrides,
+            'viewCategories',
+        );
+        if (categoryView === false) {
+            this.logger?.debug(
+                `[PermissionResolver] Denying '${requestedPermission}' because parent category is not viewable.`,
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    private resolveChannelPermissionForRoles(
+        channel: Channel,
+        rolesAscForOverrides: readonly ServerRole[],
+        permission: PermissionKey,
+    ): boolean {
+        const channelValue = applyOverridesForRoles(
+            rolesAscForOverrides,
+            channel.overrides,
+            permission,
+        );
+        if (channelValue !== undefined) return channelValue;
+
+        const categoryId = channel.categoryId?.toString();
+        if (categoryId !== undefined && categoryId !== '') {
+            const category = this.categoryById.get(categoryId);
+            const categoryValue = applyOverridesForRoles(
+                rolesAscForOverrides,
+                category?.overrides,
+                permission,
+            );
+            if (categoryValue !== undefined) return categoryValue;
+        }
+
+        const merged = mergeHighestRolePermission(
+            rolesAscForOverrides,
+            permission,
+        );
+        return merged ?? getPermissionDefault(permission);
+    }
+
+    private resolveCategoryPermissionForRoles(
+        category: Category,
+        rolesAscForOverrides: readonly ServerRole[],
+        permission: PermissionKey,
+    ): boolean {
+        const categoryValue = applyOverridesForRoles(
+            rolesAscForOverrides,
+            category.overrides,
+            permission,
+        );
+        if (categoryValue !== undefined) return categoryValue;
+
+        const merged = mergeHighestRolePermission(
+            rolesAscForOverrides,
+            permission,
+        );
+        return merged ?? getPermissionDefault(permission);
     }
 
     private getEveryonePermission(
