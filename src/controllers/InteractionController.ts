@@ -19,7 +19,13 @@ import { Types } from 'mongoose';
 
 import { TYPES } from '@/di/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
-import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
+
+import type {
+    IMessageServerEvent,
+    IInteractionCreateServerEvent,
+    IInteractionResponseServerEvent,
+    IMessageServerEditedEvent,
+} from '@/ws/protocol/events/messages';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
 import type { ISlashCommand } from '@/models/SlashCommand';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -37,7 +43,10 @@ import {
 } from '@/models/Server';
 import { User } from '@/models/User';
 import { PermissionService } from '@/permissions/PermissionService';
-import { CreateInteractionRequestDTO } from './dto/interaction.request.dto';
+import {
+    CreateInteractionRequestDTO,
+    BotInteractionRespondDTO,
+} from './dto/interaction.request.dto';
 import { InteractionOptionValue } from './dto/types.dto';
 import { SlashCommandOptionType } from '@/types/interactions';
 import { assertHttpNotMuted } from '@/utils/mute';
@@ -395,7 +404,7 @@ export class InteractionController {
                     stickerId: serverMessage.stickerId?.toString() ?? null,
                     poll: serverMessage.poll ?? null,
                 },
-            } as AnyResponseWsEvent);
+            } as IMessageServerEvent);
         }
 
         const senderPermissions =
@@ -419,7 +428,7 @@ export class InteractionController {
                 senderPermissions,
                 invocationId,
             },
-        } as AnyResponseWsEvent;
+        } as IInteractionCreateServerEvent;
 
         if (commandDef.botId !== undefined) {
             const targetBot = botsById.get(commandDef.botId);
@@ -468,6 +477,95 @@ export class InteractionController {
                 providedOptions,
                 invocationId,
             );
+        }
+
+        return { success: true };
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('interactions/respond')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Send an optionally ephemeral bot interaction response',
+    })
+    public async respondToInteraction(
+        @Req() req: AuthenticatedRequest,
+        @Body() body: BotInteractionRespondDTO,
+    ) {
+        if (req.user.isBot !== true) {
+            throw new ForbiddenException('Only bots can use this endpoint');
+        }
+
+        const { serverId, channelId, senderId, text, invocationId, ephemeral } =
+            body;
+
+        if (
+            !Types.ObjectId.isValid(serverId) ||
+            !Types.ObjectId.isValid(channelId)
+        ) {
+            throw new BadRequestException('Invalid serverId or channelId');
+        }
+
+        const botMember = await ServerMember.findOne({
+            serverId: new Types.ObjectId(serverId),
+            userId: new Types.ObjectId(req.user.id),
+        }).lean();
+
+        if (botMember === null) {
+            throw new ForbiddenException('Bot is not a member of this server');
+        }
+
+        const canView = await this.permissionService.hasChannelPermission(
+            new Types.ObjectId(serverId),
+            new Types.ObjectId(req.user.id),
+            new Types.ObjectId(channelId),
+            'viewChannels',
+        );
+        if (canView !== true) {
+            throw new ForbiddenException('Bot cannot view this channel');
+        }
+
+        if (ephemeral === true) {
+            await this.sendEphemeralResponse(
+                serverId,
+                channelId,
+                senderId,
+                text ?? '',
+                invocationId ?? undefined,
+            );
+        } else {
+            const serverMessage = await ServerMessage.create({
+                serverId: new Types.ObjectId(serverId),
+                channelId: new Types.ObjectId(channelId),
+                senderId: new Types.ObjectId(req.user.id),
+                text: text ?? '',
+                embeds: body.embeds ?? [],
+            });
+
+            this.wsServer.broadcastToChannel(channelId, {
+                type: 'message_server',
+                payload: {
+                    messageId: serverMessage._id.toString(),
+                    _id: serverMessage._id.toString(),
+                    serverId,
+                    channelId,
+                    senderId: req.user.id,
+                    senderIsBot: req.user.isBot ?? true,
+                    senderUsername: req.user.username,
+                    text: serverMessage.text,
+                    createdAt: serverMessage.createdAt.toISOString(),
+                    isEdited: false,
+                    isPinned: false,
+                    isSticky: false,
+                    isWebhook: false,
+                    embeds: serverMessage.embeds ?? [],
+                    attachments: serverMessage.attachments ?? [],
+                    reactions: [],
+                    interaction: null,
+                    stickerId: serverMessage.stickerId?.toString() ?? null,
+                    poll: serverMessage.poll ?? null,
+                },
+            } as IMessageServerEvent);
         }
 
         return { success: true };
@@ -736,7 +834,7 @@ export class InteractionController {
                 invocationId,
                 ephemeral: true,
             },
-        } as unknown as AnyResponseWsEvent);
+        } as IInteractionResponseServerEvent);
     }
 
     private async sendResponse(
@@ -762,7 +860,7 @@ export class InteractionController {
                 editedAt: new Date().toISOString(),
                 isEdited: false, // It's a response, not a manual edit
             },
-        } as unknown as AnyResponseWsEvent);
+        } as IMessageServerEditedEvent);
     }
 
     private async resolveOptions(

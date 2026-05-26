@@ -694,3 +694,15 @@ export interface IInteractionCreateServerEvent
             invocationId?: string;
         }
     > {}
+
+export interface IInteractionResponseServerEvent
+    extends WsEvent<
+        'interaction_response_server',
+        {
+            serverId: string;
+            channelId: string;
+            text: string;
+            invocationId?: string;
+            ephemeral?: boolean;
+        }
+    > {}

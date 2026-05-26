@@ -7,10 +7,11 @@ import {
     MaxLength,
     IsMongoId,
     IsDefined,
+    IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { InteractionValue } from '@/types/interactions';
-
+import type { IEmbed } from '@/models/Embed';
 export class InteractionOptionDTO {
     @ApiProperty()
     @IsString()
@@ -47,4 +48,51 @@ export class CreateInteractionRequestDTO {
     @ApiProperty()
     @IsMongoId()
     public channelId!: string;
+}
+
+export class BotInteractionRespondDTO {
+    @ApiProperty({
+        description: 'ID of the server where the interaction occurred',
+    })
+    @IsMongoId()
+    public serverId!: string;
+
+    @ApiProperty({
+        description: 'ID of the channel where the interaction occurred',
+    })
+    @IsMongoId()
+    public channelId!: string;
+
+    @ApiProperty({
+        description: 'ID of the user who triggered the interaction',
+    })
+    @IsString()
+    public senderId!: string;
+
+    @ApiPropertyOptional({ description: 'Text content of the response' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(4000)
+    public text?: string;
+
+    @ApiPropertyOptional({
+        description: 'Rich embeds to include in the response',
+    })
+    @IsOptional()
+    @IsArray()
+    public embeds!: IEmbed[];
+
+    @ApiPropertyOptional({
+        description: 'ID of the invocation message to link against',
+    })
+    @IsOptional()
+    @IsString()
+    public invocationId?: string;
+
+    @ApiPropertyOptional({
+        description: 'When true, only the invoking user sees the response',
+    })
+    @IsOptional()
+    @IsBoolean()
+    public ephemeral?: boolean;
 }
