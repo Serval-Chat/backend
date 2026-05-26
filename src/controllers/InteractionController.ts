@@ -525,6 +525,15 @@ export class InteractionController {
             throw new ForbiddenException('Bot cannot view this channel');
         }
 
+        const botUser = await User.findById(req.user.id)
+            .select('username profilePicture isBot')
+            .lean();
+        const botProfilePicture =
+            botUser?.profilePicture !== undefined &&
+            botUser.profilePicture !== ''
+                ? `/api/v1/profile/picture/${botUser.profilePicture}`
+                : null;
+
         if (ephemeral === true) {
             await this.sendEphemeralResponse(
                 serverId,
@@ -532,6 +541,12 @@ export class InteractionController {
                 senderId,
                 text ?? '',
                 invocationId ?? undefined,
+                {
+                    id: req.user.id,
+                    username: botUser?.username ?? req.user.username,
+                    profilePicture: botProfilePicture,
+                    isBot: botUser?.isBot ?? req.user.isBot ?? true,
+                },
             );
         } else {
             const serverMessage = await ServerMessage.create({
@@ -824,6 +839,12 @@ export class InteractionController {
         userId: string,
         text: string,
         invocationId?: string,
+        sender?: {
+            id: string;
+            username: string;
+            profilePicture?: string | null;
+            isBot?: boolean;
+        },
     ) {
         this.wsServer.broadcastToUser(userId, {
             type: 'interaction_response_server',
@@ -831,6 +852,10 @@ export class InteractionController {
                 serverId,
                 channelId,
                 text,
+                senderId: sender?.id,
+                senderUsername: sender?.username,
+                senderIsBot: sender?.isBot ?? true,
+                senderProfilePicture: sender?.profilePicture ?? null,
                 invocationId,
                 ephemeral: true,
             },
