@@ -818,7 +818,7 @@ export class ServerController {
             serverId,
             channelId,
             senderId: userId,
-            senderIsBot: authenticatedUser.isBot ?? false,
+            senderIsBot: authenticatedUser.isBot,
             senderUsername: authenticatedUser.username,
             text: created.text,
             createdAt: created.createdAt.toISOString(),
@@ -976,7 +976,7 @@ export class ServerController {
             interaction: null,
             stickerId: created.stickerId?.toString() ?? null,
             poll: created.poll ?? null,
-            senderIsBot: authenticatedUser.isBot ?? false,
+            senderIsBot: authenticatedUser.isBot,
             noEmbeds: created.noEmbeds,
         };
     }

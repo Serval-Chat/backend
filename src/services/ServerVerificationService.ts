@@ -129,7 +129,7 @@ export class ServerVerificationService
                 const banRate = memberCount > 0 ? banCount / memberCount : 0;
                 const topSenderShare =
                     messageCount > 0 ? topSenderMessages / messageCount : 0;
-                const createdAt = server.createdAt ?? now;
+                const createdAt = server.createdAt;
                 const serverAgeDays = Math.floor(
                     (now.getTime() - createdAt.getTime()) /
                         (24 * 60 * 60 * 1000),

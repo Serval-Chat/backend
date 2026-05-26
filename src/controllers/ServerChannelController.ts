@@ -134,7 +134,7 @@ export class ServerChannelController {
             ...new Map(
                 channels
                     .map((c) => c.categoryId)
-                    .filter((id): id is Types.ObjectId => id != null)
+                    .filter((id): id is Types.ObjectId => id !== null)
                     .map((id) => [id.toString(), id] as const),
             ).values(),
         ];
@@ -334,6 +334,9 @@ export class ServerChannelController {
             ...(body.link !== undefined &&
                 body.link !== '' && { link: body.link }),
             ...(body.slowMode !== undefined && { slowMode: body.slowMode }),
+            ...(body.markdownBlockadeRules !== undefined && {
+                markdownBlockadeRules: body.markdownBlockadeRules,
+            }),
         });
 
         this.wsServer.broadcastToServer(serverId.toString(), {
@@ -547,6 +550,8 @@ export class ServerChannelController {
         if (body.emojiType !== undefined) updates.emojiType = body.emojiType;
 
         if (body.slowMode !== undefined) updates.slowMode = body.slowMode;
+        if (body.markdownBlockadeRules !== undefined)
+            updates.markdownBlockadeRules = body.markdownBlockadeRules;
 
         if (body.link !== undefined) updates.link = body.link;
 
@@ -744,6 +749,9 @@ export class ServerChannelController {
             serverId: serverOid,
             name: body.name,
             position: finalPosition,
+            ...(body.markdownBlockadeRules !== undefined && {
+                markdownBlockadeRules: body.markdownBlockadeRules,
+            }),
         });
 
         this.wsServer.broadcastToServer(serverId.toString(), {
@@ -837,6 +845,8 @@ export class ServerChannelController {
         if (body.name !== undefined && body.name !== '')
             updates.name = body.name;
         if (body.position !== undefined) updates.position = body.position;
+        if (body.markdownBlockadeRules !== undefined)
+            updates.markdownBlockadeRules = body.markdownBlockadeRules;
 
         const existingCategory = await this.categoryRepo.findById(categoryOid);
         if (existingCategory === null) {

@@ -34,6 +34,7 @@ export const PERMISSION_REGISTRY = {
     manageReactions: { scope: 'channel', default: false },
     exportChannelMessages: { scope: 'server', default: false },
     bypassSlowmode: { scope: 'channel', default: false },
+    bypassMarkdownRestrictions: { scope: 'channel', default: false },
     pinMessages: { scope: 'channel', default: false },
     seeDeletedMessages: { scope: 'channel', default: false },
     moderateMembers: { scope: 'server', default: false },

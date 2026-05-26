@@ -1,4 +1,5 @@
 import type { Types, ClientSession } from 'mongoose';
+import type { MarkdownBlockadeRule } from './IServerRepository';
 
 // Channel interface
 //
@@ -16,8 +17,10 @@ export interface IChannel {
             manageMessages?: boolean;
             deleteMessagesOfOthers?: boolean;
             pinMessages?: boolean;
+            bypassMarkdownRestrictions?: boolean;
         };
     };
+    markdownBlockadeRules?: MarkdownBlockadeRule[];
     createdAt: Date;
     lastMessageAt?: Date;
     lastExportAt?: Date;
@@ -42,8 +45,10 @@ export interface CreateChannelDTO {
             manageMessages?: boolean;
             deleteMessagesOfOthers?: boolean;
             pinMessages?: boolean;
+            bypassMarkdownRestrictions?: boolean;
         };
     };
+    markdownBlockadeRules?: MarkdownBlockadeRule[];
     description?: string;
     icon?: string;
     emoji?: string;

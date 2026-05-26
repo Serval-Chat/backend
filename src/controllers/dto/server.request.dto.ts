@@ -11,6 +11,7 @@ import {
     IsArray,
     ArrayMaxSize,
     MaxLength,
+    IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsName, IsRoleId, IsColor } from '@/validation/schemas/common';
@@ -33,6 +34,21 @@ export class CreateServerRequestDTO {
     @IsName()
     @MinLength(2, { message: 'Name must be at least 2 characters' })
     public name!: string;
+}
+
+export class MarkdownBlockadeRuleDTO {
+    @ApiProperty({ enum: ['everyone', 'role', 'user'] })
+    @IsIn(['everyone', 'role', 'user'])
+    public targetType!: 'everyone' | 'role' | 'user';
+
+    @ApiProperty()
+    @IsString()
+    public targetId!: string;
+
+    @ApiProperty({ type: [String] })
+    @IsArray()
+    @IsString({ each: true })
+    public features!: string[];
 }
 
 export class UpdateServerRequestDTO {
@@ -62,6 +78,13 @@ export class UpdateServerRequestDTO {
     @IsOptional()
     @IsBoolean()
     public disableUsernameGlowAndCustomColor?: boolean;
+
+    @ApiPropertyOptional({ type: [MarkdownBlockadeRuleDTO] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => MarkdownBlockadeRuleDTO)
+    public markdownBlockadeRules?: MarkdownBlockadeRuleDTO[];
 
     @ApiPropertyOptional()
     @IsOptional()

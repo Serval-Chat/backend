@@ -12,14 +12,12 @@ export type PublicServerMember = Omit<
 export function mapPublicServerMember(
     member: IServerMember,
 ): PublicServerMember {
-    const {
-        onboardingRequired: _onboardingRequired,
-        rulesAcceptedAt: _rulesAcceptedAt,
-        onboardingCompletedAt: _onboardingCompletedAt,
-        hiddenChannelIds: _hiddenChannelIds,
-        hiddenCategoryIds: _hiddenCategoryIds,
-        ...publicMember
-    } = member;
-
-    return publicMember;
+    return {
+        _id: member._id,
+        serverId: member.serverId,
+        userId: member.userId,
+        roles: member.roles,
+        joinedAt: member.joinedAt,
+        communicationDisabledUntil: member.communicationDisabledUntil,
+    };
 }

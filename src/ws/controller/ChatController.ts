@@ -201,7 +201,7 @@ export class ChatController {
             attachments: created.attachments || [],
             reactions: [],
             interaction: null,
-            senderIsBot: authenticatedUser.isBot ?? false,
+            senderIsBot: authenticatedUser.isBot,
             stickerId: created.stickerId?.toString() ?? null,
             poll: created.poll ?? null,
             noEmbeds: created.noEmbeds,
@@ -270,7 +270,7 @@ export class ChatController {
             isPinned: false,
             isSticky: false,
             isWebhook: false,
-            senderIsBot: authenticatedUser.isBot ?? false,
+            senderIsBot: authenticatedUser.isBot,
             repliedTo: repliedToMessage
                 ? {
                       messageId: repliedToMessage._id.toString(),

@@ -745,6 +745,8 @@ export class ServerController {
         if (body.disableUsernameGlowAndCustomColor !== undefined)
             updates.disableUsernameGlowAndCustomColor =
                 body.disableUsernameGlowAndCustomColor;
+        if (body.markdownBlockadeRules !== undefined)
+            updates.markdownBlockadeRules = body.markdownBlockadeRules;
         if (body.discoveryEnabled !== undefined)
             updates.discoveryEnabled = body.discoveryEnabled;
 

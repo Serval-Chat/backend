@@ -10,6 +10,7 @@ import {
     IsMongoId,
     Min,
     Max,
+    IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -21,6 +22,21 @@ import {
 } from '@/validation/schemas/common';
 import { ChannelTypeDTO } from './common.request.dto';
 import type { Permissions } from '@/permissions/types';
+
+export class MarkdownBlockadeRuleDTO {
+    @ApiProperty({ enum: ['everyone', 'role', 'user'] })
+    @IsIn(['everyone', 'role', 'user'])
+    public targetType!: 'everyone' | 'role' | 'user';
+
+    @ApiProperty()
+    @IsString()
+    public targetId!: string;
+
+    @ApiProperty({ type: [String] })
+    @IsArray()
+    @IsString({ each: true })
+    public features!: string[];
+}
 
 export class CreateChannelRequestDTO {
     @ApiProperty()
@@ -86,6 +102,13 @@ export class CreateChannelRequestDTO {
     @IsOptional()
     @IsPermissionMap()
     public permissions?: Record<string, Permissions>;
+
+    @ApiPropertyOptional({ type: [MarkdownBlockadeRuleDTO] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => MarkdownBlockadeRuleDTO)
+    public markdownBlockadeRules?: MarkdownBlockadeRuleDTO[];
 }
 
 export class UpdateChannelRequestDTO {
@@ -140,6 +163,13 @@ export class UpdateChannelRequestDTO {
     @Min(0)
     @Max(21600)
     public slowMode?: number;
+
+    @ApiPropertyOptional({ type: [MarkdownBlockadeRuleDTO] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => MarkdownBlockadeRuleDTO)
+    public markdownBlockadeRules?: MarkdownBlockadeRuleDTO[];
 }
 
 export class ChannelPositionDTO {
@@ -170,6 +200,13 @@ export class CreateCategoryRequestDTO {
     @IsOptional()
     @IsInt()
     public position?: number;
+
+    @ApiPropertyOptional({ type: [MarkdownBlockadeRuleDTO] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => MarkdownBlockadeRuleDTO)
+    public markdownBlockadeRules?: MarkdownBlockadeRuleDTO[];
 }
 
 export class UpdateCategoryRequestDTO {
@@ -177,6 +214,13 @@ export class UpdateCategoryRequestDTO {
     @IsOptional()
     @IsName()
     public name?: string;
+
+    @ApiPropertyOptional({ type: [MarkdownBlockadeRuleDTO] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => MarkdownBlockadeRuleDTO)
+    public markdownBlockadeRules?: MarkdownBlockadeRuleDTO[];
 
     @ApiPropertyOptional()
     @IsOptional()

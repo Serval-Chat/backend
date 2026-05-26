@@ -17,8 +17,6 @@ import {
     createTestUser,
 } from './helpers';
 import { Webhook } from '../../src/models/Webhook';
-import { TYPES } from '../../src/di/types';
-import { container } from '../../src/di/container';
 import { ServerMember } from '../../src/models/Server';
 import { ScraperService } from '../../src/services/ScraperService';
 
@@ -75,7 +73,7 @@ async function waitForWsEvent(
                     ws.removeListener('message', onMessage);
                     resolve(parsed);
                 }
-            } catch (err) {
+            } catch {
             }
         };
 

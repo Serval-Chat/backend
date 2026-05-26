@@ -5,14 +5,11 @@ import {
     Role as RoleModel,
     ServerMember as ServerMemberModel,
 } from '@/models/Server';
-import { KlipyCache as KlipyCacheSchema } from '@/models/KlipyCache';
 import type { IKlipyCache } from '@/models/KlipyCache';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { Model } from 'mongoose';
 import logger from '@/utils/logger';
 import { Types } from 'mongoose';
-import * as fs from 'fs';
-import * as path from 'path';
 
 interface PingModelLike {
     distinct(field: string, query: object): Promise<Types.ObjectId[]>;

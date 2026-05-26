@@ -1,4 +1,5 @@
 import type { Types } from 'mongoose';
+import type { MarkdownBlockadeRule } from './IServerRepository';
 
 // Category interface
 //
@@ -23,8 +24,10 @@ export interface ICategory {
             manageServer?: boolean;
             administrator?: boolean;
             pinMessages?: boolean;
+            bypassMarkdownRestrictions?: boolean;
         };
     };
+    markdownBlockadeRules?: MarkdownBlockadeRule[];
     createdAt: Date;
 }
 
@@ -46,8 +49,10 @@ export interface CreateCategoryDTO {
             manageServer?: boolean;
             administrator?: boolean;
             pinMessages?: boolean;
+            bypassMarkdownRestrictions?: boolean;
         };
     };
+    markdownBlockadeRules?: MarkdownBlockadeRule[];
 }
 
 // Category Repository Interface

@@ -1,5 +1,11 @@
 import type { Types } from 'mongoose';
 
+export interface MarkdownBlockadeRule {
+    targetType: 'everyone' | 'role' | 'user';
+    targetId: string;
+    features: string[];
+}
+
 // Server interface (domain model)
 //
 // Represents a community or group workspace
@@ -16,6 +22,7 @@ export interface IServer {
     defaultRoleId?: Types.ObjectId;
     disableCustomFonts?: boolean;
     disableUsernameGlowAndCustomColor?: boolean;
+    markdownBlockadeRules?: MarkdownBlockadeRule[];
     verified?: boolean;
     verificationScore?: number;
     verificationEligible?: boolean;

@@ -11,6 +11,12 @@ import {
     type Permissions,
 } from '@/permissions/types';
 
+interface MarkdownBlockadeRule {
+    targetType: 'everyone' | 'role' | 'user';
+    targetId: string;
+    features: string[];
+}
+
 // Server interface
 //
 // Represents a chat server
@@ -27,6 +33,7 @@ export interface IServer extends Document {
     defaultRoleId?: mongoose.Types.ObjectId;
     disableCustomFonts?: boolean;
     disableUsernameGlowAndCustomColor?: boolean;
+    markdownBlockadeRules?: MarkdownBlockadeRule[];
     verified?: boolean;
     verificationScore?: number;
     verificationEligible?: boolean;
@@ -72,6 +79,7 @@ export interface ICategory extends Document {
     permissions?: {
         [roleId: string]: Permissions;
     };
+    markdownBlockadeRules?: MarkdownBlockadeRule[];
     createdAt: Date;
 }
 
@@ -88,6 +96,7 @@ export interface IChannel extends Document {
     permissions?: {
         [roleId: string]: Permissions;
     };
+    markdownBlockadeRules?: MarkdownBlockadeRule[];
     createdAt: Date;
     lastMessageAt?: Date;
     lastExportAt?: Date;
@@ -227,6 +236,23 @@ const serverSchema = new Schema<IServer>({
     },
     disableCustomFonts: { type: Boolean, default: false },
     disableUsernameGlowAndCustomColor: { type: Boolean, default: false },
+    markdownBlockadeRules: {
+        type: [
+            new Schema(
+                {
+                    targetType: {
+                        type: String,
+                        enum: ['everyone', 'role', 'user'],
+                        required: true,
+                    },
+                    targetId: { type: String, required: true },
+                    features: { type: [String], default: [] },
+                },
+                { _id: false },
+            ),
+        ],
+        default: [],
+    },
     verified: { type: Boolean, default: false },
     verificationScore: { type: Number, default: 0 },
     verificationEligible: { type: Boolean, default: false },
@@ -322,6 +348,23 @@ const categorySchema = new Schema<ICategory>({
         of: new Schema(permissionOverrideSchemaDefinition, { _id: false }),
         default: {},
     },
+    markdownBlockadeRules: {
+        type: [
+            new Schema(
+                {
+                    targetType: {
+                        type: String,
+                        enum: ['everyone', 'role', 'user'],
+                        required: true,
+                    },
+                    targetId: { type: String, required: true },
+                    features: { type: [String], default: [] },
+                },
+                { _id: false },
+            ),
+        ],
+        default: [],
+    },
     createdAt: { type: Date, default: Date.now },
 });
 categorySchema.index({ serverId: 1, position: 1 });
@@ -340,6 +383,23 @@ const channelSchema = new Schema<IChannel>({
         type: Map,
         of: new Schema(permissionOverrideSchemaDefinition, { _id: false }),
         default: {},
+    },
+    markdownBlockadeRules: {
+        type: [
+            new Schema(
+                {
+                    targetType: {
+                        type: String,
+                        enum: ['everyone', 'role', 'user'],
+                        required: true,
+                    },
+                    targetId: { type: String, required: true },
+                    features: { type: [String], default: [] },
+                },
+                { _id: false },
+            ),
+        ],
+        default: [],
     },
     createdAt: { type: Date, default: Date.now },
     lastMessageAt: { type: Date, default: Date.now },
