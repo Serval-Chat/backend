@@ -8,6 +8,7 @@ import {
     MaxLength,
     IsArray,
     ValidateNested,
+    ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsColor } from '@/validation/schemas/common';
@@ -84,6 +85,7 @@ export class UpdateSettingsRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
+    @ValidateIf((o) => o.customFontUrl !== '')
     @Matches(/^https:\/\/fonts\.googleapis\.com\/css2\?family=[^<>\s]+$/, {
         message: 'Must be a valid Google Fonts URL',
     })
@@ -106,4 +108,9 @@ export class UpdateSettingsRequestDTO {
     @IsOptional()
     @IsBoolean()
     public useDefaultSounds?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public use24HourTime?: boolean;
 }

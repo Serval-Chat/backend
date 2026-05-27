@@ -78,6 +78,7 @@ export interface IUser extends Document {
             enabled: boolean;
         }[];
         useDefaultSounds?: boolean;
+        use24HourTime?: boolean;
     };
     banner?: string;
     bannerColor?: string;
@@ -203,6 +204,7 @@ const schema = new Schema<IUser>(
                 default: [],
             },
             useDefaultSounds: { type: Boolean, default: true },
+            use24HourTime: { type: Boolean, default: false },
         },
         notificationPreferences: {
             type: {
