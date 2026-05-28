@@ -139,6 +139,20 @@ export const settingsSchema = z.object({
         .string()
         .regex(/^#[0-9a-fA-F]{6}$/)
         .optional(),
+    keybinds: z
+        .record(
+            z.string(),
+            z
+                .object({
+                    code: z.string(),
+                    ctrl: z.boolean().optional(),
+                    alt: z.boolean().optional(),
+                    shift: z.boolean().optional(),
+                    meta: z.boolean().optional(),
+                })
+                .nullable(),
+        )
+        .optional(),
 });
 
 export type UpdateProfileRequest = z.infer<typeof updateProfileSchema>;

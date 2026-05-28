@@ -7,12 +7,72 @@ import {
     IsString,
     MaxLength,
     IsArray,
+    IsObject,
     ValidateNested,
     ValidateIf,
+    ValidatorConstraint,
+    ValidatorConstraintInterface,
+    ValidationArguments,
+    ValidationOptions,
+    registerDecorator,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsColor } from '@/validation/schemas/common';
 import { MessageAlignmentDTO } from './common.request.dto';
+
+export const VALID_KEYBIND_ACTION_IDS = [
+    'composer.focus',
+    'debug.typing.more',
+    'debug.typing.less',
+    'debug.theme.previous',
+    'debug.theme.next',
+    'theme.previous',
+    'theme.next',
+] as const;
+
+export type KeybindActionId = (typeof VALID_KEYBIND_ACTION_IDS)[number];
+
+@ValidatorConstraint({ name: 'isValidKeybindActionId', async: false })
+export class IsValidKeybindActionId implements ValidatorConstraintInterface {
+    public validate(value: string, _args: ValidationArguments): boolean {
+        if (typeof value !== 'string') return false;
+        return VALID_KEYBIND_ACTION_IDS.includes(value as KeybindActionId);
+    }
+
+    public defaultMessage(_args: ValidationArguments): string {
+        return `Keybind action ID must be one of: ${VALID_KEYBIND_ACTION_IDS.join(', ')}`;
+    }
+}
+
+@ValidatorConstraint({ name: 'isValidKeybindsObject', async: false })
+class IsValidKeybindsObjectConstraint implements ValidatorConstraintInterface {
+    public validate(value: object, _args: ValidationArguments): boolean {
+        if (typeof value !== 'object' || value === null) return false;
+        const obj = value as Record<string, KeybindBindingDTO | null>;
+        const keys = Object.keys(obj);
+        return keys.every((key) =>
+            VALID_KEYBIND_ACTION_IDS.includes(key as KeybindActionId),
+        );
+    }
+
+    public defaultMessage(_args: ValidationArguments): string {
+        return `All keybind action IDs must be one of: ${VALID_KEYBIND_ACTION_IDS.join(', ')}`;
+    }
+}
+
+export function IsValidKeybindsObject(
+    validationOptions?: ValidationOptions,
+): PropertyDecorator {
+    return function (object: object, propertyName: string | symbol) {
+        registerDecorator({
+            target: object.constructor,
+            propertyName: propertyName as string,
+            options: validationOptions,
+            constraints: [],
+            validator: IsValidKeybindsObjectConstraint,
+        });
+    };
+}
 
 export class NotificationSoundDTO {
     @ApiPropertyOptional()
@@ -30,6 +90,32 @@ export class NotificationSoundDTO {
     @ApiPropertyOptional()
     @IsBoolean()
     public enabled!: boolean;
+}
+
+export class KeybindBindingDTO {
+    @ApiPropertyOptional()
+    @IsString()
+    public code!: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public ctrl?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public alt?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public shift?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public meta?: boolean;
 }
 
 export class UpdateSettingsRequestDTO {
@@ -113,4 +199,17 @@ export class UpdateSettingsRequestDTO {
     @IsOptional()
     @IsBoolean()
     public use24HourTime?: boolean;
+
+    @ApiPropertyOptional({
+        additionalProperties: {
+            oneOf: [
+                { $ref: '#/components/schemas/KeybindBindingDTO' },
+                { type: 'null' },
+            ],
+        },
+    })
+    @IsOptional()
+    @IsObject()
+    @IsValidKeybindsObject()
+    public keybinds?: Record<string, KeybindBindingDTO | null>;
 }

@@ -48,6 +48,17 @@ interface UserSettings {
         enabled: boolean;
     }[];
     useDefaultSounds?: boolean;
+    use24HourTime?: boolean;
+    keybinds?: Record<
+        string,
+        {
+            code: string;
+            ctrl?: boolean;
+            alt?: boolean;
+            shift?: boolean;
+            meta?: boolean;
+        } | null
+    >;
     serverSettings?: {
         order: (
             | string
@@ -99,6 +110,7 @@ export class SettingsController {
             otherMessageColor: '#2a2d31',
             customFontUrl: '',
             customFontFamily: '',
+            keybinds: {},
         };
 
         if (user.serverSettings) {

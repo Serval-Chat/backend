@@ -79,6 +79,16 @@ export interface IUser extends Document {
         }[];
         useDefaultSounds?: boolean;
         use24HourTime?: boolean;
+        keybinds?: Record<
+            string,
+            {
+                code: string;
+                ctrl?: boolean;
+                alt?: boolean;
+                shift?: boolean;
+                meta?: boolean;
+            } | null
+        >;
     };
     banner?: string;
     bannerColor?: string;
@@ -205,6 +215,7 @@ const schema = new Schema<IUser>(
             },
             useDefaultSounds: { type: Boolean, default: true },
             use24HourTime: { type: Boolean, default: false },
+            keybinds: { type: Schema.Types.Mixed, default: {} },
         },
         notificationPreferences: {
             type: {

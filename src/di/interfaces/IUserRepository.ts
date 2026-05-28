@@ -81,6 +81,17 @@ export interface IUser {
             enabled: boolean;
         }[];
         useDefaultSounds?: boolean;
+        use24HourTime?: boolean;
+        keybinds?: Record<
+            string,
+            {
+                code: string;
+                ctrl?: boolean;
+                alt?: boolean;
+                shift?: boolean;
+                meta?: boolean;
+            } | null
+        >;
     };
     banner?: string;
     serverSettings?: {
@@ -232,6 +243,17 @@ export interface IUserRepository {
                 enabled: boolean;
             }[];
             useDefaultSounds?: boolean;
+            use24HourTime?: boolean;
+            keybinds?: Record<
+                string,
+                {
+                    code: string;
+                    ctrl?: boolean;
+                    alt?: boolean;
+                    shift?: boolean;
+                    meta?: boolean;
+                } | null
+            >;
         },
     ): Promise<void>;
 

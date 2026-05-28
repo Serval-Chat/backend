@@ -28,6 +28,17 @@ export class UserSettingsDTO {
     public disableCustomUsernameColors?: boolean;
     @ApiPropertyOptional()
     public disableCustomUsernameGlow?: boolean;
+    @ApiPropertyOptional()
+    public keybinds?: Record<
+        string,
+        {
+            code: string;
+            ctrl?: boolean;
+            alt?: boolean;
+            shift?: boolean;
+            meta?: boolean;
+        } | null
+    >;
 }
 
 export class NotificationPreferencesDTO {
@@ -54,7 +65,9 @@ export class InteractionResolvedUserDTO implements InteractionResolvedUser {
     public isBot?: boolean;
 }
 
-export class InteractionResolvedChannelDTO implements InteractionResolvedChannel {
+export class InteractionResolvedChannelDTO
+    implements InteractionResolvedChannel
+{
     @ApiProperty()
     public _id!: string;
     @ApiProperty()

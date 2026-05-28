@@ -363,6 +363,17 @@ export class MongooseUserRepository implements IUserRepository {
                 enabled: boolean;
             }[];
             useDefaultSounds?: boolean;
+            use24HourTime?: boolean;
+            keybinds?: Record<
+                string,
+                {
+                    code: string;
+                    ctrl?: boolean;
+                    alt?: boolean;
+                    shift?: boolean;
+                    meta?: boolean;
+                } | null
+            >;
         },
     ): Promise<void> {
         const update: Record<string, unknown> = {};
