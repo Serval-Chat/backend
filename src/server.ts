@@ -144,7 +144,7 @@ export function setupExpressApp(app: Application): Application {
                     ],
                     objectSrc: ["'none'"],
                     mediaSrc: ["'self'", 'https:', 'http:', 'data:', 'blob:'],
-                    frameSrc: ["'none'"],
+                    frameSrc: ["'none'", 'https://www.youtube.com'],
                     ...(PROJECT_LEVEL === 'production'
                         ? { upgradeInsecureRequests: [] }
                         : {}),
