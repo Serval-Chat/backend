@@ -150,9 +150,16 @@ export class EmbedService {
 
                 const isImage = result.mimeType.startsWith('image/');
                 const isVideo = result.mimeType.startsWith('video/');
+                const isYouTube = result.embedVideoUrl !== undefined;
 
                 const embed: IEmbed = {
-                    type: isImage ? 'image' : isVideo ? 'video' : 'link',
+                    type: isYouTube
+                        ? 'youtube'
+                        : isImage
+                          ? 'image'
+                          : isVideo
+                            ? 'video'
+                            : 'link',
                     url: result.url,
                 };
 
@@ -164,20 +171,29 @@ export class EmbedService {
                         url: `/api/v1/embed/proxy-image?file=${encodeURIComponent(result.image)}`,
                     };
                 }
-                if (result.video !== undefined) {
-                    embed.video = {
-                        url: result.video,
+                if (isYouTube && result.embedVideoUrl !== undefined) {
+                    embed.video = { url: result.embedVideoUrl };
+                } else if (result.video !== undefined) {
+                    embed.video = { url: result.video };
+                }
+                if (result.authorName !== undefined) {
+                    embed.author = {
+                        name: result.authorName,
+                        url: result.authorUrl,
                     };
                 }
-                if (result.providerName !== undefined)
-                    embed.provider = { name: result.providerName };
-
-                if (result.themeColor !== undefined) {
+                if (result.providerName !== undefined) {
+                    embed.provider = {
+                        name: result.providerName,
+                        url: result.providerUrl,
+                    };
+                }
+                if (isYouTube) {
+                    embed.color = 0xff0000;
+                } else if (result.themeColor !== undefined) {
                     const colorStr = result.themeColor.replace('#', '');
                     const colorInt = parseInt(colorStr, 16);
-                    if (!isNaN(colorInt)) {
-                        embed.color = colorInt;
-                    }
+                    if (!isNaN(colorInt)) embed.color = colorInt;
                 }
 
                 if (
