@@ -545,7 +545,7 @@ export class InteractionController {
                     id: req.user.id,
                     username: botUser?.username ?? req.user.username,
                     profilePicture: botProfilePicture,
-                    isBot: botUser?.isBot ?? req.user.isBot ?? true,
+                    isBot: botUser?.isBot ?? req.user.isBot,
                 },
             );
         } else {
@@ -554,7 +554,7 @@ export class InteractionController {
                 channelId: new Types.ObjectId(channelId),
                 senderId: new Types.ObjectId(req.user.id),
                 text: text ?? '',
-                embeds: body.embeds ?? [],
+                embeds: body.embeds,
             });
 
             this.wsServer.broadcastToChannel(channelId, {

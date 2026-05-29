@@ -47,6 +47,7 @@ export class IsValidKeybindActionId implements ValidatorConstraintInterface {
 @ValidatorConstraint({ name: 'isValidKeybindsObject', async: false })
 class IsValidKeybindsObjectConstraint implements ValidatorConstraintInterface {
     public validate(value: object, _args: ValidationArguments): boolean {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (typeof value !== 'object' || value === null) return false;
         const obj = value as Record<string, KeybindBindingDTO | null>;
         const keys = Object.keys(obj);

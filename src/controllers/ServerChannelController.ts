@@ -122,38 +122,47 @@ export class ServerChannelController {
         }
 
         const channels = await this.channelRepo.findByServerId(serverOid);
-        const channelIds = channels.map((c) => c._id);
-        const permissionMap =
-            await this.permissionService.hasChannelPermissions(
-                serverOid,
-                userOid,
-                channelIds as Types.ObjectId[],
-                'viewChannels',
-            );
+
         const categoryIds = [
             ...new Map(
                 channels
                     .map((c) => c.categoryId)
-                    .filter((id): id is Types.ObjectId => id !== null)
+                    .filter(
+                        (id): id is Types.ObjectId =>
+                            id !== null && id !== undefined,
+                    )
                     .map((id) => [id.toString(), id] as const),
             ).values(),
         ];
-        const categoryPermissionMap =
-            await this.permissionService.hasCategoryPermissions(
-                serverOid,
-                userOid,
-                categoryIds,
-                'viewCategories',
-            );
+
+        const [channelPermissionMap, categoryPermissionMap] = await Promise.all(
+            [
+                this.permissionService.hasChannelPermissions(
+                    serverOid,
+                    userOid,
+                    channels.map((c) => c._id as Types.ObjectId),
+                    'viewChannels',
+                ),
+                this.permissionService.hasCategoryPermissions(
+                    serverOid,
+                    userOid,
+                    categoryIds,
+                    'viewCategories',
+                ),
+            ],
+        );
 
         const visibleChannels: IChannel[] = [];
         for (const c of channels) {
-            const canView = permissionMap.get(c._id.toString());
-            const categoryId = c.categoryId?.toString();
-            const canViewCategory =
-                categoryId === undefined ||
+            const canViewChannel =
+                channelPermissionMap.get(c._id.toString()) === true;
+
+            const categoryId = c.categoryId?.toString() ?? null;
+            const canViewParentCategory =
+                categoryId === null ||
                 categoryPermissionMap.get(categoryId) === true;
-            if (canView === true && canViewCategory) {
+
+            if (canViewChannel && canViewParentCategory) {
                 visibleChannels.push(c);
             }
         }
@@ -353,6 +362,8 @@ export class ServerChannelController {
             metadata: { channelName: channel.name, channelType: channel.type },
         });
 
+        this.permissionService.invalidateCache(serverOid);
+
         return channel;
     }
 
@@ -418,6 +429,8 @@ export class ServerChannelController {
                 changes,
             });
         }
+
+        this.permissionService.invalidateCache(serverOid);
 
         return { message: 'Channels reordered' };
     }
@@ -655,6 +668,8 @@ export class ServerChannelController {
             });
         }
 
+        this.permissionService.invalidateCache(serverOid);
+
         return channel;
     }
 
@@ -709,6 +724,8 @@ export class ServerChannelController {
             targetType: 'channel',
             metadata: { channelName: channel !== null ? channel.name : '' },
         });
+
+        this.permissionService.invalidateCache(serverOid);
 
         return { message: 'Channel deleted' };
     }
@@ -771,6 +788,8 @@ export class ServerChannelController {
             },
         });
 
+        this.permissionService.invalidateCache(serverOid);
+
         return category;
     }
 
@@ -811,6 +830,8 @@ export class ServerChannelController {
                 senderId: userId,
             },
         });
+
+        this.permissionService.invalidateCache(serverOid);
 
         return { message: 'Categories reordered' };
     }
@@ -890,6 +911,8 @@ export class ServerChannelController {
             });
         }
 
+        this.permissionService.invalidateCache(serverOid);
+
         return category;
     }
 
@@ -951,6 +974,8 @@ export class ServerChannelController {
                 targetName: category.name,
             },
         });
+
+        this.permissionService.invalidateCache(serverOid);
 
         return { message: 'Category deleted' };
     }
