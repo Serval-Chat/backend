@@ -19,3 +19,8 @@ export class InviteResponseDTO {
     @ApiProperty({ type: [String] })
     public tokens?: string[];
 }
+
+export class AdminSimpleMessageResponseDTO {
+    @ApiProperty()
+    public message!: string;
+}

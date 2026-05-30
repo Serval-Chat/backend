@@ -72,3 +72,16 @@ export class BadgeResponseDTO {
     @ApiProperty()
     public createdAt!: Date;
 }
+
+export class AdminSimpleMessageResponseDTO {
+    @ApiProperty()
+    public message!: string;
+}
+
+export class BadgeUserActionResponseDTO {
+    @ApiProperty()
+    public message!: string;
+
+    @ApiProperty({ type: [String] })
+    public badges!: string[];
+}

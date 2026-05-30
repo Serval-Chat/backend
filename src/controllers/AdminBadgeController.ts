@@ -16,6 +16,7 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
@@ -28,6 +29,8 @@ import {
     CreateBadgeRequestDTO,
     UpdateBadgeRequestDTO,
     BadgeResponseDTO,
+    AdminSimpleMessageResponseDTO,
+    BadgeUserActionResponseDTO,
 } from './dto/admin-badges.dto';
 import mongoose from 'mongoose';
 
@@ -101,7 +104,10 @@ export class AdminBadgeController {
     @Permissions('manageBadges')
     @HttpCode(200)
     @ApiOperation({ summary: 'Delete a badge' })
-    @ApiResponse({ status: 200, description: 'Badge deleted successfully' })
+    @ApiOkResponse({
+        type: AdminSimpleMessageResponseDTO,
+        description: 'Badge deleted successfully',
+    })
     @ApiResponse({ status: 404, description: 'Badge not found' })
     public async deleteBadge(
         @Path('badgeId') badgeId: string,
@@ -140,7 +146,10 @@ export class AdminBadgeController {
     @Post('users/:userId/badges')
     @Permissions('manageBadges')
     @ApiOperation({ summary: 'Add badge to user' })
-    @ApiResponse({ status: 200, description: 'Badge added successfully' })
+    @ApiOkResponse({
+        type: BadgeUserActionResponseDTO,
+        description: 'Badge added successfully',
+    })
     @ApiResponse({ status: 404, description: 'User or Badge not found' })
     @ApiResponse({ status: 409, description: 'User already has this badge' })
     public async addBadgeToUser(
@@ -173,7 +182,10 @@ export class AdminBadgeController {
     @Delete('users/:userId/badges/:badgeId')
     @Permissions('manageBadges')
     @ApiOperation({ summary: 'Remove badge from user' })
-    @ApiResponse({ status: 200, description: 'Badge removed successfully' })
+    @ApiOkResponse({
+        type: BadgeUserActionResponseDTO,
+        description: 'Badge removed successfully',
+    })
     @ApiResponse({
         status: 404,
         description: 'User not found or badge not assigned',

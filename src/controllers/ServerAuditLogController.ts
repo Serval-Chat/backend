@@ -13,6 +13,7 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { injectable } from 'inversify';
@@ -24,6 +25,10 @@ import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { Request as ExpressRequest } from 'express';
 import type { JWTPayload } from '@/utils/jwt';
 import { ServerAuditLogRequestDTO } from './dto/server-audit-log.request.dto';
+import {
+    ServerAuditLogResponseDTO,
+    ServerAuditLogEntryDTO,
+} from './dto/server-audit-log.response.dto';
 import { mapAuditLogEntry } from '@/utils/auditLog';
 
 @injectable()
@@ -43,16 +48,16 @@ export class ServerAuditLogController {
 
     @Get('audit-log')
     @ApiOperation({ summary: 'Get server audit log' })
-    @ApiResponse({ status: 200, description: 'Audit log entries' })
+    @ApiOkResponse({
+        type: ServerAuditLogResponseDTO,
+        description: 'Audit log entries',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getAuditLog(
         @Param('serverId') serverId: string,
         @Query() query: ServerAuditLogRequestDTO,
         @Req() req: ExpressRequest,
-    ): Promise<{
-        entries: ReturnType<typeof mapAuditLogEntry>[];
-        nextCursor: string | null;
-    }> {
+    ): Promise<ServerAuditLogResponseDTO> {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
@@ -115,7 +120,7 @@ export class ServerAuditLogController {
                 mapAuditLogEntry(
                     entry as Parameters<typeof mapAuditLogEntry>[0],
                 ),
-            ),
+            ) as unknown as ServerAuditLogEntryDTO[],
             nextCursor,
         };
     }

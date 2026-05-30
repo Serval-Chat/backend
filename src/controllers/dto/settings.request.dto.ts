@@ -1,4 +1,8 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import {
+    ApiPropertyOptional,
+    ApiExtraModels,
+    getSchemaPath,
+} from '@nestjs/swagger';
 import {
     IsOptional,
     IsBoolean,
@@ -7,7 +11,6 @@ import {
     IsString,
     MaxLength,
     IsArray,
-    IsObject,
     ValidateNested,
     ValidateIf,
     ValidatorConstraint,
@@ -19,6 +22,10 @@ import {
 import { Type } from 'class-transformer';
 import { IsColor } from '@/validation/schemas/common';
 import { MessageAlignmentDTO } from './common.request.dto';
+
+export class KeybindsMapDTO {
+    [key: string]: KeybindBindingDTO | null;
+}
 
 export const VALID_KEYBIND_ACTION_IDS = [
     'composer.focus',
@@ -46,10 +53,10 @@ export class IsValidKeybindActionId implements ValidatorConstraintInterface {
 
 @ValidatorConstraint({ name: 'isValidKeybindsObject', async: false })
 class IsValidKeybindsObjectConstraint implements ValidatorConstraintInterface {
-    public validate(value: object, _args: ValidationArguments): boolean {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public validate(value: any, _args: ValidationArguments): boolean {
         if (typeof value !== 'object' || value === null) return false;
-        const obj = value as Record<string, KeybindBindingDTO | null>;
+        const obj = value as KeybindsMapDTO;
         const keys = Object.keys(obj);
         return keys.every((key) =>
             VALID_KEYBIND_ACTION_IDS.includes(key as KeybindActionId),
@@ -64,7 +71,8 @@ class IsValidKeybindsObjectConstraint implements ValidatorConstraintInterface {
 export function IsValidKeybindsObject(
     validationOptions?: ValidationOptions,
 ): PropertyDecorator {
-    return function (object: object, propertyName: string | symbol) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return function (object: any, propertyName: string | symbol) {
         registerDecorator({
             target: object.constructor,
             propertyName: propertyName as string,
@@ -119,6 +127,7 @@ export class KeybindBindingDTO {
     public meta?: boolean;
 }
 
+@ApiExtraModels(KeybindBindingDTO)
 export class UpdateSettingsRequestDTO {
     @ApiPropertyOptional()
     @IsOptional()
@@ -204,13 +213,12 @@ export class UpdateSettingsRequestDTO {
     @ApiPropertyOptional({
         additionalProperties: {
             oneOf: [
-                { $ref: '#/components/schemas/KeybindBindingDTO' },
+                { $ref: getSchemaPath(KeybindBindingDTO) },
                 { type: 'null' },
             ],
         },
     })
     @IsOptional()
-    @IsObject()
     @IsValidKeybindsObject()
-    public keybinds?: Record<string, KeybindBindingDTO | null>;
+    public keybinds?: KeybindsMapDTO;
 }

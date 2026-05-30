@@ -13,9 +13,13 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
     ApiBody,
+    ApiExtraModels,
+    getSchemaPath,
 } from '@nestjs/swagger';
+import { ReactionsListResponseDTO } from './dto/reaction.response.dto';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -58,6 +62,12 @@ import { Types } from 'mongoose';
 @ApiTags('Reactions')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ApiExtraModels(
+    AddUnicodeReactionRequestDTO,
+    AddCustomReactionRequestDTO,
+    RemoveUnicodeReactionRequestDTO,
+    RemoveCustomReactionRequestDTO,
+)
 export class ReactionController {
     public constructor(
         @Inject(TYPES.ReactionRepository)
@@ -88,8 +98,8 @@ export class ReactionController {
 
     @Get('messages/:messageId/reactions')
     @ApiOperation({ summary: 'Get DM reactions' })
-    @ApiResponse({
-        status: 200,
+    @ApiOkResponse({
+        type: ReactionsListResponseDTO,
         description: 'Reactions retrieved successfully',
     })
     @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -127,12 +137,16 @@ export class ReactionController {
     @ApiBody({
         schema: {
             oneOf: [
-                { $ref: '#/components/schemas/AddUnicodeReactionRequestDTO' },
-                { $ref: '#/components/schemas/AddCustomReactionRequestDTO' },
+                { $ref: getSchemaPath(AddUnicodeReactionRequestDTO) },
+                { $ref: getSchemaPath(AddCustomReactionRequestDTO) },
             ],
         },
     })
-    @ApiResponse({ status: 201, description: 'Reaction added' })
+    @ApiResponse({
+        status: 201,
+        type: ReactionsListResponseDTO,
+        description: 'Reaction added',
+    })
     @ApiResponse({ status: 400, description: 'Invalid emoji or limit reached' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Message not found' })
@@ -246,13 +260,16 @@ export class ReactionController {
         schema: {
             oneOf: [
                 {
-                    $ref: '#/components/schemas/RemoveUnicodeReactionRequestDTO',
+                    $ref: getSchemaPath(RemoveUnicodeReactionRequestDTO),
                 },
-                { $ref: '#/components/schemas/RemoveCustomReactionRequestDTO' },
+                { $ref: getSchemaPath(RemoveCustomReactionRequestDTO) },
             ],
         },
     })
-    @ApiResponse({ status: 200, description: 'Reaction removed' })
+    @ApiOkResponse({
+        type: ReactionsListResponseDTO,
+        description: 'Reaction removed',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Message not found' })
     public async removeDmReaction(
@@ -330,12 +347,16 @@ export class ReactionController {
     @ApiBody({
         schema: {
             oneOf: [
-                { $ref: '#/components/schemas/AddUnicodeReactionRequestDTO' },
-                { $ref: '#/components/schemas/AddCustomReactionRequestDTO' },
+                { $ref: getSchemaPath(AddUnicodeReactionRequestDTO) },
+                { $ref: getSchemaPath(AddCustomReactionRequestDTO) },
             ],
         },
     })
-    @ApiResponse({ status: 201, description: 'Reaction added' })
+    @ApiResponse({
+        status: 201,
+        type: ReactionsListResponseDTO,
+        description: 'Reaction added',
+    })
     @ApiResponse({ status: 400, description: 'Invalid emoji or limit reached' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Message or channel not found' })
@@ -459,13 +480,16 @@ export class ReactionController {
         schema: {
             oneOf: [
                 {
-                    $ref: '#/components/schemas/RemoveUnicodeReactionRequestDTO',
+                    $ref: getSchemaPath(RemoveUnicodeReactionRequestDTO),
                 },
-                { $ref: '#/components/schemas/RemoveCustomReactionRequestDTO' },
+                { $ref: getSchemaPath(RemoveCustomReactionRequestDTO) },
             ],
         },
     })
-    @ApiResponse({ status: 200, description: 'Reaction removed' })
+    @ApiOkResponse({
+        type: ReactionsListResponseDTO,
+        description: 'Reaction removed',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Message or channel not found' })
     public async removeServerReaction(
@@ -595,8 +619,8 @@ export class ReactionController {
 
     @Get('servers/:serverId/channels/:channelId/messages/:messageId/reactions')
     @ApiOperation({ summary: 'Get server reactions' })
-    @ApiResponse({
-        status: 200,
+    @ApiOkResponse({
+        type: ReactionsListResponseDTO,
         description: 'Reactions retrieved successfully',
     })
     @ApiResponse({ status: 403, description: 'Forbidden' })

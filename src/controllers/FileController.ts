@@ -18,6 +18,8 @@ import { ILogger } from '@/di/interfaces/ILogger';
 import {
     ApiTags,
     ApiResponse,
+    ApiOkResponse,
+    ApiProduces,
     ApiBearerAuth,
     ApiOperation,
     ApiConsumes,
@@ -131,7 +133,7 @@ export class FileController {
 
     @Get('metadata/:filename')
     @ApiOperation({ summary: 'Get file metadata' })
-    @ApiResponse({ status: 200, type: FileMetadataResponseDTO })
+    @ApiOkResponse({ type: FileMetadataResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid filename' })
     @ApiResponse({ status: 404, description: 'File not found' })
     public async getFileMetadata(
@@ -165,7 +167,8 @@ export class FileController {
 
     @Get('download/:filename')
     @ApiOperation({ summary: 'Download a file' })
-    @ApiResponse({ status: 200, description: 'File stream' })
+    @ApiOkResponse({ type: String, description: 'File stream' })
+    @ApiProduces('application/octet-stream')
     @ApiResponse({ status: 400, description: 'Invalid filename' })
     @ApiResponse({ status: 404, description: 'File not found' })
     public async downloadFile(

@@ -18,9 +18,17 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
     ApiQuery,
 } from '@nestjs/swagger';
+import {
+    UnreadCountsResponseDTO,
+    DmMessageListResponseDTO,
+    DmMessageResponseDTO,
+    DmMessageDeleteResponseDTO,
+    DmPollVoteResponseDTO,
+} from './dto/user-message.response.dto';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -91,7 +99,10 @@ export class UserMessageController {
 
     @Get('unread')
     @ApiOperation({ summary: 'Get unread counts' })
-    @ApiResponse({ status: 200, description: 'Unread counts retrieved' })
+    @ApiOkResponse({
+        type: UnreadCountsResponseDTO,
+        description: 'Unread counts retrieved',
+    })
     public async getUnreadCounts(
         @Req() req: ExpressRequest,
     ): Promise<UnreadCountsResponse> {
@@ -129,7 +140,10 @@ export class UserMessageController {
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'before', required: false, type: String })
     @ApiQuery({ name: 'around', required: false, type: String })
-    @ApiResponse({ status: 200, description: 'Messages retrieved' })
+    @ApiOkResponse({
+        type: DmMessageListResponseDTO,
+        description: 'Messages retrieved',
+    })
     @ApiResponse({ status: 400, description: 'User ID is required' })
     @ApiResponse({
         status: 403,
@@ -197,7 +211,10 @@ export class UserMessageController {
     @Get(':id')
     @ApiOperation({ summary: 'Get message by ID' })
     @ApiQuery({ name: 'userId', required: true })
-    @ApiResponse({ status: 200, description: 'Message retrieved' })
+    @ApiOkResponse({
+        type: DmMessageResponseDTO,
+        description: 'Message retrieved',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
@@ -259,7 +276,10 @@ export class UserMessageController {
 
     @Get(':userId/:messageId')
     @ApiOperation({ summary: 'Get user message' })
-    @ApiResponse({ status: 200, description: 'Message retrieved' })
+    @ApiOkResponse({
+        type: DmMessageResponseDTO,
+        description: 'Message retrieved',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
@@ -318,7 +338,10 @@ export class UserMessageController {
 
     @Patch(':id')
     @ApiOperation({ summary: 'Edit message' })
-    @ApiResponse({ status: 200, description: 'Message updated' })
+    @ApiOkResponse({
+        type: DmMessageResponseDTO,
+        description: 'Message updated',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.AUTH.UNAUTHORIZED })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async editMessage(
@@ -379,7 +402,10 @@ export class UserMessageController {
 
     @Post(':id/poll/vote')
     @ApiOperation({ summary: 'Vote on a poll' })
-    @ApiResponse({ status: 200, description: 'Vote registered' })
+    @ApiOkResponse({
+        type: DmPollVoteResponseDTO,
+        description: 'Vote registered',
+    })
     @ApiResponse({ status: 400, description: 'Invalid vote or not a poll' })
     @ApiResponse({ status: 403, description: ErrorMessages.AUTH.UNAUTHORIZED })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
@@ -471,7 +497,10 @@ export class UserMessageController {
 
     @Delete(':id')
     @ApiOperation({ summary: 'Delete message' })
-    @ApiResponse({ status: 200, description: 'Message deleted' })
+    @ApiOkResponse({
+        type: DmMessageDeleteResponseDTO,
+        description: 'Message deleted',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.AUTH.UNAUTHORIZED })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async deleteMessage(

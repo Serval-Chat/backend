@@ -88,3 +88,21 @@ export class AdminServerDetailsDTO {
     @ApiProperty({ default: false })
     public discoveryEnabled!: boolean;
 }
+
+export class AdminSimpleMessageResponseDTO {
+    @ApiProperty()
+    public message!: string;
+}
+
+export class AdminServerVerificationOverrideResponseDTO {
+    @ApiProperty()
+    public verified!: boolean;
+
+    @ApiProperty({ required: false, nullable: true })
+    public override!: 'verified' | 'unverified' | null;
+}
+
+export class AdminServerVerifyResponseDTO {
+    @ApiProperty()
+    public verified!: boolean;
+}

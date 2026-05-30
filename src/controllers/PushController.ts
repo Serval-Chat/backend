@@ -9,7 +9,18 @@ import {
     UseGuards,
     SetMetadata,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiBearerAuth,
+    ApiOkResponse,
+} from '@nestjs/swagger';
+import {
+    PublicKeyResponseDTO,
+    VapidStatusResponseDTO,
+    SuccessResponseDTO,
+    PushPreferencesResponseDTO,
+} from './dto/push.response.dto';
 import { injectable } from 'inversify';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
@@ -36,6 +47,7 @@ export class PushController {
     @Get('vapid-public-key')
     @SetMetadata('isPublic', true)
     @ApiOperation({ summary: 'Get VAPID public key' })
+    @ApiOkResponse({ type: PublicKeyResponseDTO })
     public getVapidKey() {
         return { publicKey: VAPID_PUB };
     }
@@ -43,6 +55,7 @@ export class PushController {
     @Get('vapid-status')
     @SetMetadata('isPublic', true)
     @ApiOperation({ summary: 'Get VAPID status' })
+    @ApiOkResponse({ type: VapidStatusResponseDTO })
     public vapidStatus() {
         return {
             currentVersion: process.env.VAPID_KEY_VERSION ?? 'v1',
@@ -52,6 +65,7 @@ export class PushController {
 
     @Post('subscribe/web')
     @ApiOperation({ summary: 'Subscribe to web push' })
+    @ApiOkResponse({ type: SuccessResponseDTO })
     public async subscribeWeb(
         @Req() req: ExpressRequest,
         @Body() body: WebPushDto,
@@ -75,6 +89,7 @@ export class PushController {
 
     @Post('subscribe/fcm')
     @ApiOperation({ summary: 'Subscribe to FCM' })
+    @ApiOkResponse({ type: SuccessResponseDTO })
     public async subscribeFcm(
         @Req() req: ExpressRequest,
         @Body() body: FcmDto,
@@ -97,6 +112,7 @@ export class PushController {
 
     @Delete('unsubscribe')
     @ApiOperation({ summary: 'Unsubscribe from all push notifications' })
+    @ApiOkResponse({ type: SuccessResponseDTO })
     public async unsubscribe(@Req() req: ExpressRequest) {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         await PushSubscription.deleteMany({ userId });
@@ -105,6 +121,7 @@ export class PushController {
 
     @Get('preferences')
     @ApiOperation({ summary: 'Get notification preferences' })
+    @ApiOkResponse({ type: PushPreferencesResponseDTO })
     public async getPreferences(@Req() req: ExpressRequest) {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const user = await User.findById(new Types.ObjectId(userId))
@@ -121,6 +138,7 @@ export class PushController {
 
     @Patch('preferences')
     @ApiOperation({ summary: 'Update notification preferences' })
+    @ApiOkResponse({ type: SuccessResponseDTO })
     public async updatePreferences(
         @Req() req: ExpressRequest,
         @Body() body: UpdatePreferencesDto,
@@ -140,6 +158,7 @@ export class PushController {
 
     @Post('migrate-vapid')
     @ApiOperation({ summary: 'Migrate VAPID subscription' })
+    @ApiOkResponse({ type: SuccessResponseDTO })
     public async migrateVapid(
         @Req() req: ExpressRequest,
         @Body() body: MigrateVapidDto,

@@ -23,10 +23,17 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
     ApiConsumes,
     ApiBody,
 } from '@nestjs/swagger';
+import {
+    WebhookResponseDTO,
+    SimpleMessageResponseDTO,
+    AvatarUploadResponseDTO,
+    WebhookExecuteResponseDTO,
+} from './dto/webhook.response.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
@@ -141,7 +148,10 @@ export class WebhookController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get webhooks' })
-    @ApiResponse({ status: 200, description: 'Webhooks retrieved' })
+    @ApiOkResponse({
+        type: [WebhookResponseDTO],
+        description: 'Webhooks retrieved',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.WEBHOOK.FORBIDDEN })
     @ApiResponse({ status: 404, description: ErrorMessages.CHANNEL.NOT_FOUND })
     public async getWebhooks(
@@ -194,7 +204,11 @@ export class WebhookController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Create webhook' })
-    @ApiResponse({ status: 201, description: 'Webhook created' })
+    @ApiResponse({
+        status: 201,
+        type: WebhookResponseDTO,
+        description: 'Webhook created',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.WEBHOOK.FORBIDDEN })
     public async createWebhook(
         @Param('serverId') serverId: string,
@@ -260,7 +274,10 @@ export class WebhookController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Delete webhook' })
-    @ApiResponse({ status: 200, description: 'Webhook deleted' })
+    @ApiOkResponse({
+        type: SimpleMessageResponseDTO,
+        description: 'Webhook deleted',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.WEBHOOK.FORBIDDEN })
     @ApiResponse({ status: 404, description: ErrorMessages.WEBHOOK.NOT_FOUND })
     public async deleteWebhook(
@@ -329,7 +346,11 @@ export class WebhookController {
         },
     })
     @ApiOperation({ summary: 'Upload webhook avatar' })
-    @ApiResponse({ status: 201, description: 'Avatar uploaded' })
+    @ApiResponse({
+        status: 201,
+        type: AvatarUploadResponseDTO,
+        description: 'Avatar uploaded',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.WEBHOOK.FORBIDDEN })
     public async uploadWebhookAvatar(
         @Param('serverId') serverId: string,
@@ -396,7 +417,13 @@ export class WebhookController {
 
     @Get('webhooks/avatar/:filename')
     @ApiOperation({ summary: 'Get webhook avatar' })
-    @ApiResponse({ status: 200, description: 'Avatar retrieved' })
+    @ApiOkResponse({
+        description: 'Avatar retrieved',
+        schema: {
+            type: 'string',
+            format: 'binary',
+        },
+    })
     @ApiResponse({
         status: 404,
         description: ErrorMessages.WEBHOOK.AVATAR_NOT_FOUND,
@@ -430,7 +457,11 @@ export class WebhookController {
 
     @Post('webhooks/:token')
     @ApiOperation({ summary: 'Execute webhook' })
-    @ApiResponse({ status: 201, description: 'Webhook executed' })
+    @ApiResponse({
+        status: 201,
+        type: WebhookExecuteResponseDTO,
+        description: 'Webhook executed',
+    })
     @ApiResponse({
         status: 401,
         description: ErrorMessages.WEBHOOK.INVALID_TOKEN,
@@ -557,7 +588,10 @@ export class WebhookController {
 
     @Patch('webhooks/:token/messages/:messageId')
     @ApiOperation({ summary: 'Edit webhook message' })
-    @ApiResponse({ status: 200, description: 'Webhook message edited' })
+    @ApiOkResponse({
+        type: SimpleMessageResponseDTO,
+        description: 'Webhook message edited',
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async editWebhookMessage(
         @Param() params: WebhookMessageParamDTO,
@@ -664,7 +698,10 @@ export class WebhookController {
 
     @Delete('webhooks/:token/messages/:messageId')
     @ApiOperation({ summary: 'Delete webhook message' })
-    @ApiResponse({ status: 200, description: 'Webhook message deleted' })
+    @ApiOkResponse({
+        type: SimpleMessageResponseDTO,
+        description: 'Webhook message deleted',
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async deleteWebhookMessage(
         @Param() params: WebhookMessageParamDTO,

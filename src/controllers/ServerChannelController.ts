@@ -15,6 +15,7 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
@@ -61,6 +62,10 @@ import {
     ChannelStatsResponseDTO,
     ChannelResponseDTO,
     CategoryResponseDTO,
+    MessageResponseDTO,
+    ReorderResponseDTO,
+    PermissionsResponseDTO,
+    VoiceTokenResponseDTO,
 } from './dto/server-channel.response.dto';
 @injectable()
 @Controller('api/v1/servers/:serverId')
@@ -369,7 +374,10 @@ export class ServerChannelController {
 
     @Patch('channels/reorder')
     @ApiOperation({ summary: 'Reorder channels' })
-    @ApiResponse({ status: 200, description: 'Channels reordered' })
+    @ApiOkResponse({
+        type: ReorderResponseDTO,
+        description: 'Channels reordered',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async reorderChannels(
         @Param('serverId') serverId: string,
@@ -675,7 +683,7 @@ export class ServerChannelController {
 
     @Delete('channels/:channelId')
     @ApiOperation({ summary: 'Delete channel' })
-    @ApiResponse({ status: 200, description: 'Channel deleted' })
+    @ApiOkResponse({ type: MessageResponseDTO, description: 'Channel deleted' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async deleteChannel(
@@ -795,7 +803,10 @@ export class ServerChannelController {
 
     @Patch('categories/reorder')
     @ApiOperation({ summary: 'Reorder categories' })
-    @ApiResponse({ status: 200, description: 'Categories reordered' })
+    @ApiOkResponse({
+        type: ReorderResponseDTO,
+        description: 'Categories reordered',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async reorderCategories(
         @Param('serverId') serverId: string,
@@ -918,7 +929,10 @@ export class ServerChannelController {
 
     @Delete('categories/:categoryId')
     @ApiOperation({ summary: 'Delete category' })
-    @ApiResponse({ status: 200, description: 'Category deleted' })
+    @ApiOkResponse({
+        type: MessageResponseDTO,
+        description: 'Category deleted',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Category Not Found' })
     public async deleteCategory(
@@ -982,7 +996,10 @@ export class ServerChannelController {
 
     @Get('channels/:channelId/permissions')
     @ApiOperation({ summary: 'Get channel permissions' })
-    @ApiResponse({ status: 200, description: 'Permissions retrieved' })
+    @ApiOkResponse({
+        type: PermissionsResponseDTO,
+        description: 'Permissions retrieved',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async getChannelPermissions(
@@ -1028,7 +1045,10 @@ export class ServerChannelController {
 
     @Patch('channels/:channelId/permissions')
     @ApiOperation({ summary: 'Update channel permissions' })
-    @ApiResponse({ status: 200, description: 'Permissions updated' })
+    @ApiOkResponse({
+        type: PermissionsResponseDTO,
+        description: 'Permissions updated',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async updateChannelPermissions(
@@ -1147,7 +1167,10 @@ export class ServerChannelController {
 
     @Get('categories/:categoryId/permissions')
     @ApiOperation({ summary: 'Get category permissions' })
-    @ApiResponse({ status: 200, description: 'Permissions retrieved' })
+    @ApiOkResponse({
+        type: PermissionsResponseDTO,
+        description: 'Permissions retrieved',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Category Not Found' })
     public async getCategoryPermissions(
@@ -1193,7 +1216,10 @@ export class ServerChannelController {
 
     @Patch('categories/:categoryId/permissions')
     @ApiOperation({ summary: 'Update category permissions' })
-    @ApiResponse({ status: 200, description: 'Permissions updated' })
+    @ApiOkResponse({
+        type: PermissionsResponseDTO,
+        description: 'Permissions updated',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Category Not Found' })
     public async updateCategoryPermissions(
@@ -1377,7 +1403,10 @@ export class ServerChannelController {
 
     @Get('channels/:channelId/voice-token')
     @ApiOperation({ summary: 'Get LiveKit voice channel token' })
-    @ApiResponse({ status: 200, description: 'Token generated successfully' })
+    @ApiOkResponse({
+        type: VoiceTokenResponseDTO,
+        description: 'Token generated successfully',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Channel Not Found' })
     public async getVoiceToken(

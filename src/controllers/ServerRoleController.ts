@@ -22,10 +22,18 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
     ApiConsumes,
     ApiBody,
+    ApiProduces,
 } from '@nestjs/swagger';
+import {
+    ServerRoleResponseDTO,
+    RoleReorderResponseDTO,
+    RoleDeleteResponseDTO,
+    RoleIconResponseDTO,
+} from './dto/server-role.response.dto';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
 import { injectable } from 'inversify';
@@ -90,7 +98,10 @@ export class ServerRoleController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get server roles' })
-    @ApiResponse({ status: 200, description: 'Roles retrieved' })
+    @ApiOkResponse({
+        type: [ServerRoleResponseDTO],
+        description: 'Roles retrieved',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getServerRoles(
         @Param('serverId') serverId: string,
@@ -114,7 +125,11 @@ export class ServerRoleController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Create a role' })
-    @ApiResponse({ status: 201, description: 'Role created' })
+    @ApiResponse({
+        status: 201,
+        type: ServerRoleResponseDTO,
+        description: 'Role created',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -208,7 +223,10 @@ export class ServerRoleController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Reorder roles' })
-    @ApiResponse({ status: 200, description: 'Roles reordered' })
+    @ApiOkResponse({
+        type: RoleReorderResponseDTO,
+        description: 'Roles reordered',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -326,7 +344,7 @@ export class ServerRoleController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Update a role' })
-    @ApiResponse({ status: 200, description: 'Role updated' })
+    @ApiOkResponse({ type: ServerRoleResponseDTO, description: 'Role updated' })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -540,7 +558,7 @@ export class ServerRoleController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Delete a role' })
-    @ApiResponse({ status: 200, description: 'Role deleted' })
+    @ApiOkResponse({ type: RoleDeleteResponseDTO, description: 'Role deleted' })
     @ApiResponse({
         status: 400,
         description: ErrorMessages.ROLE.CANNOT_DELETE_EVERYONE,
@@ -647,7 +665,10 @@ export class ServerRoleController {
     })
     @HttpCode(200)
     @ApiOperation({ summary: 'Upload role icon' })
-    @ApiResponse({ status: 200, description: 'Role icon uploaded' })
+    @ApiOkResponse({
+        type: RoleIconResponseDTO,
+        description: 'Role icon uploaded',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -764,7 +785,8 @@ export class ServerRoleController {
 
     @Get('icon/:filename')
     @ApiOperation({ summary: 'Get role icon' })
-    @ApiResponse({ status: 200, description: 'Role icon image' })
+    @ApiProduces('image/webp', 'image/gif', 'image/png', 'image/jpeg')
+    @ApiOkResponse({ type: String, description: 'Role icon image' })
     @ApiResponse({ status: 404, description: 'Icon not found' })
     public async getRoleIcon(
         @Param('filename') filename: string,

@@ -22,6 +22,7 @@ import { PingService } from '@/services/PingService';
 import {
     ApiTags,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
     ApiOperation,
 } from '@nestjs/swagger';
@@ -235,8 +236,13 @@ export class FriendshipController {
     @ApiOperation({
         summary: 'Get full profiles for all friends in one request',
     })
-    @ApiResponse({ status: 200, description: 'Array of full user profiles' })
-    public async getFriendProfiles(@Req() req: Request): Promise<unknown[]> {
+    @ApiOkResponse({
+        type: [FriendResponseDTO],
+        description: 'Array of full user profiles',
+    })
+    public async getFriendProfiles(
+        @Req() req: Request,
+    ): Promise<FriendResponseDTO[]> {
         const userId = (req as unknown as RequestWithUser).user.id;
         const userOid = new Types.ObjectId(userId);
 
@@ -297,11 +303,11 @@ export class FriendshipController {
                         mapped.profilePicture = '/images/deleted-cat.jpg';
                     }
 
-                    return mapped;
+                    return mapped as unknown as FriendResponseDTO;
                 }),
         );
 
-        return profiles.filter((p): p is NonNullable<typeof p> => p !== null);
+        return profiles.filter((p): p is FriendResponseDTO => p !== null);
     }
 
     @Get('incoming')

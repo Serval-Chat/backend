@@ -2,6 +2,18 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsMongoId, IsOptional, IsString } from 'class-validator';
 import type { Permissions } from '@/permissions/types';
 
+export class ChannelPermissionsMapDTO {
+    [roleOrUserId: string]: Permissions;
+}
+
+export class PermissionsMapDTO {
+    [permission: string]: boolean;
+}
+
+export class RolePermissionsMapDTO {
+    [roleOrUserId: string]: PermissionsMapDTO;
+}
+
 export class ChannelResponseDTO {
     @ApiProperty({ required: false })
     @IsOptional()
@@ -44,8 +56,8 @@ export class ChannelResponseDTO {
     @ApiProperty({ required: false })
     public lastMessageAt?: Date;
 
-    @ApiProperty({ required: false })
-    public permissions?: Record<string, Permissions>;
+    @ApiProperty({ required: false, type: () => ChannelPermissionsMapDTO })
+    public permissions?: ChannelPermissionsMapDTO;
 
     @ApiProperty({ required: false })
     public createdAt?: Date;
@@ -103,12 +115,41 @@ export class CategoryResponseDTO {
     @ApiProperty()
     public position!: number;
 
-    @ApiProperty({ required: false })
-    public permissions?: Record<string, Permissions>;
+    @ApiProperty({ required: false, type: () => ChannelPermissionsMapDTO })
+    public permissions?: ChannelPermissionsMapDTO;
 
     @ApiProperty({ required: false })
     public createdAt?: Date;
 
     @ApiProperty({ required: false })
     public updatedAt?: Date;
+}
+
+export class MessageResponseDTO {
+    @ApiProperty()
+    public message!: string;
+}
+
+export class ReorderResponseDTO {
+    @ApiProperty()
+    public message!: string;
+}
+
+export class PermissionsResponseDTO {
+    @ApiProperty({
+        type: () => RolePermissionsMapDTO,
+        additionalProperties: true,
+    })
+    public permissions!: RolePermissionsMapDTO;
+}
+
+export class VoiceTokenResponseDTO {
+    @ApiProperty()
+    public token!: string;
+
+    @ApiProperty()
+    public serverUrl!: string;
+
+    @ApiProperty()
+    public roomName!: string;
 }

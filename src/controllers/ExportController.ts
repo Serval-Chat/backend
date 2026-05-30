@@ -9,8 +9,18 @@ import {
     Inject,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiOkResponse,
+    ApiProduces,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
+import {
+    ExportStateResponseDTO,
+    ExportRequestResponseDTO,
+} from '@/controllers/dto/export.response.dto';
 import { injectable } from 'inversify';
 import { ExportService } from '@/services/ExportService';
 import { PermissionService } from '@/permissions/PermissionService';
@@ -38,6 +48,7 @@ export class ExportController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Get export state for a channel' })
+    @ApiOkResponse({ type: ExportStateResponseDTO })
     public async getExportState(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
@@ -68,6 +79,7 @@ export class ExportController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Request message export for a channel' })
+    @ApiOkResponse({ type: ExportRequestResponseDTO })
     public async requestExport(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
@@ -108,6 +120,8 @@ export class ExportController {
 
     @Get('exports/download/:token')
     @ApiOperation({ summary: 'Download exported file' })
+    @ApiOkResponse({ type: String, description: 'Export JSON file' })
+    @ApiProduces('application/json')
     public async downloadExport(
         @Param('token') token: string,
         @Res() res: Response,

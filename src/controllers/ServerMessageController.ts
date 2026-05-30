@@ -18,9 +18,19 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
     ApiQuery,
 } from '@nestjs/swagger';
+import {
+    ServerMessageResponseDTO,
+    GetMessageResponseDTO,
+    MessageDeletedResponseDTO,
+    PollVoteResponseDTO,
+    BulkDeleteResponseDTO,
+    TogglePinResponseDTO,
+    ToggleStickyResponseDTO,
+} from './dto/server-message.response.dto';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import crypto from 'crypto';
@@ -140,7 +150,10 @@ export class ServerMessageController {
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'before', required: false, type: String })
     @ApiQuery({ name: 'around', required: false, type: String })
-    @ApiResponse({ status: 200, description: 'Messages retrieved' })
+    @ApiOkResponse({
+        type: [ServerMessageResponseDTO],
+        description: 'Messages retrieved',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getMessages(
         @Param('serverId') serverId: string,
@@ -222,7 +235,11 @@ export class ServerMessageController {
 
     @Post()
     @ApiOperation({ summary: 'Send a message' })
-    @ApiResponse({ status: 201, description: 'Message sent' })
+    @ApiResponse({
+        status: 201,
+        type: ServerMessageResponseDTO,
+        description: 'Message sent',
+    })
     @ApiResponse({
         status: 400,
         description: ErrorMessages.MESSAGE.TEXT_REQUIRED,
@@ -481,7 +498,10 @@ export class ServerMessageController {
 
     @Get('pins')
     @ApiOperation({ summary: 'Get all pinned messages' })
-    @ApiResponse({ status: 200, description: 'Pinned messages retrieved' })
+    @ApiOkResponse({
+        type: [ServerMessageResponseDTO],
+        description: 'Pinned messages retrieved',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getPinnedMessages(
         @Param('serverId') serverId: string,
@@ -542,7 +562,10 @@ export class ServerMessageController {
 
     @Get(':messageId')
     @ApiOperation({ summary: 'Get a message' })
-    @ApiResponse({ status: 200, description: 'Message retrieved' })
+    @ApiOkResponse({
+        type: GetMessageResponseDTO,
+        description: 'Message retrieved',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getMessage(
@@ -661,7 +684,10 @@ export class ServerMessageController {
 
     @Patch(':messageId')
     @ApiOperation({ summary: 'Edit a message' })
-    @ApiResponse({ status: 200, description: 'Message updated' })
+    @ApiOkResponse({
+        type: ServerMessageResponseDTO,
+        description: 'Message updated',
+    })
     @ApiResponse({
         status: 400,
         description: ErrorMessages.MESSAGE.TEXT_REQUIRED,
@@ -803,7 +829,10 @@ export class ServerMessageController {
 
     @Post(':messageId/poll/vote')
     @ApiOperation({ summary: 'Vote on a poll' })
-    @ApiResponse({ status: 200, description: 'Vote registered' })
+    @ApiOkResponse({
+        type: PollVoteResponseDTO,
+        description: 'Vote registered',
+    })
     @ApiResponse({ status: 400, description: 'Invalid vote or not a poll' })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
@@ -907,7 +936,10 @@ export class ServerMessageController {
 
     @Delete('bulk-delete')
     @ApiOperation({ summary: 'Bulk delete messages' })
-    @ApiResponse({ status: 200, description: 'Messages deleted' })
+    @ApiOkResponse({
+        type: BulkDeleteResponseDTO,
+        description: 'Messages deleted',
+    })
     public async bulkDeleteMessages(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
@@ -1008,7 +1040,10 @@ export class ServerMessageController {
 
     @Delete(':messageId')
     @ApiOperation({ summary: 'Delete a message' })
-    @ApiResponse({ status: 200, description: 'Message deleted' })
+    @ApiOkResponse({
+        type: MessageDeletedResponseDTO,
+        description: 'Message deleted',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MESSAGE.NO_PERMISSION_DELETE,
@@ -1155,7 +1190,10 @@ export class ServerMessageController {
 
     @Post(':messageId/pin')
     @ApiOperation({ summary: 'Toggle message pin' })
-    @ApiResponse({ status: 200, description: 'Pin status toggled' })
+    @ApiOkResponse({
+        type: TogglePinResponseDTO,
+        description: 'Pin status toggled',
+    })
     @ApiResponse({
         status: 403,
         description: 'No permission to pin messages',
@@ -1249,7 +1287,10 @@ export class ServerMessageController {
 
     @Post(':messageId/sticky')
     @ApiOperation({ summary: 'Toggle message sticky' })
-    @ApiResponse({ status: 200, description: 'Sticky status toggled' })
+    @ApiOkResponse({
+        type: ToggleStickyResponseDTO,
+        description: 'Sticky status toggled',
+    })
     @ApiResponse({
         status: 403,
         description: 'No permission to pin messages',

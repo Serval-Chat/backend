@@ -10,9 +10,15 @@ import {
     HttpStatus,
     ForbiddenException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiOkResponse,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
+import { SlashCommandDTO } from './dto/bot.response.dto';
 
 import { TYPES } from '@/di/types';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
@@ -58,6 +64,7 @@ export class ApplicationController {
     @UseGuards(JwtAuthGuard)
     @Get('@me/commands')
     @ApiOperation({ summary: 'Get slash commands registered by this bot' })
+    @ApiOkResponse({ type: [SlashCommandDTO] })
     public async getMyCommands(@Req() req: AuthenticatedRequest) {
         if (req.user.isBot !== true) throw new ForbiddenException('Forbidden');
 
@@ -73,6 +80,7 @@ export class ApplicationController {
     @ApiOperation({
         summary: 'Bulk-overwrite slash commands for this bot (token auth)',
     })
+    @ApiOkResponse({ type: [SlashCommandDTO] })
     public async setMyCommands(
         @Req() req: AuthenticatedRequest,
         @Body() body: SetCommandsRequestDTO,

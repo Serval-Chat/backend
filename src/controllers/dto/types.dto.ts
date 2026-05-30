@@ -1,4 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class KeybindBindingDTO {
+    public code!: string;
+    public ctrl?: boolean;
+    public alt?: boolean;
+    public shift?: boolean;
+    public meta?: boolean;
+}
+
+export class KeybindsMapDTO {
+    [key: string]: KeybindBindingDTO | null;
+}
 import { IsMongoId, IsString, IsOptional } from 'class-validator';
 import {
     InteractionValue,
@@ -29,16 +41,7 @@ export class UserSettingsDTO {
     @ApiPropertyOptional()
     public disableCustomUsernameGlow?: boolean;
     @ApiPropertyOptional()
-    public keybinds?: Record<
-        string,
-        {
-            code: string;
-            ctrl?: boolean;
-            alt?: boolean;
-            shift?: boolean;
-            meta?: boolean;
-        } | null
-    >;
+    public keybinds?: KeybindsMapDTO;
 }
 
 export class NotificationPreferencesDTO {

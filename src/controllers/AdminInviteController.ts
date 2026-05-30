@@ -15,6 +15,8 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
+    ApiProduces,
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -26,6 +28,7 @@ import { TYPES } from '@/di/types';
 import {
     BatchCreateInvitesRequestDTO,
     InviteResponseDTO,
+    AdminSimpleMessageResponseDTO,
 } from './dto/admin-invites.dto';
 
 @ApiTags('Admin')
@@ -60,7 +63,10 @@ export class AdminInviteController {
     @Permissions('manageInvites')
     @HttpCode(200)
     @ApiOperation({ summary: 'Deletes a specific invite token' })
-    @ApiResponse({ status: 200, description: 'Invite deleted' })
+    @ApiOkResponse({
+        type: AdminSimpleMessageResponseDTO,
+        description: 'Invite deleted',
+    })
     @ApiResponse({ status: 404, description: 'Token not found' })
     public deleteInvite(@Path('token') token: string): { message: string } {
         const deleted = this.inviteService.deleteToken(token);
@@ -87,7 +93,8 @@ export class AdminInviteController {
     @Get('export')
     @Permissions('manageInvites')
     @ApiOperation({ summary: 'Exports all active invite tokens as a file' })
-    @ApiResponse({ status: 200, description: 'File download' })
+    @ApiOkResponse({ type: String, description: 'File download' })
+    @ApiProduces('text/plain')
     @ApiResponse({ status: 404, description: 'No tokens found' })
     public exportInvites(@Res() res: Response): void {
         const filePath = this.inviteService.getTokensFilePath();

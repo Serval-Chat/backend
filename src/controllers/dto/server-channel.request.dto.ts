@@ -23,6 +23,10 @@ import {
 import { ChannelTypeDTO } from './common.request.dto';
 import type { Permissions } from '@/permissions/types';
 
+export class PermissionOverridesMapDTO {
+    [key: string]: Permissions;
+}
+
 export class MarkdownBlockadeRuleDTO {
     @ApiProperty({ enum: ['everyone', 'role', 'user'] })
     @IsIn(['everyone', 'role', 'user'])
@@ -101,7 +105,7 @@ export class CreateChannelRequestDTO {
     })
     @IsOptional()
     @IsPermissionMap()
-    public permissions?: Record<string, Permissions>;
+    public permissions?: PermissionOverridesMapDTO;
 
     @ApiPropertyOptional({ type: [MarkdownBlockadeRuleDTO] })
     @IsOptional()
@@ -253,5 +257,5 @@ export class UpdatePermissionsRequestDTO {
         example: { role_id: { sendMessages: true } },
     })
     @IsPermissionMap()
-    public permissions!: Record<string, Permissions>;
+    public permissions!: PermissionOverridesMapDTO;
 }

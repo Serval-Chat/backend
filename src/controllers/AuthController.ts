@@ -28,7 +28,12 @@ import { extractClientIp } from '@/utils/ip';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { normalizeEmail } from '@/utils/email';
-import { ApiTags, ApiResponse, ApiSecurity } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiResponse,
+    ApiOkResponse,
+    ApiSecurity,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { ILogger } from '@/di/interfaces/ILogger';
 import type { JWTPayload } from '@/utils/jwt';
@@ -43,6 +48,7 @@ import {
     ChangeLoginResponseDTO,
     ChangePasswordResponseDTO,
     PasswordResetResponseDTO,
+    Disable2FAResponseDTO,
 } from './dto/auth.response.dto';
 import {
     TotpSetupConfirmRequestDTO,
@@ -272,7 +278,7 @@ export class AuthController {
     @UseGuards(JwtAuthGuard)
     @NoBot()
     @ApiSecurity('jwt')
-    @ApiResponse({ status: 200 })
+    @ApiOkResponse({ type: Disable2FAResponseDTO })
     public async disableTwoFactor(
         @Req() req: Request,
         @Body() body: TotpSensitiveActionRequestDTO,

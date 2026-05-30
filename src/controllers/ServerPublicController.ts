@@ -9,7 +9,12 @@ import {
     StreamableFile,
     Req,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiOkResponse,
+} from '@nestjs/swagger';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -38,7 +43,13 @@ export class ServerPublicController {
 
     @Get('icon/:filename')
     @ApiOperation({ summary: 'Get server icon' })
-    @ApiResponse({ status: 200, description: 'Icon file retrieved' })
+    @ApiOkResponse({
+        description: 'Icon file retrieved',
+        schema: {
+            type: 'string',
+            format: 'binary',
+        },
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.FILE.NOT_FOUND })
     public async getServerIcon(
         @Param('filename') filename: string,
@@ -78,7 +89,13 @@ export class ServerPublicController {
 
     @Get('banner/:filename')
     @ApiOperation({ summary: 'Get server banner' })
-    @ApiResponse({ status: 200, description: 'Banner file retrieved' })
+    @ApiOkResponse({
+        description: 'Banner file retrieved',
+        schema: {
+            type: 'string',
+            format: 'binary',
+        },
+    })
     @ApiResponse({ status: 404, description: ErrorMessages.FILE.NOT_FOUND })
     public async getServerBanner(
         @Param('filename') filename: string,

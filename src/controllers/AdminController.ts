@@ -18,6 +18,7 @@ import {
 import {
     ApiTags,
     ApiResponse,
+    ApiOkResponse,
     ApiOperation,
     ApiBearerAuth,
 } from '@nestjs/swagger';
@@ -62,6 +63,11 @@ import {
     deleteAvatarFile,
 } from '@/utils/deletion';
 import { DashBoardStatsDTO } from './dto/admin-dashboard-stats.response.dto';
+import {
+    AdminSimpleMessageResponseDTO,
+    AdminServerVerificationOverrideResponseDTO,
+    AdminServerVerifyResponseDTO,
+} from './dto/admin-servers-details.response.dto';
 import { AdminPermissions, ProfileFieldDTO } from './dto/common.request.dto';
 import {
     AdminUserListItemDTO,
@@ -1877,7 +1883,10 @@ export class AdminController {
     @Delete('servers/:serverId/invites/:inviteId')
     @Permissions('manageServer')
     @ApiOperation({ summary: 'Delete a server invite (Admin access)' })
-    @ApiResponse({ status: 200 })
+    @ApiOkResponse({
+        type: AdminSimpleMessageResponseDTO,
+        description: 'Invite deleted',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Invite not found' })
     public async deleteServerInvite(
@@ -1909,7 +1918,10 @@ export class AdminController {
     @Delete('servers/:serverId/verification')
     @Permissions('manageServer')
     @ApiOperation({ summary: 'Decline server verification application' })
-    @ApiResponse({ status: 200 })
+    @ApiOkResponse({
+        type: AdminSimpleMessageResponseDTO,
+        description: 'Verification declined',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server not found' })
     public async declineVerification(
@@ -1942,7 +1954,7 @@ export class AdminController {
     @ApiOperation({
         summary: 'Set or clear a manual server verification override',
     })
-    @ApiResponse({ status: 200 })
+    @ApiOkResponse({ type: AdminServerVerificationOverrideResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server not found' })
     public async setServerVerificationOverride(
@@ -1994,7 +2006,7 @@ export class AdminController {
     @HttpCode(200)
     @Permissions('manageServer')
     @ApiOperation({ summary: 'Grant a server the verified badge' })
-    @ApiResponse({ status: 200 })
+    @ApiOkResponse({ type: AdminServerVerifyResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server not found' })
     public async verifyServer(
@@ -2033,7 +2045,7 @@ export class AdminController {
     @Delete('servers/:serverId/verify')
     @Permissions('manageServer')
     @ApiOperation({ summary: 'Remove the verified badge from a server' })
-    @ApiResponse({ status: 200 })
+    @ApiOkResponse({ type: AdminServerVerifyResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server not found' })
     public async unverifyServer(

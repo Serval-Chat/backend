@@ -31,10 +31,16 @@ import { injectable } from 'inversify';
 import {
     ApiTags,
     ApiOperation,
+    ApiOkResponse,
     ApiBearerAuth,
     ApiConsumes,
+    ApiProduces,
     ApiBody,
 } from '@nestjs/swagger';
+import {
+    NotificationSoundResponseDTO,
+    NotificationSoundDeletedResponseDTO,
+} from './dto/notification-sound.response.dto';
 
 @ApiTags('Notification Sounds')
 @injectable()
@@ -79,6 +85,7 @@ export class NotificationSoundController {
         },
     })
     @ApiOperation({ summary: 'Upload a custom notification sound' })
+    @ApiOkResponse({ type: NotificationSoundResponseDTO })
     public async uploadSound(
         @Req() req: Request,
         @UploadedFile() file: Express.Multer.File | undefined,
@@ -140,6 +147,7 @@ export class NotificationSoundController {
     @Get()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Get all custom notification sounds' })
+    @ApiOkResponse({ type: [NotificationSoundResponseDTO] })
     public async getSounds(@Req() req: Request) {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const user = await this.userRepo.findById(new Types.ObjectId(userId));
@@ -149,6 +157,7 @@ export class NotificationSoundController {
     @Delete(':id')
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Delete a custom notification sound' })
+    @ApiOkResponse({ type: NotificationSoundDeletedResponseDTO })
     public async deleteSound(@Req() req: Request, @Param('id') id: string) {
         const userId = (req as Request & { user: JWTPayload }).user.id;
         const user = await this.userRepo.findById(new Types.ObjectId(userId));
@@ -177,6 +186,8 @@ export class NotificationSoundController {
 
     @Get('play/:filename')
     @ApiOperation({ summary: 'Serve a notification sound file' })
+    @ApiOkResponse({ type: String, description: 'Audio file' })
+    @ApiProduces('audio/ogg')
     public async playSound(
         @Param('filename') filename: string,
         @Res() res: Response,

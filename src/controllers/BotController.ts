@@ -22,9 +22,24 @@ import {
     ApiTags,
     ApiOperation,
     ApiBearerAuth,
+    ApiOkResponse,
+    ApiResponse,
     ApiConsumes,
     ApiBody,
 } from '@nestjs/swagger';
+import {
+    BotPublicInfoResponseDTO,
+    BotTokenResponseDTO,
+    BotResponseDTO,
+    CreateBotResponseDTO,
+    BotSecretResponseDTO,
+    BotDeleteResponseDTO,
+    BotServerCountResponseDTO,
+    BotAuthorizeResponseDTO,
+    SlashCommandDTO,
+    BotUploadPictureResponseDTO,
+    BotUploadBannerResponseDTO,
+} from './dto/bot.response.dto';
 import { injectable } from 'inversify';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
@@ -156,6 +171,7 @@ export class BotController {
 
     @Get(':clientId/public')
     @ApiOperation({ summary: 'Public bot info (no auth)' })
+    @ApiOkResponse({ type: BotPublicInfoResponseDTO })
     public async getPublicInfo(@Param('clientId') clientId: string) {
         validateClientId(clientId);
         const bot = await Bot.findOne({ clientId })
@@ -200,6 +216,7 @@ export class BotController {
     @Post('token')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Exchange client credentials for a bot token' })
+    @ApiOkResponse({ type: BotTokenResponseDTO })
     public async getToken(@Body() body: GetBotTokenRequestDTO) {
         const { client_id, client_secret } = body;
 
@@ -250,6 +267,7 @@ export class BotController {
     @Post()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create a new bot application' })
+    @ApiResponse({ status: 201, type: CreateBotResponseDTO })
     public async createBot(
         @Req() req: AuthenticatedRequest,
         @Body() body: CreateBotRequestDTO,
@@ -312,6 +330,7 @@ export class BotController {
     @UseGuards(JwtAuthGuard)
     @Get()
     @ApiOperation({ summary: "List caller's bots" })
+    @ApiOkResponse({ type: [BotResponseDTO] })
     public async listBots(@Req() req: AuthenticatedRequest) {
         const ownerId = new Types.ObjectId(req.user.id);
         const bots = await Bot.find({ ownerId })
@@ -333,6 +352,7 @@ export class BotController {
     @UseGuards(JwtAuthGuard)
     @Get(':clientId')
     @ApiOperation({ summary: 'Get bot detail (owner only)' })
+    @ApiOkResponse({ type: BotResponseDTO })
     public async getBot(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -364,6 +384,7 @@ export class BotController {
     @ApiOperation({
         summary: 'Update bot name/description/avatar (owner only)',
     })
+    @ApiOkResponse({ type: BotResponseDTO })
     public async updateBot(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -416,6 +437,7 @@ export class BotController {
     @UseGuards(JwtAuthGuard)
     @Patch(':clientId/permissions')
     @ApiOperation({ summary: 'Update bot API permissions (owner only)' })
+    @ApiOkResponse({ type: BotResponseDTO })
     public async updatePermissions(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -460,6 +482,7 @@ export class BotController {
     @Delete(':clientId')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Delete bot (owner only)' })
+    @ApiOkResponse({ type: BotDeleteResponseDTO })
     public async deleteBot(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -481,6 +504,7 @@ export class BotController {
     @Post(':clientId/reset-secret')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Reset bot client secret (owner only)' })
+    @ApiOkResponse({ type: BotSecretResponseDTO })
     public async resetSecret(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -507,6 +531,7 @@ export class BotController {
         summary:
             'Invalidate all existing bot tokens and return a new one (owner only)',
     })
+    @ApiOkResponse({ type: BotTokenResponseDTO })
     public async resetToken(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -558,6 +583,7 @@ export class BotController {
     @ApiOperation({
         summary: 'Authorize bot to join a server (any server manager)',
     })
+    @ApiOkResponse({ type: BotAuthorizeResponseDTO })
     public async authorizeToServer(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -684,6 +710,7 @@ export class BotController {
     @UseGuards(JwtAuthGuard)
     @Get(':clientId/servers')
     @ApiOperation({ summary: 'List servers the bot is in (owner only)' })
+    @ApiOkResponse({ type: BotServerCountResponseDTO })
     public async getBotServers(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -706,6 +733,7 @@ export class BotController {
     @UseGuards(JwtAuthGuard)
     @Get(':clientId/commands')
     @ApiOperation({ summary: 'Get slash commands for bot' })
+    @ApiOkResponse({ type: [SlashCommandDTO] })
     public async getBotCommands(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -724,6 +752,7 @@ export class BotController {
     @Post(':clientId/commands')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Overwrite slash commands for bot' })
+    @ApiOkResponse({ type: [SlashCommandDTO] })
     public async updateBotCommands(
         @Req() req: AuthenticatedRequest,
         @Param('clientId') clientId: string,
@@ -776,6 +805,7 @@ export class BotController {
     })
     @HttpCode(200)
     @ApiOperation({ summary: 'Upload bot profile picture (owner only)' })
+    @ApiOkResponse({ type: BotUploadPictureResponseDTO })
     public async uploadProfilePicture(
         @UploadedFile() profilePicture: Express.Multer.File | undefined,
         @Param('clientId') clientId: string,
@@ -898,6 +928,7 @@ export class BotController {
     })
     @HttpCode(200)
     @ApiOperation({ summary: 'Upload bot profile banner (owner only)' })
+    @ApiOkResponse({ type: BotUploadBannerResponseDTO })
     public async uploadBanner(
         @UploadedFile() banner: Express.Multer.File | undefined,
         @Param('clientId') clientId: string,

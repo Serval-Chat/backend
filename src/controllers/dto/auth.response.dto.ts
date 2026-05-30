@@ -50,3 +50,11 @@ export class PasswordResetResponseDTO {
     })
     public requestId?: string;
 }
+
+export class Disable2FAResponseDTO {
+    @ApiProperty()
+    public message!: string;
+
+    @ApiProperty()
+    public token!: string;
+}

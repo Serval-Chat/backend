@@ -19,8 +19,20 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
+import {
+    ServerMemberResponseDTO,
+    ServerMemberWithUserResponseDTO,
+    OnboardingStateResponseDTO,
+    ServerMemberListResponseDTO,
+    ServerMemberSearchResponseDTO,
+    MemberActionResponseDTO,
+    TimeoutResponseDTO,
+    ServerBanResponseDTO,
+    TransferOwnershipResponseDTO,
+} from './dto/server-member.response.dto';
 import { WsServer } from '@/ws/server';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
@@ -165,7 +177,11 @@ export class ServerMemberController {
     @Get('onboarding')
     @NoBot()
     @ApiOperation({ summary: 'Get current member onboarding state' })
-    @ApiResponse({ status: 200, description: 'Onboarding state retrieved' })
+    @ApiResponse({
+        status: 200,
+        type: OnboardingStateResponseDTO,
+        description: 'Onboarding state retrieved',
+    })
     public async getOnboarding(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -191,7 +207,10 @@ export class ServerMemberController {
     @Post('onboarding/accept-rules')
     @NoBot()
     @ApiOperation({ summary: 'Accept server onboarding rules' })
-    @ApiResponse({ status: 200, description: 'Rules accepted' })
+    @ApiOkResponse({
+        type: ServerMemberResponseDTO,
+        description: 'Rules accepted',
+    })
     public async acceptOnboardingRules(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -214,7 +233,10 @@ export class ServerMemberController {
     @Patch('self-roles')
     @NoBot()
     @ApiOperation({ summary: 'Update current member self-assignable roles' })
-    @ApiResponse({ status: 200, description: 'Self roles updated' })
+    @ApiOkResponse({
+        type: ServerMemberResponseDTO,
+        description: 'Self roles updated',
+    })
     public async updateSelfRoles(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -286,7 +308,10 @@ export class ServerMemberController {
     @Patch('channel-preferences')
     @NoBot()
     @ApiOperation({ summary: 'Update current member channel preferences' })
-    @ApiResponse({ status: 200, description: 'Channel preferences updated' })
+    @ApiOkResponse({
+        type: ServerMemberResponseDTO,
+        description: 'Channel preferences updated',
+    })
     public async updateChannelPreferences(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -340,7 +365,10 @@ export class ServerMemberController {
     @Post('onboarding/complete')
     @NoBot()
     @ApiOperation({ summary: 'Complete server onboarding' })
-    @ApiResponse({ status: 200, description: 'Onboarding completed' })
+    @ApiOkResponse({
+        type: ServerMemberResponseDTO,
+        description: 'Onboarding completed',
+    })
     public async completeOnboarding(
         @Param('serverId') serverId: string,
         @Req() req: ExpressRequest,
@@ -365,7 +393,10 @@ export class ServerMemberController {
 
     @Get('members')
     @ApiOperation({ summary: 'Get all server members' })
-    @ApiResponse({ status: 200, description: 'Server members retrieved' })
+    @ApiOkResponse({
+        type: ServerMemberListResponseDTO,
+        description: 'Server members retrieved',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getServerMembers(
         @Param('serverId') serverId: string,
@@ -433,7 +464,10 @@ export class ServerMemberController {
 
     @Get('members/search')
     @ApiOperation({ summary: 'Search server members' })
-    @ApiResponse({ status: 200, description: 'Search results' })
+    @ApiOkResponse({
+        type: ServerMemberSearchResponseDTO,
+        description: 'Search results',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async searchMembers(
         @Param('serverId') serverId: string,
@@ -501,7 +535,10 @@ export class ServerMemberController {
 
     @Get('members/:userId')
     @ApiOperation({ summary: 'Get server member details' })
-    @ApiResponse({ status: 200, description: 'Member details retrieved' })
+    @ApiOkResponse({
+        type: ServerMemberWithUserResponseDTO,
+        description: 'Member details retrieved',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     @ApiResponse({ status: 404, description: ErrorMessages.MEMBER.NOT_FOUND })
     public async getMember(
@@ -536,7 +573,10 @@ export class ServerMemberController {
 
     @Delete('members/me')
     @ApiOperation({ summary: 'Leave the server' })
-    @ApiResponse({ status: 200, description: 'Left server' })
+    @ApiOkResponse({
+        type: MemberActionResponseDTO,
+        description: 'Left server',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
@@ -584,7 +624,10 @@ export class ServerMemberController {
 
     @Delete('members/:userId')
     @ApiOperation({ summary: 'Kick a member from the server' })
-    @ApiResponse({ status: 200, description: 'Member kicked' })
+    @ApiOkResponse({
+        type: MemberActionResponseDTO,
+        description: 'Member kicked',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_KICK,
@@ -675,7 +718,10 @@ export class ServerMemberController {
 
     @Post('bans')
     @ApiOperation({ summary: 'Ban a member from the server' })
-    @ApiResponse({ status: 200, description: 'Member banned' })
+    @ApiOkResponse({
+        type: MemberActionResponseDTO,
+        description: 'Member banned',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_BAN,
@@ -770,7 +816,10 @@ export class ServerMemberController {
 
     @Post('members/:userId/timeout')
     @ApiOperation({ summary: 'Timeout a member' })
-    @ApiResponse({ status: 200, description: 'Member timed out' })
+    @ApiOkResponse({
+        type: TimeoutResponseDTO,
+        description: 'Member timed out',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -868,7 +917,10 @@ export class ServerMemberController {
 
     @Delete('bans/:userId')
     @ApiOperation({ summary: 'Unban a user from the server' })
-    @ApiResponse({ status: 200, description: 'Member unbanned' })
+    @ApiOkResponse({
+        type: MemberActionResponseDTO,
+        description: 'Member unbanned',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_UNBAN,
@@ -916,7 +968,10 @@ export class ServerMemberController {
 
     @Get('bans')
     @ApiOperation({ summary: 'Get all server bans' })
-    @ApiResponse({ status: 200, description: 'Server bans retrieved' })
+    @ApiOkResponse({
+        type: [ServerBanResponseDTO],
+        description: 'Server bans retrieved',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_VIEW_BANS,
@@ -946,7 +1001,7 @@ export class ServerMemberController {
 
     @Post('members/:userId/roles/:roleId')
     @ApiOperation({ summary: 'Add a role to a member' })
-    @ApiResponse({ status: 200, description: 'Role added' })
+    @ApiOkResponse({ type: ServerMemberResponseDTO, description: 'Role added' })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -1050,7 +1105,10 @@ export class ServerMemberController {
 
     @Delete('members/:userId/roles/:roleId')
     @ApiOperation({ summary: 'Remove a role from a member' })
-    @ApiResponse({ status: 200, description: 'Role removed' })
+    @ApiOkResponse({
+        type: ServerMemberResponseDTO,
+        description: 'Role removed',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -1160,7 +1218,10 @@ export class ServerMemberController {
 
     @Post('transfer-ownership')
     @ApiOperation({ summary: 'Transfer server ownership' })
-    @ApiResponse({ status: 200, description: 'Ownership transferred' })
+    @ApiOkResponse({
+        type: TransferOwnershipResponseDTO,
+        description: 'Ownership transferred',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.SERVER.TRANSFER_OWNERSHIP_ONLY_OWNER,

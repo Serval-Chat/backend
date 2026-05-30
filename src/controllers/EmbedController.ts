@@ -4,7 +4,12 @@ import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { SCRAPER_HOST, SCRAPER_PORT } from '@/config/env';
 import { fetch } from 'undici';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiOkResponse,
+    ApiProduces,
+} from '@nestjs/swagger';
 import { injectable } from 'inversify';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { ScraperService } from '@/services/ScraperService';
@@ -24,6 +29,8 @@ export class EmbedController {
     @ApiOperation({
         summary: 'Proxy and cache an image from the scraper service',
     })
+    @ApiOkResponse({ type: String, description: 'Proxied image' })
+    @ApiProduces('image/webp', 'image/png', 'image/jpeg')
     public async proxyImage(
         @Query('file') file: string,
         @Res() res: Response,
@@ -76,6 +83,8 @@ export class EmbedController {
     @ApiOperation({
         summary: 'Proxy an allowlisted external URL',
     })
+    @ApiOkResponse({ type: String, description: 'Proxied image' })
+    @ApiProduces('image/webp', 'image/png', 'image/jpeg')
     public async proxy(
         @Query('url') url: string,
         @Res() res: Response,

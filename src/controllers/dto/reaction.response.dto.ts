@@ -20,3 +20,8 @@ export class ReactionResponseDTO {
     @ApiProperty()
     public me!: boolean;
 }
+
+export class ReactionsListResponseDTO {
+    @ApiProperty({ type: [ReactionResponseDTO] })
+    public reactions!: ReactionResponseDTO[];
+}

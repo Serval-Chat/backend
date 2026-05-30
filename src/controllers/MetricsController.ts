@@ -7,7 +7,7 @@ import {
 import * as crypto from 'node:crypto';
 import { injectable } from 'inversify';
 import { register } from '@/utils/metrics';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
 import { METRICS_TOKEN } from '@/config/env';
 
 @ApiTags('System')
@@ -16,8 +16,8 @@ import { METRICS_TOKEN } from '@/config/env';
 export class MetricsController {
     @Get()
     @ApiOperation({ summary: 'Retrieve Prometheus metrics' })
-    @ApiResponse({
-        status: 200,
+    @ApiOkResponse({
+        type: String,
         description: 'Prometheus metrics',
         content: { 'text/plain': {} },
     })

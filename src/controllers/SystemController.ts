@@ -1,13 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
 import { injectable } from 'inversify';
 import { getGitCommitHash, getVersion } from '@/utils/version';
-
-interface SystemInfo {
-    version: string;
-    commitHash: string;
-    partialCommitHash: string;
-}
+import { SystemInfoResponseDTO } from './dto/system.response.dto';
 
 @injectable()
 @Controller('api/v1')
@@ -17,8 +12,11 @@ export class SystemController {
 
     @Get('system/info')
     @ApiOperation({ summary: 'Get system info' })
-    @ApiResponse({ status: 200, description: 'System info retrieved' })
-    public async getSystemInfo(): Promise<SystemInfo> {
+    @ApiOkResponse({
+        type: SystemInfoResponseDTO,
+        description: 'System info retrieved',
+    })
+    public async getSystemInfo(): Promise<SystemInfoResponseDTO> {
         const version = getVersion();
         const { commit, short } = getGitCommitHash();
 

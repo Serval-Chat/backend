@@ -20,6 +20,7 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
@@ -45,7 +46,12 @@ import { JWTPayload } from '@/utils/jwt';
 import crypto from 'crypto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { CreateInviteRequestDTO } from './dto/server-invite.request.dto';
-import { InviteDetailsResponseDTO } from './dto/server-invite.response.dto';
+import {
+    InviteDetailsResponseDTO,
+    ServerInviteResponseDTO,
+    JoinServerResponseDTO,
+    InviteDeletedResponseDTO,
+} from '@/controllers/dto/server-invite.response.dto';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 
 @injectable()
@@ -82,8 +88,11 @@ export class ServerInviteController {
     @Get('servers/:serverId/invites')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get all server invites' })
-    @ApiResponse({ status: 200, description: 'Server invites retrieved' })
+    @ApiOperation({ summary: 'Get all invites for a server' })
+    @ApiOkResponse({
+        type: [ServerInviteResponseDTO],
+        description: 'Server invites retrieved',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
@@ -114,8 +123,11 @@ export class ServerInviteController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @HttpCode(200)
-    @ApiOperation({ summary: 'Create a server invite' })
-    @ApiResponse({ status: 201, description: 'Invite created' })
+    @ApiOperation({ summary: 'Create a new invite for a server' })
+    @ApiOkResponse({
+        type: ServerInviteResponseDTO,
+        description: 'Invite created',
+    })
     @ApiResponse({
         status: 400,
         description: ErrorMessages.INVITE.ALREADY_EXISTS,
@@ -218,7 +230,10 @@ export class ServerInviteController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Delete a server invite' })
-    @ApiResponse({ status: 200, description: 'Invite deleted' })
+    @ApiOkResponse({
+        type: InviteDeletedResponseDTO,
+        description: 'Invite deleted',
+    })
     @ApiResponse({
         status: 403,
         description: ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
@@ -353,8 +368,11 @@ export class ServerInviteController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @HttpCode(200)
-    @ApiOperation({ summary: 'Join a server using an invite' })
-    @ApiResponse({ status: 200, description: 'Server joined' })
+    @ApiOperation({ summary: 'Join a server using an invite code' })
+    @ApiOkResponse({
+        type: JoinServerResponseDTO,
+        description: 'Server joined',
+    })
     @ApiResponse({
         status: 400,
         description: ErrorMessages.SERVER.ALREADY_MEMBER,

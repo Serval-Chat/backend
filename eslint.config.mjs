@@ -51,6 +51,18 @@ export default [
         {
           selector: "TSUnknownKeyword",
           message: "The 'unknown' type is disallowed in DTOs. Please use more specific types."
+        },
+        {
+          selector: "TSTypeReference[typeName.name='Record']",
+          message: "Raw 'Record' objects are disallowed in DTOs. Define an explicit interface or DTO class for structured data."
+        },
+        {
+          selector: "TSObjectKeyword",
+          message: "The 'object' type is disallowed in DTOs. Define an explicit DTO class."
+        },
+        {
+          selector: "TSTypeLiteral[members.length=0]",
+          message: "The empty object type '{}' is disallowed in DTOs."
         }
       ]
     }

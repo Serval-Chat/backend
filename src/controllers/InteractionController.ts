@@ -13,8 +13,14 @@ import {
     ForbiddenException,
     BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiOkResponse,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 import { injectable } from 'inversify';
+import { InteractionSuccessResponseDTO } from '@/controllers/dto/interaction.response.dto';
 import { Types } from 'mongoose';
 
 import { TYPES } from '@/di/types';
@@ -189,6 +195,11 @@ export class InteractionController {
     @UseGuards(JwtAuthGuard)
     @Get('servers/:serverId/commands')
     @ApiOperation({ summary: 'Get available commands for a server' })
+    @ApiOkResponse({
+        description: 'Array of slash commands',
+        type: Object,
+        isArray: true,
+    })
     public async getServerCommands(
         @Req() req: AuthenticatedRequest,
         @Param('serverId') serverId: string,
@@ -240,6 +251,7 @@ export class InteractionController {
     @NoBot()
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Trigger a slash command interaction' })
+    @ApiOkResponse({ type: InteractionSuccessResponseDTO })
     public async createInteraction(
         @Req() req: AuthenticatedRequest,
         @Body() body: CreateInteractionRequestDTO,
@@ -488,6 +500,7 @@ export class InteractionController {
     @ApiOperation({
         summary: 'Send an optionally ephemeral bot interaction response',
     })
+    @ApiOkResponse({ type: InteractionSuccessResponseDTO })
     public async respondToInteraction(
         @Req() req: AuthenticatedRequest,
         @Body() body: BotInteractionRespondDTO,

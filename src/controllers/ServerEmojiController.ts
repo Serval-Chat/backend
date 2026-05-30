@@ -22,6 +22,8 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
+    ApiCreatedResponse,
     ApiBearerAuth,
     ApiConsumes,
     ApiBody,
@@ -54,6 +56,7 @@ import {
     getImageMetadata,
 } from '@/utils/imageProcessing';
 import { UploadEmojiRequestDTO } from './dto/emoji.request.dto';
+import { EmojiResponseDTO } from './dto/emoji.response.dto';
 import { EmojiValidationPipe } from '@/validation/EmojiValidationPipe';
 import { assertHttpNotMuted } from '@/utils/mute';
 
@@ -95,7 +98,10 @@ export class ServerEmojiController {
 
     @Get()
     @ApiOperation({ summary: 'Get all server emojis' })
-    @ApiResponse({ status: 200, description: 'Server emojis retrieved' })
+    @ApiOkResponse({
+        type: [EmojiResponseDTO],
+        description: 'Server emojis retrieved',
+    })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     @ApiResponse({ status: 404, description: ErrorMessages.SERVER.NOT_FOUND })
     public async getServerEmojis(
@@ -135,7 +141,10 @@ export class ServerEmojiController {
             },
         },
     })
-    @ApiResponse({ status: 201, description: 'Emoji uploaded' })
+    @ApiCreatedResponse({
+        type: EmojiResponseDTO,
+        description: 'Emoji uploaded',
+    })
     @ApiResponse({
         status: 400,
         description: ErrorMessages.EMOJI.FILE_REQUIRED,
@@ -253,7 +262,7 @@ export class ServerEmojiController {
 
     @Get(':emojiId')
     @ApiOperation({ summary: 'Get a specific emoji' })
-    @ApiResponse({ status: 200, description: 'Emoji retrieved' })
+    @ApiOkResponse({ type: EmojiResponseDTO, description: 'Emoji retrieved' })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     @ApiResponse({ status: 404, description: ErrorMessages.EMOJI.NOT_FOUND })
     public async getEmoji(

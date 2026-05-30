@@ -18,10 +18,20 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
     ApiConsumes,
     ApiBody,
 } from '@nestjs/swagger';
+import {
+    ServerUnreadStatusResponseDTO,
+    ServerCreateResponseDTO,
+    OnboardingSettingsResponseDTO,
+    ServerMarkReadResponseDTO,
+    ServerDeleteResponseDTO,
+    ServerVerificationResponseDTO,
+    VoiceStatesResponseDTO,
+} from './dto/server.extra.response.dto';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
@@ -263,7 +273,11 @@ export class ServerController {
     @UseGuards(JwtAuthGuard)
     @NoBot()
     @ApiOperation({ summary: 'Create server' })
-    @ApiResponse({ status: 201, description: 'Server created' })
+    @ApiResponse({
+        status: 201,
+        type: ServerCreateResponseDTO,
+        description: 'Server created',
+    })
     @ApiResponse({ status: 400, description: 'Invalid name' })
     public async createServer(
         @Req() req: Request,
@@ -319,7 +333,10 @@ export class ServerController {
 
     @Get('unread')
     @ApiOperation({ summary: 'Get unread status' })
-    @ApiResponse({ status: 200, description: 'Unread status per server' })
+    @ApiOkResponse({
+        type: ServerUnreadStatusResponseDTO,
+        description: 'Unread status per server',
+    })
     public async getUnreadStatus(
         @Req() req: Request,
     ): Promise<Record<string, { hasUnread: boolean; pingCount: number }>> {
@@ -407,8 +424,8 @@ export class ServerController {
 
     @Get('emojis')
     @ApiOperation({ summary: 'Get all emojis from all joined servers' })
-    @ApiResponse({
-        status: 200,
+    @ApiOkResponse({
+        type: [EmojiResponseDTO],
         description: 'Aggregate list of server emojis',
     })
     public async getAllServerEmojis(
@@ -447,7 +464,11 @@ export class ServerController {
 
     @Post(':serverId/ack')
     @ApiOperation({ summary: 'Mark server as read' })
-    @ApiResponse({ status: 201, description: 'Server marked as read' })
+    @ApiResponse({
+        status: 201,
+        type: ServerMarkReadResponseDTO,
+        description: 'Server marked as read',
+    })
     @ApiResponse({ status: 400, description: 'Invalid ID' })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async markServerAsRead(
@@ -491,7 +512,10 @@ export class ServerController {
     @Get(':serverId/onboarding-settings')
     @NoBot()
     @ApiOperation({ summary: 'Get server onboarding settings' })
-    @ApiResponse({ status: 200, description: 'Onboarding settings retrieved' })
+    @ApiOkResponse({
+        type: OnboardingSettingsResponseDTO,
+        description: 'Onboarding settings retrieved',
+    })
     public async getOnboardingSettings(
         @Param('serverId') serverId: string,
         @Req() req: Request,
@@ -520,7 +544,10 @@ export class ServerController {
     @Patch(':serverId/onboarding-settings')
     @NoBot()
     @ApiOperation({ summary: 'Update server onboarding settings' })
-    @ApiResponse({ status: 200, description: 'Onboarding settings updated' })
+    @ApiOkResponse({
+        type: OnboardingSettingsResponseDTO,
+        description: 'Onboarding settings updated',
+    })
     public async updateOnboardingSettings(
         @Param('serverId') serverId: string,
         @Req() req: Request,
@@ -976,7 +1003,11 @@ export class ServerController {
 
     @Post(':serverId/verification-request')
     @ApiOperation({ summary: 'Apply for server verification' })
-    @ApiResponse({ status: 201, description: 'Verification requested' })
+    @ApiResponse({
+        status: 201,
+        type: ServerVerificationResponseDTO,
+        description: 'Verification requested',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async requestVerification(
@@ -1020,7 +1051,10 @@ export class ServerController {
 
     @Delete(':serverId')
     @ApiOperation({ summary: 'Delete server' })
-    @ApiResponse({ status: 200, description: 'Server deleted' })
+    @ApiOkResponse({
+        type: ServerDeleteResponseDTO,
+        description: 'Server deleted',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async deleteServer(
@@ -1354,7 +1388,10 @@ export class ServerController {
 
     @Get(':serverId/voice-states')
     @ApiOperation({ summary: 'Get current voice states' })
-    @ApiResponse({ status: 200, description: 'Voice states map' })
+    @ApiOkResponse({
+        type: VoiceStatesResponseDTO,
+        description: 'Voice states map',
+    })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getVoiceStates(
         @Param('serverId') serverId: string,

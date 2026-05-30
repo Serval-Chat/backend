@@ -1,7 +1,13 @@
 import { Controller, Get, Param, Req, Res, Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
-import { ApiTags, ApiResponse, ApiOperation } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiResponse,
+    ApiOperation,
+    ApiOkResponse,
+    ApiProduces,
+} from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -26,7 +32,8 @@ export class FileCompatibilityController {
 
     @Get('download/:filename')
     @ApiOperation({ summary: 'Download a file (legacy)' })
-    @ApiResponse({ status: 200, description: 'File stream' })
+    @ApiOkResponse({ type: String, description: 'File stream' })
+    @ApiProduces('application/octet-stream')
     @ApiResponse({ status: 400, description: 'Invalid filename' })
     @ApiResponse({ status: 404, description: 'File not found' })
     public async downloadFile(

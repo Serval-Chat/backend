@@ -17,8 +17,10 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
+import { SimpleMessageResponseDTO } from './dto/profile.extra.response.dto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { Request } from 'express';
 import { injectable } from 'inversify';
@@ -151,7 +153,10 @@ export class BlockController {
     @ApiOperation({
         summary: 'Delete a block profile (cascade-deletes associated blocks)',
     })
-    @ApiResponse({ status: 200, description: 'Profile deleted' })
+    @ApiOkResponse({
+        type: SimpleMessageResponseDTO,
+        description: 'Profile deleted',
+    })
     @ApiResponse({ status: 404, description: 'Profile not found' })
     public async deleteProfile(
         @Req() req: Request,

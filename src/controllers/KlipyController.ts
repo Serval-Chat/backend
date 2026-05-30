@@ -12,6 +12,7 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { injectable } from 'inversify';
@@ -26,6 +27,7 @@ import {
     GifMetadataResponseDTO,
     ToggleFavoriteResponseDTO,
 } from '@/controllers/dto/klipy.response.dto';
+import { KlipySearchResponseDTO } from '@/controllers/dto/klipy-search.response.dto';
 
 @injectable()
 @Controller('api/v1/klipy')
@@ -40,24 +42,28 @@ export class KlipyController {
 
     @Get('search')
     @ApiOperation({ summary: 'Search for GIFs on Klipy' })
+    @ApiOkResponse({ type: KlipySearchResponseDTO })
     public async search(@Query('q') q: string) {
         return this.klipyService.searchGifs(q);
     }
 
     @Get('trending')
     @ApiOperation({ summary: 'Get trending GIFs from Klipy' })
+    @ApiOkResponse({ type: KlipySearchResponseDTO })
     public async trending() {
         return this.klipyService.getTrendingGifs();
     }
 
     @Get('stickers/search')
     @ApiOperation({ summary: 'Search for stickers on Klipy' })
+    @ApiOkResponse({ type: KlipySearchResponseDTO })
     public async searchStickers(@Query('q') q: string) {
         return this.klipyService.searchStickers(q);
     }
 
     @Get('stickers/trending')
     @ApiOperation({ summary: 'Get trending stickers from Klipy' })
+    @ApiOkResponse({ type: KlipySearchResponseDTO })
     public async trendingStickers() {
         return this.klipyService.getTrendingStickers();
     }

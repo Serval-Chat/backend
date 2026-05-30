@@ -14,8 +14,14 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
+import {
+    UserSettingsResponseDTO,
+    UpdateSettingsResponseDTO,
+    UpdateServerSettingsResponseDTO,
+} from './dto/settings.response.dto';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -84,7 +90,10 @@ export class SettingsController {
 
     @Get()
     @ApiOperation({ summary: 'Get user settings' })
-    @ApiResponse({ status: 200, description: 'Settings retrieved' })
+    @ApiOkResponse({
+        type: UserSettingsResponseDTO,
+        description: 'Settings retrieved',
+    })
     @ApiResponse({
         status: 404,
         description: ErrorMessages.AUTH.USER_NOT_FOUND,
@@ -122,7 +131,11 @@ export class SettingsController {
 
     @Post()
     @ApiOperation({ summary: 'Update user settings' })
-    @ApiResponse({ status: 201, description: 'Settings updated' })
+    @ApiResponse({
+        status: 201,
+        type: UpdateSettingsResponseDTO,
+        description: 'Settings updated',
+    })
     @ApiResponse({
         status: 404,
         description: ErrorMessages.AUTH.USER_NOT_FOUND,
@@ -162,7 +175,10 @@ export class SettingsController {
 
     @Patch('server-settings')
     @ApiOperation({ summary: 'Update server settings (order and folders)' })
-    @ApiResponse({ status: 200, description: 'Server settings updated' })
+    @ApiOkResponse({
+        type: UpdateServerSettingsResponseDTO,
+        description: 'Server settings updated',
+    })
     public async updateServerSettings(
         @Req() req: ExpressRequest,
         @Body() body: UpdateServerSettingsRequestDTO,

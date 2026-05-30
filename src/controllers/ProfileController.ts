@@ -20,10 +20,24 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
+    ApiOkResponse,
     ApiBearerAuth,
     ApiConsumes,
     ApiBody,
+    ApiProduces,
 } from '@nestjs/swagger';
+import {
+    UpdateBioResponseDTO,
+    UpdatePronounsResponseDTO,
+    UpdateDisplayNameResponseDTO,
+    UpdateCustomStatusResponseDTO,
+    BulkStatusesResponseDTO,
+    UpdateStyleResponseDTO,
+    ChangeUsernameResponseDTO,
+    UpdateLanguageResponseDTO,
+    SimpleMessageResponseDTO,
+    VerifyConnectionResponseDTO,
+} from './dto/profile.extra.response.dto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { Request, Response } from 'express';
 import {
@@ -449,7 +463,11 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Verify a pending website connection' })
-    @ApiResponse({ status: 201, description: 'Website verified' })
+    @ApiResponse({
+        status: 201,
+        type: VerifyConnectionResponseDTO,
+        description: 'Website verified',
+    })
     public async verifyWebsiteConnection(
         @Req() req: Request,
         @Param() params: ConnectionParamDTO,
@@ -542,7 +560,10 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Remove a profile connection' })
-    @ApiResponse({ status: 200, description: 'Connection removed' })
+    @ApiOkResponse({
+        type: SimpleMessageResponseDTO,
+        description: 'Connection removed',
+    })
     public async removeConnection(
         @Req() req: Request,
         @Param() params: ConnectionParamDTO,
@@ -1161,7 +1182,8 @@ export class ProfileController {
 
     @Get('banner/:filename')
     @ApiOperation({ summary: 'Get profile banner' })
-    @ApiResponse({ status: 200, description: 'Banner image' })
+    @ApiProduces('image/webp', 'image/gif', 'image/png', 'image/jpeg')
+    @ApiOkResponse({ type: String, description: 'Banner image' })
     @ApiResponse({ status: 400, description: 'Invalid filename' })
     @ApiResponse({ status: 404, description: 'Banner not found' })
     public async getBanner(
@@ -1201,7 +1223,7 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Update bio' })
-    @ApiResponse({ status: 200, description: 'Bio updated' })
+    @ApiOkResponse({ type: UpdateBioResponseDTO, description: 'Bio updated' })
     public async updateBio(
         @Req() req: Request,
         @Body() body: UpdateBioRequestDTO,
@@ -1266,7 +1288,10 @@ export class ProfileController {
     @UseGuards(JwtAuthGuard)
     @NoBot()
     @ApiOperation({ summary: 'Update pronouns' })
-    @ApiResponse({ status: 200, description: 'Pronouns updated' })
+    @ApiOkResponse({
+        type: UpdatePronounsResponseDTO,
+        description: 'Pronouns updated',
+    })
     public async updatePronouns(
         @Req() req: Request,
         @Body() body: UpdatePronounsRequestDTO,
@@ -1331,7 +1356,10 @@ export class ProfileController {
     @UseGuards(JwtAuthGuard)
     @NoBot()
     @ApiOperation({ summary: 'Update display name' })
-    @ApiResponse({ status: 200, description: 'Display name updated' })
+    @ApiOkResponse({
+        type: UpdateDisplayNameResponseDTO,
+        description: 'Display name updated',
+    })
     @ApiResponse({ status: 400, description: 'Invalid display name' })
     public async updateDisplayName(
         @Req() req: Request,
@@ -1409,7 +1437,10 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Update custom status' })
-    @ApiResponse({ status: 200, description: 'Status updated' })
+    @ApiOkResponse({
+        type: UpdateCustomStatusResponseDTO,
+        description: 'Status updated',
+    })
     @ApiResponse({ status: 400, description: 'Invalid status' })
     public async updateCustomStatus(
         @Req() req: Request,
@@ -1555,7 +1586,10 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Clear custom status' })
-    @ApiResponse({ status: 200, description: 'Status cleared' })
+    @ApiOkResponse({
+        type: UpdateCustomStatusResponseDTO,
+        description: 'Status cleared',
+    })
     public async clearCustomStatus(
         @Req() req: Request,
     ): Promise<{ customStatus: null }> {
@@ -1611,7 +1645,10 @@ export class ProfileController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get bulk custom statuses' })
-    @ApiResponse({ status: 200, description: 'Bulk statuses' })
+    @ApiOkResponse({
+        type: BulkStatusesResponseDTO,
+        description: 'Bulk statuses',
+    })
     @ApiBody({ type: BulkStatusRequestDTO })
     public async getBulkStatuses(
         @Body() body: BulkStatusRequestDTO,
@@ -1662,7 +1699,10 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Update username style' })
-    @ApiResponse({ status: 200, description: 'Style updated' })
+    @ApiOkResponse({
+        type: UpdateStyleResponseDTO,
+        description: 'Style updated',
+    })
     public async updateUsernameStyle(
         @Req() req: Request,
         @Body() body: UpdateStyleRequestDTO,
@@ -1794,7 +1834,10 @@ export class ProfileController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Change username' })
-    @ApiResponse({ status: 200, description: 'Username changed' })
+    @ApiOkResponse({
+        type: ChangeUsernameResponseDTO,
+        description: 'Username changed',
+    })
     @ApiResponse({ status: 409, description: 'Username taken' })
     public async changeUsername(
         @Req() req: Request,
@@ -1883,7 +1926,10 @@ export class ProfileController {
     @UseGuards(JwtAuthGuard)
     @NoBot()
     @ApiOperation({ summary: 'Update language' })
-    @ApiResponse({ status: 200, description: 'Language updated' })
+    @ApiOkResponse({
+        type: UpdateLanguageResponseDTO,
+        description: 'Language updated',
+    })
     public async updateLanguage(
         @Req() req: Request,
         @Body() body: UpdateLanguageRequestDTO,
@@ -1910,7 +1956,8 @@ export class ProfileController {
 
     @Get('picture/:filename')
     @ApiOperation({ summary: 'Get profile picture' })
-    @ApiResponse({ status: 200, description: 'Profile picture' })
+    @ApiProduces('image/webp', 'image/gif', 'image/png', 'image/jpeg')
+    @ApiOkResponse({ type: String, description: 'Profile picture' })
     @ApiResponse({ status: 400, description: 'Invalid filename' })
     @ApiResponse({ status: 404, description: 'Image not found' })
     public async getProfilePicture(

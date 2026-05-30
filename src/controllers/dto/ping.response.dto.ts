@@ -1,7 +1,13 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+    ApiProperty,
+    ApiPropertyOptional,
+    ApiExtraModels,
+    getSchemaPath,
+} from '@nestjs/swagger';
 import { IsMongoId, IsOptional, IsString } from 'class-validator';
 import { PingMentionMessageDTO, PingExportMessageDTO } from './types.dto';
 
+@ApiExtraModels(PingMentionMessageDTO, PingExportMessageDTO)
 export class PingNotificationDTO {
     @ApiProperty()
     @IsMongoId()
@@ -33,8 +39,8 @@ export class PingNotificationDTO {
 
     @ApiProperty({
         oneOf: [
-            { $ref: '#/components/schemas/PingMentionMessageDTO' },
-            { $ref: '#/components/schemas/PingExportMessageDTO' },
+            { $ref: getSchemaPath(PingMentionMessageDTO) },
+            { $ref: getSchemaPath(PingExportMessageDTO) },
         ],
     })
     public message!: PingMentionMessageDTO | PingExportMessageDTO;
