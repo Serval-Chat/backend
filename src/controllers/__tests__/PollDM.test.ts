@@ -156,6 +156,7 @@ describe('DM Polls', () => {
             } as any, // MuteRepository
             transactionManager as unknown as TransactionManager,
             {} as any, // EmbedService
+            {} as any, // RedisService
         );
         (chatController as unknown as any).wsServer =
             wsServer as unknown as IWsServer;

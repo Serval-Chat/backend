@@ -36,6 +36,7 @@ import type { IDmUnreadRepository } from '@/di/interfaces/IDmUnreadRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
+import type { IRedisService } from '@/di/interfaces/IRedisService';
 import logger from '@/utils/logger';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import { Types } from 'mongoose';
@@ -65,6 +66,8 @@ export class ChatController {
         private transactionManager: TransactionManager,
         @inject(TYPES.EmbedService)
         private embedService: EmbedService,
+        @inject(TYPES.RedisService)
+        private redisService: IRedisService,
     ) {}
 
     /**
@@ -173,6 +176,13 @@ export class ChatController {
 
                 return { created: msg, newCount: count };
             });
+
+        const redis = this.redisService.getClient();
+        await redis.setex(
+            `dm_latest:${receiverId}:${senderId}`,
+            3600 * 24 * 7,
+            Date.now().toString(),
+        );
 
         const broadcastPayload: IMessageDmEvent['payload'] = {
             messageId: created._id.toString(),
@@ -430,6 +440,7 @@ export class ChatController {
     @Event('mark_dm_read')
     @NeedAuth()
     @Validate(MarkDmReadSchema)
+    @RateLimit(5, 1000)
     public async onMarkDmRead(
         payload: IMarkDmReadEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -441,11 +452,29 @@ export class ChatController {
         const { peerId } = payload;
         const userId = authenticatedUser.userId;
 
+        const redis = this.redisService.getClient();
+        const latestKey = `dm_latest:${userId}:${peerId}`;
+        const userReadKey = `dm_read_ts:${userId}:${peerId}`;
+
+        const [latestTs, userReadTs] = await Promise.all([
+            redis.get(latestKey),
+            redis.get(userReadKey),
+        ]);
+
+        if (
+            userReadTs != null &&
+            (latestTs == null || Number(userReadTs) >= Number(latestTs))
+        ) {
+            return { success: true };
+        }
+
         // Reset unread count
         await this.dmUnreadRepo.reset(
             new Types.ObjectId(userId),
             new Types.ObjectId(peerId),
         );
+
+        await redis.setex(userReadKey, 3600 * 24 * 7, Date.now().toString());
 
         // Get peer username for broadcast
         const peerUser = await this.userRepo.findById(

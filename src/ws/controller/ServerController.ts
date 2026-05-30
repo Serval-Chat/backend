@@ -812,6 +812,13 @@ export class ServerController {
             },
         );
 
+        const redis = this.redisService.getClient();
+        await redis.setex(
+            `channel_latest:${channelId}`,
+            3600 * 24 * 7,
+            Date.now().toString(),
+        );
+
         const broadcastPayload: IMessageServerEvent['payload'] = {
             messageId: created._id.toString(),
             _id: created._id.toString(),
@@ -1178,6 +1185,7 @@ export class ServerController {
     @Event('mark_channel_read')
     @NeedAuth()
     @Validate(MarkChannelReadSchema)
+    @RateLimit(5, 1000)
     public async onMarkChannelRead(
         payload: IMarkChannelReadEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -1197,11 +1205,29 @@ export class ServerController {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
 
+        const redis = this.redisService.getClient();
+        const latestKey = `channel_latest:${channelId}`;
+        const userReadKey = `channel_read_ts:${userId}:${channelId}`;
+
+        const [latestTs, userReadTs] = await Promise.all([
+            redis.get(latestKey),
+            redis.get(userReadKey),
+        ]);
+
+        if (
+            userReadTs != null &&
+            (latestTs == null || Number(userReadTs) >= Number(latestTs))
+        ) {
+            return { success: true };
+        }
+
         const updatedRead = await this.serverChannelReadRepo.upsert(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(channelId),
             new mongoose.Types.ObjectId(userId),
         );
+
+        await redis.setex(userReadKey, 3600 * 24 * 7, Date.now().toString());
 
         logger.debug(
             `[ServerController] User ${userId} marked channel ${channelId} as read`,
