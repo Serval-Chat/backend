@@ -130,6 +130,7 @@ describe('WebhookController', () => {
                 webhookUsername: 'GitHub',
                 webhookAvatarUrl:
                     'https://avatars.githubusercontent.com/u/1?v=4',
+                noEmbeds: true,
             }),
         );
         expect(serverMessageRepo.create.mock.calls[0][0].text).toContain(
@@ -160,6 +161,7 @@ describe('WebhookController', () => {
             expect.objectContaining({
                 text: '**octocat** triggered GitHub `github` (opened) in octocat/Hello-World',
                 webhookUsername: 'GitHub',
+                noEmbeds: true,
             }),
         );
     });

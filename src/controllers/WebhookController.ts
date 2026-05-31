@@ -80,6 +80,9 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 type HeaderValue = string | string[] | undefined;
+type TranslatedWebhookBody = ExecuteWebhookRequestDTO & {
+    noEmbeds?: boolean;
+};
 
 interface GitHubWebhookPayload {
     action?: string;
@@ -254,7 +257,7 @@ export class WebhookController {
     private translateGitHubWebhook(
         body: GitHubWebhookPayload,
         headers: Record<string, HeaderValue>,
-    ): ExecuteWebhookRequestDTO {
+    ): TranslatedWebhookBody {
         const event = this.getHeader(headers, 'x-github-event') ?? 'github';
         const repo = this.getGitHubRepo(body);
         const actor = this.getGitHubActor(body);
@@ -373,6 +376,7 @@ export class WebhookController {
             content: content.slice(0, MAX_MESSAGE_LENGTH),
             username: 'GitHub',
             avatarUrl: body.sender?.avatar_url,
+            noEmbeds: true,
         };
     }
 
@@ -727,7 +731,9 @@ export class WebhookController {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        const translatedBody = this.isGitHubWebhook(headers)
+        const translatedBody: TranslatedWebhookBody = this.isGitHubWebhook(
+            headers,
+        )
             ? this.translateGitHubWebhook(body as GitHubWebhookPayload, headers)
             : await this.validateSerchatWebhookBody(body);
 
@@ -758,6 +764,7 @@ export class WebhookController {
             webhookUsername,
             webhookAvatarUrl: webhookAvatarUrl ?? undefined,
             embeds,
+            noEmbeds: translatedBody.noEmbeds,
         });
 
         await this.channelRepo.updateLastMessageAt(webhook.channelId);
@@ -829,7 +836,11 @@ export class WebhookController {
             unreadPayload,
         );
 
-        if (message.text && message.text.includes('http')) {
+        if (
+            translatedBody.noEmbeds !== true &&
+            message.text &&
+            message.text.includes('http')
+        ) {
             Promise.resolve()
                 .then(() => this.embedService.processServerMessage(message))
                 .catch((err) =>
