@@ -50,6 +50,7 @@ import type {
     IUpdateVoiceStateEvent,
     IVoiceStateUpdatedEvent,
     IInteractionCreateServerEvent,
+    IComponentInteractionCreateServerEvent,
     IPollVoteUpdatedDmEvent,
     IPollVoteUpdatedServerEvent,
     IMessageDmEmbedsUpdatedEvent,
@@ -171,6 +172,7 @@ export type AnyResponseWsEvent =
     | IUserLeftVoiceEvent
     | IVoiceStateUpdatedEvent
     | IInteractionCreateServerEvent
+    | IComponentInteractionCreateServerEvent
     | IInteractionResponseServerEvent
     | IPollVoteUpdatedDmEvent
     | IPollVoteUpdatedServerEvent

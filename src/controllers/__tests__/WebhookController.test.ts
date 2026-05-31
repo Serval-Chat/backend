@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { ForbiddenException } from '@nestjs/common';
 import { WebhookController } from '../WebhookController';
 
 describe('WebhookController', () => {
@@ -11,8 +12,12 @@ describe('WebhookController', () => {
         findByToken: jest.fn(),
     };
     const serverMessageRepo = {
+        create: jest.fn(),
         findById: jest.fn(),
         delete: jest.fn(),
+    };
+    const channelRepo = {
+        updateLastMessageAt: jest.fn(),
     };
     const wsServer = {
         broadcastToChannel: jest.fn(),
@@ -41,7 +46,7 @@ describe('WebhookController', () => {
         controller = new WebhookController(
             webhookRepo as never,
             {} as never,
-            {} as never,
+            channelRepo as never,
             serverMessageRepo as never,
             {} as never,
             {
@@ -58,6 +63,27 @@ describe('WebhookController', () => {
             } as never,
             {} as never,
         );
+    });
+
+    it('rejects webhook messages with components', async () => {
+        await expect(
+            controller.executeWebhook(
+                { token },
+                {
+                    content: 'hello',
+                    components: [
+                        {
+                            type: 'button',
+                            style: 'primary',
+                            label: 'Nope',
+                            custom_id: 'nope',
+                        },
+                    ],
+                },
+            ),
+        ).rejects.toThrow(ForbiddenException);
+
+        expect(serverMessageRepo.create).not.toHaveBeenCalled();
     });
 
     it('deletes a webhook message and broadcasts deletion to channel subscribers and bots', async () => {

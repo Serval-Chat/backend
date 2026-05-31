@@ -15,11 +15,19 @@ jest.mock('@/models/Server', () => ({
     },
     ServerMessage: {
         create: jest.fn(),
+        findOne: jest.fn(),
+    },
+}));
+
+jest.mock('@/models/User', () => ({
+    User: {
+        findById: jest.fn(),
     },
 }));
 
 import { Bot } from '@/models/Bot';
 import { ServerMember, ServerMessage } from '@/models/Server';
+import { User } from '@/models/User';
 import { InteractionController } from '../InteractionController';
 import { IsHumanGuard } from '@/modules/auth/bot.guard';
 
@@ -58,6 +66,7 @@ const req = {
 function chainResult(value: unknown) {
     return {
         populate: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
         lean: jest.fn().mockResolvedValue(value),
     };
 }
@@ -311,5 +320,93 @@ describe('InteractionController', () => {
 
         expect(wsServer.broadcastToUser).not.toHaveBeenCalled();
         expect(wsServer.broadcastToServerWithPermission).not.toHaveBeenCalled();
+    });
+
+    it('sends valid message button clicks only to the bot message author', async () => {
+        const serverId = new Types.ObjectId().toHexString();
+        const channelId = new Types.ObjectId().toHexString();
+        const messageId = new Types.ObjectId().toHexString();
+        const botUserId = new Types.ObjectId();
+
+        (ServerMember.findOne as jest.Mock).mockReturnValue(
+            chainResult({ _id: 'member' }),
+        );
+        (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(
+            true,
+        );
+        (ServerMessage.findOne as jest.Mock).mockReturnValue(
+            chainResult({
+                _id: new Types.ObjectId(messageId),
+                senderId: botUserId,
+                components: [
+                    {
+                        type: 'button',
+                        style: 'primary',
+                        custom_id: 'cool',
+                    },
+                ],
+            }),
+        );
+        (User.findById as jest.Mock).mockReturnValue(
+            chainResult({ _id: botUserId, isBot: true }),
+        );
+        (
+            permissionService.getAllServerPermissions as jest.Mock
+        ).mockResolvedValue({ sendMessages: true });
+
+        await expect(
+            controller.createComponentInteraction(req, {
+                serverId,
+                channelId,
+                messageId,
+                componentIndex: 0,
+                customId: 'cool',
+            }),
+        ).resolves.toEqual({ success: true });
+
+        expect(wsServer.broadcastToUser).toHaveBeenCalledWith(
+            botUserId.toString(),
+            expect.objectContaining({
+                type: 'component_interaction_create_server',
+                payload: expect.objectContaining({
+                    componentType: 'button',
+                    customId: 'cool',
+                    messageId,
+                    componentIndex: 0,
+                    senderId: (req as { user: { id: string } }).user.id,
+                    senderPermissions: { sendMessages: true },
+                }),
+            }),
+        );
+    });
+
+    it('rejects missing message buttons', async () => {
+        const serverId = new Types.ObjectId().toHexString();
+        const channelId = new Types.ObjectId().toHexString();
+        const messageId = new Types.ObjectId().toHexString();
+
+        (ServerMember.findOne as jest.Mock).mockReturnValue(
+            chainResult({ _id: 'member' }),
+        );
+        (permissionService.hasChannelPermission as jest.Mock).mockResolvedValue(
+            true,
+        );
+        (ServerMessage.findOne as jest.Mock).mockReturnValue(
+            chainResult({
+                _id: new Types.ObjectId(messageId),
+                senderId: new Types.ObjectId(),
+                components: [],
+            }),
+        );
+
+        await expect(
+            controller.createComponentInteraction(req, {
+                serverId,
+                channelId,
+                messageId,
+                componentIndex: 0,
+                customId: 'missing',
+            }),
+        ).rejects.toThrow(BadRequestException);
     });
 });

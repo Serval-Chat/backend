@@ -1,5 +1,5 @@
 import type { WsEvent } from '@/ws/protocol/event';
-import type { IEmbed } from '@/models/Embed';
+import type { IEmbed, IEmbedButton } from '@/models/Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { Permissions } from '@/permissions/types';
 import type { IPoll } from '@/models/Message';
@@ -62,6 +62,7 @@ export interface IMessageDmSentEvent
                 text: string;
             };
             embeds: IEmbed[];
+            components: IEmbedButton[];
             attachments: IMessageAttachment[];
             reactions: [];
             interaction: null;
@@ -95,6 +96,7 @@ export interface IMessageDm {
     stickerId: string | null;
     poll: IPoll | null;
     embeds: IEmbed[];
+    components: IEmbedButton[];
     attachments: IMessageAttachment[];
     reactions: [];
     interaction: null;
@@ -366,6 +368,7 @@ export interface IMessageServerSentEvent
             isSticky: false;
             isWebhook: false;
             embeds: IEmbed[];
+            components: IEmbedButton[];
             attachments: IMessageAttachment[];
             reactions: [];
             interaction: null;
@@ -399,6 +402,7 @@ export interface IMessageServer {
     webhookUsername?: string;
     webhookAvatarUrl?: string;
     embeds: IEmbed[];
+    components: IEmbedButton[];
     attachments: IMessageAttachment[];
     reactions: ReactionData[];
     interaction: {
@@ -448,6 +452,7 @@ export interface IMessageServerEditedEvent
             editedAt: string;
             isEdited: boolean;
             embeds?: IEmbed[];
+            components?: IEmbedButton[];
             attachments?: IMessageAttachment[];
         }
     > {}
@@ -695,6 +700,23 @@ export interface IInteractionCreateServerEvent
         }
     > {}
 
+export interface IComponentInteractionCreateServerEvent
+    extends WsEvent<
+        'component_interaction_create_server',
+        {
+            componentType: 'button';
+            customId: string;
+            messageId: string;
+            componentIndex: number;
+            serverId: string;
+            channelId: string;
+            senderId: string;
+            senderUsername: string;
+            senderPermissions?: Permissions;
+            invocationId?: string;
+        }
+    > {}
+
 export interface IInteractionResponseServerEvent
     extends WsEvent<
         'interaction_response_server',
@@ -706,6 +728,8 @@ export interface IInteractionResponseServerEvent
             senderUsername?: string;
             senderIsBot?: boolean;
             senderProfilePicture?: string | null;
+            embeds?: IEmbed[];
+            components?: IEmbedButton[];
             invocationId?: string;
             ephemeral?: boolean;
         }

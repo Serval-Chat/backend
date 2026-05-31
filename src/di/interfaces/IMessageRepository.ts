@@ -1,6 +1,6 @@
 import type { Types, ClientSession } from 'mongoose';
 import type { IPoll } from '@/models/Message';
-import type { IEmbed } from '@/models/Embed';
+import type { IEmbed, IEmbedButton } from '@/models/Embed';
 import type { IMessageAttachment } from '@/models/Attachment';
 
 // Message interface (domain model)
@@ -24,6 +24,7 @@ export interface IMessage {
     anonymizedReceiver?: string;
     poll?: IPoll;
     embeds?: IEmbed[];
+    components?: IEmbedButton[];
     attachments?: IMessageAttachment[];
     noEmbeds?: boolean;
 }

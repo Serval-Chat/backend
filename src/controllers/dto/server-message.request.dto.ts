@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional } from 'class-validator';
 import { IsMessageContent, IsMessageId } from '@/validation/schemas/common';
-import { IEmbed } from '@/models/Embed';
+import { IEmbed, IEmbedButton } from '@/models/Embed';
 import { Type } from 'class-transformer';
 import {
     ValidateNested,
@@ -153,6 +153,12 @@ export class SendMessageRequestDTO {
     @IsOptional()
     public embeds?: IEmbed[];
 
+    @ApiPropertyOptional({ description: 'Interactive button components' })
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(8)
+    public components?: IEmbedButton[];
+
     @ApiPropertyOptional({ description: 'Structured file attachments' })
     @IsOptional()
     @IsArray()
@@ -193,6 +199,18 @@ export class ServerEditMessageRequestDTO {
     @IsOptional()
     @IsMessageContent()
     public text?: string;
+
+    @ApiPropertyOptional({ description: 'Updated rich embeds for the message' })
+    @IsOptional()
+    public embeds?: IEmbed[];
+
+    @ApiPropertyOptional({
+        description: 'Updated interactive button components',
+    })
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(8)
+    public components?: IEmbedButton[];
 }
 
 export class BulkDeleteMessagesRequestDTO {

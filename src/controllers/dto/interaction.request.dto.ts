@@ -8,10 +8,12 @@ import {
     IsMongoId,
     IsDefined,
     IsBoolean,
+    IsInt,
+    Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { InteractionValue } from '@/types/interactions';
-import type { IEmbed } from '@/models/Embed';
+import type { IEmbed, IEmbedButton } from '@/models/Embed';
 export class InteractionOptionDTO {
     @ApiProperty()
     @IsString()
@@ -50,6 +52,40 @@ export class CreateInteractionRequestDTO {
     public channelId!: string;
 }
 
+export class CreateComponentInteractionRequestDTO {
+    @ApiProperty()
+    @IsMongoId()
+    public serverId!: string;
+
+    @ApiProperty()
+    @IsMongoId()
+    public channelId!: string;
+
+    @ApiProperty()
+    @IsString()
+    public messageId!: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    public invocationId?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    public botUserId?: string;
+
+    @ApiProperty()
+    @IsInt()
+    @Min(0)
+    public componentIndex!: number;
+
+    @ApiProperty()
+    @IsString()
+    @MaxLength(100)
+    public customId!: string;
+}
+
 export class BotInteractionRespondDTO {
     @ApiProperty({
         description: 'ID of the server where the interaction occurred',
@@ -81,6 +117,13 @@ export class BotInteractionRespondDTO {
     @IsOptional()
     @IsArray()
     public embeds!: IEmbed[];
+
+    @ApiPropertyOptional({
+        description: 'Interactive button components to include in the response',
+    })
+    @IsOptional()
+    @IsArray()
+    public components?: IEmbedButton[];
 
     @ApiPropertyOptional({
         description: 'ID of the invocation message to link against',

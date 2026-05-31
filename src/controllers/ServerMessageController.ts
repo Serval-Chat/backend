@@ -344,22 +344,32 @@ export class ServerMessageController {
 
         const messageText = (body.content ?? body.text ?? '').trim();
         const embeds = body.embeds;
+        const components = body.components;
         const attachments = body.attachments ?? [];
+        const isBot =
+            (req as ExpressRequest & { user: JWTPayload }).user.isBot === true;
 
         if (embeds !== undefined && embeds.length > 0) {
-            const isBot =
-                (req as ExpressRequest & { user: JWTPayload }).user.isBot ===
-                true;
             if (isBot === false) {
                 throw new ForbiddenException(
                     'Only bots can send messages with rich embeds',
                 );
             }
         }
+        if (
+            components !== undefined &&
+            components.length > 0 &&
+            isBot === false
+        ) {
+            throw new ForbiddenException(
+                'Only bots can send messages with components',
+            );
+        }
 
         if (
             messageText === '' &&
             (embeds === undefined || embeds.length === 0) &&
+            (components === undefined || components.length === 0) &&
             attachments.length === 0
         ) {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
@@ -375,6 +385,7 @@ export class ServerMessageController {
                     ? new mongoose.Types.ObjectId(body.replyToId)
                     : undefined,
             embeds,
+            components,
             attachments,
             interaction: body.interaction,
             stickerId:
@@ -433,6 +444,7 @@ export class ServerMessageController {
                 webhookUsername: message.webhookUsername,
                 webhookAvatarUrl: message.webhookAvatarUrl,
                 embeds: message.embeds || [],
+                components: message.components || [],
                 attachments: message.attachments || [],
                 reactions: [],
                 interaction:
@@ -745,8 +757,31 @@ export class ServerMessageController {
             );
         }
 
-        const messageText = (body.content ?? body.text ?? '').trim();
-        if (messageText === '') {
+        const messageText = (body.content ?? body.text ?? message.text).trim();
+        const embeds = body.embeds;
+        const components = body.components;
+        const isBot =
+            (req as ExpressRequest & { user: JWTPayload }).user.isBot === true;
+        if (embeds !== undefined && embeds.length > 0 && isBot === false) {
+            throw new ForbiddenException(
+                'Only bots can edit messages with rich embeds',
+            );
+        }
+        if (
+            components !== undefined &&
+            components.length > 0 &&
+            isBot === false
+        ) {
+            throw new ForbiddenException(
+                'Only bots can edit messages with components',
+            );
+        }
+
+        if (
+            messageText === '' &&
+            (embeds === undefined || embeds.length === 0) &&
+            (components === undefined || components.length === 0)
+        ) {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
@@ -754,6 +789,8 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(messageId),
             {
                 text: messageText,
+                ...(embeds !== undefined ? { embeds } : {}),
+                ...(components !== undefined ? { components } : {}),
                 isEdited: true,
                 editedAt: new Date(),
             },
@@ -771,6 +808,8 @@ export class ServerMessageController {
                 text: messageText,
                 editedAt: new Date().toISOString(),
                 isEdited: true,
+                embeds: updatedMessage.embeds || [],
+                components: updatedMessage.components || [],
                 attachments: updatedMessage.attachments || [],
             },
         };

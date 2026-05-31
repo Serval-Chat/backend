@@ -1,6 +1,6 @@
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
-import type { IEmbed } from './Embed';
+import type { IEmbed, IEmbedButton } from './Embed';
 import { messageAttachmentSchema, type IMessageAttachment } from './Attachment';
 
 export interface IPollOption {
@@ -40,6 +40,7 @@ export interface IMessage extends Document {
     anonymizedReceiver?: string;
     poll?: IPoll;
     embeds?: IEmbed[];
+    components?: IEmbedButton[];
     attachments?: IMessageAttachment[];
     noEmbeds?: boolean;
 }
@@ -86,6 +87,7 @@ const messageSchema = new Schema<IMessage>({
         required: false,
     },
     embeds: { type: [Schema.Types.Mixed], default: [] },
+    components: { type: [Schema.Types.Mixed], default: [] },
     attachments: { type: [messageAttachmentSchema], default: [] },
     noEmbeds: { type: Boolean, default: false },
 });

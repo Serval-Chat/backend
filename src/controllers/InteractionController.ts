@@ -29,6 +29,7 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type {
     IMessageServerEvent,
     IInteractionCreateServerEvent,
+    IComponentInteractionCreateServerEvent,
     IInteractionResponseServerEvent,
     IMessageServerEditedEvent,
 } from '@/ws/protocol/events/messages';
@@ -51,12 +52,14 @@ import { User } from '@/models/User';
 import { PermissionService } from '@/permissions/PermissionService';
 import {
     CreateInteractionRequestDTO,
+    CreateComponentInteractionRequestDTO,
     BotInteractionRespondDTO,
 } from './dto/interaction.request.dto';
 import { InteractionOptionValue } from './dto/types.dto';
 import { SlashCommandOptionType } from '@/types/interactions';
 import { assertHttpNotMuted } from '@/utils/mute';
 import { mapPublicServerMember } from '@/utils/serverMember';
+import type { IEmbed, IEmbedButton } from '@/models/Embed';
 
 interface InteractionOption {
     name: string;
@@ -406,6 +409,7 @@ export class InteractionController {
                     isSticky: false,
                     isWebhook: false,
                     embeds: serverMessage.embeds ?? [],
+                    components: serverMessage.components ?? [],
                     attachments: serverMessage.attachments ?? [],
                     reactions: [],
                     interaction: {
@@ -495,6 +499,168 @@ export class InteractionController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Post('interactions/components')
+    @NoBot()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Trigger a message component interaction' })
+    @ApiOkResponse({ type: InteractionSuccessResponseDTO })
+    public async createComponentInteraction(
+        @Req() req: AuthenticatedRequest,
+        @Body() body: CreateComponentInteractionRequestDTO,
+    ) {
+        if (req.user.isBot === true) {
+            throw new ForbiddenException(
+                'Bots are not allowed to run component interactions',
+            );
+        }
+
+        await assertHttpNotMuted(
+            this.muteRepo,
+            req.user.id,
+            'use message components',
+        );
+
+        const {
+            serverId,
+            channelId,
+            messageId,
+            componentIndex,
+            customId,
+            invocationId,
+            botUserId,
+        } = body;
+        if (
+            !Types.ObjectId.isValid(serverId) ||
+            !Types.ObjectId.isValid(channelId)
+        ) {
+            throw new BadRequestException('Invalid serverId or channelId');
+        }
+
+        if (!Number.isInteger(componentIndex) || componentIndex < 0) {
+            throw new BadRequestException('Invalid componentIndex');
+        }
+
+        const member = await ServerMember.findOne({
+            serverId: new Types.ObjectId(serverId),
+            userId: new Types.ObjectId(req.user.id),
+        }).lean();
+        if (member === null) {
+            throw new ForbiddenException('Not a member of this server');
+        }
+
+        const canView = await this.permissionService.hasChannelPermission(
+            new Types.ObjectId(serverId),
+            new Types.ObjectId(req.user.id),
+            new Types.ObjectId(channelId),
+            'viewChannels',
+        );
+        if (canView !== true) {
+            throw new ForbiddenException('Cannot view this channel');
+        }
+
+        const isPersistentMessage = Types.ObjectId.isValid(messageId);
+
+        if (!isPersistentMessage) {
+            if (botUserId === undefined) {
+                throw new BadRequestException(
+                    'Ephemeral component interactions require botUserId',
+                );
+            }
+
+            const botUser = await User.findById(botUserId)
+                .select('isBot')
+                .lean();
+            if (botUser?.isBot !== true) {
+                throw new BadRequestException('Target bot not found');
+            }
+
+            const senderPermissions =
+                await this.permissionService.getAllServerPermissions(
+                    new Types.ObjectId(serverId),
+                    new Types.ObjectId(req.user.id),
+                );
+
+            const event: IComponentInteractionCreateServerEvent = {
+                type: 'component_interaction_create_server',
+                payload: {
+                    componentType: 'button',
+                    customId,
+                    messageId,
+                    componentIndex,
+                    serverId,
+                    channelId,
+                    senderId: req.user.id,
+                    senderUsername: req.user.username,
+                    senderPermissions,
+                    invocationId:
+                        invocationId ?? new Types.ObjectId().toString(),
+                },
+            };
+            this.wsServer.broadcastToUser(botUserId, event);
+            return { success: true };
+        }
+
+        const message = await ServerMessage.findOne({
+            _id: new Types.ObjectId(messageId),
+            serverId: new Types.ObjectId(serverId),
+            channelId: new Types.ObjectId(channelId),
+        }).lean();
+        if (message === null) {
+            throw new NotFoundException('Message not found');
+        }
+
+        const button = message.components?.[componentIndex];
+        if (button === undefined) {
+            throw new BadRequestException('Button not found');
+        }
+        if (button.type !== 'button' || button.custom_id !== customId) {
+            throw new BadRequestException('Button not found');
+        }
+        if (button.disabled === true) {
+            throw new BadRequestException('Button is disabled');
+        }
+        if (button.style === 'link') {
+            throw new BadRequestException('Link buttons cannot be invoked');
+        }
+
+        const messageSender = await User.findById(message.senderId)
+            .select('isBot')
+            .lean();
+        if (messageSender?.isBot !== true) {
+            throw new BadRequestException(
+                'Only bot-authored message buttons can be invoked',
+            );
+        }
+
+        const senderPermissions =
+            await this.permissionService.getAllServerPermissions(
+                new Types.ObjectId(serverId),
+                new Types.ObjectId(req.user.id),
+            );
+
+        const generatedInvocationId = new Types.ObjectId().toString();
+        const event: IComponentInteractionCreateServerEvent = {
+            type: 'component_interaction_create_server',
+            payload: {
+                componentType: 'button',
+                customId,
+                messageId,
+                componentIndex,
+                serverId,
+                channelId,
+                senderId: req.user.id,
+                senderUsername: req.user.username,
+                senderPermissions,
+                invocationId: generatedInvocationId,
+            },
+        };
+
+        this.wsServer.broadcastToUser(message.senderId.toString(), event);
+
+        return { success: true };
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Post('interactions/respond')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
@@ -509,8 +675,15 @@ export class InteractionController {
             throw new ForbiddenException('Only bots can use this endpoint');
         }
 
-        const { serverId, channelId, senderId, text, invocationId, ephemeral } =
-            body;
+        const {
+            serverId,
+            channelId,
+            senderId,
+            text,
+            invocationId,
+            ephemeral,
+            components,
+        } = body;
 
         if (
             !Types.ObjectId.isValid(serverId) ||
@@ -560,6 +733,8 @@ export class InteractionController {
                     profilePicture: botProfilePicture,
                     isBot: botUser?.isBot ?? req.user.isBot,
                 },
+                body.embeds ?? [],
+                components ?? [],
             );
         } else {
             const serverMessage = await ServerMessage.create({
@@ -568,6 +743,7 @@ export class InteractionController {
                 senderId: new Types.ObjectId(req.user.id),
                 text: text ?? '',
                 embeds: body.embeds,
+                components,
             });
 
             this.wsServer.broadcastToChannel(channelId, {
@@ -587,6 +763,7 @@ export class InteractionController {
                     isSticky: false,
                     isWebhook: false,
                     embeds: serverMessage.embeds ?? [],
+                    components: serverMessage.components ?? [],
                     attachments: serverMessage.attachments ?? [],
                     reactions: [],
                     interaction: null,
@@ -858,6 +1035,8 @@ export class InteractionController {
             profilePicture?: string | null;
             isBot?: boolean;
         },
+        embeds: IEmbed[] = [],
+        components: IEmbedButton[] = [],
     ) {
         this.wsServer.broadcastToUser(userId, {
             type: 'interaction_response_server',
@@ -869,6 +1048,8 @@ export class InteractionController {
                 senderUsername: sender?.username,
                 senderIsBot: sender?.isBot ?? true,
                 senderProfilePicture: sender?.profilePicture ?? null,
+                embeds,
+                components,
                 invocationId,
                 ephemeral: true,
             },

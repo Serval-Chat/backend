@@ -93,6 +93,26 @@ describe('ServerMessageController embeds', () => {
         expect(mockServerMessageRepo.create).not.toHaveBeenCalled();
     });
 
+    it('rejects components from non-bot users', async () => {
+        const req = {
+            user: { id: userId, username: 'alice', isBot: false },
+        } as unknown as Request;
+
+        await expect(
+            controller.sendMessage(serverId, channelId, req, {
+                components: [
+                    {
+                        type: 'button',
+                        style: 'primary',
+                        label: 'Click',
+                        custom_id: 'click',
+                    },
+                ],
+            }),
+        ).rejects.toThrow(ForbiddenException);
+        expect(mockServerMessageRepo.create).not.toHaveBeenCalled();
+    });
+
     it('allows embeds from bot users and includes embeds in ws payload', async () => {
         const messageId = new Types.ObjectId();
         mockServerMessageRepo.create.mockResolvedValue({
@@ -103,6 +123,7 @@ describe('ServerMessageController embeds', () => {
             isSticky: false,
             isWebhook: false,
             embeds: [{ title: 'Bot Embed' }],
+            components: [],
         });
 
         const req = {
@@ -125,6 +146,52 @@ describe('ServerMessageController embeds', () => {
                 type: 'message_server',
                 payload: expect.objectContaining({
                     embeds: [{ title: 'Bot Embed' }],
+                }),
+            }),
+        );
+    });
+
+    it('allows components from bot users and stores them on the message', async () => {
+        const messageId = new Types.ObjectId();
+        const components = [
+            {
+                type: 'button' as const,
+                style: 'success' as const,
+                label: 'Approve',
+                custom_id: 'approve',
+            },
+        ];
+        mockServerMessageRepo.create.mockResolvedValue({
+            _id: messageId,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            repliedToMessageId: undefined,
+            isPinned: false,
+            isSticky: false,
+            isWebhook: false,
+            embeds: [],
+            components,
+        });
+
+        const req = {
+            user: { id: userId, username: 'helper-bot', isBot: true },
+        } as unknown as Request;
+
+        await controller.sendMessage(serverId, channelId, req, {
+            components,
+        });
+
+        expect(mockServerMessageRepo.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                text: '',
+                components,
+            }),
+        );
+        expect(mockWsServer.broadcastToChannel).toHaveBeenCalledWith(
+            channelId,
+            expect.objectContaining({
+                type: 'message_server',
+                payload: expect.objectContaining({
+                    components,
                 }),
             }),
         );

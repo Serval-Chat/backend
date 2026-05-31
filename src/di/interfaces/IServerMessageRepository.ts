@@ -1,5 +1,5 @@
 import type { Types, ClientSession } from 'mongoose';
-import type { IEmbed } from '@/models/Embed';
+import type { IEmbed, IEmbedButton } from '@/models/Embed';
 import type { InteractionValue } from '@/types/interactions';
 import type { ReactionData } from './IReactionRepository';
 import type { IPoll } from '@/models/Message';
@@ -28,6 +28,7 @@ export interface IServerMessage {
     webhookUsername?: string;
     webhookAvatarUrl?: string;
     embeds?: IEmbed[];
+    components?: IEmbedButton[];
     attachments?: IMessageAttachment[];
     reactions?: ReactionData[];
     interaction?: {
@@ -55,6 +56,7 @@ export interface IServerMessageRepository {
             replyToId?: string | Types.ObjectId;
             repliedToMessageId?: Types.ObjectId;
             embeds?: IEmbed[];
+            components?: IEmbedButton[];
             attachments?: IMessageAttachment[];
             stickerId?: string | Types.ObjectId;
             interaction?: {

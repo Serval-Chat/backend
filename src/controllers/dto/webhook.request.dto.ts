@@ -8,7 +8,7 @@ import {
     IsFilename,
 } from '@/validation/schemas/common';
 import { Transform } from 'class-transformer';
-import { IEmbed } from '@/models/Embed';
+import { IEmbed, IEmbedButton } from '@/models/Embed';
 import { IsMongoId } from 'class-validator';
 
 export class CreateWebhookRequestDTO {
@@ -44,6 +44,14 @@ export class ExecuteWebhookRequestDTO {
     @ApiPropertyOptional({ description: 'Rich embeds for the message' })
     @IsOptional()
     public embeds?: IEmbed[];
+
+    @ApiPropertyOptional({
+        description: 'Interactive components are not supported for webhooks',
+    })
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(8)
+    public components?: IEmbedButton[];
 
     @ApiPropertyOptional({
         description: 'URLs that should not generate embeds',

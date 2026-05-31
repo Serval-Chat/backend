@@ -35,6 +35,29 @@ export interface IEmbedProvider {
     url?: string;
 }
 
+export type EmbedButtonStyle =
+    | 'primary'
+    | 'secondary'
+    | 'success'
+    | 'danger'
+    | 'link';
+
+export interface IEmbedButtonEmoji {
+    id?: string;
+    name?: string;
+    animated?: boolean;
+}
+
+export interface IEmbedButton {
+    type: 'button';
+    style: EmbedButtonStyle;
+    label?: string;
+    emoji?: IEmbedButtonEmoji;
+    custom_id?: string;
+    url?: string;
+    disabled?: boolean;
+}
+
 export interface IEmbed {
     type?: EmbedType;
     color?: number;

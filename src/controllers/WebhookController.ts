@@ -478,7 +478,12 @@ export class WebhookController {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        const { content, username, avatarUrl, embeds } = body;
+        const { content, username, avatarUrl, embeds, components } = body;
+        if (components !== undefined && components.length > 0) {
+            throw new ForbiddenException(
+                'Webhooks cannot send messages with components',
+            );
+        }
         this.validateWebhookMessageContent(content);
 
         const webhookUsername = username ?? webhook.name;
@@ -527,6 +532,7 @@ export class WebhookController {
                 webhookUsername,
                 webhookAvatarUrl: webhookAvatarUrl ?? undefined,
                 embeds: embeds ?? [],
+                components: [],
                 attachments: message.attachments || [],
                 reactions: [],
                 interaction: null,
@@ -661,6 +667,7 @@ export class WebhookController {
                         : new Date().toISOString(),
                 isEdited: true,
                 embeds: updatedMessage.embeds || [],
+                components: updatedMessage.components || [],
                 attachments: updatedMessage.attachments || [],
             },
         };
