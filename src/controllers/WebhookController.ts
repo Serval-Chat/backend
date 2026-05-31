@@ -76,6 +76,8 @@ import {
 } from './dto/webhook.request.dto';
 import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import { processAndSaveImage, ImagePresets } from '@/utils/imageProcessing';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 
 type HeaderValue = string | string[] | undefined;
 
@@ -372,6 +374,22 @@ export class WebhookController {
             username: 'GitHub',
             avatarUrl: body.sender?.avatar_url,
         };
+    }
+
+    private async validateSerchatWebhookBody(
+        body: Record<string, unknown>,
+    ): Promise<ExecuteWebhookRequestDTO> {
+        const dto = plainToInstance(ExecuteWebhookRequestDTO, body);
+        const errors = await validate(dto, {
+            whitelist: true,
+            forbidNonWhitelisted: true,
+        });
+
+        if (errors.length > 0) {
+            throw new BadRequestException(errors);
+        }
+
+        return dto;
     }
 
     @Get('servers/:serverId/channels/:channelId/webhooks')
@@ -699,7 +717,7 @@ export class WebhookController {
     @ApiResponse({ status: 404, description: ErrorMessages.WEBHOOK.NOT_FOUND })
     public async executeWebhook(
         @Param() params: WebhookTokenParamDTO,
-        @Body() body: ExecuteWebhookRequestDTO,
+        @Body() body: Record<string, unknown>,
         @Headers() headers: Record<string, HeaderValue> = {},
     ): Promise<{ id: string; timestamp: Date }> {
         const { token } = params;
@@ -711,7 +729,7 @@ export class WebhookController {
 
         const translatedBody = this.isGitHubWebhook(headers)
             ? this.translateGitHubWebhook(body as GitHubWebhookPayload, headers)
-            : body;
+            : await this.validateSerchatWebhookBody(body);
 
         const { content, username, avatarUrl, embeds, components } =
             translatedBody;
