@@ -122,6 +122,7 @@ describe('Server WS Polls', () => {
         redisService = {
             getClient: jest.fn().mockReturnValue({
                 get: jest.fn().mockResolvedValue(null),
+                setex: jest.fn().mockResolvedValue('OK'),
                 set: jest.fn().mockResolvedValue('OK'),
                 expire: jest.fn().mockResolvedValue(1),
                 sadd: jest.fn().mockResolvedValue(1),

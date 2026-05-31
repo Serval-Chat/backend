@@ -1446,6 +1446,15 @@ export class ServerController {
                 );
             if (!mentionedMember) continue;
 
+            const canViewChannel =
+                await this.permissionService.hasChannelPermission(
+                    new mongoose.Types.ObjectId(serverId),
+                    new mongoose.Types.ObjectId(mentionedUserId),
+                    new mongoose.Types.ObjectId(channelId),
+                    'viewChannels',
+                );
+            if (canViewChannel !== true) continue;
+
             if (message.messageId === '') continue;
 
             // Store ping for ALL users (online and offline)
