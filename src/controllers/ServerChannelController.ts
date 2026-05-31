@@ -419,14 +419,26 @@ export class ServerChannelController {
             });
         }
 
-        this.wsServer.broadcastToServer(serverId.toString(), {
-            type: 'channels_reordered',
-            payload: {
-                serverId,
-                channelPositions: body.channelPositions,
-                senderId: userId,
-            },
-        });
+        await Promise.all(
+            body.channelPositions.map(({ channelId, position }) =>
+                this.wsServer.broadcastToServerWithPermission(
+                    serverId.toString(),
+                    {
+                        type: 'channels_reordered',
+                        payload: {
+                            serverId,
+                            channelPositions: [{ channelId, position }],
+                            senderId: userId,
+                        },
+                    },
+                    {
+                        type: 'channel',
+                        targetId: channelId,
+                        permission: 'viewChannels',
+                    },
+                ),
+            ),
+        );
 
         if (changes.length > 0) {
             await this.serverAuditLogService.createAndBroadcast({
