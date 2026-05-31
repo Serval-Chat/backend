@@ -5,6 +5,7 @@ import {
     Patch,
     Delete,
     Body,
+    Headers,
     Param,
     UseGuards,
     Req,
@@ -76,6 +77,69 @@ import {
 import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import { processAndSaveImage, ImagePresets } from '@/utils/imageProcessing';
 
+type HeaderValue = string | string[] | undefined;
+
+interface GitHubWebhookPayload {
+    action?: string;
+    sender?: {
+        login?: string;
+        avatar_url?: string;
+        html_url?: string;
+    };
+    repository?: {
+        full_name?: string;
+        html_url?: string;
+        default_branch?: string;
+    };
+    ref?: string;
+    before?: string;
+    after?: string;
+    commits?: Array<{
+        id?: string;
+        message?: string;
+        url?: string;
+        author?: {
+            name?: string;
+            username?: string;
+        };
+    }>;
+    pull_request?: {
+        title?: string;
+        html_url?: string;
+        number?: number;
+        merged?: boolean;
+        user?: {
+            login?: string;
+        };
+    };
+    issue?: {
+        title?: string;
+        html_url?: string;
+        number?: number;
+        user?: {
+            login?: string;
+        };
+    };
+    comment?: {
+        html_url?: string;
+        user?: {
+            login?: string;
+        };
+    };
+    release?: {
+        name?: string;
+        tag_name?: string;
+        html_url?: string;
+        author?: {
+            login?: string;
+        };
+    };
+    hook?: {
+        type?: string;
+    };
+    zen?: string;
+}
+
 @injectable()
 @Controller('api/v1')
 @ApiTags('Webhooks')
@@ -142,6 +206,172 @@ export class WebhookController {
                 `Message content must be at most ${MAX_MESSAGE_LENGTH} characters`,
             );
         }
+    }
+
+    private getHeader(headers: Record<string, HeaderValue>, name: string) {
+        const value = headers[name.toLowerCase()] ?? headers[name];
+        return Array.isArray(value) ? value[0] : value;
+    }
+
+    private isGitHubWebhook(headers: Record<string, HeaderValue>): boolean {
+        const userAgent = this.getHeader(headers, 'user-agent');
+        const event = this.getHeader(headers, 'x-github-event');
+
+        return (
+            event !== undefined ||
+            userAgent?.startsWith('GitHub-Hookshot/') === true
+        );
+    }
+
+    private getGitHubActor(payload: GitHubWebhookPayload): string {
+        return payload.sender?.login ?? 'GitHub';
+    }
+
+    private getGitHubRepo(payload: GitHubWebhookPayload): string {
+        return payload.repository?.full_name ?? 'unknown repository';
+    }
+
+    private getGitHubBranch(ref?: string): string | undefined {
+        return ref?.replace(/^refs\/heads\//, '');
+    }
+
+    private formatGitHubCommit(
+        commit: NonNullable<GitHubWebhookPayload['commits']>[number],
+    ): string {
+        const sha = commit.id?.slice(0, 7) ?? 'commit';
+        const message = commit.message?.split('\n')[0] ?? 'No commit message';
+        const author = commit.author?.username ?? commit.author?.name;
+        const label =
+            commit.url !== undefined ? `[${sha}](${commit.url})` : sha;
+
+        return author !== undefined
+            ? `- ${label} ${message} - ${author}`
+            : `- ${label} ${message}`;
+    }
+
+    private translateGitHubWebhook(
+        body: GitHubWebhookPayload,
+        headers: Record<string, HeaderValue>,
+    ): ExecuteWebhookRequestDTO {
+        const event = this.getHeader(headers, 'x-github-event') ?? 'github';
+        const repo = this.getGitHubRepo(body);
+        const actor = this.getGitHubActor(body);
+        const action = body.action;
+        const repoLink =
+            body.repository?.html_url !== undefined
+                ? `[${repo}](${body.repository.html_url})`
+                : repo;
+        let content: string;
+
+        switch (event) {
+            case 'push': {
+                const branch =
+                    this.getGitHubBranch(body.ref) ??
+                    body.repository?.default_branch ??
+                    'unknown branch';
+                const commits = body.commits ?? [];
+                const commitSummary =
+                    commits.length === 1
+                        ? '1 commit'
+                        : `${commits.length} commits`;
+                const commitLines = commits
+                    .slice(0, 5)
+                    .map((commit) => this.formatGitHubCommit(commit));
+                const compareUrl =
+                    body.repository?.html_url !== undefined &&
+                    body.before !== undefined &&
+                    body.after !== undefined
+                        ? `${body.repository.html_url}/compare/${body.before}...${body.after}`
+                        : undefined;
+                const summary =
+                    compareUrl !== undefined
+                        ? `[${commitSummary}](${compareUrl})`
+                        : commitSummary;
+
+                content = `**${actor}** pushed ${summary} to \`${branch}\` in ${repoLink}`;
+                if (commitLines.length > 0) {
+                    content += `\n${commitLines.join('\n')}`;
+                }
+                break;
+            }
+            case 'pull_request': {
+                const pull = body.pull_request;
+                const verb =
+                    action === 'closed' && pull?.merged === true
+                        ? 'merged'
+                        : (action ?? 'updated');
+                const number =
+                    pull?.number !== undefined
+                        ? `#${pull.number}`
+                        : 'a pull request';
+                const title = pull?.title ?? 'Untitled pull request';
+                const link =
+                    pull?.html_url !== undefined
+                        ? `[${number}: ${title}](${pull.html_url})`
+                        : `${number}: ${title}`;
+
+                content = `**${actor}** ${verb} pull request ${link} in ${repoLink}`;
+                break;
+            }
+            case 'issues': {
+                const issue = body.issue;
+                const number =
+                    issue?.number !== undefined
+                        ? `#${issue.number}`
+                        : 'an issue';
+                const title = issue?.title ?? 'Untitled issue';
+                const link =
+                    issue?.html_url !== undefined
+                        ? `[${number}: ${title}](${issue.html_url})`
+                        : `${number}: ${title}`;
+
+                content = `**${actor}** ${action ?? 'updated'} issue ${link} in ${repoLink}`;
+                break;
+            }
+            case 'issue_comment': {
+                const issue = body.issue;
+                const number =
+                    issue?.number !== undefined
+                        ? `#${issue.number}`
+                        : 'an issue';
+                const title = issue?.title ?? 'Untitled issue';
+                const link =
+                    body.comment?.html_url !== undefined
+                        ? `[${number}: ${title}](${body.comment.html_url})`
+                        : `${number}: ${title}`;
+
+                content = `**${actor}** ${action ?? 'updated'} a comment on issue ${link} in ${repoLink}`;
+                break;
+            }
+            case 'release': {
+                const release = body.release;
+                const title =
+                    release?.name ?? release?.tag_name ?? 'Untitled release';
+                const link =
+                    release?.html_url !== undefined
+                        ? `[${title}](${release.html_url})`
+                        : title;
+
+                content = `**${actor}** ${action ?? 'updated'} release ${link} in ${repoLink}`;
+                break;
+            }
+            case 'ping':
+                content = `GitHub webhook connected for ${repoLink}${
+                    body.zen !== undefined ? `\n_${body.zen}_` : ''
+                }`;
+                break;
+            default:
+                content = `**${actor}** triggered GitHub \`${event}\`${
+                    action !== undefined ? ` (${action})` : ''
+                } in ${repoLink}`;
+                break;
+        }
+
+        return {
+            content: content.slice(0, MAX_MESSAGE_LENGTH),
+            username: 'GitHub',
+            avatarUrl: body.sender?.avatar_url,
+        };
     }
 
     @Get('servers/:serverId/channels/:channelId/webhooks')
@@ -470,6 +700,7 @@ export class WebhookController {
     public async executeWebhook(
         @Param() params: WebhookTokenParamDTO,
         @Body() body: ExecuteWebhookRequestDTO,
+        @Headers() headers: Record<string, HeaderValue> = {},
     ): Promise<{ id: string; timestamp: Date }> {
         const { token } = params;
 
@@ -478,7 +709,12 @@ export class WebhookController {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        const { content, username, avatarUrl, embeds, components } = body;
+        const translatedBody = this.isGitHubWebhook(headers)
+            ? this.translateGitHubWebhook(body as GitHubWebhookPayload, headers)
+            : body;
+
+        const { content, username, avatarUrl, embeds, components } =
+            translatedBody;
         if (components !== undefined && components.length > 0) {
             throw new ForbiddenException(
                 'Webhooks cannot send messages with components',

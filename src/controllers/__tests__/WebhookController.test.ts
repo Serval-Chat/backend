@@ -22,6 +22,7 @@ describe('WebhookController', () => {
     const wsServer = {
         broadcastToChannel: jest.fn(),
         broadcastToServerWithPermission: jest.fn(),
+        broadcastToServer: jest.fn(),
     };
 
     let controller: WebhookController;
@@ -41,6 +42,11 @@ describe('WebhookController', () => {
             deletedAt: undefined,
         });
         serverMessageRepo.delete.mockResolvedValue(true);
+        serverMessageRepo.create.mockResolvedValue({
+            _id: messageId,
+            createdAt: new Date('2026-05-31T12:00:00.000Z'),
+            attachments: [],
+        });
         wsServer.broadcastToServerWithPermission.mockResolvedValue(undefined);
 
         controller = new WebhookController(
@@ -84,6 +90,78 @@ describe('WebhookController', () => {
         ).rejects.toThrow(ForbiddenException);
 
         expect(serverMessageRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('translates GitHub push deliveries into Serchat webhook messages', async () => {
+        await controller.executeWebhook(
+            { token },
+            {
+                ref: 'refs/heads/main',
+                before: '1111111',
+                after: '2222222',
+                sender: {
+                    login: 'octocat',
+                    avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4',
+                },
+                repository: {
+                    full_name: 'octocat/Hello-World',
+                    html_url: 'https://github.com/octocat/Hello-World',
+                },
+                commits: [
+                    {
+                        id: '2222222abcdef',
+                        message: 'Fix the thing\n\nDetails',
+                        url: 'https://github.com/octocat/Hello-World/commit/2222222abcdef',
+                        author: {
+                            username: 'octocat',
+                        },
+                    },
+                ],
+            } as never,
+            {
+                'x-github-event': 'push',
+                'user-agent': 'GitHub-Hookshot/abc123',
+            },
+        );
+
+        expect(serverMessageRepo.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                text: expect.stringContaining('**octocat** pushed [1 commit]'),
+                webhookUsername: 'GitHub',
+                webhookAvatarUrl:
+                    'https://avatars.githubusercontent.com/u/1?v=4',
+            }),
+        );
+        expect(serverMessageRepo.create.mock.calls[0][0].text).toContain(
+            '- [2222222](https://github.com/octocat/Hello-World/commit/2222222abcdef) Fix the thing - octocat',
+        );
+    });
+
+    it('detects GitHub deliveries from the Hookshot user agent', async () => {
+        await controller.executeWebhook(
+            { token },
+            {
+                action: 'opened',
+                sender: { login: 'octocat' },
+                repository: { full_name: 'octocat/Hello-World' },
+                issue: {
+                    number: 12,
+                    title: 'Bug report',
+                    html_url:
+                        'https://github.com/octocat/Hello-World/issues/12',
+                },
+            } as never,
+            {
+                'user-agent': 'GitHub-Hookshot/abc123',
+            },
+        );
+
+        expect(serverMessageRepo.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                text: '**octocat** triggered GitHub `github` (opened) in octocat/Hello-World',
+                webhookUsername: 'GitHub',
+            }),
+        );
     });
 
     it('deletes a webhook message and broadcasts deletion to channel subscribers and bots', async () => {
