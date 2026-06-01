@@ -1208,20 +1208,7 @@ export class ServerController {
         }
 
         const redis = this.redisService.getClient();
-        const latestKey = `channel_latest:${channelId}`;
         const userReadKey = `channel_read_ts:${userId}:${channelId}`;
-
-        const [latestTs, userReadTs] = await Promise.all([
-            redis.get(latestKey),
-            redis.get(userReadKey),
-        ]);
-
-        if (
-            userReadTs != null &&
-            (latestTs == null || Number(userReadTs) >= Number(latestTs))
-        ) {
-            return { success: true };
-        }
 
         const updatedRead = await this.serverChannelReadRepo.upsert(
             new mongoose.Types.ObjectId(serverId),
