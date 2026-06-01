@@ -24,6 +24,12 @@ interface ResponseWithLocals extends Response {
     };
 }
 
+const TAURI_ALLOWED_ORIGINS = [
+    'http://tauri.localhost',
+    'https://tauri.localhost',
+    'tauri://localhost',
+];
+
 // Configures an existing Express application with standard middleware and routes
 export function setupExpressApp(app: Application): Application {
     const logger = container.get<ILogger>(TYPES.Logger);
@@ -87,6 +93,7 @@ export function setupExpressApp(app: Application): Application {
                         'https://catfla.re/',
                         'https://rolling.catfla.re/',
                         'https://static.klipy.com/',
+                        ...TAURI_ALLOWED_ORIGINS,
                         ...(PROJECT_LEVEL === 'development'
                             ? [
                                   'http://localhost:3000',
@@ -113,6 +120,7 @@ export function setupExpressApp(app: Application): Application {
                         'https://cloudflareinsights.com',
                         'wss://rtc.catfla.re',
                         'https://rtc.catfla.re',
+                        ...TAURI_ALLOWED_ORIGINS,
                         ...(PROJECT_LEVEL === 'development'
                             ? [
                                   'http://localhost:3000',
@@ -209,6 +217,7 @@ export function setupExpressApp(app: Application): Application {
         'http://localhost:5173',
         'http://127.0.0.1:5173',
         FRONTEND_URL.replace(/\/$/, ''),
+        ...TAURI_ALLOWED_ORIGINS,
     ];
 
     app.use(
