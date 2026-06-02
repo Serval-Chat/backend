@@ -69,6 +69,7 @@ export interface IUser extends Document {
         disableCustomUsernameFonts?: boolean;
         disableCustomUsernameColors?: boolean;
         disableCustomUsernameGlow?: boolean;
+        limitedAnimations?: boolean;
         customFontUrl?: string;
         customFontFamily?: string;
         notificationSounds?: {
@@ -197,6 +198,7 @@ const schema = new Schema<IUser>(
             disableCustomUsernameFonts: { type: Boolean, default: false },
             disableCustomUsernameColors: { type: Boolean, default: false },
             disableCustomUsernameGlow: { type: Boolean, default: false },
+            limitedAnimations: { type: Boolean, default: false },
             customFontUrl: { type: String, default: '' },
             customFontFamily: { type: String, default: '' },
             notificationSounds: {

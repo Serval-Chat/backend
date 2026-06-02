@@ -234,6 +234,10 @@ export interface IUserRepository {
             showYouLabel?: boolean;
             ownMessageColor?: string;
             otherMessageColor?: string;
+            disableCustomUsernameFonts?: boolean;
+            disableCustomUsernameColors?: boolean;
+            disableCustomUsernameGlow?: boolean;
+            limitedAnimations?: boolean;
             customFontUrl?: string;
             customFontFamily?: string;
             notificationSounds?: {

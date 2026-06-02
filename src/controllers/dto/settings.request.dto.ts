@@ -181,6 +181,11 @@ export class UpdateSettingsRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
+    @IsBoolean()
+    public limitedAnimations?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
     @ValidateIf((o) => o.customFontUrl !== '')
     @Matches(/^https:\/\/fonts\.googleapis\.com\/css2\?family=[^<>\s]+$/, {
         message: 'Must be a valid Google Fonts URL',

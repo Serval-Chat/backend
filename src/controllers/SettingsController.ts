@@ -45,6 +45,7 @@ interface UserSettings {
     disableCustomUsernameFonts?: boolean;
     disableCustomUsernameColors?: boolean;
     disableCustomUsernameGlow?: boolean;
+    limitedAnimations?: boolean;
     customFontUrl?: string;
     customFontFamily?: string;
     notificationSounds?: {
@@ -117,6 +118,10 @@ export class SettingsController {
             showYouLabel: true,
             ownMessageColor: '#5865f2',
             otherMessageColor: '#2a2d31',
+            disableCustomUsernameFonts: false,
+            disableCustomUsernameColors: false,
+            disableCustomUsernameGlow: false,
+            limitedAnimations: false,
             customFontUrl: '',
             customFontFamily: '',
             keybinds: {},

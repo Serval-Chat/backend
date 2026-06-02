@@ -45,6 +45,17 @@ describe('UpdateSettingsRequestDTO', () => {
         expect(errors.length).toBe(0);
     });
 
+    it('should allow limited animation settings', async () => {
+        const dto = new UpdateSettingsRequestDTO();
+        dto.disableCustomUsernameFonts = false;
+        dto.disableCustomUsernameColors = false;
+        dto.disableCustomUsernameGlow = false;
+        dto.limitedAnimations = true;
+
+        const errors = await validate(dto);
+        expect(errors.length).toBe(0);
+    });
+
     it('should allow valid keybind settings', async () => {
         const dto = new UpdateSettingsRequestDTO();
         dto.keybinds = {

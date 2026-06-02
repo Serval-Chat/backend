@@ -100,6 +100,9 @@ export class UserSettingsResponseDTO {
     public disableCustomUsernameGlow?: boolean;
 
     @ApiPropertyOptional()
+    public limitedAnimations?: boolean;
+
+    @ApiPropertyOptional()
     public customFontUrl?: string;
 
     @ApiPropertyOptional()

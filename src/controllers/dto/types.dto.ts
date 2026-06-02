@@ -41,6 +41,8 @@ export class UserSettingsDTO {
     @ApiPropertyOptional()
     public disableCustomUsernameGlow?: boolean;
     @ApiPropertyOptional()
+    public limitedAnimations?: boolean;
+    @ApiPropertyOptional()
     public keybinds?: KeybindsMapDTO;
 }
 
