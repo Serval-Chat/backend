@@ -1466,6 +1466,8 @@ export class ServerController {
             notifyUser(mentionedUserId, 'mention', {
                 type: 'mention',
                 senderName: senderUsername,
+                serverId,
+                channelId,
                 channelName,
                 preview: message.text,
             }).catch((err) =>

@@ -60,6 +60,8 @@ type NotificationTemplateData =
     | {
           type: 'mention';
           senderName: string;
+          serverId?: string;
+          channelId?: string;
           channelName?: string;
           preview: string;
       }
@@ -78,14 +80,29 @@ const templates: {
         d: Extract<NotificationTemplateData, { type: K }>,
     ) => NotificationPayload;
 } = {
-    mention: ({ senderName, channelName, preview }) => ({
+    mention: ({ senderName, serverId, channelId, channelName, preview }) => ({
         title: `${senderName} mentioned you`,
         body:
             channelName !== undefined && channelName !== ''
                 ? `#${channelName}: ${preview}`
                 : preview,
-        tag: 'mention',
-        data: { type: 'mention' },
+        tag:
+            channelId !== undefined && channelId !== ''
+                ? `mention_channel_${channelId}`
+                : 'mention',
+        data: {
+            type: 'mention',
+            ...(serverId !== undefined &&
+            serverId !== '' &&
+            channelId !== undefined &&
+            channelId !== ''
+                ? { url: `/chat/@server/${serverId}/channel/${channelId}` }
+                : {}),
+            ...(serverId !== undefined && serverId !== '' ? { serverId } : {}),
+            ...(channelId !== undefined && channelId !== ''
+                ? { channelId }
+                : {}),
+        },
     }),
     friend_request: ({ senderName, senderId }) => ({
         title: 'New friend request',
@@ -214,6 +231,50 @@ function getRedisClient() {
     return container.get<IRedisService>(TYPES.RedisService).getClient();
 }
 
+const getSubscriptionFallbackKey = (sub: IPushSubscription): string =>
+    sub.type === 'fcm'
+        ? `fcm:${sub.fcmToken ?? String(sub._id)}`
+        : `webpush:${sub.endpointData?.endpoint ?? String(sub._id)}`;
+
+const getSubscriptionDeviceKey = (sub: IPushSubscription): string => {
+    const userAgent = sub.userAgent?.trim();
+    if (userAgent !== undefined && userAgent !== '') {
+        return `ua:${userAgent}`;
+    }
+
+    return getSubscriptionFallbackKey(sub);
+};
+
+const compareSubscriptionPreference = (
+    a: IPushSubscription,
+    b: IPushSubscription,
+): number => {
+    if (a.type !== b.type) {
+        return a.type === 'fcm' ? -1 : 1;
+    }
+
+    return b.createdAt.getTime() - a.createdAt.getTime();
+};
+
+const dedupeSubscriptionsByDevice = (
+    subs: IPushSubscription[],
+): IPushSubscription[] => {
+    const bestByDevice = new Map<string, IPushSubscription>();
+
+    for (const sub of subs) {
+        const key = getSubscriptionDeviceKey(sub);
+        const existing = bestByDevice.get(key);
+        if (
+            existing === undefined ||
+            compareSubscriptionPreference(sub, existing) < 0
+        ) {
+            bestByDevice.set(key, sub);
+        }
+    }
+
+    return [...bestByDevice.values()];
+};
+
 async function isUserOnline(userId: string): Promise<boolean> {
     try {
         const client = getRedisClient();
@@ -283,8 +344,17 @@ export async function notifyUser(
     );
 
     if (subs.length === 0) return;
+    const deliverableSubs = dedupeSubscriptionsByDevice(subs);
 
-    await Promise.allSettled(subs.map((s) => sendToSubscription(s, payload)));
+    if (deliverableSubs.length !== subs.length) {
+        logger.info(
+            `[PushService] Deduped ${subs.length} push subscriptions to ${deliverableSubs.length} device targets for user ${userId}`,
+        );
+    }
+
+    await Promise.allSettled(
+        deliverableSubs.map((s) => sendToSubscription(s, payload)),
+    );
 }
 
 export async function notifyUsers(
