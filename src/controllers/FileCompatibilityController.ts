@@ -14,13 +14,11 @@ import fs from 'fs';
 import { extractOriginalFilename } from '@/config/multer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
-import { injectable } from 'inversify';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 
 // Compatibility controller for file downloads
 // Provides the legacy /api/v1/download/:filename endpoint
 @ApiTags('Files')
-@injectable()
 @Controller('api/v1')
 export class FileCompatibilityController {
     public constructor(

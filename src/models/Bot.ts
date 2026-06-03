@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import { Schema, model } from 'mongoose';
 import type { Document, Types } from 'mongoose';
 import crypto from 'crypto';
@@ -120,6 +121,8 @@ const schema = new Schema<IBot>(
         toObject: { virtuals: true },
     },
 );
+
+schema.plugin(mongooseIdPlugin);
 
 schema.methods.verifySecret = function (secret: string): boolean {
     const hash = crypto.createHash('sha256').update(secret).digest('hex');

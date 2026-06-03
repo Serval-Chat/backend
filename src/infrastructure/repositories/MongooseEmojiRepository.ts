@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import { IEmojiRepository, IEmoji } from '@/di/interfaces/IEmojiRepository';
@@ -8,7 +7,6 @@ import { Emoji } from '@/models/Emoji';
 //
 // Implements IEmojiRepository using Mongoose Emoji model
 @injectable()
-@Injectable()
 export class MongooseEmojiRepository implements IEmojiRepository {
     public async findById(id: Types.ObjectId): Promise<IEmoji | null> {
         return await Emoji.findById(id).lean();

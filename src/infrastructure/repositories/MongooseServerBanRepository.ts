@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import { User } from '@/models/User';
@@ -14,7 +13,6 @@ import { ServerBan } from '@/models/Server';
 //
 // Implements IServerBanRepository using Mongoose ServerBan model
 @injectable()
-@Injectable()
 export class MongooseServerBanRepository implements IServerBanRepository {
     public async findByServerAndUser(
         serverId: Types.ObjectId,

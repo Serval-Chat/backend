@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import {
@@ -11,7 +10,6 @@ import { Webhook } from '@/models/Webhook';
 //
 // Implements IWebhookRepository using Mongoose Webhook model
 @injectable()
-@Injectable()
 export class MongooseWebhookRepository implements IWebhookRepository {
     public async findById(id: Types.ObjectId): Promise<IWebhook | null> {
         return await Webhook.findById(id).lean();

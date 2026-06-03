@@ -16,14 +16,13 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JWTPayload } from '@/utils/jwt';
 import { EmojiResponseDTO } from './dto/emoji.response.dto';
-import { injectable } from 'inversify';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
 }
 
 @ApiTags('Emojis')
-@injectable()
 @Controller('api/v1/emojis')
 export class EmojiController {
     public constructor(
@@ -52,7 +51,7 @@ export class EmojiController {
 
         const emojis = await this.emojiRepo.findByServerIds(serverIds);
         return emojis.map((e) => ({
-            _id: e._id.toString(),
+            id: getDocumentIdString(e),
             name: e.name,
             imageUrl: e.imageUrl,
             serverId: e.serverId.toString(),
@@ -75,7 +74,7 @@ export class EmojiController {
         }
 
         return {
-            _id: emoji._id.toString(),
+            id: getDocumentIdString(emoji),
             name: emoji.name,
             imageUrl: emoji.imageUrl,
             serverId: emoji.serverId.toString(),

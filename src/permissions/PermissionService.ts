@@ -1,5 +1,5 @@
 import { injectable, inject } from 'inversify';
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
@@ -27,6 +27,7 @@ import type {
     ServerMember as ResolverMember,
 } from '@/permissions/types';
 import { PERMISSION_KEYS } from '@/permissions/types';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 type PermissionOverrideSource =
     | Map<string, unknown>
@@ -114,7 +115,6 @@ interface CachedResolver {
 const PERMISSION_INVALIDATION_CHANNEL = 'SERCHAT_PERMISSION_INVALIDATE';
 
 @injectable()
-@Injectable()
 export class PermissionService {
     private readonly resolverCache = new Map<string, CachedResolver>();
 
@@ -222,7 +222,7 @@ export class PermissionService {
         const everyoneRole = await this.roleRepo.findEveryoneRole(serverId);
         if (!everyoneRole) return permissions;
 
-        const everyoneRoleId = everyoneRole._id.toString();
+        const everyoneRoleId = getDocumentIdString(everyoneRole);
         const normalized: Record<string, Record<string, boolean>> = {};
 
         const everyoneOverride = permissions['everyone'];
@@ -333,14 +333,16 @@ export class PermissionService {
         if (!server) return null;
 
         const everyoneRoleId = everyoneRole
-            ? everyoneRole._id.toString()
+            ? getDocumentIdString(everyoneRole)
             : undefined;
 
         const resolverData: ServerData = {
             serverId,
-            ownerId: server.ownerId,
+            ownerId: new Types.ObjectId(server.ownerId),
             roles: roles.map((r): ServerRole => this.mapRole(r)),
-            everyoneRoleId: everyoneRole ? everyoneRole._id : undefined,
+            everyoneRoleId: everyoneRole
+                ? (getDocumentId(everyoneRole) as Types.ObjectId)
+                : undefined,
             channels: channels.map(
                 (c): ResolverChannel => this.mapChannel(c, everyoneRoleId),
             ),
@@ -361,7 +363,7 @@ export class PermissionService {
 
     private mapRole(role: IRole): ServerRole {
         return {
-            id: role._id,
+            id: getDocumentId(role) as Types.ObjectId,
             serverId: role.serverId,
             name: role.name,
             position: role.position,
@@ -381,7 +383,7 @@ export class PermissionService {
         );
 
         return {
-            id: channel._id,
+            id: getDocumentId(channel) as Types.ObjectId,
             serverId: channel.serverId,
             categoryId: channel.categoryId ?? null,
             overrides,
@@ -400,7 +402,7 @@ export class PermissionService {
         );
 
         return {
-            id: category._id,
+            id: getDocumentId(category) as Types.ObjectId,
             serverId: category.serverId,
             overrides,
         };
@@ -408,7 +410,7 @@ export class PermissionService {
 
     private mapMember(member: IServerMember): ResolverMember {
         return {
-            id: member._id,
+            id: getDocumentId(member) as Types.ObjectId,
             serverId: member.serverId,
             userId: member.userId,
             roleIds: member.roles,

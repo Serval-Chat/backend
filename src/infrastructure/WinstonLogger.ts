@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { ILogger } from '@/di/interfaces/ILogger';
 import logger from '@/utils/logger';
 
@@ -8,7 +7,6 @@ import { injectable } from 'inversify';
 //
 // Implements ILogger interface using the Winston logger instance
 @injectable()
-@Injectable()
 export class WinstonLogger implements ILogger {
     public info(message: string, meta?: Record<string, unknown>): void {
         logger.info(message, meta);

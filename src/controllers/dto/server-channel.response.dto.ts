@@ -19,7 +19,7 @@ export class ChannelResponseDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    public _id?: string;
+    public id?: string;
 
     @ApiProperty()
     @IsMongoId()
@@ -102,7 +102,7 @@ export class CategoryResponseDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    public _id?: string;
+    public id?: string;
 
     @ApiProperty()
     @IsMongoId()

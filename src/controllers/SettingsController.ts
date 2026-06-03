@@ -22,7 +22,6 @@ import {
     UpdateSettingsResponseDTO,
     UpdateServerSettingsResponseDTO,
 } from './dto/settings.response.dto';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -74,7 +73,6 @@ interface UserSettings {
     };
 }
 
-@injectable()
 @Controller('api/v1/settings')
 @ApiTags('Settings')
 @UseGuards(JwtAuthGuard)

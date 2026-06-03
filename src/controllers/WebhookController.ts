@@ -36,8 +36,8 @@ import {
     WebhookExecuteResponseDTO,
 } from './dto/webhook.response.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
+import { getDocumentIdString } from '@/utils/mongooseId';
 import type {
     IWebhookRepository,
     IWebhook,
@@ -145,7 +145,6 @@ interface GitHubWebhookPayload {
     zen?: string;
 }
 
-@injectable()
 @Controller('api/v1')
 @ApiTags('Webhooks')
 export class WebhookController {
@@ -443,7 +442,7 @@ export class WebhookController {
 
         const webhooks = await this.webhookRepo.findByChannelId(channelOid);
         return webhooks.map((w) => ({
-            _id: w._id,
+            id: getDocumentIdString(w),
             name: w.name,
             token: w.token,
             avatarUrl: w.avatarUrl,
@@ -774,8 +773,8 @@ export class WebhookController {
         const messagePayload: IMessageServerEvent = {
             type: 'message_server',
             payload: {
-                messageId: message._id.toString(),
-                _id: message._id.toString(),
+                messageId: getDocumentIdString(message),
+                id: getDocumentIdString(message),
                 serverId: webhook.serverId.toString(),
                 channelId: webhook.channelId.toString(),
                 senderId: webhookSystemUserId.toHexString(),
@@ -852,7 +851,7 @@ export class WebhookController {
         }
 
         return {
-            id: message._id.toString(),
+            id: getDocumentIdString(message),
             timestamp: message.createdAt,
         };
     }

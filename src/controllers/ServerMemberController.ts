@@ -34,7 +34,6 @@ import {
     TransferOwnershipResponseDTO,
 } from './dto/server-member.response.dto';
 import { WsServer } from '@/ws/server';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
     IServerMemberRepository,
@@ -75,8 +74,8 @@ import {
     ChannelPreferencesRequestDTO,
     SelfRolesRequestDTO,
 } from './dto/server.request.dto';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
-@injectable()
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Members')
 @ApiBearerAuth()
@@ -130,9 +129,9 @@ export class ServerMemberController {
     ): {
         enabled: boolean;
         guidelines: string[];
-        selfAssignableRoleIds: Types.ObjectId[];
-        landingChannelId?: Types.ObjectId | null;
-        welcomeChannelIds: Types.ObjectId[];
+        selfAssignableRoleIds: string[];
+        landingChannelId?: string | null;
+        welcomeChannelIds: string[];
     } {
         return {
             enabled: server?.onboarding?.enabled ?? false,
@@ -265,7 +264,7 @@ export class ServerMemberController {
         }
 
         const roles = await this.roleRepo.findByServerId(serverOid);
-        const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+        const roleMap = new Map(roles.map((r) => [getDocumentIdString(r), r]));
         for (const roleId of requestedIds) {
             const role = roleMap.get(roleId);
             if (
@@ -327,8 +326,10 @@ export class ServerMemberController {
         }
         const channels = await this.channelRepo.findByServerId(serverOid);
         const categories = await this.categoryRepo.findByServerId(serverOid);
-        const channelIds = new Set(channels.map((c) => c._id.toString()));
-        const categoryIds = new Set(categories.map((c) => c._id.toString()));
+        const channelIds = new Set(channels.map((c) => getDocumentIdString(c)));
+        const categoryIds = new Set(
+            categories.map((c) => getDocumentIdString(c)),
+        );
         const hiddenChannelIds = [...new Set(body.hiddenChannelIds)].map(
             (channelId) => {
                 if (!channelIds.has(channelId)) {
@@ -589,7 +590,7 @@ export class ServerMemberController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const server = await this.serverRepo.findById(serverOid);
-        if (server && server.ownerId.equals(userOid)) {
+        if (server && String(server.ownerId) === userId) {
             throw new ForbiddenException(
                 ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
             );
@@ -665,7 +666,7 @@ export class ServerMemberController {
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        if (server && server.ownerId.equals(targetOid)) {
+        if (server && String(server.ownerId) === userId) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.CANNOT_KICK_OWNER,
             );
@@ -751,7 +752,7 @@ export class ServerMemberController {
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        if (server && server.ownerId.equals(targetOid)) {
+        if (server && String(server.ownerId) === userId) {
             throw new ForbiddenException(ErrorMessages.MEMBER.CANNOT_BAN_OWNER);
         }
 
@@ -850,7 +851,7 @@ export class ServerMemberController {
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        if (server !== null && server.ownerId.equals(targetOid)) {
+        if (server !== null && String(server.ownerId) === userId) {
             throw new ForbiddenException('You cannot timeout the server owner');
         }
 
@@ -1045,7 +1046,8 @@ export class ServerMemberController {
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        const isOwner = server !== null && server.ownerId.equals(currentOid);
+        const isOwner =
+            server !== null && String(server.ownerId) === currentUserId;
 
         if (isOwner !== true) {
             const currentUserHighest =
@@ -1162,7 +1164,8 @@ export class ServerMemberController {
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        const isOwner = server !== null && server.ownerId.equals(currentOid);
+        const isOwner =
+            server !== null && String(server.ownerId) === currentUserId;
 
         if (isOwner !== true) {
             const currentUserHighest =
@@ -1243,7 +1246,7 @@ export class ServerMemberController {
             throw new NotFoundException('Server not found');
         }
 
-        if (server.ownerId.equals(userOid) === false) {
+        if (String(server.ownerId) !== userId) {
             throw new ForbiddenException(
                 ErrorMessages.SERVER.TRANSFER_OWNERSHIP_ONLY_OWNER,
             );
@@ -1257,7 +1260,7 @@ export class ServerMemberController {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        await this.serverRepo.update(serverOid, { ownerId: newOwnerOid });
+        await this.serverRepo.update(serverOid, { ownerId: newOwnerId });
 
         this.permissionService.invalidateCache(serverOid);
 
@@ -1292,18 +1295,18 @@ export class ServerMemberController {
                 const managedRole = await Role.findOne({
                     serverId,
                     managed: true,
-                    managedBotId: bot._id,
+                    managedBotId: getDocumentId(bot) as Types.ObjectId,
                 }).lean();
 
                 if (managedRole) {
                     await this.roleRepo.delete(
-                        managedRole._id as Types.ObjectId,
+                        getDocumentId(managedRole) as Types.ObjectId,
                     );
                     this.wsServer.broadcastToServer(serverId.toString(), {
                         type: 'role_deleted',
                         payload: {
                             serverId: serverId.toString(),
-                            roleId: managedRole._id.toString(),
+                            roleId: getDocumentIdString(managedRole),
                         },
                     });
                 }

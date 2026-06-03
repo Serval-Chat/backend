@@ -30,9 +30,9 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
-import { injectable } from 'inversify';
 import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
+import { getDocumentId } from '@/utils/mongooseId';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -60,7 +60,6 @@ import { EmojiResponseDTO } from './dto/emoji.response.dto';
 import { EmojiValidationPipe } from '@/validation/EmojiValidationPipe';
 import { assertHttpNotMuted } from '@/utils/mute';
 
-@injectable()
 @Controller('api/v1/servers/:serverId/emojis')
 @ApiTags('Server Emojis')
 @ApiBearerAuth()
@@ -168,11 +167,11 @@ export class ServerEmojiController {
         const userOid = new Types.ObjectId(userId);
 
         const server = await this.serverRepo.findById(serverOid);
-        if (server === null || !server.ownerId.equals(userOid)) {
+        if (server === null || String(server.ownerId) !== userId) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const isOwner = server.ownerId.equals(userOid);
+        const isOwner = String(server.ownerId) === userId;
         if (
             !isOwner &&
             !(await this.permissionService.hasPermission(
@@ -227,7 +226,7 @@ export class ServerEmojiController {
             });
 
             const populatedEmoji = await this.emojiRepo.findByIdWithCreator(
-                newEmoji._id,
+                getDocumentId(newEmoji) as Types.ObjectId,
             );
 
             if (populatedEmoji === null) {
@@ -245,7 +244,7 @@ export class ServerEmojiController {
                 serverId: serverOid,
                 actorId: userOid,
                 actionType: 'emoji_create',
-                targetId: newEmoji._id as Types.ObjectId,
+                targetId: getDocumentId(newEmoji) as Types.ObjectId,
                 targetType: 'server',
                 metadata: { emojiName: name },
             });
@@ -315,7 +314,7 @@ export class ServerEmojiController {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        if (!server.ownerId.equals(userOid)) {
+        if (String(server.ownerId) !== userId) {
             throw new ForbiddenException(ErrorMessages.SERVER.ONLY_OWNER);
         }
 

@@ -307,7 +307,7 @@ describe('WS bot implicit event delivery', () => {
             .set('Authorization', `Bearer ${humanToken}`)
             .send({ text: 'react to this' });
         expect(sendMessageRes.status).toBe(201);
-        const messageId = sendMessageRes.body._id as string;
+        const messageId = sendMessageRes.body.id as string;
 
         const reactionAddedPromise = waitForWsEvent(botSocket, 'reaction_added');
         const addReactionRes = await request(app)

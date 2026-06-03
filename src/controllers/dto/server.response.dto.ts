@@ -44,7 +44,7 @@ export class ServerResponseDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    public _id?: string;
+    public id?: string;
 
     @ApiProperty()
     public name!: string;

@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class WebhookResponseDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public name!: string;

@@ -22,6 +22,7 @@ import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
 import { assertWsNotMuted } from '@/utils/mute';
 import logger from '@/utils/logger';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 /**
  * Controller for handling presence and status events.
@@ -214,7 +215,7 @@ export class PresenceController {
                 : [];
 
         const online = onlineUsers.map((u) => ({
-            userId: u._id.toString(),
+            userId: getDocumentIdString(u),
             username: u.username ?? '',
             status: u.customStatus
                 ? {

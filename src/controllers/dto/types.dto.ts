@@ -57,8 +57,6 @@ export class NotificationPreferencesDTO {
 
 export class InteractionResolvedUserDTO implements InteractionResolvedUser {
     @ApiProperty()
-    public _id!: string;
-    @ApiProperty()
     public id!: string;
     @ApiProperty()
     public username!: string;
@@ -74,8 +72,6 @@ export class InteractionResolvedChannelDTO
     implements InteractionResolvedChannel
 {
     @ApiProperty()
-    public _id!: string;
-    @ApiProperty()
     public id!: string;
     @ApiProperty()
     public name!: string;
@@ -84,8 +80,6 @@ export class InteractionResolvedChannelDTO
 }
 
 export class InteractionResolvedRoleDTO implements InteractionResolvedRole {
-    @ApiProperty()
-    public _id!: string;
     @ApiProperty()
     public id!: string;
     @ApiProperty()
@@ -105,7 +99,7 @@ export class PingMentionMessageDTO {
 
 export class PingExportMessageDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
     @ApiProperty()
     public text!: string;
     @ApiProperty({ enum: ['success', 'failure', 'cancelled'] })
@@ -121,7 +115,7 @@ export class BanInfoDTO {
 
 export class FriendRequestDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
     @ApiProperty()
     public from!: string;
     @ApiProperty()
@@ -134,7 +128,7 @@ export class FriendRequestDTO {
 
 export class AdminBanSampleDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
     @ApiProperty()
     public userId!: string;
     @ApiPropertyOptional()
@@ -160,7 +154,7 @@ export class AdminBanHistoryItemDTO {
     @IsOptional()
     @IsMongoId()
     @IsString()
-    public _id?: string;
+    public id?: string;
 
     @ApiProperty()
     public reason!: string;

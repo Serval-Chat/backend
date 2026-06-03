@@ -1,5 +1,4 @@
 import { injectable } from 'inversify';
-import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import {
     ICategoryRepository,
@@ -25,7 +24,6 @@ const transformCategory = (
 //
 // Implements ICategoryRepository using Mongoose Category model
 @injectable()
-@Injectable()
 export class MongooseCategoryRepository implements ICategoryRepository {
     public async findById(id: Types.ObjectId): Promise<ICategory | null> {
         const result = await Category.findById(id).lean();

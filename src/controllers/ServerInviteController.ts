@@ -25,7 +25,6 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
-import { injectable } from 'inversify';
 import type {
     IInviteRepository,
     IInvite,
@@ -53,8 +52,8 @@ import {
     InviteDeletedResponseDTO,
 } from '@/controllers/dto/server-invite.response.dto';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
+import { getDocumentId } from '@/utils/mongooseId';
 
-@injectable()
 @Controller('api/v1')
 @ApiTags('Server Invites')
 export class ServerInviteController {
@@ -163,7 +162,7 @@ export class ServerInviteController {
         if (code !== undefined && code !== '') {
             // Restrict custom invite codes to the server owner to prevent squatting/abuse
             const server = await this.serverRepo.findById(serverOid);
-            if (server === null || !server.ownerId.equals(userOid)) {
+            if (server === null || String(server.ownerId) !== userId) {
                 throw new ForbiddenException(
                     ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
                 );
@@ -201,7 +200,7 @@ export class ServerInviteController {
             serverId: serverOid,
             actorId: userOid,
             actionType: 'invite_create',
-            targetId: invite._id as Types.ObjectId,
+            targetId: getDocumentId(invite) as Types.ObjectId,
             targetType: 'server',
             metadata: {
                 code: invite.code,
@@ -353,7 +352,7 @@ export class ServerInviteController {
             maxUses: invite.maxUses,
             uses: invite.uses,
             server: {
-                id: server._id.toString(),
+                id: server.id,
                 name: server.name,
                 icon: server.icon,
                 banner: server.banner,
@@ -439,11 +438,11 @@ export class ServerInviteController {
             '@everyone',
         );
         if (everyoneRole !== null) {
-            roles.push(everyoneRole._id);
+            roles.push(getDocumentId(everyoneRole) as Types.ObjectId);
         }
 
         if (server !== null && server.defaultRoleId !== undefined) {
-            roles.push(server.defaultRoleId);
+            roles.push(new Types.ObjectId(server.defaultRoleId));
         }
 
         await this.serverMemberRepo.create({
@@ -454,7 +453,9 @@ export class ServerInviteController {
         });
 
         // Increment invite usage count after successful join
-        await this.inviteRepo.incrementUses(invite._id);
+        await this.inviteRepo.incrementUses(
+            getDocumentId(invite) as Types.ObjectId,
+        );
         this.permissionService.invalidateCache(serverOid);
 
         const user = await this.userRepo.findById(userOid);

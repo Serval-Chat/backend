@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
@@ -53,6 +54,8 @@ const reactionSchema = new Schema<IReaction>({
 });
 
 // Compound index: ensure user can only react once per emoji per message
+reactionSchema.plugin(mongooseIdPlugin);
+
 // For Unicode emoji: (messageId, messageType, userId, emoji)
 // For custom emoji: (messageId, messageType, userId, emojiId)
 reactionSchema.index(

@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import type { ClientSession } from 'mongoose';
@@ -12,7 +11,6 @@ import { DmUnread } from '@/models/DmUnread';
 //
 // Implements IDmUnreadRepository using Mongoose DmUnread model
 @injectable()
-@Injectable()
 export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     // Find all unread counts for a specific user
     public async findByUser(userId: Types.ObjectId): Promise<IDmUnread[]> {

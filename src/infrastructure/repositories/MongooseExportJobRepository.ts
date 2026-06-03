@@ -2,10 +2,8 @@ import type { Types } from 'mongoose';
 import { ExportJob, type IExportJob } from '@/models/ExportJob';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
 import { injectable } from 'inversify';
-import { Injectable } from '@nestjs/common';
 
 @injectable()
-@Injectable()
 export class MongooseExportJobRepository implements IExportJobRepository {
     public async findById(id: Types.ObjectId): Promise<IExportJob | null> {
         return await ExportJob.findById(id);

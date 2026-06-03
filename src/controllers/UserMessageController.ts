@@ -29,7 +29,6 @@ import {
     DmMessageDeleteResponseDTO,
     DmPollVoteResponseDTO,
 } from './dto/user-message.response.dto';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
@@ -55,6 +54,7 @@ import {
     MessageIdParamDTO,
     UserMessageParamsDTO,
 } from './dto/user-message.request.dto';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import { PollVoteRequestDTO } from './dto/poll-vote.request.dto';
 import mongoose, { Types } from 'mongoose';
 import { BadRequestException } from '@nestjs/common';
@@ -72,7 +72,6 @@ interface MessageResponse {
     repliedMessage: IMessage | null;
 }
 
-@injectable()
 @Controller('api/v1/messages')
 @ApiTags('User Messages')
 @UseGuards(JwtAuthGuard)
@@ -166,7 +165,7 @@ export class UserMessageController {
         if (userDoc === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
-        const otherUserId = userDoc._id.toString();
+        const otherUserId = getDocumentIdString(userDoc);
 
         if (
             (await this.friendshipRepo.areFriends(
@@ -187,7 +186,7 @@ export class UserMessageController {
             after,
         );
 
-        const messageIds = msgs.map((m) => m._id);
+        const messageIds = msgs.map((m) => getDocumentId(m) as Types.ObjectId);
         const reactionsMap = await this.reactionRepo.getReactionsForMessages(
             messageIds,
             'dm',
@@ -200,7 +199,7 @@ export class UserMessageController {
                     ...msg,
                     reactions:
                         (reactionsMap as Record<string, unknown[]>)[
-                            msg._id.toString()
+                            getDocumentIdString(msg)
                         ] || [],
                 }) as MessageWithReactions,
         );
@@ -234,7 +233,7 @@ export class UserMessageController {
         if (userDoc === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
-        const otherUserId = userDoc._id.toString();
+        const otherUserId = getDocumentIdString(userDoc);
 
         if (
             (await this.friendshipRepo.areFriends(
@@ -373,7 +372,7 @@ export class UserMessageController {
         }
 
         const broadcastPayload = {
-            messageId: updated._id.toString(),
+            messageId: getDocumentIdString(updated),
             text: updated.text,
             editedAt: updated.editedAt
                 ? updated.editedAt.toISOString()

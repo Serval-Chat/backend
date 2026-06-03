@@ -83,7 +83,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
             flags: BlockFlags.BLOCK_REACTIONS,
         });
         assert.equal(res.status, 201);
-        assert.ok((res.body.id !== undefined && res.body.id !== null && res.body.id !== '') || (res.body._id !== undefined && res.body._id !== null && res.body._id !== ''));
+        assert.ok((res.body.id !== undefined && res.body.id !== null && res.body.id !== '') || (res.body.id !== undefined && res.body.id !== null && res.body.id !== ''));
         assert.equal(res.body.name, 'Strict Block');
     });
 
@@ -92,7 +92,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
             name: 'Old Name',
             flags: BlockFlags.BLOCK_REACTIONS,
         });
-        const profileId = (create.body.id !== undefined && create.body.id !== null && create.body.id !== '') ? create.body.id : create.body._id;
+        const profileId = (create.body.id !== undefined && create.body.id !== null && create.body.id !== '') ? create.body.id : create.body.id;
 
         const res = await api(app, userToken).patch(`/api/v1/blocks/profiles/${profileId}`, {
             name: 'New Name',
@@ -221,7 +221,7 @@ describe('Advanced Blocking - Flag 1: BLOCK_REACTIONS (HTTP)', () => {
         otherToken = r3.body.token;
 
         const serverRes = await api(app, blockerToken).post('/api/v1/servers', { name: 'Reaction Test Server' });
-        serverId = (serverRes.body.server?._id !== undefined && serverRes.body.server?._id !== null && serverRes.body.server?._id !== '') ? serverRes.body.server?._id : (serverRes.body._id !== undefined && serverRes.body._id !== null && serverRes.body._id !== '') ? serverRes.body._id : serverRes.body.id;
+        serverId = (serverRes.body.server?.id !== undefined && serverRes.body.server?.id !== null && serverRes.body.server?.id !== '') ? serverRes.body.server?.id : (serverRes.body.id !== undefined && serverRes.body.id !== null && serverRes.body.id !== '') ? serverRes.body.id : serverRes.body.id;
 
         const serverDetails = await api(app, blockerToken).get(`/api/v1/servers/${serverId}`);
         channelId = (serverDetails.body.channels?.[0]?._id !== undefined && serverDetails.body.channels?.[0]?._id !== null && serverDetails.body.channels?.[0]?._id !== '') ? serverDetails.body.channels?.[0]?._id : serverRes.body.channel?._id;
@@ -239,7 +239,7 @@ describe('Advanced Blocking - Flag 1: BLOCK_REACTIONS (HTTP)', () => {
             content: 'Block my reactions!',
         });
         if (msgRes.status !== 200 && msgRes.status !== 201) return;
-        const messageId = msgRes.body._id;
+        const messageId = msgRes.body.id;
 
         const reactRes = await api(app, blockedToken).post(`/api/v1/servers/${serverId}/channels/${channelId}/messages/${messageId}/reactions`, {
             emoji: '😀',
@@ -256,7 +256,7 @@ describe('Advanced Blocking - Flag 1: BLOCK_REACTIONS (HTTP)', () => {
             content: 'No reaction allowed',
         });
         if (msgRes.status !== 200 && msgRes.status !== 201) return;
-        const messageId = msgRes.body._id;
+        const messageId = msgRes.body.id;
 
         await api(app, blockedToken).post(`/api/v1/servers/${serverId}/channels/${channelId}/messages/${messageId}/reactions`, {
             emoji: '👍',
@@ -280,7 +280,7 @@ describe('Advanced Blocking - Flag 1: BLOCK_REACTIONS (HTTP)', () => {
             content: 'Other can react',
         });
         if (msgRes.status !== 200 && msgRes.status !== 201) return;
-        const messageId = msgRes.body._id;
+        const messageId = msgRes.body.id;
 
         const reactRes = await api(app, otherToken).post(`/api/v1/servers/${serverId}/channels/${channelId}/messages/${messageId}/reactions`, {
             emoji: '🎉',
@@ -306,7 +306,7 @@ describe('Advanced Blocking - Flag 3: HIDE_FROM_MEMBER_LIST', () => {
         blockedToken = r2.body.token;
 
         const serverRes = await api(app, blockerToken).post('/api/v1/servers', { name: 'Member List Server' });
-        serverId = (serverRes.body.server?._id !== undefined && serverRes.body.server?._id !== null && serverRes.body.server?._id !== '') ? serverRes.body.server?._id : (serverRes.body._id !== undefined && serverRes.body._id !== null && serverRes.body._id !== '') ? serverRes.body._id : serverRes.body.id;
+        serverId = (serverRes.body.server?.id !== undefined && serverRes.body.server?.id !== null && serverRes.body.server?.id !== '') ? serverRes.body.server?.id : (serverRes.body.id !== undefined && serverRes.body.id !== null && serverRes.body.id !== '') ? serverRes.body.id : serverRes.body.id;
 
         const invite = await api(app, blockerToken).post(`/api/v1/servers/${serverId}/invites`).then((r: Response) => r.body);
         await api(app, blockedToken).post(`/api/v1/invites/${invite.code}/join`);
@@ -328,7 +328,7 @@ describe('Advanced Blocking - Flag 3: HIDE_FROM_MEMBER_LIST', () => {
         const res = await api(app, blockerToken).get(`/api/v1/servers/${serverId}/members`);
         assert.equal(res.status, 200);
         const members = Array.isArray(res.body) ? res.body : ((res.body.members !== undefined && res.body.members !== null) ? res.body.members : []);
-        const found = (members as { userId?: string; _id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m._id) === blocked._id.toString());
+        const found = (members as { userId?: string; id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m.id) === blocked._id.toString());
         assert.equal(found, undefined, 'Blocked user should be hidden from blocker\'s member list');
     });
 
@@ -338,7 +338,7 @@ describe('Advanced Blocking - Flag 3: HIDE_FROM_MEMBER_LIST', () => {
         const res = await api(app, blockedToken).get(`/api/v1/servers/${serverId}/members`);
         assert.equal(res.status, 200);
         const members = Array.isArray(res.body) ? res.body : ((res.body.members !== undefined && res.body.members !== null) ? res.body.members : []);
-        const found = (members as { userId?: string; _id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m._id) === blocker._id.toString());
+        const found = (members as { userId?: string; id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m.id) === blocker._id.toString());
         assert.ok(found !== undefined, 'Blocker should still appear in blocked user\'s member list');
     });
 });

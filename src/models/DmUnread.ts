@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -28,6 +29,7 @@ const schema = new Schema<IDmUnread>(
     },
 );
 
+schema.plugin(mongooseIdPlugin);
 schema.index({ user: 1, peer: 1 }, { unique: true });
 
 // DM Unread Model

@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import {
@@ -8,7 +7,6 @@ import {
 import { Sticker } from '@/models/Sticker';
 
 @injectable()
-@Injectable()
 export class MongooseStickerRepository implements IStickerRepository {
     public async findById(id: Types.ObjectId): Promise<ISticker | null> {
         return await Sticker.findById(id).lean();

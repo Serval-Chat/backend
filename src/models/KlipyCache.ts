@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import mongoose, { Schema } from 'mongoose';
 import type { Document, Model } from 'mongoose';
 
@@ -25,6 +26,8 @@ const schema = new Schema<IKlipyCache>(
     },
     { timestamps: true },
 );
+
+schema.plugin(mongooseIdPlugin);
 
 export const KlipyCache: Model<IKlipyCache> = mongoose.model(
     'KlipyCache',

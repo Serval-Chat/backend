@@ -15,6 +15,7 @@ import type { JWTPayload } from '@/utils/jwt';
 import { z } from 'zod';
 import type { IWsUser } from '@/ws/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 const AuthenticateSchema = z.object({
     token: z.string().min(1, 'Token is required'),
@@ -120,7 +121,7 @@ export class AuthController {
 
         return {
             user: {
-                id: user._id.toString(),
+                id: getDocumentIdString(user),
                 username: user.username ?? '',
                 displayName: user.displayName ?? null,
                 profilePicture: user.profilePicture ?? null,

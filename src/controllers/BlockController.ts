@@ -23,7 +23,6 @@ import {
 import { SimpleMessageResponseDTO } from './dto/profile.extra.response.dto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { Request } from 'express';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import {
@@ -39,6 +38,7 @@ import {
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { ApiError } from '@/utils/ApiError';
 import { JWTPayload } from '@/utils/jwt';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -50,7 +50,6 @@ import { NoBot } from '@/modules/auth/bot.decorator';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @NoBot()
-@injectable()
 @Controller('api/v1/blocks')
 export class BlockController {
     public constructor(
@@ -75,7 +74,7 @@ export class BlockController {
             new Types.ObjectId(userId),
         );
         return profiles.map((p) => ({
-            id: p._id.toString(),
+            id: getDocumentIdString(p),
             name: p.name,
             flags: p.flags,
             createdAt: p.createdAt,
@@ -107,7 +106,7 @@ export class BlockController {
             body.flags,
         );
         return {
-            id: profile._id.toString(),
+            id: getDocumentIdString(profile),
             name: profile.name,
             flags: profile.flags,
             createdAt: profile.createdAt,
@@ -138,7 +137,7 @@ export class BlockController {
         }
 
         return {
-            id: profile._id.toString(),
+            id: getDocumentIdString(profile),
             name: profile.name,
             flags: profile.flags,
             createdAt: profile.createdAt,

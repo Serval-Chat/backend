@@ -6,7 +6,7 @@ import {
 
 export class AdminChannelShortDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public name!: string;
@@ -23,7 +23,7 @@ export class AdminChannelShortDTO {
 
 export class AdminServerDetailsDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public name!: string;

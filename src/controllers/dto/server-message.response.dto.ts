@@ -139,7 +139,7 @@ export class MessageAttachmentResponseDTO {
 
 export class ServerMessageResponseDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public serverId!: string;

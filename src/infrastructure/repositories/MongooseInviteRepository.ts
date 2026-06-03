@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import type { FilterQuery } from 'mongoose';
 
@@ -14,7 +13,6 @@ import { Invite } from '@/models/Server';
 //
 // Implements IInviteRepository using Mongoose Invite model
 @injectable()
-@Injectable()
 export class MongooseInviteRepository implements IInviteRepository {
     public async findByCode(code: string): Promise<IInvite | null> {
         return (await Invite.findOne({ code }).lean()) as IInvite | null;

@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { IBanRepository, IBan } from '@/di/interfaces/IBanRepository';
 import { IBanHistoryEntry } from '@/models/Ban';
@@ -11,7 +10,6 @@ import { injectable } from 'inversify';
 // Implements IBanRepository using Mongoose Ban model
 // Encapsulates all ban-related database operations
 @injectable()
-@Injectable()
 export class MongooseBanRepository implements IBanRepository {
     private banModel = Ban;
     public constructor() {}

@@ -16,7 +16,6 @@ import {
     ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -30,8 +29,8 @@ import {
     ServerAuditLogEntryDTO,
 } from './dto/server-audit-log.response.dto';
 import { mapAuditLogEntry } from '@/utils/auditLog';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
-@injectable()
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Audit Log')
 @ApiBearerAuth()
@@ -113,7 +112,7 @@ export class ServerAuditLogController {
         const pageEntries = hasMore ? entries.slice(0, limit) : entries;
         const lastEntry = pageEntries[pageEntries.length - 1];
         const nextCursor =
-            hasMore && lastEntry ? lastEntry._id.toString() : null;
+            hasMore && lastEntry ? getDocumentIdString(lastEntry) : null;
 
         return {
             entries: pageEntries.map((entry) =>

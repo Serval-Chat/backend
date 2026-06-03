@@ -45,7 +45,7 @@ export class AdminBanUserResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
     @ApiProperty()
     @IsMongoId()
     @IsString()
@@ -73,7 +73,7 @@ export class AdminWarnUserResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
     @ApiProperty()
     @IsMongoId()
     @IsString()
@@ -96,7 +96,7 @@ export class AdminMuteUserResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
     @ApiProperty()
     @IsMongoId()
     @IsString()

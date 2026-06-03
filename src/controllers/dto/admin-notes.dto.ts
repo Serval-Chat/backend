@@ -28,7 +28,7 @@ export class SoftDeleteAdminNoteRequestDTO {
 
 export class AdminNoteAdminInfoDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public username!: string;
@@ -53,7 +53,7 @@ export class AdminNoteHistoryDTO {
 
 export class AdminNoteResponseDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public targetId!: string;

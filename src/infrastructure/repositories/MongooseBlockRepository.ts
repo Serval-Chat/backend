@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import { BlockProfile, IBlockProfile } from '@/models/BlockProfile';
@@ -10,7 +9,6 @@ import {
 } from '@/di/interfaces/IBlockRepository';
 
 @injectable()
-@Injectable()
 export class MongooseBlockRepository implements IBlockRepository {
     public async createProfile(
         ownerId: Types.ObjectId,

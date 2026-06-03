@@ -26,7 +26,6 @@ import {
     DeletePingResponseDTO,
     ClearChannelPingsResponseDTO,
 } from './dto/ping.response.dto';
-import { injectable } from 'inversify';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -38,7 +37,6 @@ import { NoBot } from '@/modules/auth/bot.decorator';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @NoBot()
-@injectable()
 @Controller('api/v1/pings')
 export class UserPingController {
     public constructor(

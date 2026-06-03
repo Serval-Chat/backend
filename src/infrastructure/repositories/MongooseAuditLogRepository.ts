@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { type FilterQuery, Types } from 'mongoose';
 import type {
     IAuditLog,
@@ -9,7 +8,6 @@ import { AuditLog } from '@/models/AuditLog';
 import { injectable } from 'inversify';
 
 @injectable()
-@Injectable()
 export class MongooseAuditLogRepository implements IAuditLogRepository {
     private auditLogModel = AuditLog;
     public constructor() {}

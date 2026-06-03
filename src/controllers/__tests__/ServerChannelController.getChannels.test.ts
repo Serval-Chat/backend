@@ -136,7 +136,7 @@ describe('ServerChannelController - getChannels visibility', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0]?._id).toBe(chId.toString());
+        expect(result[0]?.id).toBe(chId.toString());
     });
 
     it('hides a channel when viewChannels=false', async () => {
@@ -180,7 +180,7 @@ describe('ServerChannelController - getChannels visibility', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0]?._id).toBe(chId.toString());
+        expect(result[0]?.id).toBe(chId.toString());
     });
 
     it('hides a channel when viewChannels=true but its parent category has viewCategories=false', async () => {

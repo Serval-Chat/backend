@@ -1,5 +1,5 @@
 import { injectable, inject } from 'inversify';
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
@@ -10,7 +10,6 @@ import { Buffer } from 'buffer';
 import crypto from 'crypto';
 
 @injectable()
-@Injectable()
 export class ImageDeliveryService {
     private readonly CACHE_PREFIX = 'img_conv:webp:';
     private readonly CACHE_TTL = 86400; // 24 hours

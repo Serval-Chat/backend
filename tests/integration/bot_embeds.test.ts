@@ -115,7 +115,7 @@ describe('Bot embed messaging', () => {
         expect(sendRes.body.text).toBe('');
         expect(sendRes.body.embeds).toEqual(embeds);
 
-        const saved = await ServerMessage.findById(sendRes.body._id).lean();
+        const saved = await ServerMessage.findById(sendRes.body.id).lean();
         expect(saved?.embeds).toEqual(embeds);
     });
 });

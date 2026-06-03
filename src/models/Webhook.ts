@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Model, Document } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
@@ -26,6 +27,7 @@ const webhookSchema = new Schema<IWebhook>({
     createdAt: { type: Date, default: Date.now },
 });
 
+webhookSchema.plugin(mongooseIdPlugin);
 webhookSchema.index({ serverId: 1, channelId: 1 });
 
 // Webhook model

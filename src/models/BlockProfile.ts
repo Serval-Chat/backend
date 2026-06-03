@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
@@ -32,6 +33,8 @@ const blockProfileSchema = new Schema<IBlockProfile>(
     },
     { timestamps: true },
 );
+
+blockProfileSchema.plugin(mongooseIdPlugin);
 
 // user can't have duplicate profile names
 blockProfileSchema.index({ ownerId: 1, name: 1 }, { unique: true });

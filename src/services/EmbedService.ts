@@ -1,5 +1,6 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { injectable, inject } from 'inversify';
+import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import crypto from 'crypto';
 import { ScraperService } from './ScraperService';
@@ -15,8 +16,8 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { IEmbed } from '@/models/Embed';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
-@Injectable()
 @injectable()
 export class EmbedService {
     private readonly logger = new Logger(EmbedService.name);
@@ -53,9 +54,11 @@ export class EmbedService {
         message: IServerMessage | IMessage,
         isServerMessage: boolean,
     ): Promise<void> {
+        const messageId = getDocumentIdString(message);
+
         if (message.noEmbeds === true) {
             this.logger.debug(
-                `Skipping embed processing because noEmbeds is set to true on message: ${message._id}`,
+                `Skipping embed processing because noEmbeds is set to true on message: ${messageId}`,
             );
             return;
         }
@@ -235,12 +238,12 @@ export class EmbedService {
 
         if (isServerMessage) {
             const serverMsg = message as IServerMessage;
-            await this.serverMessageRepo.update(serverMsg._id, {
+            await this.serverMessageRepo.update(new Types.ObjectId(messageId), {
                 embeds: allEmbeds,
             });
 
             this.logger.debug(
-                `Broadcasting updated embeds for message ${serverMsg._id} in channel ${serverMsg.channelId}`,
+                `Broadcasting updated embeds for message ${messageId} in channel ${serverMsg.channelId}`,
             );
 
             await this.wsServer.broadcastToServerWithPermission(
@@ -248,7 +251,7 @@ export class EmbedService {
                 {
                     type: 'message_server_embeds_updated',
                     payload: {
-                        messageId: serverMsg._id.toString(),
+                        messageId,
                         serverId: serverMsg.serverId.toString(),
                         channelId: serverMsg.channelId.toString(),
                         embeds: allEmbeds,
@@ -262,14 +265,14 @@ export class EmbedService {
             );
         } else {
             const userMsg = message as IMessage;
-            await this.messageRepo.updateMessage(userMsg._id.toString(), {
+            await this.messageRepo.updateMessage(messageId, {
                 embeds: allEmbeds,
             });
 
             const embedsEvent = {
                 type: 'message_dm_embeds_updated' as const,
                 payload: {
-                    messageId: userMsg._id.toString(),
+                    messageId,
                     embeds: allEmbeds,
                 },
             } as AnyResponseWsEvent;

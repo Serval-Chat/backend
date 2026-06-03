@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import { Schema, model, type Document, type Types } from 'mongoose';
 
 export interface ITotpUsedCode extends Document {
@@ -19,6 +20,7 @@ const schema = new Schema<ITotpUsedCode>({
     createdAt: { type: Date, default: Date.now },
 });
 
+schema.plugin(mongooseIdPlugin);
 schema.index({ userId: 1, code: 1 }, { unique: true });
 schema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 

@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { IMuteRepository, IMute } from '@/di/interfaces/IMuteRepository';
 import { IMuteHistoryEntry } from '@/models/Mute';
@@ -7,7 +6,6 @@ import { Mute } from '@/models/Mute';
 import { injectable } from 'inversify';
 
 @injectable()
-@Injectable()
 export class MongooseMuteRepository implements IMuteRepository {
     private muteModel = Mute;
     public constructor() {}

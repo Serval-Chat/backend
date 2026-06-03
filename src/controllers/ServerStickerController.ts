@@ -29,10 +29,10 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
-import { injectable } from 'inversify';
 import type { IStickerRepository } from '@/di/interfaces/IStickerRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
@@ -54,7 +54,6 @@ import { StickerValidationPipe } from '@/validation/StickerValidationPipe';
 import { isAnimatedImage, processAndSaveImage } from '@/utils/imageProcessing';
 import { assertHttpNotMuted } from '@/utils/mute';
 
-@injectable()
 @Controller('api/v1/servers/:serverId/stickers')
 @ApiTags('Server Stickers')
 @ApiBearerAuth()
@@ -117,7 +116,7 @@ export class ServerStickerController {
         const stickers =
             await this.stickerRepo.findByServerIdWithCreator(serverOid);
         return stickers.map((s) => ({
-            id: s._id.toString(),
+            id: getDocumentIdString(s),
             name: s.name,
             imageUrl: s.imageUrl,
             isAnimated: s.isAnimated,
@@ -178,7 +177,7 @@ export class ServerStickerController {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const isOwner = server.ownerId.equals(userOid);
+        const isOwner = String(server.ownerId) === userId;
         if (
             !isOwner &&
             !(await this.permissionService.hasPermission(
@@ -234,7 +233,7 @@ export class ServerStickerController {
             });
 
             const populatedSticker = await this.stickerRepo.findByIdWithCreator(
-                newSticker._id,
+                getDocumentId(newSticker) as Types.ObjectId,
             );
 
             if (populatedSticker === null) {
@@ -252,13 +251,13 @@ export class ServerStickerController {
                 serverId: serverOid,
                 actorId: userOid,
                 actionType: 'sticker_create',
-                targetId: newSticker._id as Types.ObjectId,
+                targetId: getDocumentId(newSticker) as Types.ObjectId,
                 targetType: 'server',
                 metadata: { stickerName: name },
             });
 
             return {
-                id: populatedSticker._id.toString(),
+                id: getDocumentIdString(populatedSticker),
                 name: populatedSticker.name,
                 imageUrl: populatedSticker.imageUrl,
                 isAnimated: populatedSticker.isAnimated,
@@ -308,7 +307,7 @@ export class ServerStickerController {
         }
 
         return {
-            id: sticker._id.toString(),
+            id: getDocumentIdString(sticker),
             name: sticker.name,
             imageUrl: sticker.imageUrl,
             isAnimated: sticker.isAnimated,
@@ -343,7 +342,7 @@ export class ServerStickerController {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const isOwner = server.ownerId.equals(userOid);
+        const isOwner = String(server.ownerId) === userId;
         if (
             !isOwner &&
             !(await this.permissionService.hasPermission(

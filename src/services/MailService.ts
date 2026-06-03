@@ -1,5 +1,5 @@
 import { injectable, inject } from 'inversify';
-import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
+import { Inject, OnModuleInit } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { IMailService } from '@/di/interfaces/IMailService';
@@ -14,7 +14,6 @@ import {
 } from '@/config/env';
 
 @injectable()
-@Injectable()
 export class MailService implements IMailService, OnModuleInit {
     private client: ReturnType<Mailgun['client']> | null;
 

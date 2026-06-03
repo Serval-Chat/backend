@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import {
     IFriendshipRepository,
@@ -14,7 +13,6 @@ import { injectable } from 'inversify';
 //
 // Implements IFriendshipRepository using Mongoose Friendship models
 @injectable()
-@Injectable()
 export class MongooseFriendshipRepository implements IFriendshipRepository {
     private friendshipModel = Friendship;
     private friendRequestModel = FriendRequest;

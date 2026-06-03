@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Types, Document } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -53,6 +54,7 @@ const adminNoteSchema = new Schema<IAdminNote>(
     { timestamps: true },
 );
 
+adminNoteSchema.plugin(mongooseIdPlugin);
 adminNoteSchema.index({ targetId: 1, targetType: 1, createdAt: -1 });
 
 export const AdminNote = model<IAdminNote>('AdminNote', adminNoteSchema);

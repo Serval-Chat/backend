@@ -7,7 +7,7 @@ export class FriendResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public username!: string;
@@ -32,7 +32,7 @@ export class IncomingFriendRequestResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
 
     @ApiPropertyOptional()
     public from?: string;
@@ -50,7 +50,7 @@ export class OutgoingFriendRequestResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
 
     @ApiPropertyOptional()
     public to?: string;

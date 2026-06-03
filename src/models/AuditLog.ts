@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Types, Document } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -55,6 +56,8 @@ const schema = new Schema<IAuditLog>({
     additionalData: { type: Schema.Types.Mixed },
     timestamp: { type: Date, default: Date.now, index: true },
 });
+
+schema.plugin(mongooseIdPlugin);
 
 // Composite index for efficient per-server queries sorted by time
 schema.index({ serverId: 1, timestamp: -1 });

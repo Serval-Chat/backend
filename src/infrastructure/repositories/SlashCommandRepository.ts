@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import type { Types } from 'mongoose';
 import { SlashCommand } from '@/models/SlashCommand';
@@ -6,7 +5,6 @@ import type { ISlashCommand, ISlashCommandOption } from '@/models/SlashCommand';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
 
 @injectable()
-@Injectable()
 export class SlashCommandRepository implements ISlashCommandRepository {
     public async create(data: {
         botId: Types.ObjectId;

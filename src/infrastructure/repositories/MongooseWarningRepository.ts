@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { Types, type FilterQuery } from 'mongoose';
 import {
     IWarningRepository,
@@ -8,7 +7,6 @@ import { Warning } from '@/models/Warning';
 import { injectable } from 'inversify';
 
 @injectable()
-@Injectable()
 export class MongooseWarningRepository implements IWarningRepository {
     private warningModel = Warning;
     public constructor() {}

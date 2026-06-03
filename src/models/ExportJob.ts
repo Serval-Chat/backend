@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
@@ -65,6 +66,7 @@ const exportJobSchema = new Schema<IExportJob>(
     },
 );
 
+exportJobSchema.plugin(mongooseIdPlugin);
 exportJobSchema.index({ status: 1, nextAttemptAt: 1 });
 
 export const ExportJob: Model<IExportJob> = mongoose.model(

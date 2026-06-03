@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -48,6 +49,7 @@ const userConnectionSchema = new Schema<IUserConnection>(
     { timestamps: true },
 );
 
+userConnectionSchema.plugin(mongooseIdPlugin);
 userConnectionSchema.index(
     { type: 1, normalizedValue: 1 },
     {

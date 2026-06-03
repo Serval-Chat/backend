@@ -28,7 +28,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { UserWarningResponseDTO } from './dto/warning.response.dto';
 import { JWTPayload } from '@/utils/jwt';
-import { injectable } from 'inversify';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -37,7 +37,6 @@ interface RequestWithUser extends Request {
 @ApiTags('Warnings')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@injectable()
 @Controller('api/v1/warnings')
 export class UserWarningController {
     public constructor(
@@ -50,7 +49,7 @@ export class UserWarningController {
     // Hides the specific issuer identity for privacy, labeling all warnings as issued by 'System'
     private sanitizeWarning(warning: IWarning): UserWarningResponseDTO {
         return {
-            _id: warning._id.toString(),
+            id: getDocumentIdString(warning),
             userId: warning.userId.toString(),
             message: warning.message,
             issuedBy: { username: 'System' },

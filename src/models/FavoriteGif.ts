@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Types } from 'mongoose';
 import { Schema } from 'mongoose';
 
@@ -31,6 +32,7 @@ const schema = new Schema<IFavoriteGif>(
     { timestamps: true },
 );
 
+schema.plugin(mongooseIdPlugin);
 schema.index({ userId: 1, klipyId: 1 }, { unique: true });
 
 export const FavoriteGif = {

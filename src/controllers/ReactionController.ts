@@ -20,7 +20,6 @@ import {
     getSchemaPath,
 } from '@nestjs/swagger';
 import { ReactionsListResponseDTO } from './dto/reaction.response.dto';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
     IReactionRepository,
@@ -56,8 +55,8 @@ import type {
     IReactionRemovedEvent,
 } from '@/ws/protocol/events/reactions';
 import { Types } from 'mongoose';
+import { getDocumentId } from '@/utils/mongooseId';
 
-@injectable()
 @Controller('api/v1')
 @ApiTags('Reactions')
 @ApiBearerAuth()
@@ -600,7 +599,7 @@ export class ReactionController {
         if (isModeratorAction) {
             const serverOid = new Types.ObjectId(serverId);
             const userOid = new Types.ObjectId(userId);
-            const messageOid = message._id;
+            const messageOid = getDocumentId(message) as Types.ObjectId;
 
             await this.serverAuditLogService.createAndBroadcast({
                 serverId: serverOid,

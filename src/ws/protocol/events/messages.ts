@@ -45,7 +45,7 @@ export interface IMessageDmSentEvent
         'message_dm_sent',
         {
             messageId: string;
-            _id: string;
+            id: string;
             senderId: string;
             senderUsername: string;
             receiverId: string;
@@ -75,7 +75,7 @@ export interface IMessageDmSentEvent
 
 export interface IMessageDm {
     messageId: string;
-    _id: string;
+    id: string;
     senderId: string;
     senderUsername: string;
     receiverId: string;
@@ -355,7 +355,7 @@ export interface IMessageServerSentEvent
         'message_server_sent',
         {
             messageId: string;
-            _id: string;
+            id: string;
             serverId: string;
             channelId: string;
             senderId: string;
@@ -412,7 +412,7 @@ export interface IMessageServer {
     } | null;
     stickerId: string | null;
     poll: IPoll | null;
-    _id: string;
+    id: string;
     noEmbeds?: boolean;
     senderIsBot: boolean;
 }

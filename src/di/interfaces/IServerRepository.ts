@@ -1,5 +1,3 @@
-import type { Types } from 'mongoose';
-
 export interface MarkdownBlockadeRule {
     targetType: 'everyone' | 'role' | 'user';
     targetId: string;
@@ -10,16 +8,16 @@ export interface MarkdownBlockadeRule {
 //
 // Represents a community or group workspace
 export interface IServer {
-    _id: Types.ObjectId;
+    id: string;
     name: string;
-    ownerId: Types.ObjectId;
+    ownerId: string;
     icon?: string;
     description?: string;
     banner?: {
         type: 'image' | 'color' | 'gif';
         value: string;
     };
-    defaultRoleId?: Types.ObjectId;
+    defaultRoleId?: string;
     disableCustomFonts?: boolean;
     disableUsernameGlowAndCustomColor?: boolean;
     markdownBlockadeRules?: MarkdownBlockadeRule[];
@@ -34,9 +32,9 @@ export interface IServer {
     onboarding?: {
         enabled: boolean;
         guidelines: string[];
-        selfAssignableRoleIds: Types.ObjectId[];
-        landingChannelId?: Types.ObjectId | null;
-        welcomeChannelIds: Types.ObjectId[];
+        selfAssignableRoleIds: string[];
+        landingChannelId?: string | null;
+        welcomeChannelIds: string[];
     };
     createdAt?: Date;
     updatedAt?: Date;
@@ -49,7 +47,7 @@ export interface IServer {
 // Server creation DTO
 export interface CreateServerDTO {
     name: string;
-    ownerId: Types.ObjectId;
+    ownerId: RepositoryId;
     icon?: string;
     description?: string;
     tags?: string[];
@@ -64,31 +62,31 @@ export interface IServerRepository {
     // @param id - Server ID
     // @param includeDeleted - Whether to include soft-deleted servers
     findById(
-        id: Types.ObjectId,
+        id: RepositoryId,
         includeDeleted?: boolean,
     ): Promise<IServer | null>;
 
     // Find multiple servers by IDs
-    findByIds(ids: Types.ObjectId[]): Promise<IServer[]>;
+    findByIds(ids: RepositoryId[]): Promise<IServer[]>;
 
     // Find servers by owner ID
-    findByOwnerId(ownerId: Types.ObjectId): Promise<IServer[]>;
+    findByOwnerId(ownerId: RepositoryId): Promise<IServer[]>;
 
     // Create a new server
     create(data: CreateServerDTO): Promise<IServer>;
 
     // Update server
-    update(id: Types.ObjectId, data: Partial<IServer>): Promise<IServer | null>;
+    update(id: RepositoryId, data: Partial<IServer>): Promise<IServer | null>;
 
     // Delete server (hard delete)
-    delete(id: Types.ObjectId): Promise<boolean>;
+    delete(id: RepositoryId): Promise<boolean>;
 
     // Clear default role
     //
     // Used for cleanup when the default role is deleted
     clearDefaultRole(
-        serverId: Types.ObjectId,
-        roleId: Types.ObjectId,
+        serverId: RepositoryId,
+        roleId: RepositoryId,
     ): Promise<boolean>;
 
     // Find many servers with pagination and search
@@ -103,10 +101,10 @@ export interface IServerRepository {
     count(includeDeleted?: boolean): Promise<number>;
 
     // Soft delete server
-    softDelete(id: Types.ObjectId): Promise<boolean>;
+    softDelete(id: RepositoryId): Promise<boolean>;
 
     // Restore soft-deleted server
-    restore(id: Types.ObjectId): Promise<boolean>;
+    restore(id: RepositoryId): Promise<boolean>;
 
     // Count servers created after a certain date
     countCreatedAfter(date: Date): Promise<number>;
@@ -128,3 +126,6 @@ export interface IServerRepository {
     >;
     countAwaitingReview(): Promise<number>;
 }
+import type { Types } from 'mongoose';
+
+export type RepositoryId = string | Types.ObjectId;

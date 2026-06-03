@@ -23,7 +23,12 @@ import {
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import {
+    getDocumentId,
+    getDocumentIdString,
+    toApiId,
+} from '@/utils/mongooseId';
+import type { IUser, IUserRepository } from '@/di/interfaces/IUserRepository';
 import type {
     IAuditLogRepository,
     IAuditLog,
@@ -53,6 +58,8 @@ import type {
     IWarningEvent,
 } from '@/ws/protocol/events/server_notifications';
 import { Badge } from '@/models/Badge';
+
+type ApiUser = IUser & { id: string };
 import { Ban } from '@/models/Ban';
 import { ServerBan } from '@/models/Server';
 import { IAdminNote, IAdminNoteHistory } from '@/models/AdminNote';
@@ -133,7 +140,6 @@ import { AdminListUsersRequestDTO } from './dto/admin-list-users.request.dto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Permissions } from '@/modules/auth/permissions.decorator';
 
-import { injectable } from 'inversify';
 import { AuthenticatedRequest } from '@/middleware/auth';
 
 import { NoBot } from '@/modules/auth/bot.decorator';
@@ -149,7 +155,6 @@ export enum AdminRank {
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @NoBot()
-@injectable()
 @Controller('api/v1/admin')
 export class AdminController {
     public constructor(
@@ -312,22 +317,22 @@ export class AdminController {
             options.search = query.search;
         if (query.filter !== undefined) options.filter = query.filter;
 
-        const users = await this.userRepo.findMany(options);
+        const users = toApiId(
+            await this.userRepo.findMany(options),
+        ) as unknown as ApiUser[];
 
         // Enriched users include ban status and warning counts
         const enrichedUsers = await Promise.all(
             users.map(async (user) => {
-                const activeBan = await this.banRepo.findActiveByUserId(
-                    user._id,
-                );
-                const activeMute = await this.muteRepo.findActiveByUserId(
-                    user._id,
-                );
-                const warningCount = await this.warningRepo.countByUserId(
-                    user._id,
-                );
+                const userOid = new Types.ObjectId(user.id);
+                const activeBan =
+                    await this.banRepo.findActiveByUserId(userOid);
+                const activeMute =
+                    await this.muteRepo.findActiveByUserId(userOid);
+                const warningCount =
+                    await this.warningRepo.countByUserId(userOid);
                 const item = new AdminUserListItemDTO();
-                item._id = user._id.toString();
+                item.id = user.id;
                 item.username = user.username ?? '';
                 item.login = user.login ?? '';
                 item.displayName =
@@ -357,14 +362,16 @@ export class AdminController {
     @ApiOperation({ summary: 'List all administrators (short info)' })
     @ApiResponse({ status: 200, type: [AdminUserShortDTO] })
     public async listAdmins(): Promise<AdminUserShortDTO[]> {
-        const users = await this.userRepo.findMany({
-            filter: 'admin',
-            limit: 1000,
-        });
+        const users = toApiId(
+            await this.userRepo.findMany({
+                filter: 'admin',
+                limit: 1000,
+            }),
+        ) as unknown as ApiUser[];
 
         return users.map((user) => {
             const dto = new AdminUserShortDTO();
-            dto._id = user._id.toString();
+            dto.id = user.id;
             dto.username = user.username ?? '';
             dto.displayName =
                 user.displayName !== undefined ? user.displayName : null;
@@ -385,7 +392,9 @@ export class AdminController {
         @Request() req: AuthenticatedRequest,
     ): Promise<AdminUserDetailsDTO> {
         const userOid = new Types.ObjectId(userId);
-        const user = await this.userRepo.findById(userOid);
+        const user = toApiId(
+            await this.userRepo.findById(userOid),
+        ) as ApiUser | null;
         if (user === null) {
             this.logger.warn(
                 `Admin ${req.user.login} tried to view non-existent user ${userId}`,
@@ -406,7 +415,7 @@ export class AdminController {
         }
 
         const details = new AdminUserDetailsDTO();
-        details._id = user._id.toString();
+        details.id = user.id;
         details.username = user.username ?? '';
         details.login = user.login ?? '';
         details.displayName =
@@ -448,7 +457,9 @@ export class AdminController {
     ): Promise<AdminResetProfileResponseDTO> {
         const { fields } = requestBody;
         const userOid = new Types.ObjectId(userId);
-        const user = await this.userRepo.findById(userOid);
+        const user = toApiId(
+            await this.userRepo.findById(userOid),
+        ) as ApiUser | null;
         if (user === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -654,7 +665,9 @@ export class AdminController {
         const { reason = 'No reason provided' } = body;
         const userOid = new Types.ObjectId(userId);
 
-        const user = await this.userRepo.findById(userOid);
+        const user = toApiId(
+            await this.userRepo.findById(userOid),
+        ) as ApiUser | null;
         if (user === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -699,7 +712,7 @@ export class AdminController {
         const event: IUserUpdatedEvent = {
             type: 'user_updated',
             payload: {
-                userId: user._id.toString(),
+                userId,
                 oldUsername,
                 newUsername: anonymizedUsername,
                 profilePicture: DELETED_AVATAR_PATH,
@@ -716,7 +729,7 @@ export class AdminController {
                 friendUsername ?? '',
             );
             if (friendUser !== null) {
-                const friendUserId = friendUser._id.toString();
+                const friendUserId = getDocumentIdString(friendUser);
                 if (await this.wsServer.isUserOnline(friendUserId)) {
                     this.wsServer.broadcastToUser(friendUserId, event);
                 } else {
@@ -847,7 +860,7 @@ export class AdminController {
                     friendUsername ?? '',
                 );
                 if (friendUser !== null) {
-                    const friendUserId = friendUser._id.toString();
+                    const friendUserId = getDocumentIdString(friendUser);
                     if (await this.wsServer.isUserOnline(friendUserId)) {
                         this.wsServer.broadcastToUser(friendUserId, event);
                     } else {
@@ -897,7 +910,9 @@ export class AdminController {
         const { permissions } = body;
         const userOid = new Types.ObjectId(userId);
 
-        const user = await this.userRepo.findById(userOid);
+        const user = toApiId(
+            await this.userRepo.findById(userOid),
+        ) as ApiUser | null;
         if (user === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -975,7 +990,9 @@ export class AdminController {
             await this.serverMemberRepo.findAllByUserId(userOid);
 
         for (const membership of serverMemberships) {
-            await this.serverMemberRepo.deleteById(membership._id);
+            await this.serverMemberRepo.deleteById(
+                getDocumentId(membership) as Types.ObjectId,
+            );
 
             const event: IMemberRemovedEvent = {
                 type: 'member_removed',
@@ -1002,7 +1019,7 @@ export class AdminController {
         }
 
         const response = new AdminBanUserResponseDTO();
-        response._id = ban._id.toString();
+        response.id = getDocumentIdString(ban);
         response.userId = ban.userId.toString();
         response.reason = ban.reason;
         response.issuedBy =
@@ -1066,8 +1083,8 @@ export class AdminController {
         const historyWithStatus: AdminUserBanHistoryResponseDTO =
             ban.history.map((entry, index: number) => {
                 const item = new AdminBanHistoryItemDTO();
-                const e = entry as Record<string, unknown>;
-                item._id = String(e._id ?? '');
+                const e = toApiId(entry) as Record<string, unknown>;
+                item.id = String(e.id ?? '');
                 item.reason = String(e.reason ?? '');
                 item.timestamp = e.timestamp as Date;
                 item.expirationTimestamp = e.expirationTimestamp as Date;
@@ -1179,7 +1196,7 @@ export class AdminController {
         } as IUserUpdatedEvent);
 
         const response = new AdminMuteUserResponseDTO();
-        response._id = mute._id.toString();
+        response.id = getDocumentIdString(mute);
         response.userId = mute.userId.toString();
         response.reason = mute.reason;
         response.issuedBy =
@@ -1190,7 +1207,7 @@ export class AdminController {
                 : new Date(8640000000000000); // Max date if permanent
         response.active = mute.active;
         response.history = (mute.history ?? []).map((h) => ({
-            _id: '',
+            id: '',
             reason: String(h.reason),
             timestamp: h.timestamp,
             expirationTimestamp: h.expirationTimestamp as Date,
@@ -1250,8 +1267,8 @@ export class AdminController {
         const historyWithStatus: AdminUserBanHistoryResponseDTO =
             mute.history.map((entry, index: number) => {
                 const item = new AdminBanHistoryItemDTO();
-                const e = entry as Record<string, unknown>;
-                item._id = String(e._id ?? '');
+                const e = toApiId(entry) as Record<string, unknown>;
+                item.id = String(e.id ?? '');
                 item.reason = String(e.reason ?? '');
                 item.timestamp = e.timestamp as Date;
                 item.expirationTimestamp = e.expirationTimestamp as Date;
@@ -1317,7 +1334,7 @@ export class AdminController {
             const event: IWarningEvent = {
                 type: 'warning',
                 payload: {
-                    _id: warning._id.toString(),
+                    id: getDocumentIdString(warning),
                     userId: warning.userId.toString(),
                     issuedBy: warning.issuedBy.toString(),
                     message: warning.message,
@@ -1330,7 +1347,7 @@ export class AdminController {
         }
 
         const response = new AdminWarnUserResponseDTO();
-        response._id = warning._id.toString();
+        response.id = getDocumentIdString(warning);
         response.userId = warning.userId.toString();
         response.issuedBy = warning.issuedBy.toString();
         response.message = warning.message;
@@ -1350,7 +1367,7 @@ export class AdminController {
         const warnings = await this.warningRepo.findByUserId(userOid);
         return warnings.map((w) => {
             const dto = new AdminWarnUserResponseDTO();
-            dto._id = w._id.toString();
+            dto.id = getDocumentIdString(w);
             dto.userId = w.userId.toString();
             dto.issuedBy = w.issuedBy.toString();
             dto.message = w.message;
@@ -1377,7 +1394,7 @@ export class AdminController {
         });
         return warnings.map((w) => {
             const dto = new AdminWarnUserResponseDTO();
-            dto._id = w._id.toString();
+            dto.id = getDocumentIdString(w);
             dto.userId = w.userId.toString();
             dto.issuedBy = w.issuedBy.toString();
             dto.message = w.message;
@@ -1446,13 +1463,17 @@ export class AdminController {
         const ownerIds = [...new Set(servers.map((s) => s.ownerId))].filter(
             (id) => mongoose.Types.ObjectId.isValid(id.toString()),
         );
-        const owners = await this.userRepo.findByIds(ownerIds);
+        const owners = toApiId(
+            await this.userRepo.findByIds(
+                ownerIds.map((id) => new mongoose.Types.ObjectId(id)),
+            ),
+        ) as unknown as ApiUser[];
 
         const enrichedServers = await Promise.all(
             servers.map(async (server) => {
-                const owner = owners.find((u) => u._id.equals(server.ownerId));
+                const owner = owners.find((u) => u.id === server.ownerId);
                 const memberCount = await this.serverMemberRepo.countByServerId(
-                    server._id,
+                    new Types.ObjectId(server.id),
                 );
                 const item = new AdminServerListItemDTO();
                 const enrichedServer = server as IServer & {
@@ -1460,7 +1481,7 @@ export class AdminController {
                     weightScore?: number;
                 };
 
-                item._id = server._id.toString();
+                item.id = server.id;
                 item.name = server.name;
                 item.description = server.description;
                 item.icon =
@@ -1488,7 +1509,7 @@ export class AdminController {
                 item.weightScore = enrichedServer.weightScore;
                 if (owner) {
                     item.owner = {
-                        _id: owner._id.toString(),
+                        id: owner.id,
                         username: owner.username ?? '',
                         displayName: owner.displayName ?? null,
                         profilePicture:
@@ -1620,7 +1641,9 @@ export class AdminController {
         @Path('userId') userId: string,
     ): Promise<AdminExtendedUserDetailsDTO> {
         const userOid = new Types.ObjectId(userId);
-        const user = await this.userRepo.findById(userOid);
+        const user = toApiId(
+            await this.userRepo.findById(userOid),
+        ) as ApiUser | null;
         if (user === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -1639,21 +1662,21 @@ export class AdminController {
 
         const serverList = await Promise.all(
             servers.map(async (server) => {
-                const membership = memberships.find((m) =>
-                    m.serverId.equals(server._id),
+                const membership = memberships.find(
+                    (m) => m.serverId.toString() === server.id,
                 );
                 const memberCount = await this.serverMemberRepo.countByServerId(
-                    server._id,
+                    new Types.ObjectId(server.id),
                 );
                 return {
-                    _id: server._id.toString(),
+                    id: server.id,
                     name: server.name,
                     icon: server.icon ?? null,
                     banner: server.banner?.value ?? null,
-                    ownerId: server.ownerId.toString(),
+                    ownerId: server.ownerId,
                     memberCount,
                     joinedAt: membership?.joinedAt,
-                    isOwner: server.ownerId.equals(userOid),
+                    isOwner: String(server.ownerId) === userId,
                 };
             }),
         );
@@ -1668,7 +1691,7 @@ export class AdminController {
         }
 
         const response = new AdminExtendedUserDetailsDTO();
-        response._id = user._id.toString();
+        response.id = user.id;
         response.username = user.username ?? '';
         response.login = user.login ?? '';
         response.displayName = user.displayName ?? null;
@@ -1714,12 +1737,16 @@ export class AdminController {
         const ownerIds = [...new Set(servers.map((s) => s.ownerId))].filter(
             (id) => mongoose.Types.ObjectId.isValid(id.toString()),
         );
-        const owners = await this.userRepo.findByIds(ownerIds);
+        const owners = toApiId(
+            await this.userRepo.findByIds(
+                ownerIds.map((id) => new mongoose.Types.ObjectId(id)),
+            ),
+        ) as unknown as ApiUser[];
 
         const items = servers.map((server) => {
-            const owner = owners.find((u) => u._id.equals(server.ownerId));
+            const owner = owners.find((u) => u.id === server.ownerId);
             const item = new AdminServerListItemDTO();
-            item._id = server._id.toString();
+            item.id = server.id;
             item.name = server.name;
             item.description = server.description;
             item.icon =
@@ -1745,7 +1772,7 @@ export class AdminController {
 
             if (owner) {
                 item.owner = {
-                    _id: owner._id.toString(),
+                    id: owner.id,
                     username: owner.username ?? '',
                     displayName: owner.displayName ?? null,
                     profilePicture:
@@ -1778,7 +1805,9 @@ export class AdminController {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const owner = await this.userRepo.findById(server.ownerId);
+        const owner = await this.userRepo.findById(
+            new Types.ObjectId(server.ownerId),
+        );
         const memberCount =
             await this.serverMemberRepo.countByServerId(serverOid);
         const messageVolume =
@@ -1799,7 +1828,7 @@ export class AdminController {
         const channels = await this.channelRepo.findByServerId(serverOid);
 
         const details = new AdminServerDetailsDTO();
-        details._id = server._id.toString();
+        details.id = server.id;
         details.name = server.name;
         details.description = server.description;
         details.icon =
@@ -1826,7 +1855,7 @@ export class AdminController {
 
         if (owner !== null) {
             details.owner = {
-                _id: owner._id.toString(),
+                id: getDocumentIdString(owner),
                 username: owner.username ?? '',
                 displayName: owner.displayName ?? null,
                 profilePicture:
@@ -1841,7 +1870,7 @@ export class AdminController {
 
         details.channels = channels.map((c) => {
             const dto = new AdminChannelShortDTO();
-            dto._id = c._id.toString();
+            dto.id = getDocumentIdString(c);
             dto.name = c.name;
             dto.type = c.type;
             dto.position = c.position;
@@ -1868,7 +1897,7 @@ export class AdminController {
 
         const invites = await this.inviteRepo.findByServerId(serverOid);
         return invites.map((invite) => ({
-            _id: invite._id.toString(),
+            id: getDocumentIdString(invite),
             serverId: invite.serverId.toString(),
             code: invite.code,
             customPath: invite.customPath,
@@ -2077,19 +2106,13 @@ export class AdminController {
     private mapAdminInfo(admin: unknown): Record<string, unknown> | null {
         if (admin === null || admin === undefined) return null;
         const a = admin as {
-            _id?: { toString(): string };
             id?: string;
             username?: string;
             displayName?: string;
             profilePicture?: string;
         };
         return {
-            _id: (a._id !== undefined
-                ? a._id
-                : a.id !== undefined
-                  ? a.id
-                  : undefined
-            )?.toString(),
+            id: getDocumentId(a)?.toString(),
             username: a.username,
             displayName: a.displayName ?? null,
             profilePicture:
@@ -2101,7 +2124,7 @@ export class AdminController {
 
     private mapAdminNote(note: IAdminNote): Record<string, unknown> {
         return {
-            _id: note._id.toString(),
+            id: getDocumentIdString(note),
             targetId: note.targetId.toString(),
             targetType: note.targetType,
             adminId: this.mapAdminInfo(note.adminId),
@@ -2156,7 +2179,7 @@ export class AdminController {
             'create_admin_note',
             undefined,
             {
-                noteId: note._id.toString(),
+                noteId: getDocumentIdString(note),
                 targetId: serverId,
                 targetType: 'Server',
                 content: body.content,
@@ -2166,7 +2189,9 @@ export class AdminController {
             serverId,
         );
 
-        const found = await this.adminNoteRepo.findById(note._id);
+        const found = await this.adminNoteRepo.findById(
+            getDocumentId(note) as Types.ObjectId,
+        );
         if (found === null) {
             throw new NotFoundException('Note not found');
         }
@@ -2210,7 +2235,7 @@ export class AdminController {
             'create_admin_note',
             userId,
             {
-                noteId: note._id.toString(),
+                noteId: getDocumentIdString(note),
                 targetId: userId,
                 targetType: 'User',
                 content: body.content,
@@ -2219,7 +2244,9 @@ export class AdminController {
             'user',
         );
 
-        const found = await this.adminNoteRepo.findById(note._id);
+        const found = await this.adminNoteRepo.findById(
+            getDocumentId(note) as Types.ObjectId,
+        );
         if (found === null) throw new NotFoundException('Note not found');
         return this.mapAdminNote(found) as unknown as AdminNoteResponseDTO;
     }

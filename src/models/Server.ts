@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 import type { IEmbed, IEmbedButton } from './Embed';
@@ -542,6 +543,17 @@ const serverBanSchema = new Schema<IServerBan>({
     reason: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
 });
+
+serverSchema.plugin(mongooseIdPlugin);
+serverVerificationStatsSchema.plugin(mongooseIdPlugin);
+categorySchema.plugin(mongooseIdPlugin);
+channelSchema.plugin(mongooseIdPlugin);
+serverMemberSchema.plugin(mongooseIdPlugin);
+roleSchema.plugin(mongooseIdPlugin);
+inviteSchema.plugin(mongooseIdPlugin);
+serverMessageSchema.plugin(mongooseIdPlugin);
+serverBanSchema.plugin(mongooseIdPlugin);
+
 serverBanSchema.index({ serverId: 1, userId: 1 }, { unique: true });
 
 export const Server: Model<IServer> = mongoose.model('Server', serverSchema);

@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Types, Document } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -22,6 +23,8 @@ const schema = new Schema<IWarning>({
     acknowledgedAt: { type: Date },
     timestamp: { type: Date, default: Date.now },
 });
+
+schema.plugin(mongooseIdPlugin);
 
 // Warning Model
 export const Warning = model<IWarning>('Warning', schema);

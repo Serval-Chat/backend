@@ -21,7 +21,6 @@ import {
     ExportStateResponseDTO,
     ExportRequestResponseDTO,
 } from '@/controllers/dto/export.response.dto';
-import { injectable } from 'inversify';
 import { ExportService } from '@/services/ExportService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { Request, Response } from 'express';
@@ -30,8 +29,8 @@ import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
 import fs from 'fs';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
-@injectable()
 @Controller('api/v1')
 @ApiTags('Export')
 export class ExportController {
@@ -109,7 +108,10 @@ export class ExportController {
                 channelOid,
                 userOid,
             );
-            return { message: 'Export started', jobId: job._id };
+            return {
+                message: 'Export started',
+                jobId: getDocumentIdString(job),
+            };
         } catch (err) {
             throw new ApiError(
                 400,

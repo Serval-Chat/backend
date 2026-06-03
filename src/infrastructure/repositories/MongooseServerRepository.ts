@@ -1,101 +1,125 @@
-import { Injectable } from '@nestjs/common';
-import { Types, type PipelineStage } from 'mongoose';
+import { type PipelineStage } from 'mongoose';
 import type { FilterQuery } from 'mongoose';
 import {
     IServerRepository,
     IServer,
     CreateServerDTO,
+    type RepositoryId,
 } from '@/di/interfaces/IServerRepository';
 import { Server } from '@/models/Server';
 import { injectable } from 'inversify';
+import {
+    toApiId,
+    toDatabaseId,
+    toObjectId,
+    toObjectIds,
+} from '@/utils/mongooseId';
 
 // Mongoose Server repository
 //
 // Implements IServerRepository using Mongoose Server model
 @injectable()
-@Injectable()
 export class MongooseServerRepository implements IServerRepository {
     private serverModel = Server;
     public constructor() {}
 
+    private mapOne(value: unknown): IServer | null {
+        return value === null ? null : (toApiId(value) as unknown as IServer);
+    }
+
+    private mapMany(value: unknown): IServer[] {
+        return toApiId(value) as unknown as IServer[];
+    }
+
     public async findById(
-        id: Types.ObjectId,
+        id: RepositoryId,
         includeDeleted: boolean = false,
     ): Promise<IServer | null> {
-        const query: FilterQuery<IServer> = { _id: id };
+        const query: FilterQuery<unknown> = { _id: toObjectId(id) };
         if (includeDeleted !== true) {
             query.deletedAt = { $exists: false };
         }
-        return await this.serverModel.findOne(query).lean();
+        return this.mapOne(await this.serverModel.findOne(query).lean());
     }
 
-    public async findByIds(ids: Types.ObjectId[]): Promise<IServer[]> {
-        return await this.serverModel
-            .find({
-                _id: { $in: ids },
-                deletedAt: { $exists: false },
-            })
-            .lean();
+    public async findByIds(ids: RepositoryId[]): Promise<IServer[]> {
+        return this.mapMany(
+            await this.serverModel
+                .find({
+                    _id: { $in: toObjectIds(ids) },
+                    deletedAt: { $exists: false },
+                })
+                .lean(),
+        );
     }
 
-    public async findByOwnerId(ownerId: Types.ObjectId): Promise<IServer[]> {
-        return await this.serverModel
-            .find({
-                ownerId,
-                deletedAt: { $exists: false },
-            })
-            .lean();
+    public async findByOwnerId(ownerId: RepositoryId): Promise<IServer[]> {
+        return this.mapMany(
+            await this.serverModel
+                .find({
+                    ownerId: toObjectId(ownerId),
+                    deletedAt: { $exists: false },
+                })
+                .lean(),
+        );
     }
 
     public async create(data: CreateServerDTO): Promise<IServer> {
-        const server = new this.serverModel(data);
-        return await server.save();
+        const server = new this.serverModel({
+            ...toDatabaseId(data),
+            ownerId: toObjectId(data.ownerId),
+        });
+        return toApiId((await server.save()).toObject()) as unknown as IServer;
     }
 
     public async update(
-        id: Types.ObjectId,
+        id: RepositoryId,
         data: Partial<IServer>,
     ): Promise<IServer | null> {
-        return await this.serverModel
-            .findOneAndUpdate(
-                { _id: id, deletedAt: { $exists: false } },
-                data,
-                { new: true },
-            )
-            .lean();
+        return this.mapOne(
+            await this.serverModel
+                .findOneAndUpdate(
+                    { _id: toObjectId(id), deletedAt: { $exists: false } },
+                    toDatabaseId(data),
+                    { new: true },
+                )
+                .lean(),
+        );
     }
 
-    public async delete(id: Types.ObjectId): Promise<boolean> {
-        const result = await this.serverModel.deleteOne({ _id: id });
+    public async delete(id: RepositoryId): Promise<boolean> {
+        const result = await this.serverModel.deleteOne({
+            _id: toObjectId(id),
+        });
         return result.deletedCount > 0;
     }
 
     // Soft delete a server
     //
     // Marks the server as deleted by setting 'deletedAt' timestamp
-    public async softDelete(id: Types.ObjectId): Promise<boolean> {
+    public async softDelete(id: RepositoryId): Promise<boolean> {
         const result = await this.serverModel.updateOne(
-            { _id: id },
+            { _id: toObjectId(id) },
             { $set: { deletedAt: new Date() } },
         );
         return result.modifiedCount > 0;
     }
 
     // Restore a soft-deleted server
-    public async restore(id: Types.ObjectId): Promise<boolean> {
+    public async restore(id: RepositoryId): Promise<boolean> {
         const result = await this.serverModel.updateOne(
-            { _id: id },
+            { _id: toObjectId(id) },
             { $unset: { deletedAt: 1 } },
         );
         return result.modifiedCount > 0;
     }
 
     public async clearDefaultRole(
-        serverId: Types.ObjectId,
-        roleId: Types.ObjectId,
+        serverId: RepositoryId,
+        roleId: RepositoryId,
     ): Promise<boolean> {
         const result = await this.serverModel.updateOne(
-            { _id: serverId, defaultRoleId: roleId },
+            { _id: toObjectId(serverId), defaultRoleId: toObjectId(roleId) },
             { $unset: { defaultRoleId: 1 } },
         );
         return result.modifiedCount > 0;
@@ -119,12 +143,14 @@ export class MongooseServerRepository implements IServerRepository {
                 { _id: options.search }, // Exact match for ID
             ];
         }
-        return await this.serverModel
-            .find(query)
-            .skip(options.offset)
-            .limit(options.limit)
-            .sort({ createdAt: -1 })
-            .lean();
+        return this.mapMany(
+            await this.serverModel
+                .find(query)
+                .skip(options.offset)
+                .limit(options.limit)
+                .sort({ createdAt: -1 })
+                .lean(),
+        );
     }
 
     public async count(includeDeleted: boolean = false): Promise<number> {

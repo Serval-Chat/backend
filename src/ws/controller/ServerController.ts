@@ -69,6 +69,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import type { IWsUser } from '@/ws/types';
 import type { WebSocket } from 'ws';
 import logger from '@/utils/logger';
+import { getDocumentIdString } from '@/utils/mongooseId';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { notifyUser } from '@/services/pushService';
@@ -331,7 +332,9 @@ export class ServerController {
             this.serverRepo.findById(serverOid),
         ]);
 
-        const isOwner = server?.ownerId && server.ownerId.toString() === userId;
+        const isOwner =
+            server?.ownerId !== undefined &&
+            server.ownerId.toString() === userId;
 
         if (member === null && isOwner === false) {
             throw new Error('FORBIDDEN: Not a member of this server');
@@ -820,8 +823,8 @@ export class ServerController {
         );
 
         const broadcastPayload: IMessageServerEvent['payload'] = {
-            messageId: created._id.toString(),
-            _id: created._id.toString(),
+            messageId: getDocumentIdString(created),
+            id: getDocumentIdString(created),
             serverId,
             channelId,
             senderId: userId,
@@ -964,8 +967,8 @@ export class ServerController {
         }
 
         return {
-            messageId: created._id.toString(),
-            _id: created._id.toString(),
+            messageId: getDocumentIdString(created),
+            id: getDocumentIdString(created),
             serverId,
             channelId,
             senderId: userId,
@@ -1248,7 +1251,7 @@ export class ServerController {
         const hasUnread = channels.some((ch) => {
             const lastMessageAt = ch.lastMessageAt;
             if (lastMessageAt === undefined) return false;
-            const lastReadAt = readMap.get(ch._id.toString());
+            const lastReadAt = readMap.get(getDocumentIdString(ch));
             return (
                 lastReadAt === undefined ||
                 new Date(lastMessageAt) > new Date(lastReadAt)

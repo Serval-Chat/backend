@@ -51,7 +51,7 @@ describe('Deleted Message Visibility Integration', () => {
             });
 
         expect(sendRes.status).toBe(201);
-        const messageId = sendRes.body._id;
+        const messageId = sendRes.body.id;
 
         const deleteRes = await request(app)
             .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${messageId}`)
@@ -69,7 +69,7 @@ describe('Deleted Message Visibility Integration', () => {
 
         console.log(fetchRegularRes.body); expect(fetchRegularRes.status).toBe(200);
         const regularMsgs = fetchRegularRes.body;
-        expect(regularMsgs.some((m: { _id: string }) => m._id === messageId)).toBe(false);
+        expect(regularMsgs.some((m: { id: string }) => m.id === messageId)).toBe(false);
 
         const fetchAdminRes = await request(app)
             .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
@@ -77,7 +77,7 @@ describe('Deleted Message Visibility Integration', () => {
 
         expect(fetchAdminRes.status).toBe(200);
         const adminMsgs = fetchAdminRes.body;
-        const deletedMsg = adminMsgs.find((m: { _id: string, deletedAt?: string }) => m._id === messageId);
+        const deletedMsg = adminMsgs.find((m: { id: string, deletedAt?: string }) => m.id === messageId);
         expect(deletedMsg).toBeDefined();
         expect(deletedMsg.deletedAt).toBeDefined();
     });
@@ -117,7 +117,7 @@ describe('Deleted Message Visibility Integration', () => {
                 text: 'Admin secret'
             });
         
-        const messageId = sendRes.body._id;
+        const messageId = sendRes.body.id;
 
         await request(app)
             .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${messageId}`)
@@ -129,6 +129,6 @@ describe('Deleted Message Visibility Integration', () => {
 
         expect(fetchRes.status).toBe(200);
         const msgs = fetchRes.body;
-        expect(msgs.some((m: { _id: string }) => m._id === messageId)).toBe(true);
+        expect(msgs.some((m: { id: string }) => m.id === messageId)).toBe(true);
     });
 });

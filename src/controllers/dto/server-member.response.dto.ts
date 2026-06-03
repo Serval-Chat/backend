@@ -3,7 +3,7 @@ import { UserProfileResponseDTO } from './profile.response.dto';
 
 export class ServerMemberResponseDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public serverId!: string;

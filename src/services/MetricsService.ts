@@ -1,12 +1,11 @@
 import { injectable, inject } from 'inversify';
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { IMetricsService } from '@/di/interfaces/IMetricsService';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import * as metrics from '@/utils/metrics';
 
 @injectable()
-@Injectable()
 export class MetricsService implements IMetricsService {
     public constructor(
         @inject(TYPES.Logger)

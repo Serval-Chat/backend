@@ -1,5 +1,5 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LoggerModule } from 'nestjs-pino';
@@ -20,6 +20,7 @@ import { UserPingController } from './controllers/UserPingController';
 import { ExportController } from './controllers/ExportController';
 import { UserWarningController } from './controllers/UserWarningController';
 import { ApiErrorFilter } from './filters/ApiErrorFilter';
+import { IdResponseInterceptor } from './interceptors/IdResponseInterceptor';
 import { EmojiController } from './controllers/EmojiController';
 import { FileController } from './controllers/FileController';
 import { FileCompatibilityController } from './controllers/FileCompatibilityController';
@@ -171,6 +172,10 @@ import {
         {
             provide: APP_FILTER,
             useClass: ApiErrorFilter,
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: IdResponseInterceptor,
         },
     ],
 })

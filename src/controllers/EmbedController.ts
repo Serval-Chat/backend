@@ -10,13 +10,11 @@ import {
     ApiOkResponse,
     ApiProduces,
 } from '@nestjs/swagger';
-import { injectable } from 'inversify';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { ScraperService } from '@/services/ScraperService';
 import crypto from 'crypto';
 
 @ApiTags('Embed')
-@injectable()
 @Controller('api/v1/embed')
 export class EmbedController {
     public constructor(

@@ -313,7 +313,7 @@ export interface IWarningEvent
     extends WsEvent<
         'warning',
         {
-            _id: string;
+            id: string;
             userId: string;
             issuedBy: string;
             message: string;

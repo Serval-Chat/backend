@@ -21,7 +21,6 @@ import {
     SuccessResponseDTO,
     PushPreferencesResponseDTO,
 } from './dto/push.response.dto';
-import { injectable } from 'inversify';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -36,7 +35,6 @@ import {
 import { Types } from 'mongoose';
 import { VAPID_PUB } from '@/config/env';
 
-@injectable()
 @Controller('api/v1/push')
 @ApiTags('Push')
 @UseGuards(JwtAuthGuard)
@@ -95,6 +93,15 @@ export class PushController {
         @Body() body: FcmDto,
     ) {
         const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        if (body.deviceId !== undefined && body.deviceId.trim() !== '') {
+            await PushSubscription.deleteMany({
+                userId,
+                type: 'fcm',
+                deviceId: body.deviceId,
+                fcmToken: { $ne: body.token },
+            });
+        }
+
         await PushSubscription.updateOne(
             { userId, fcmToken: body.token },
             {
@@ -102,6 +109,10 @@ export class PushController {
                     userId,
                     type: 'fcm',
                     fcmToken: body.token,
+                    ...(body.deviceId !== undefined &&
+                    body.deviceId.trim() !== ''
+                        ? { deviceId: body.deviceId }
+                        : {}),
                     userAgent: req.headers['user-agent'],
                 },
             },

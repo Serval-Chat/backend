@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -23,6 +24,7 @@ const schema = new Schema<IPasswordReset>(
     },
 );
 
+schema.plugin(mongooseIdPlugin);
 schema.index({ hashedToken: 1 });
 schema.index({ userId: 1, expiresAt: 1, usedAt: 1 });
 schema.index({ ipParam: 1, createdAt: 1, usedAt: 1 });

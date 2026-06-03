@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 import type { IEmbed, IEmbedButton } from './Embed';
@@ -91,6 +92,8 @@ const messageSchema = new Schema<IMessage>({
     attachments: { type: [messageAttachmentSchema], default: [] },
     noEmbeds: { type: Boolean, default: false },
 });
+
+messageSchema.plugin(mongooseIdPlugin);
 
 // Indexing for performance
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });

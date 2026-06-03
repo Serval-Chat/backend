@@ -23,7 +23,7 @@ export class ServerUnreadStatusResponseDTO {
 
 export class ServerCreateResponseDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public name!: string;

@@ -74,7 +74,6 @@ import {
 import { randomBytes } from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import { IUserRepository, IUser } from '@/di/interfaces/IUserRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -85,6 +84,7 @@ import { BlockFlags } from '@/privacy/blockFlags';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { NoBot } from '@/modules/auth/bot.decorator';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 import { Badge } from '@/models/Badge';
 import { Bot } from '@/models/Bot';
@@ -117,7 +117,6 @@ interface RequestWithUser extends Request {
 }
 
 @ApiTags('Profile')
-@injectable()
 @Controller('api/v1/profile')
 export class ProfileController {
     public constructor(
@@ -143,7 +142,7 @@ export class ProfileController {
 
     private mapConnection(connection: IUserConnection) {
         return {
-            id: connection._id.toString(),
+            id: connection.id.toString(),
             type: connection.type,
             value: connection.value,
             status: connection.status,
@@ -159,7 +158,7 @@ export class ProfileController {
             .exec();
 
         return connections.map((connection) => ({
-            id: connection._id.toString(),
+            id: connection.id.toString(),
             type: connection.type,
             value: connection.value,
         }));
@@ -286,7 +285,6 @@ export class ProfileController {
                     .lean()
                     .exec();
                 mapped.badges = badgeDocs.map((doc) => ({
-                    _id: doc._id.toString(),
                     id: doc.id,
                     name: doc.name,
                     description: doc.description,
@@ -301,16 +299,24 @@ export class ProfileController {
 
         mapped.serverSettings = user.serverSettings;
         mapped.connections =
-            options.viewerId === user._id.toString()
-                ? await this.getOwnConnections(user._id)
-                : await this.getVerifiedConnections(user._id);
+            options.viewerId === getDocumentIdString(user)
+                ? await this.getOwnConnections(
+                      getDocumentId(user) as Types.ObjectId,
+                  )
+                : await this.getVerifiedConnections(
+                      getDocumentId(user) as Types.ObjectId,
+                  );
 
         if (
             options.includeActiveMute === true &&
-            options.viewerId === user._id.toString()
+            options.viewerId === getDocumentIdString(user)
         ) {
-            await this.muteRepo.checkExpired(user._id);
-            const activeMute = await this.muteRepo.findActiveByUserId(user._id);
+            await this.muteRepo.checkExpired(
+                getDocumentId(user) as Types.ObjectId,
+            );
+            const activeMute = await this.muteRepo.findActiveByUserId(
+                getDocumentId(user) as Types.ObjectId,
+            );
             (mapped as UserProfileResponseDTO).activeMute =
                 activeMute !== null
                     ? {
@@ -324,10 +330,10 @@ export class ProfileController {
         if (
             options.viewerId !== undefined &&
             options.viewerId !== '' &&
-            options.viewerId !== user._id.toString()
+            options.viewerId !== getDocumentIdString(user)
         ) {
             const blockFlags = await this.blockRepo.getActiveBlockFlags(
-                user._id,
+                getDocumentId(user) as Types.ObjectId,
                 new Types.ObjectId(options.viewerId),
             );
 
@@ -447,7 +453,7 @@ export class ProfileController {
 
         return {
             message: 'Please add this TXT to the DNS records of your website.',
-            connectionId: connection._id.toString(),
+            connectionId: connection.id.toString(),
             recordType: 'TXT',
             recordName: website.verificationRecordName,
             recordValue: `${WEBSITE_VERIFICATION_PREFIX}${token}`,
@@ -482,7 +488,7 @@ export class ProfileController {
             'change profile connections',
         );
         const connection = await UserConnection.findOne({
-            _id: new Types.ObjectId(params.connectionId),
+            id: new Types.ObjectId(params.connectionId),
             userId: new Types.ObjectId(userId),
             type: WEBSITE_CONNECTION_TYPE,
         }).exec();
@@ -495,7 +501,7 @@ export class ProfileController {
             return {
                 message: 'Website is already verified',
                 connection: {
-                    id: connection._id.toString(),
+                    id: connection.id.toString(),
                     type: connection.type,
                     value: connection.value,
                 },
@@ -548,7 +554,7 @@ export class ProfileController {
         return {
             message: 'Website verified successfully',
             connection: {
-                id: connection._id.toString(),
+                id: connection.id.toString(),
                 type: connection.type,
                 value: connection.value,
             },
@@ -575,7 +581,7 @@ export class ProfileController {
             'change profile connections',
         );
         const deleted = await UserConnection.findOneAndDelete({
-            _id: new Types.ObjectId(params.connectionId),
+            id: new Types.ObjectId(params.connectionId),
             userId: new Types.ObjectId(userId),
         }).exec();
 
@@ -623,7 +629,9 @@ export class ProfileController {
                     new Types.ObjectId(viewerId),
                 );
             const userServerIds =
-                await this.serverMemberRepo.findServerIdsByUserId(user._id);
+                await this.serverMemberRepo.findServerIdsByUserId(
+                    getDocumentId(user) as Types.ObjectId,
+                );
 
             const hasSharedServer = botServerIds.some((botSid) =>
                 userServerIds.some(
@@ -670,12 +678,15 @@ export class ProfileController {
             }
 
             if (request.badgeIds.length === 0) {
-                await this.userRepo.update(user._id, { badges: [] });
+                await this.userRepo.update(
+                    getDocumentId(user) as Types.ObjectId,
+                    { badges: [] },
+                );
 
-                this.wsServer.broadcastToUser(user._id.toString(), {
+                this.wsServer.broadcastToUser(getDocumentIdString(user), {
                     type: 'user_updated',
                     payload: {
-                        userId: user._id.toString(),
+                        userId: getDocumentIdString(user),
                         badges: [],
                     },
                 });
@@ -704,29 +715,28 @@ export class ProfileController {
                 );
             }
 
-            await this.userRepo.update(user._id, {
+            await this.userRepo.update(getDocumentId(user) as Types.ObjectId, {
                 badges: validBadgeIds,
             });
 
-            this.wsServer.broadcastToUser(user._id.toString(), {
+            this.wsServer.broadcastToUser(getDocumentIdString(user), {
                 type: 'user_updated',
                 payload: {
-                    userId: user._id.toString(),
+                    userId: getDocumentIdString(user),
                     badges: validBadgeIds,
                 },
             });
 
             this.logger.info(
-                `User ${adminUser.id} updated badges for user ${user._id}`,
+                `User ${adminUser.id} updated badges for user ${getDocumentIdString(user)}`,
                 {
-                    targetUserId: user._id,
+                    targetUserId: getDocumentId(user) as Types.ObjectId,
                     badgeCount: validBadgeIds.length,
                     adminUserId: adminUser.id,
                 },
             );
 
             const badgeResponse = validBadges.map((badge) => ({
-                _id: badge._id.toString(),
                 id: badge.id,
                 name: badge.name,
                 description: badge.description,
@@ -1806,7 +1816,7 @@ export class ProfileController {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        return { _id: user._id.toString() };
+        return { id: getDocumentIdString(user) };
     }
 
     @Post('bulk')
@@ -1946,7 +1956,10 @@ export class ProfileController {
             throw new ApiError(404, 'User not found');
         }
 
-        await this.userRepo.updateLanguage(user._id, language);
+        await this.userRepo.updateLanguage(
+            getDocumentId(user) as Types.ObjectId,
+            language,
+        );
 
         return {
             message: 'Language preference updated successfully',

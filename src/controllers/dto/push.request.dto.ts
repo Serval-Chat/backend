@@ -21,6 +21,11 @@ export class FcmDto {
     @ApiProperty()
     @IsString()
     public token!: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    public deviceId?: string;
 }
 
 export class UpdatePreferencesDto {

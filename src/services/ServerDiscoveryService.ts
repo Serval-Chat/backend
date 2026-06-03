@@ -1,6 +1,6 @@
 import { Client } from '@elastic/elasticsearch';
 import type { estypes } from '@elastic/elasticsearch';
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Logger, OnModuleInit } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import { ELASTICSEARCH_URL } from '@/config/env';
@@ -16,6 +16,7 @@ import type {
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { Server } from '@/models/Server';
+import { toApiId } from '@/utils/mongooseId';
 
 export const DISCOVERY_INDEX = 'serchat-server-discovery-v1';
 
@@ -154,7 +155,6 @@ export function buildDiscoveryTagFilters(
 }
 
 @injectable()
-@Injectable()
 export class ServerDiscoveryService implements OnModuleInit {
     private readonly logger = new Logger(ServerDiscoveryService.name);
     private reindexingAllServers = false;
@@ -280,7 +280,7 @@ export class ServerDiscoveryService implements OnModuleInit {
             await this.serverMemberRepo.countByServerId(serverId);
 
         const document: DiscoveryServerDocument = {
-            id: server._id.toString(),
+            id: server.id,
             name: server.name,
             description: server.description ?? '',
             icon: server.icon,
@@ -541,20 +541,22 @@ export class ServerDiscoveryService implements OnModuleInit {
             ? parsedCursorOffset
             : 0;
 
-        const servers = await Server.find({
-            discoveryEnabled: true,
-            verified: true,
-            deletedAt: { $exists: false },
-        })
-            .sort({ createdAt: -1 })
-            .lean<IServer[]>();
+        const servers = toApiId(
+            await Server.find({
+                discoveryEnabled: true,
+                verified: true,
+                deletedAt: { $exists: false },
+            })
+                .sort({ createdAt: -1 })
+                .lean(),
+        ) as unknown as IServer[];
 
         const eligible: { doc: DiscoveryServerDocument; score: number }[] = [];
         const facetCounts = new Map<string, number>();
 
         for (const server of servers) {
             const invite = await this.inviteRepo.findDiscoveryInviteByServerId(
-                server._id,
+                new Types.ObjectId(server.id),
             );
             if (!isValidDiscoveryInvite(invite) || invite === null) continue;
             const inviteCode = getDiscoveryInvitePath(invite);
@@ -607,7 +609,7 @@ export class ServerDiscoveryService implements OnModuleInit {
             }
 
             const memberCount = await this.serverMemberRepo.countByServerId(
-                server._id,
+                new Types.ObjectId(server.id),
             );
 
             const verificationBoost = server.verified === true ? 1.5 : 1.0;
@@ -616,7 +618,7 @@ export class ServerDiscoveryService implements OnModuleInit {
 
             eligible.push({
                 doc: {
-                    id: server._id.toString(),
+                    id: server.id,
                     name: server.name,
                     description: server.description ?? '',
                     icon: server.icon,

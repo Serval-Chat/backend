@@ -10,11 +10,6 @@ export class BadgeResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
-
-    @ApiProperty()
-    @IsMongoId()
-    @IsString()
     public id!: string;
 
     @ApiProperty()
@@ -37,7 +32,7 @@ export class UserLookupResponseDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
 }
 
 export class UserConnectionResponseDTO {

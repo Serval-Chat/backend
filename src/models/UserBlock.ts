@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
@@ -33,6 +34,7 @@ const userBlockSchema = new Schema<IUserBlock>(
     { timestamps: true },
 );
 
+userBlockSchema.plugin(mongooseIdPlugin);
 userBlockSchema.index({ blockerId: 1, targetId: 1 }, { unique: true });
 userBlockSchema.index({ profileId: 1 });
 

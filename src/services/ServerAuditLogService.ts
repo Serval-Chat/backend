@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
@@ -12,9 +12,9 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { mapAuditLogEntry } from '@/utils/auditLog';
 import { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 @injectable()
-@Injectable()
 export class ServerAuditLogService implements IServerAuditLogService {
     public constructor(
         @Inject(TYPES.AuditLogRepository)
@@ -54,7 +54,7 @@ export class ServerAuditLogService implements IServerAuditLogService {
         const auditLog = await this.auditLogRepo.create(data);
 
         const populatedAuditLog = await this.auditLogRepo.findById(
-            auditLog._id as Types.ObjectId,
+            getDocumentId(auditLog) as Types.ObjectId,
         );
         if (populatedAuditLog) {
             this.logger.debug(
@@ -76,7 +76,7 @@ export class ServerAuditLogService implements IServerAuditLogService {
             );
         } else {
             this.logger.warn(
-                `[ServerAuditLogService] Failed to find populated audit log for broadcast: ${auditLog._id}`,
+                `[ServerAuditLogService] Failed to find populated audit log for broadcast: ${getDocumentIdString(auditLog)}`,
             );
         }
 

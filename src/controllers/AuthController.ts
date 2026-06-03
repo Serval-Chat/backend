@@ -67,9 +67,8 @@ import {
     PasswordResetConfirmDTO,
 } from './dto/auth.request.dto';
 
-import { injectable } from 'inversify';
-
 import { NoBot } from '@/modules/auth/bot.decorator';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 class Mutex {
     private mutex = Promise.resolve();
@@ -86,7 +85,6 @@ class Mutex {
 const registerMutex = new Mutex();
 
 @ApiTags('Authentication')
-@injectable()
 @Controller('api/v1/auth')
 export class AuthController {
     public constructor(
@@ -136,7 +134,7 @@ export class AuthController {
 
         if (user.totpEnabled === true) {
             const temp_token = generateTwoFactorTempToken({
-                id: user._id.toString(),
+                id: getDocumentIdString(user),
                 login: login,
                 username: user.username as string,
                 tokenVersion: user.tokenVersion ?? 0,
@@ -151,7 +149,7 @@ export class AuthController {
         }
 
         const token = generateJWT({
-            id: user._id.toString(),
+            id: getDocumentIdString(user),
             login: login,
             username: user.username as string,
             tokenVersion: user.tokenVersion ?? 0,
@@ -201,7 +199,7 @@ export class AuthController {
         return {
             ...result,
             token: generateJWT({
-                id: updatedUser._id.toString(),
+                id: getDocumentIdString(updatedUser),
                 login: updatedUser.login ?? user.login,
                 username: updatedUser.username ?? user.username,
                 tokenVersion: updatedUser.tokenVersion ?? 0,
@@ -244,7 +242,7 @@ export class AuthController {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_TEMP_TOKEN);
         }
         const token = generateJWT({
-            id: user._id.toString(),
+            id: getDocumentIdString(user),
             login: user.login ?? payload.login,
             username: user.username ?? payload.username,
             tokenVersion: user.tokenVersion ?? 0,
@@ -301,7 +299,7 @@ export class AuthController {
         return {
             message: 'Two-factor authentication disabled successfully',
             token: generateJWT({
-                id: updatedUser._id.toString(),
+                id: getDocumentIdString(updatedUser),
                 login: updatedUser.login ?? user.login,
                 username: updatedUser.username ?? user.username,
                 tokenVersion: updatedUser.tokenVersion ?? 0,
@@ -409,7 +407,7 @@ export class AuthController {
                 throw new ApiError(500, 'User just created but not found');
 
             const token = generateJWT({
-                id: newUser._id.toString(),
+                id: getDocumentIdString(newUser),
                 login: newUser.login ?? '',
                 username: newUser.username ?? '',
                 tokenVersion: newUser.tokenVersion ?? 0,
@@ -480,7 +478,7 @@ export class AuthController {
         }
 
         const token = generateJWT({
-            id: updatedUser._id.toString(),
+            id: getDocumentIdString(updatedUser),
             login: updatedUser.login ?? '',
             username: updatedUser.username ?? '',
             tokenVersion: updatedUser.tokenVersion ?? 0,
@@ -539,7 +537,7 @@ export class AuthController {
         }
 
         const token = generateJWT({
-            id: updatedUser._id.toString(),
+            id: getDocumentIdString(updatedUser),
             login: updatedUser.login ?? '',
             username: updatedUser.username ?? '',
             tokenVersion: updatedUser.tokenVersion ?? 0,

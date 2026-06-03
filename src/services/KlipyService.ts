@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import axios from 'axios';
@@ -15,7 +15,6 @@ import type {
     ToggleFavoriteResponseDTO,
 } from '@/controllers/dto/klipy.response.dto';
 
-@Injectable()
 @injectable()
 export class KlipyService {
     private readonly baseUrl = 'https://api.klipy.com/api/v1';

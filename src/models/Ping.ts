@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
@@ -58,6 +59,8 @@ const pingSchema = new Schema<IPing>(
         // Index on userId and timestamp for fetching user's pings
     },
 );
+
+pingSchema.plugin(mongooseIdPlugin);
 
 // Compound index for efficient queries
 pingSchema.index({ userId: 1, timestamp: -1 });

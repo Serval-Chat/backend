@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { IUser, IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -58,7 +58,6 @@ import { injectable, inject } from 'inversify';
 // Handles user authentication, password validation, and ban checking.
 // Uses dependency injection for better testability.
 @injectable()
-@Injectable()
 export class AuthService {
     private readonly issuer = 'Serchat';
 

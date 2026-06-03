@@ -1,11 +1,9 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import type { Types } from 'mongoose';
 import { AdminNote, type IAdminNote } from '@/models/AdminNote';
 import type { IAdminNoteRepository } from '@/di/interfaces/IAdminNoteRepository';
 
 @injectable()
-@Injectable()
 export class MongooseAdminNoteRepository implements IAdminNoteRepository {
     public async create(data: {
         targetId: Types.ObjectId;
@@ -49,14 +47,12 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
 
         if (!currentNote) return null;
 
-        // Archive current state to history
         currentNote.history.push({
             content: currentNote.content,
-            editorId: currentNote.adminId, // Previous author/editor
+            editorId: currentNote.adminId,
             editedAt: currentNote.updatedAt,
         });
 
-        // Update with new content and set new primary adminId (last editor)
         currentNote.content = content;
         currentNote.adminId = adminId;
 

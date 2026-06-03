@@ -14,15 +14,14 @@ import { Request } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JWTPayload } from '@/utils/jwt';
-import { injectable } from 'inversify';
 import { StickerResponseDTO } from './dto/sticker.response.dto';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
 }
 
 @ApiTags('Stickers')
-@injectable()
 @Controller('api/v1/stickers')
 export class StickerController {
     public constructor(
@@ -49,7 +48,7 @@ export class StickerController {
 
         const stickers = await this.stickerRepo.findByServerIds(serverIds);
         return stickers.map((s) => ({
-            id: s._id.toString(),
+            id: getDocumentIdString(s),
             name: s.name,
             imageUrl: s.imageUrl,
             isAnimated: s.isAnimated,
@@ -73,7 +72,7 @@ export class StickerController {
         }
 
         return {
-            id: sticker._id.toString(),
+            id: getDocumentIdString(sticker),
             name: sticker.name,
             imageUrl: sticker.imageUrl,
             isAnimated: sticker.isAnimated,

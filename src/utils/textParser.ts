@@ -1,5 +1,6 @@
 import { User } from '../models/User';
 import { Role } from '../models/Server';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 /**
  * Parse gobblygook to readable text
@@ -22,7 +23,7 @@ export async function parseNotificationText(text: string): Promise<string> {
                 'username',
             ).lean();
             const userMap = new Map(
-                users.map((u) => [u._id.toString(), u.username]),
+                users.map((u) => [getDocumentIdString(u), u.username]),
             );
             parsedText = parsedText.replace(
                 /<userid:'([^']+)'>/g,
@@ -51,7 +52,7 @@ export async function parseNotificationText(text: string): Promise<string> {
                 'name',
             ).lean();
             const roleMap = new Map(
-                roles.map((r) => [r._id.toString(), r.name]),
+                roles.map((r) => [getDocumentIdString(r), r.name]),
             );
             parsedText = parsedText.replace(
                 /<roleid:'([^']+)'>/g,

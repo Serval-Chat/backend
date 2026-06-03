@@ -6,7 +6,7 @@ export class AdminUserListItemDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
     @ApiProperty()
     public username!: string;
     @ApiProperty()
@@ -50,7 +50,7 @@ export class AdminUserServerInfoDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
     @ApiProperty()
     public name!: string;
     @ApiProperty({ nullable: true })
@@ -76,7 +76,7 @@ export class AdminUserShortDTO {
     @ApiProperty()
     @IsMongoId()
     @IsString()
-    public _id!: string;
+    public id!: string;
     @ApiProperty()
     public username!: string;
     @ApiProperty({ nullable: true })

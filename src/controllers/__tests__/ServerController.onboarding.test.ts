@@ -187,9 +187,9 @@ describe('ServerController onboarding settings', () => {
         const updatedOnboarding = {
             enabled: true,
             guidelines: ['Be kind'],
-            selfAssignableRoleIds: [roleId],
-            landingChannelId,
-            welcomeChannelIds: [welcomeChannelId],
+            selfAssignableRoleIds: [roleId.toHexString()],
+            landingChannelId: landingChannelId.toHexString(),
+            welcomeChannelIds: [welcomeChannelId.toHexString()],
         };
 
         mockPermissionService.hasPermission.mockResolvedValueOnce(true);

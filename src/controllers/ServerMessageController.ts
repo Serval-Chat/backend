@@ -31,8 +31,8 @@ import {
     TogglePinResponseDTO,
     ToggleStickyResponseDTO,
 } from './dto/server-message.response.dto';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import crypto from 'crypto';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type {
@@ -68,7 +68,6 @@ import {
 } from './dto/server-message.request.dto';
 import { PollVoteRequestDTO } from './dto/poll-vote.request.dto';
 
-@injectable()
 @Controller('api/v1/servers/:serverId/channels/:channelId/messages')
 @ApiTags('Server Messages')
 @UseGuards(JwtAuthGuard)
@@ -212,7 +211,9 @@ export class ServerMessageController {
             includeDeleted,
         );
 
-        const messageIds = msgs.map((m) => m._id);
+        const messageIds = msgs.map(
+            (m) => getDocumentId(m) as mongoose.Types.ObjectId,
+        );
         const reactionsMap = await this.reactionRepo.getReactionsForMessages(
             messageIds,
             'server',
@@ -227,7 +228,7 @@ export class ServerMessageController {
                 ...msgObj,
                 reactions:
                     (reactionsMap as Record<string, unknown[]>)[
-                        msg._id.toString()
+                        getDocumentIdString(msg)
                     ] || [],
             } as IServerMessage;
         });
@@ -421,8 +422,8 @@ export class ServerMessageController {
         const messagePayload: IMessageServerEvent = {
             type: 'message_server',
             payload: {
-                messageId: message._id.toString(),
-                _id: message._id.toString(),
+                messageId: getDocumentIdString(message),
+                id: getDocumentIdString(message),
                 serverId: serverId,
                 channelId: channelId,
                 senderId: userId,
@@ -552,7 +553,9 @@ export class ServerMessageController {
             includeDeleted,
         );
 
-        const pinIds = pins.map((p) => p._id);
+        const pinIds = pins.map(
+            (p) => getDocumentId(p) as mongoose.Types.ObjectId,
+        );
         if (pinIds.length === 0) return [];
 
         const reactionsMap = await this.reactionRepo.getReactionsForMessages(
@@ -567,7 +570,7 @@ export class ServerMessageController {
             ...pin,
             reactions:
                 (reactionsMap as Record<string, unknown[]>)[
-                    pin._id.toString()
+                    getDocumentIdString(pin)
                 ] || [],
         })) as unknown as IServerMessage[];
     }
@@ -837,7 +840,7 @@ export class ServerMessageController {
             serverId: new mongoose.Types.ObjectId(serverId),
             actorId: new mongoose.Types.ObjectId(userId),
             actionType: 'edit_message',
-            targetId: message._id,
+            targetId: getDocumentId(message) as mongoose.Types.ObjectId,
             targetType: 'message',
             targetUserId: message.senderId,
             changes: [
@@ -1214,7 +1217,7 @@ export class ServerMessageController {
             serverId: new mongoose.Types.ObjectId(serverId),
             actorId: new mongoose.Types.ObjectId(userId),
             actionType: 'delete_message',
-            targetId: message._id,
+            targetId: getDocumentId(message) as mongoose.Types.ObjectId,
             targetType: 'message',
             targetUserId: message.senderId,
             metadata: {
@@ -1266,9 +1269,12 @@ export class ServerMessageController {
             throw new BadRequestException('Cannot pin a deleted message');
         }
 
-        const updated = await this.serverMessageRepo.update(message._id, {
-            isPinned: message.isPinned === false,
-        });
+        const updated = await this.serverMessageRepo.update(
+            getDocumentId(message) as mongoose.Types.ObjectId,
+            {
+                isPinned: message.isPinned === false,
+            },
+        );
 
         if (updated !== null) {
             const event: IMessageServerPinUpdatedEvent = {
@@ -1305,7 +1311,7 @@ export class ServerMessageController {
                 actorId: new mongoose.Types.ObjectId(userId),
                 actionType:
                     updated.isPinned === true ? 'pin_message' : 'unpin_message',
-                targetId: message._id,
+                targetId: getDocumentId(message) as mongoose.Types.ObjectId,
                 targetType: 'message',
                 targetUserId: message.senderId,
                 metadata: {
@@ -1363,9 +1369,12 @@ export class ServerMessageController {
             throw new BadRequestException('Cannot sticky a deleted message');
         }
 
-        const updated = await this.serverMessageRepo.update(message._id, {
-            isSticky: message.isSticky === false,
-        });
+        const updated = await this.serverMessageRepo.update(
+            getDocumentId(message) as mongoose.Types.ObjectId,
+            {
+                isSticky: message.isSticky === false,
+            },
+        );
 
         if (updated !== null) {
             const event: IMessageServerPinUpdatedEvent = {
@@ -1404,7 +1413,7 @@ export class ServerMessageController {
                     updated.isSticky === true
                         ? 'sticky_message'
                         : 'unsticky_message',
-                targetId: message._id,
+                targetId: getDocumentId(message) as mongoose.Types.ObjectId,
                 targetType: 'message',
                 targetUserId: message.senderId,
                 metadata: {

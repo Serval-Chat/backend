@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import type { IAuditLog } from '@/di/interfaces/IAuditLogRepository';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 /**
  * Shape the audit log entry for the frontend (shared between API and WebSocket)
@@ -59,11 +60,15 @@ export function mapAuditLogEntry(entry: IAuditLog) {
         (m['code'] as string | undefined);
 
     return {
-        id: entry._id.toString(),
+        id: getDocumentIdString(entry),
         action: entry.actionType,
-        moderatorId: actorObj?._id.toString() ?? entry.actorId.toString(),
+        moderatorId: actorObj
+            ? getDocumentIdString(actorObj)
+            : entry.actorId.toString(),
         moderator: {
-            id: actorObj?._id.toString() ?? entry.actorId.toString(),
+            id: actorObj
+                ? getDocumentIdString(actorObj)
+                : entry.actorId.toString(),
             username: actorObj?.username ?? 'Unknown',
             avatarUrl: actorObj?.profilePicture,
         },
@@ -71,7 +76,7 @@ export function mapAuditLogEntry(entry: IAuditLog) {
         targetType: entry.targetType,
         target: targetUserObj
             ? {
-                  id: targetUserObj._id.toString(),
+                  id: getDocumentIdString(targetUserObj),
                   username: targetUserObj.username,
                   name: targetUserObj.displayName ?? targetUserObj.username,
                   avatarUrl: targetUserObj.profilePicture,

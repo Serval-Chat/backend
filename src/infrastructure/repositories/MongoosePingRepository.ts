@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { IPingRepository, IPing } from '@/di/interfaces/IPingRepository';
 import { Ping } from '@/models/Ping';
@@ -13,7 +12,6 @@ import {
 // Implements IPingRepository using Mongoose Ping model
 // Encapsulates all ping operations
 @injectable()
-@Injectable()
 export class MongoosePingRepository implements IPingRepository {
     public async findById(id: Types.ObjectId): Promise<IPing | null> {
         return (await Ping.findById(id).lean()) as unknown as IPing | null;

@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { type FilterQuery, Types, ClientSession } from 'mongoose';
 import {
     IMessageRepository,
@@ -18,7 +17,6 @@ type PopulatedMessageDoc = Omit<
 
 // Mongoose Message repository
 @injectable()
-@Injectable()
 export class MongooseMessageRepository implements IMessageRepository {
     private messageModel = Message;
     public constructor() {}

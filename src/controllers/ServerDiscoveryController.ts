@@ -5,7 +5,6 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
@@ -14,7 +13,6 @@ import {
     ListDiscoveryServersQueryDTO,
 } from './dto/server-discovery.dto';
 
-@injectable()
 @Controller('api/v1/discovery')
 @ApiTags('Server Discovery')
 @ApiBearerAuth()

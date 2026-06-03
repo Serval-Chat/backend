@@ -37,7 +37,7 @@ export class ServerRolePermissionsDTO {
 
 export class ServerRoleResponseDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public serverId!: string;

@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
@@ -292,6 +293,8 @@ schema.pre('save', async function (next) {
 schema.methods.comparePassword = function (candidate: string) {
     return bcrypt.compare(candidate, this.password);
 };
+
+schema.plugin(mongooseIdPlugin);
 
 // User model
 export const User = model<IUser>('User', schema);

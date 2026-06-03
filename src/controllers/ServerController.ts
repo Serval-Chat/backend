@@ -32,7 +32,6 @@ import {
     ServerVerificationResponseDTO,
     VoiceStatesResponseDTO,
 } from './dto/server.extra.response.dto';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type {
     IServerRepository,
@@ -85,8 +84,8 @@ import {
     ServerDiscoveryService,
     normalizeDiscoveryTags,
 } from '@/services/ServerDiscoveryService';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
-@injectable()
 @Controller('api/v1/servers')
 @ApiTags('Servers')
 @ApiBearerAuth()
@@ -142,13 +141,38 @@ export class ServerController {
     private getOnboardingConfig(
         server: IServer,
     ): NonNullable<IServer['onboarding']> {
+        const stringArray = (value: unknown): string[] =>
+            Array.isArray(value)
+                ? value
+                      .map((item): string | null => {
+                          if (item instanceof Types.ObjectId) {
+                              return item.toHexString();
+                          }
+                          if (
+                              typeof item === 'string' &&
+                              Types.ObjectId.isValid(item)
+                          ) {
+                              return item;
+                          }
+                          return null;
+                      })
+                      .filter((item): item is string => item !== null)
+                : [];
+
         return {
             enabled: server.onboarding?.enabled ?? false,
-            guidelines: server.onboarding?.guidelines ?? [],
-            selfAssignableRoleIds:
-                server.onboarding?.selfAssignableRoleIds ?? [],
+            guidelines: Array.isArray(server.onboarding?.guidelines)
+                ? server.onboarding.guidelines.filter(
+                      (item): item is string => typeof item === 'string',
+                  )
+                : [],
+            selfAssignableRoleIds: stringArray(
+                server.onboarding?.selfAssignableRoleIds,
+            ),
             landingChannelId: server.onboarding?.landingChannelId ?? null,
-            welcomeChannelIds: server.onboarding?.welcomeChannelIds ?? [],
+            welcomeChannelIds: stringArray(
+                server.onboarding?.welcomeChannelIds,
+            ),
         };
     }
 
@@ -172,7 +196,9 @@ export class ServerController {
         if (body.selfAssignableRoleIds !== undefined) {
             const uniqueRoleIds = [...new Set(body.selfAssignableRoleIds)];
             const roles = await this.roleRepo.findByServerId(serverOid);
-            const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+            const roleMap = new Map(
+                roles.map((r) => [getDocumentIdString(r), r]),
+            );
             next.selfAssignableRoleIds = uniqueRoleIds.map((roleId) => {
                 const role = roleMap.get(roleId);
                 if (role === undefined) {
@@ -190,7 +216,7 @@ export class ServerController {
                         'Managed roles cannot be self-assignable',
                     );
                 }
-                return new Types.ObjectId(roleId);
+                return roleId;
             });
         }
 
@@ -214,9 +240,7 @@ export class ServerController {
                         'Landing channel cannot be a link channel',
                     );
                 }
-                next.landingChannelId = new Types.ObjectId(
-                    body.landingChannelId,
-                );
+                next.landingChannelId = body.landingChannelId;
             }
         }
 
@@ -226,12 +250,14 @@ export class ServerController {
             }
             const uniqueChannelIds = [...new Set(body.welcomeChannelIds)];
             const channels = await this.channelRepo.findByServerId(serverOid);
-            const channelIds = new Set(channels.map((c) => c._id.toString()));
+            const channelIds = new Set(
+                channels.map((c) => getDocumentIdString(c)),
+            );
             next.welcomeChannelIds = uniqueChannelIds.map((channelId) => {
                 if (!channelIds.has(channelId)) {
                     throw new ApiError(400, 'Welcome channel is not in server');
                 }
-                return new Types.ObjectId(channelId);
+                return channelId;
             });
         }
 
@@ -251,11 +277,11 @@ export class ServerController {
         return await Promise.all(
             servers.map(async (server) => {
                 const memberCount = await this.serverMemberRepo.countByServerId(
-                    server._id,
+                    new Types.ObjectId(server.id),
                 );
                 const canManage =
                     (await this.permissionService.hasPermission(
-                        server._id as Types.ObjectId,
+                        new Types.ObjectId(server.id),
                         userOid,
                         'manageServer',
                     )) === true;
@@ -289,12 +315,12 @@ export class ServerController {
 
         const server = await this.serverRepo.create({
             name: name.trim(),
-            ownerId: userOid,
+            ownerId: userId,
         });
 
         // Initialize default '@everyone' role with default permissions
         await this.roleRepo.create({
-            serverId: server._id,
+            serverId: new Types.ObjectId(server.id),
             name: '@everyone',
             color: '#99aab5',
             position: 0,
@@ -315,7 +341,7 @@ export class ServerController {
 
         // Create initial '#general' text channel
         const channel = await this.channelRepo.create({
-            serverId: server._id,
+            serverId: new Types.ObjectId(server.id),
             name: 'general',
             type: 'text',
             position: 0,
@@ -323,7 +349,7 @@ export class ServerController {
 
         // Automatically add the creator as the first member
         await this.serverMemberRepo.create({
-            serverId: server._id,
+            serverId: new Types.ObjectId(server.id),
             userId: userOid,
             roles: [],
         });
@@ -378,7 +404,7 @@ export class ServerController {
             const perms = await this.permissionService.hasChannelPermissions(
                 serverId as Types.ObjectId,
                 userOid,
-                serverChannels.map((c) => c._id as Types.ObjectId),
+                serverChannels.map((c) => getDocumentId(c) as Types.ObjectId),
                 'viewChannels',
             );
             permissionMapsByServer.set(serverIdStr, perms);
@@ -392,13 +418,13 @@ export class ServerController {
 
             const hasPerm = permissionMapsByServer
                 .get(serverIdStr)
-                ?.get(channel._id.toString());
+                ?.get(getDocumentIdString(channel));
             if (hasPerm !== true) continue;
 
             const lastMessageAt = channel.lastMessageAt;
             if (lastMessageAt === undefined) continue;
 
-            const lastReadAt = readMap.get(channel._id.toString());
+            const lastReadAt = readMap.get(getDocumentIdString(channel));
             if (
                 lastReadAt === undefined ||
                 new Date(lastMessageAt) > new Date(lastReadAt)
@@ -447,7 +473,7 @@ export class ServerController {
             .exec();
 
         return emojis.map((e) => ({
-            _id: e._id.toString(),
+            id: getDocumentIdString(e),
             name: e.name,
             imageUrl: e.imageUrl,
             serverId:
@@ -494,7 +520,7 @@ export class ServerController {
                 updateOne: {
                     filter: {
                         serverId: serverOid,
-                        channelId: channel._id,
+                        channelId: getDocumentId(channel),
                         userId: userOid,
                     },
                     update: { $set: { lastReadAt: new Date() } },
@@ -672,7 +698,7 @@ export class ServerController {
 
         const userIds = members.map((m) => m.userId);
         const users = await this.userRepo.findByIds(userIds);
-        const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+        const userMap = new Map(users.map((u) => [getDocumentIdString(u), u]));
 
         // Calculate online count by checking presence for each member
         let onlineCount = 0;
@@ -686,7 +712,9 @@ export class ServerController {
         const bannedUsers = await this.serverBanRepo.findByServerId(serverOid);
         const bannedUserCount = bannedUsers.length;
 
-        const owner = await this.userRepo.findById(server.ownerId);
+        const owner = await this.userRepo.findById(
+            new Types.ObjectId(server.ownerId),
+        );
         const ownerName =
             owner !== null
                 ? (owner.displayName ?? owner.username ?? 'Unknown')
@@ -725,7 +753,7 @@ export class ServerController {
             onlineCount,
             totalCount,
             bannedUserCount,
-            serverId: server._id.toString(),
+            serverId: server.id,
             serverName: server.name,
             ownerName,
             createdAt: server.createdAt
@@ -964,9 +992,7 @@ export class ServerController {
         const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, {
             defaultRoleId:
-                roleId !== null && roleId !== ''
-                    ? new Types.ObjectId(roleId)
-                    : undefined,
+                roleId !== null && roleId !== '' ? roleId : undefined,
         });
 
         if (server !== null) {
@@ -989,9 +1015,10 @@ export class ServerController {
                 changes: [
                     {
                         field: 'defaultRoleId',
-                        before: existingServer?.defaultRoleId
-                            ? existingServer.defaultRoleId.toString()
-                            : null,
+                        before:
+                            existingServer?.defaultRoleId !== undefined
+                                ? existingServer.defaultRoleId.toString()
+                                : null,
                         after: roleId,
                     },
                 ],
@@ -1352,8 +1379,7 @@ export class ServerController {
 
         const existingServer = await this.serverRepo.findById(serverOid);
         const server = await this.serverRepo.update(serverOid, {
-            defaultRoleId:
-                roleId !== '' ? new Types.ObjectId(roleId) : undefined,
+            defaultRoleId: roleId !== '' ? roleId : undefined,
         });
 
         if (server !== null) {
@@ -1374,9 +1400,10 @@ export class ServerController {
                 changes: [
                     {
                         field: 'defaultRoleId',
-                        before: existingServer?.defaultRoleId
-                            ? existingServer.defaultRoleId.toString()
-                            : null,
+                        before:
+                            existingServer?.defaultRoleId !== undefined
+                                ? existingServer.defaultRoleId.toString()
+                                : null,
                         after: roleId,
                     },
                 ],

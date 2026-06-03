@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class BotUserDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public username!: string;
@@ -42,7 +42,7 @@ export class BotPermissionsDTO {
 
 export class BotResponseDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public clientId!: string;
@@ -138,7 +138,7 @@ export class SlashCommandOptionDTO {
 
 export class SlashCommandDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public botId!: string;

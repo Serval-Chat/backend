@@ -15,7 +15,6 @@ import {
     ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import { KlipyService } from '@/services/KlipyService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -29,7 +28,6 @@ import {
 } from '@/controllers/dto/klipy.response.dto';
 import { KlipySearchResponseDTO } from '@/controllers/dto/klipy-search.response.dto';
 
-@injectable()
 @Controller('api/v1/klipy')
 @ApiTags('Klipy')
 @UseGuards(JwtAuthGuard)

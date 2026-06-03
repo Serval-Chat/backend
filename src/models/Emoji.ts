@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -45,6 +46,8 @@ const schema = new Schema<IEmoji>(
         toObject: { virtuals: true },
     },
 );
+
+schema.plugin(mongooseIdPlugin);
 
 // Compound index for unique emoji names per server
 schema.index({ serverId: 1, name: 1 }, { unique: true });

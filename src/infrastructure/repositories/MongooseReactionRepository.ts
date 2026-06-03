@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { injectable } from 'inversify';
 import { type FilterQuery, type PipelineStage, Types } from 'mongoose';
 import type {
@@ -17,7 +16,6 @@ import { ErrorMessages } from '@/constants/errorMessages';
 // - Custom emojis must exist in the Emoji collection
 
 @injectable()
-@Injectable()
 export class MongooseReactionRepository implements IReactionRepository {
     private readonly MAX_REACTIONS_PER_MESSAGE = 20;
 

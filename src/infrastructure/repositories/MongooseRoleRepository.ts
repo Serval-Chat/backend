@@ -1,5 +1,4 @@
 import { injectable } from 'inversify';
-import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import {
     IRoleRepository,
@@ -12,7 +11,6 @@ import { Role } from '@/models/Server';
 //
 // Implements IRoleRepository using Mongoose Role model
 @injectable()
-@Injectable()
 export class MongooseRoleRepository implements IRoleRepository {
     public async findById(id: Types.ObjectId): Promise<IRole | null> {
         return await Role.findById(id).lean();

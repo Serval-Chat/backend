@@ -9,7 +9,6 @@ export enum SlashCommandOptionType {
 }
 
 export interface InteractionResolvedUser {
-    _id: string;
     id: string;
     username: string;
     displayName?: string;
@@ -18,14 +17,12 @@ export interface InteractionResolvedUser {
 }
 
 export interface InteractionResolvedChannel {
-    _id: string;
     id: string;
     name: string;
     type: string;
 }
 
 export interface InteractionResolvedRole {
-    _id: string;
     id: string;
     name: string;
     color?: string;

@@ -1,9 +1,4 @@
-import {
-    Injectable,
-    OnModuleInit,
-    OnModuleDestroy,
-    Logger,
-} from '@nestjs/common';
+import { OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { injectable } from 'inversify';
 import WebSocket from 'ws';
 import crypto from 'node:crypto';
@@ -19,7 +14,6 @@ import {
     ScraperSuccessResult,
 } from '@/types/scraper';
 
-@Injectable()
 @injectable()
 export class ScraperService implements OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(ScraperService.name);

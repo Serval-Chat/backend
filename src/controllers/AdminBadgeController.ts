@@ -33,6 +33,7 @@ import {
     BadgeUserActionResponseDTO,
 } from './dto/admin-badges.dto';
 import mongoose from 'mongoose';
+import { getDocumentId } from '@/utils/mongooseId';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -174,7 +175,10 @@ export class AdminBadgeController {
         }
 
         badges.push(badgeId);
-        await this.userRepo.update(user._id, { badges });
+        await this.userRepo.update(
+            getDocumentId(user) as mongoose.Types.ObjectId,
+            { badges },
+        );
 
         return { message: 'Badge added successfully', badges };
     }
@@ -208,7 +212,10 @@ export class AdminBadgeController {
         }
 
         badges.splice(index, 1);
-        await this.userRepo.update(user._id, { badges });
+        await this.userRepo.update(
+            getDocumentId(user) as mongoose.Types.ObjectId,
+            { badges },
+        );
 
         return { message: 'Badge removed successfully', badges };
     }

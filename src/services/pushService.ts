@@ -203,7 +203,7 @@ async function sendToSubscription(
             await admin.messaging().send({
                 token: sub.fcmToken,
                 notification: { title: payload.title, body: payload.body },
-                data: payload.data ?? {},
+                data: { ...(payload.data ?? {}), tag: payload.tag ?? '' },
                 android: {
                     priority: 'high',
                     notification: { tag: payload.tag },
@@ -237,9 +237,18 @@ const getSubscriptionFallbackKey = (sub: IPushSubscription): string =>
         : `webpush:${sub.endpointData?.endpoint ?? String(sub._id)}`;
 
 const getSubscriptionDeviceKey = (sub: IPushSubscription): string => {
+    const deviceId = sub.deviceId?.trim();
+    if (deviceId !== undefined && deviceId !== '') {
+        return `${sub.type}:device:${deviceId}`;
+    }
+
     const userAgent = sub.userAgent?.trim();
     if (userAgent !== undefined && userAgent !== '') {
         return `ua:${userAgent}`;
+    }
+
+    if (sub.type === 'fcm') {
+        return 'fcm:unknown-android-device';
     }
 
     return getSubscriptionFallbackKey(sub);

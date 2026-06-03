@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
 import mongoose from 'mongoose';
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { IPingRepository } from '@/di/interfaces/IPingRepository';
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
@@ -9,6 +9,7 @@ import {
     PingMentionMessageDTO,
     PingExportMessageDTO,
 } from '@/controllers/dto/types.dto';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 export interface PingNotification {
     id: string;
@@ -23,7 +24,6 @@ export interface PingNotification {
 
 // Ping Service wrapper for the ping repository
 @injectable()
-@Injectable()
 export class PingService {
     private readonly maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
@@ -193,7 +193,7 @@ export class PingService {
     // Map database ping to notification format
     private mapToNotification(ping: IPing): PingNotification {
         const notification: PingNotification = {
-            id: ping._id.toString(),
+            id: getDocumentIdString(ping),
             type: ping.type,
             sender: ping.sender,
             senderId: ping.senderId.toString(),

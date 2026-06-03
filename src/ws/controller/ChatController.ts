@@ -38,6 +38,7 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import logger from '@/utils/logger';
+import { getDocumentIdString } from '@/utils/mongooseId';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import { Types } from 'mongoose';
 import { notifyUser } from '@/services/pushService';
@@ -185,8 +186,8 @@ export class ChatController {
         );
 
         const broadcastPayload: IMessageDmEvent['payload'] = {
-            messageId: created._id.toString(),
-            _id: created._id.toString(),
+            messageId: getDocumentIdString(created),
+            id: getDocumentIdString(created),
             senderId,
             senderUsername: authenticatedUser.username,
             receiverId,
@@ -197,7 +198,7 @@ export class ChatController {
             replyToId: created.replyToId?.toString(),
             repliedTo: repliedToMessage
                 ? {
-                      messageId: repliedToMessage._id.toString(),
+                      messageId: getDocumentIdString(repliedToMessage),
                       senderId: repliedToMessage.senderId.toString(),
                       senderUsername: '', // Will be populated in broadcast
                       text: repliedToMessage.text,
@@ -264,8 +265,8 @@ export class ChatController {
         }
 
         return {
-            messageId: created._id.toString(),
-            _id: created._id.toString(),
+            messageId: getDocumentIdString(created),
+            id: getDocumentIdString(created),
             senderId,
             senderUsername: authenticatedUser.username,
             receiverId,
@@ -285,7 +286,7 @@ export class ChatController {
             senderIsBot: authenticatedUser.isBot,
             repliedTo: repliedToMessage
                 ? {
-                      messageId: repliedToMessage._id.toString(),
+                      messageId: getDocumentIdString(repliedToMessage),
                       senderId: repliedToMessage.senderId.toString(),
                       text: repliedToMessage.text,
                   }
@@ -464,8 +465,8 @@ export class ChatController {
         ]);
 
         if (
-            userReadTs != null &&
-            (latestTs == null || Number(userReadTs) >= Number(latestTs))
+            userReadTs !== null &&
+            (latestTs === null || Number(userReadTs) >= Number(latestTs))
         ) {
             return { success: true };
         }

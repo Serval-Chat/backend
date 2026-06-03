@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import { Schema, model } from 'mongoose';
 import type { Document, Types } from 'mongoose';
 import type { SlashCommandOptionType } from '@/types/interactions';
@@ -45,6 +46,7 @@ const schema = new Schema<ISlashCommand>(
     },
 );
 
+schema.plugin(mongooseIdPlugin);
 schema.index({ botId: 1, name: 1 }, { unique: true });
 
 export const SlashCommand = model<ISlashCommand>('SlashCommand', schema);

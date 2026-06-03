@@ -6,9 +6,9 @@ import {
     type AdminPermissions,
     DEFAULT_PERMISSIONS,
 } from '@/permissions/AdminPermissions';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 export interface Badge {
-    _id: string;
     id: string;
     name: string;
     description: string;
@@ -85,7 +85,6 @@ export interface DBUser {
 }
 
 export interface MappedUser {
-    _id: string;
     id: string;
     username: string;
     displayName: string | null;
@@ -139,8 +138,7 @@ export function mapUser(
         : [];
 
     return {
-        _id: u._id.toString(),
-        id: u._id.toString(),
+        id: getDocumentIdString(u),
         username: u.username,
         displayName: u.displayName ?? null,
         profilePicture: profilePictureUrl,

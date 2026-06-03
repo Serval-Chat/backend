@@ -1,10 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
-import { injectable } from 'inversify';
 import { getGitCommitHash, getVersion } from '@/utils/version';
 import { SystemInfoResponseDTO } from './dto/system.response.dto';
 
-@injectable()
 @Controller('api/v1')
 @ApiTags('System')
 export class SystemController {

@@ -42,7 +42,6 @@ import {
     FileUploadResponseDTO,
     FileMetadataResponseDTO,
 } from './dto/file.response.dto';
-import { injectable } from 'inversify';
 import { isText } from 'istextorbinary';
 import { buildAttachmentMetadata } from '@/utils/attachments';
 import type { JWTPayload } from '@/utils/jwt';
@@ -50,7 +49,6 @@ import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { assertHttpNotMuted } from '@/utils/mute';
 
 @ApiTags('Files')
-@injectable()
 @Controller('api/v1/files')
 export class FileController {
     private readonly uploadsDir = path.join(

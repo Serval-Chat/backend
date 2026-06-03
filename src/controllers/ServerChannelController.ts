@@ -20,7 +20,6 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
-import { injectable } from 'inversify';
 import type {
     IChannelRepository,
     IChannel,
@@ -43,6 +42,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
@@ -67,7 +67,6 @@ import {
     PermissionsResponseDTO,
     VoiceTokenResponseDTO,
 } from './dto/server-channel.response.dto';
-@injectable()
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Channels')
 @ApiBearerAuth()
@@ -145,7 +144,7 @@ export class ServerChannelController {
                 this.permissionService.hasChannelPermissions(
                     serverOid,
                     userOid,
-                    channels.map((c) => c._id as Types.ObjectId),
+                    channels.map((c) => getDocumentId(c) as Types.ObjectId),
                     'viewChannels',
                 ),
                 this.permissionService.hasCategoryPermissions(
@@ -160,7 +159,7 @@ export class ServerChannelController {
         const visibleChannels: IChannel[] = [];
         for (const c of channels) {
             const canViewChannel =
-                channelPermissionMap.get(c._id.toString()) === true;
+                channelPermissionMap.get(getDocumentIdString(c)) === true;
 
             const categoryId = c.categoryId?.toString() ?? null;
             const canViewParentCategory =
@@ -183,7 +182,7 @@ export class ServerChannelController {
 
         const mappedChannels = visibleChannels.map(
             async (channel: IChannel) => {
-                const channelId = channel._id.toString();
+                const channelId = getDocumentIdString(channel);
                 const lastMessageAt: Date | null =
                     channel.lastMessageAt !== undefined
                         ? channel.lastMessageAt
@@ -216,7 +215,7 @@ export class ServerChannelController {
 
                 return {
                     ...channel,
-                    _id: channel._id.toString(),
+                    id: getDocumentIdString(channel),
                     serverId: channel.serverId.toString(),
                     categoryId: channel.categoryId?.toString() ?? null,
                     lastMessageAt: lastMessageAt
@@ -261,7 +260,9 @@ export class ServerChannelController {
         }
 
         const categories = await this.categoryRepo.findByServerId(serverOid);
-        const categoryIds = categories.map((c) => c._id);
+        const categoryIds = categories.map(
+            (c) => getDocumentId(c) as Types.ObjectId,
+        );
         const permissionMap =
             await this.permissionService.hasCategoryPermissions(
                 serverOid,
@@ -271,7 +272,8 @@ export class ServerChannelController {
             );
 
         return categories.filter(
-            (category) => permissionMap.get(category._id.toString()) === true,
+            (category) =>
+                permissionMap.get(getDocumentIdString(category)) === true,
         );
     }
 
@@ -362,7 +364,7 @@ export class ServerChannelController {
             serverId: serverOid,
             actorId: userOid,
             actionType: 'create_channel',
-            targetId: channel._id as Types.ObjectId,
+            targetId: getDocumentId(channel) as Types.ObjectId,
             targetType: 'channel',
             metadata: { channelName: channel.name, channelType: channel.type },
         });
@@ -401,7 +403,7 @@ export class ServerChannelController {
         const existingChannels =
             await this.channelRepo.findByServerId(serverOid);
         const channelMap = new Map(
-            existingChannels.map((c) => [c._id.toString(), c]),
+            existingChannels.map((c) => [getDocumentIdString(c), c]),
         );
 
         const changes = [];
@@ -511,7 +513,7 @@ export class ServerChannelController {
             await this.serverMessageRepo.countByChannelId(channelOid);
 
         return {
-            channelId: channel._id.toString(),
+            channelId: getDocumentIdString(channel),
             channelName: channel.name,
             createdAt: channel.createdAt.toISOString(),
             messageCount,
@@ -800,7 +802,7 @@ export class ServerChannelController {
             serverId: serverOid,
             actorId: userOid,
             actionType: 'create_category',
-            targetId: category._id as Types.ObjectId,
+            targetId: getDocumentId(category) as Types.ObjectId,
             targetType: 'category',
             metadata: {
                 categoryName: category.name,
@@ -978,9 +980,12 @@ export class ServerChannelController {
         const channels = await this.channelRepo.findByServerId(serverOid);
         for (const channel of channels) {
             if (channel.categoryId?.toString() === categoryId) {
-                await this.channelRepo.update(channel._id, {
-                    categoryId: null,
-                });
+                await this.channelRepo.update(
+                    getDocumentId(channel) as Types.ObjectId,
+                    {
+                        categoryId: null,
+                    },
+                );
             }
         }
 
@@ -1108,7 +1113,7 @@ export class ServerChannelController {
             Record<string, boolean>
         >;
         const roles = await this.roleRepo.findByServerId(serverOid);
-        const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+        const roleMap = new Map(roles.map((r) => [getDocumentIdString(r), r]));
 
         const allRoleIds = new Set([
             ...Object.keys(oldPerms),
@@ -1279,7 +1284,7 @@ export class ServerChannelController {
             Record<string, boolean>
         >;
         const roles = await this.roleRepo.findByServerId(serverOid);
-        const roleMap = new Map(roles.map((r) => [r._id.toString(), r]));
+        const roleMap = new Map(roles.map((r) => [getDocumentIdString(r), r]));
 
         const allRoleIds = new Set([
             ...Object.keys(oldPerms),

@@ -1,10 +1,5 @@
 import { injectable, inject } from 'inversify';
-import {
-    Injectable,
-    OnModuleInit,
-    OnModuleDestroy,
-    Inject,
-} from '@nestjs/common';
+import { OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
 import { Types } from 'mongoose';
 import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
@@ -24,7 +19,6 @@ import { type IExportJob, ExportJob } from '@/models/ExportJob';
 import { SERVER_URL } from '@/config/env';
 
 @injectable()
-@Injectable()
 export class ExportService implements OnModuleInit, OnModuleDestroy {
     private jobInterval: NodeJS.Timeout | null = null;
     private cleanupInterval: NodeJS.Timeout | null = null;
@@ -296,7 +290,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
             serverId: job.serverId.toString(),
             channelId: job.channelId.toString(),
             message: {
-                _id: job._id.toString(),
+                id: job._id.toString(),
                 text: `Message export for **${server.name}** / \`#${channel.name}\` is complete! Please open your mail inbox to download the file. Note: the file will be deleted in 48 hours.`,
                 type: 'success',
             },
@@ -334,7 +328,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
             serverId: job.serverId.toString(),
             channelId: job.channelId.toString(),
             message: {
-                _id: job._id.toString(),
+                id: job._id.toString(),
                 text: `We've failed to export messages for \`#${channel.name}\` on **${server.name}** after multiple attempts. Please try again from channel settings.`,
                 type: 'failure',
             },
@@ -375,7 +369,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
                     sender: 'System',
                     senderId: new Types.ObjectId().toString(),
                     message: {
-                        _id: job._id.toString(),
+                        id: job._id.toString(),
                         text: `Your message export for \`#${channelNameAtDeletion}\` on **${serverNameAtDeletion}** was cancelled because the channel was deleted before the export could complete.`,
                         type: 'cancelled',
                     },

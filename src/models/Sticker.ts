@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 import {
@@ -54,6 +55,7 @@ const schema = new Schema<ISticker>(
     },
 );
 
+schema.plugin(mongooseIdPlugin);
 schema.index({ serverId: 1, name: 1 }, { unique: true });
 
 export const Sticker = model<ISticker>('Sticker', schema);

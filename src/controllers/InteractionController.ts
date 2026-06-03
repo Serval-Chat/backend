@@ -19,11 +19,11 @@ import {
     ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
-import { injectable } from 'inversify';
 import { InteractionSuccessResponseDTO } from '@/controllers/dto/interaction.response.dto';
 import { Types } from 'mongoose';
 
 import { TYPES } from '@/di/types';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 
 import type {
@@ -85,7 +85,7 @@ interface InteractionCommand {
 
 const mapToInteractionCommand = (cmd: ISlashCommand): InteractionCommand => {
     return {
-        id: cmd._id.toString(),
+        id: getDocumentIdString(cmd),
         botId: cmd.botId.toString(),
         name: cmd.name,
         description: cmd.description,
@@ -180,7 +180,6 @@ const SYSTEM_COMMANDS: InteractionCommand[] = [
 
 @ApiTags('Interactions')
 @ApiBearerAuth()
-@injectable()
 @Controller('api/v1')
 export class InteractionController {
     public constructor(
@@ -236,11 +235,15 @@ export class InteractionController {
         const bots = await Bot.find({ userId: { $in: botUserIds } }).lean();
 
         const commandArrays = await Promise.all(
-            bots.map((b) => this.slashCommandRepo.findByBotId(b._id)),
+            bots.map((b) =>
+                this.slashCommandRepo.findByBotId(
+                    getDocumentId(b) as Types.ObjectId,
+                ),
+            ),
         );
 
         const botCommands = commandArrays.flat().map((cmd) => ({
-            id: cmd._id.toString(),
+            id: getDocumentIdString(cmd),
             name: cmd.name,
             description: cmd.description,
             options: cmd.options !== undefined ? cmd.options : [],
@@ -322,8 +325,8 @@ export class InteractionController {
             .map((m) => m.userId._id);
 
         const bots = await Bot.find({ userId: { $in: botUserIds } }).lean();
-        const botsById = new Map(bots.map((b) => [b._id.toString(), b]));
-        const botIds = bots.map((b) => b._id);
+        const botsById = new Map(bots.map((b) => [getDocumentIdString(b), b]));
+        const botIds = bots.map((b) => getDocumentId(b) as Types.ObjectId);
 
         let commandDef: InteractionCommand | null = null;
         if (commandId !== undefined) {
@@ -390,13 +393,13 @@ export class InteractionController {
                     user: { id: req.user.id, username: req.user.username },
                 },
             });
-            invocationId = serverMessage._id.toString();
+            invocationId = getDocumentIdString(serverMessage);
 
             this.wsServer.broadcastToChannel(channelId, {
                 type: 'message_server',
                 payload: {
                     messageId: invocationId,
-                    _id: invocationId,
+                    id: invocationId,
                     serverId,
                     channelId,
                     senderId: req.user.id,
@@ -613,7 +616,7 @@ export class InteractionController {
         if (button === undefined) {
             throw new BadRequestException('Button not found');
         }
-        if (button.type !== 'button' || button.custom_id !== customId) {
+        if (button.custom_id !== customId) {
             throw new BadRequestException('Button not found');
         }
         if (button.disabled === true) {
@@ -733,7 +736,7 @@ export class InteractionController {
                     profilePicture: botProfilePicture,
                     isBot: botUser?.isBot ?? req.user.isBot,
                 },
-                body.embeds ?? [],
+                body.embeds,
                 components ?? [],
             );
         } else {
@@ -749,8 +752,8 @@ export class InteractionController {
             this.wsServer.broadcastToChannel(channelId, {
                 type: 'message_server',
                 payload: {
-                    messageId: serverMessage._id.toString(),
-                    _id: serverMessage._id.toString(),
+                    messageId: getDocumentIdString(serverMessage),
+                    id: getDocumentIdString(serverMessage),
                     serverId,
                     channelId,
                     senderId: req.user.id,
@@ -871,7 +874,7 @@ export class InteractionController {
             if (foundUser !== null) {
                 targetMember = (await ServerMember.findOne({
                     serverId: new Types.ObjectId(serverId),
-                    userId: foundUser._id,
+                    userId: getDocumentId(foundUser) as Types.ObjectId,
                 }).populate<{ userId: PopulatedUser }>(
                     'userId',
                 )) as unknown as PopulatedServerMember;
@@ -889,7 +892,7 @@ export class InteractionController {
             return;
         }
 
-        const targetUserId = targetMember.userId._id.toString();
+        const targetUserId = getDocumentIdString(targetMember.userId);
 
         if (command === 'timeout') {
             const durationStr = options.find(
@@ -913,12 +916,12 @@ export class InteractionController {
 
             const until = new Date(Date.now() + duration * 60 * 1000);
             await ServerMember.updateOne(
-                { _id: targetMember._id },
+                { _id: getDocumentId(targetMember) as Types.ObjectId },
                 { $set: { communicationDisabledUntil: until } },
             );
 
             const updatedMember = await ServerMember.findById(
-                targetMember._id,
+                getDocumentId(targetMember) as Types.ObjectId,
             ).lean();
             if (updatedMember !== null) {
                 this.wsServer.broadcastToServer(serverId, {
@@ -939,12 +942,12 @@ export class InteractionController {
             );
         } else if (command === 'untimeout') {
             await ServerMember.updateOne(
-                { _id: targetMember._id },
+                { _id: getDocumentId(targetMember) as Types.ObjectId },
                 { $unset: { communicationDisabledUntil: 1 } },
             );
 
             const updatedMember = await ServerMember.findById(
-                targetMember._id,
+                getDocumentId(targetMember) as Types.ObjectId,
             ).lean();
             if (updatedMember !== null) {
                 this.wsServer.broadcastToServer(serverId, {
@@ -979,18 +982,18 @@ export class InteractionController {
 
             if (nicknameStr.length > 0) {
                 await ServerMember.updateOne(
-                    { _id: targetMember._id },
+                    { _id: getDocumentId(targetMember) as Types.ObjectId },
                     { $set: { nickname: nicknameStr } },
                 );
             } else {
                 await ServerMember.updateOne(
-                    { _id: targetMember._id },
+                    { _id: getDocumentId(targetMember) as Types.ObjectId },
                     { $unset: { nickname: 1 } },
                 );
             }
 
             const updatedMember = await ServerMember.findById(
-                targetMember._id,
+                getDocumentId(targetMember) as Types.ObjectId,
             ).lean();
             if (updatedMember !== null) {
                 this.wsServer.broadcastToServer(serverId, {
@@ -1077,7 +1080,7 @@ export class InteractionController {
                 channelId,
                 text,
                 editedAt: new Date().toISOString(),
-                isEdited: false, // It's a response, not a manual edit
+                isEdited: false,
             },
         } as IMessageServerEditedEvent);
     }
@@ -1114,17 +1117,14 @@ export class InteractionController {
 
             let resolvedValue = opt.value;
             try {
-                if (def.type === 6) {
-                    // USER
+                if (def.type === SlashCommandOptionType.USER) {
                     resolvedValue = await this.resolveUser(serverId, opt.value);
-                } else if (def.type === 7) {
-                    // CHANNEL
+                } else if (def.type === SlashCommandOptionType.CHANNEL) {
                     resolvedValue = await this.resolveChannel(
                         serverId,
                         opt.value,
                     );
-                } else if (def.type === 8) {
-                    // ROLE
+                } else if (def.type === SlashCommandOptionType.ROLE) {
                     resolvedValue = await this.resolveRole(serverId, opt.value);
                 }
             } catch (e) {
@@ -1168,8 +1168,8 @@ export class InteractionController {
             if (foundUsers.length > 0) {
                 for (const u of foundUsers) {
                     const member = await ServerMember.findOne({
-                        serverId: new Types.ObjectId(serverId),
-                        userId: u._id,
+                        serverId: serverId,
+                        userId: getDocumentId(u) as Types.ObjectId,
                     }).lean();
                     if (member) {
                         user = u;
@@ -1181,7 +1181,7 @@ export class InteractionController {
                     for (const u of foundUsers) {
                         const ban = await ServerBan.findOne({
                             serverId: new Types.ObjectId(serverId),
-                            userId: u._id,
+                            userId: getDocumentId(u) as Types.ObjectId,
                         }).lean();
                         if (ban) {
                             user = u;
@@ -1199,8 +1199,7 @@ export class InteractionController {
 
         const u = user as unknown as PopulatedUser;
         return {
-            _id: u._id.toString(),
-            id: u._id.toString(),
+            id: getDocumentIdString(u),
             username: u.username,
             displayName: u.displayName,
             profilePicture: u.profilePicture,
@@ -1248,8 +1247,7 @@ export class InteractionController {
             type: string;
         };
         return {
-            _id: c._id.toString(),
-            id: c._id.toString(),
+            id: getDocumentIdString(c),
             name: c.name,
             type: c.type,
         };
@@ -1295,8 +1293,7 @@ export class InteractionController {
             color?: string;
         };
         return {
-            _id: r._id.toString(),
-            id: r._id.toString(),
+            id: getDocumentIdString(r),
             name: r.name,
             color: r.color,
         };

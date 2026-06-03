@@ -34,6 +34,7 @@ import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { notifyUser } from '@/services/pushService';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 import { SendFriendRequestDTO } from './dto/friendship.request.dto';
 import {
@@ -44,7 +45,6 @@ import {
     FriendshipMessageResponseDTO,
     OutgoingFriendRequestResponseDTO,
 } from './dto/friendship.response.dto';
-import { injectable } from 'inversify';
 
 interface RequestWithUser extends Request {
     user: JWTPayload;
@@ -56,7 +56,6 @@ import { NoBot } from '@/modules/auth/bot.decorator';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @NoBot()
-@injectable()
 @Controller('api/v1/friends')
 export class FriendshipController {
     public constructor(
@@ -83,7 +82,7 @@ export class FriendshipController {
         if (mapped === null) return null;
 
         return {
-            _id: mapped.id,
+            id: mapped.id,
             username: mapped.username,
             displayName:
                 mapped.displayName !== null && mapped.displayName !== ''
@@ -160,7 +159,7 @@ export class FriendshipController {
 
         const friendsWithLatestMessage = await Promise.all(
             combinedFriends.map(async (friend) => {
-                const friendId = friend._id.toString();
+                const friendId = getDocumentIdString(friend);
                 if (friendId === '') {
                     return { friend, latestMessageAt: null };
                 }
@@ -287,7 +286,7 @@ export class FriendshipController {
                     if (mapped === null) return null;
 
                     const blockFlags = await this.blockRepo.getActiveBlockFlags(
-                        user._id,
+                        getDocumentId(user) as Types.ObjectId,
                         userOid,
                     );
 
@@ -333,7 +332,7 @@ export class FriendshipController {
                 }
 
                 return {
-                    _id: r._id.toString(),
+                    id: getDocumentIdString(r),
                     from: fromUsername,
                     fromId: r.fromId.toString(),
                     createdAt: r.createdAt || new Date(),
@@ -364,7 +363,7 @@ export class FriendshipController {
                 }
 
                 return {
-                    _id: r._id.toString(),
+                    id: getDocumentIdString(r),
                     to: toUsername,
                     toId: r.toId.toString(),
                     createdAt: r.createdAt || new Date(),
@@ -404,7 +403,7 @@ export class FriendshipController {
             throw new ApiError(400, ErrorMessages.FRIENDSHIP.CANNOT_ADD_BOT);
         }
 
-        const friendId = friendUser._id;
+        const friendId = getDocumentId(friendUser) as Types.ObjectId;
         const friendIdStr = friendId.toString();
         if (friendIdStr === meId) {
             throw new ApiError(400, ErrorMessages.FRIENDSHIP.CANNOT_ADD_SELF);
@@ -425,7 +424,9 @@ export class FriendshipController {
                     ErrorMessages.FRIENDSHIP.REQUEST_ALREADY_SENT,
                 );
             }
-            await this.friendshipRepo.rejectRequest(existingRequest._id);
+            await this.friendshipRepo.rejectRequest(
+                getDocumentId(existingRequest) as Types.ObjectId,
+            );
         }
 
         await this.blockRepo.getActiveBlockFlags(friendId, meOid);
@@ -433,7 +434,7 @@ export class FriendshipController {
         const reqDoc = await this.friendshipRepo.createRequest(meOid, friendId);
 
         const requestPayload = {
-            _id: reqDoc._id.toString(),
+            id: getDocumentIdString(reqDoc),
             from: meUser.username,
             fromId: meId,
             createdAt:
@@ -468,7 +469,7 @@ export class FriendshipController {
         return {
             message: 'friend request sent',
             request: {
-                _id: reqDoc._id.toString(),
+                id: getDocumentIdString(reqDoc),
                 from: reqDoc.fromId.toString(),
                 to: reqDoc.toId.toString(),
                 status: reqDoc.status,
@@ -547,7 +548,7 @@ export class FriendshipController {
                     type: 'incoming_request_removed',
                     payload: {
                         from: fromUser.username ?? '',
-                        fromId: fromFriendPayload._id,
+                        fromId: fromFriendPayload.id,
                     },
                 });
             }

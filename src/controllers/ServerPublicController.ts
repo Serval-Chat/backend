@@ -15,7 +15,6 @@ import {
     ApiResponse,
     ApiOkResponse,
 } from '@nestjs/swagger';
-import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
@@ -24,7 +23,6 @@ import fs from 'fs';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { Request, Response } from 'express';
 
-@injectable()
 @Controller('api/v1/servers')
 @ApiTags('Servers (Public)')
 export class ServerPublicController {

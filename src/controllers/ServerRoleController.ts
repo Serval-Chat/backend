@@ -36,7 +36,6 @@ import {
 } from './dto/server-role.response.dto';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
-import { injectable } from 'inversify';
 import type { IRoleRepository, IRole } from '@/di/interfaces/IRoleRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
@@ -68,7 +67,7 @@ import fs from 'fs';
 import { randomBytes } from 'crypto';
 import type { Response } from 'express';
 import { ApiError } from '@/utils/ApiError';
-@injectable()
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 @Controller('api/v1/servers/:serverId/roles')
 @ApiTags('Server Roles')
 @ApiBearerAuth()
@@ -211,7 +210,7 @@ export class ServerRoleController {
             serverId: serverOid,
             actorId: userOid,
             actionType: 'role_create',
-            targetId: role._id as Types.ObjectId,
+            targetId: getDocumentId(role) as Types.ObjectId,
             targetType: 'role',
             metadata: { roleName: role.name },
         });
@@ -252,7 +251,7 @@ export class ServerRoleController {
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        const isOwner = server !== null && server.ownerId.equals(userOid);
+        const isOwner = server !== null && String(server.ownerId) === userId;
 
         if (!isOwner) {
             const currentUserHighest =
@@ -280,15 +279,17 @@ export class ServerRoleController {
         // Bulk update role positions to reflect the new hierarchy
         const everyoneRole = await this.roleRepo.findEveryoneRole(serverOid);
         const everyoneId =
-            everyoneRole !== null ? everyoneRole._id.toString() : undefined;
+            everyoneRole !== null
+                ? getDocumentIdString(everyoneRole)
+                : undefined;
 
         const oldAllRoles = await this.roleRepo.findByServerId(serverOid);
         const roleMap = new Map(
-            oldAllRoles.map((r) => [r._id.toString(), r.name]),
+            oldAllRoles.map((r) => [getDocumentIdString(r), r.name]),
         );
 
         const oldOrderedNames = oldAllRoles
-            .filter((r) => r._id.toString() !== everyoneId)
+            .filter((r) => getDocumentIdString(r) !== everyoneId)
             .sort((a, b) => b.position - a.position)
             .map((r) => r.name);
 
@@ -378,7 +379,7 @@ export class ServerRoleController {
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        const isOwner = server !== null && server.ownerId.equals(userOid);
+        const isOwner = server !== null && String(server.ownerId) === userId;
 
         if (!isOwner) {
             const currentUserHighest =
@@ -595,7 +596,7 @@ export class ServerRoleController {
         }
 
         const server = await this.serverRepo.findById(serverOid);
-        const isOwner = server !== null && server.ownerId.equals(userOid);
+        const isOwner = server !== null && String(server.ownerId) === userId;
 
         if (!isOwner) {
             const currentUserHighest =

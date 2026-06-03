@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import {
     IServerMemberRepository,
@@ -22,7 +21,6 @@ function normalizeRegexSearch(input: string): string {
 //
 // Implements IServerMemberRepository using Mongoose ServerMember model
 @injectable()
-@Injectable()
 export class MongooseServerMemberRepository implements IServerMemberRepository {
     private serverMemberModel = ServerMember;
     private userModel = User;

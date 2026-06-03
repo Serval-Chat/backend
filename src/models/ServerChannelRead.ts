@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -31,6 +32,7 @@ const schema = new Schema<IServerChannelRead>(
     },
 );
 
+schema.plugin(mongooseIdPlugin);
 schema.index({ userId: 1, channelId: 1 }, { unique: true });
 
 // Server channel read status model

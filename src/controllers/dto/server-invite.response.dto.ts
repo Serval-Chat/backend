@@ -53,7 +53,7 @@ export class InviteDetailsResponseDTO {
 
 export class ServerInviteResponseDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public code!: string;

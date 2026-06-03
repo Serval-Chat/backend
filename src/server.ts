@@ -11,6 +11,7 @@ import cors from 'cors';
 import compression from 'compression';
 import { METRICS_TOKEN, PROJECT_LEVEL, FRONTEND_URL } from '@/config/env';
 import routes from '@/routes/index';
+import { toApiId } from '@/utils/mongooseId';
 
 interface ValidateError {
     name: 'ValidateError';
@@ -36,6 +37,12 @@ export function setupExpressApp(app: Application): Application {
 
     app.set('trust proxy', true);
     app.disable('x-powered-by');
+
+    app.use((_req: Request, res: Response, next: NextFunction) => {
+        const json = res.json.bind(res);
+        res.json = (body?: unknown) => json(toApiId(body));
+        next();
+    });
 
     // CSP nonce generation
     app.use((req: Request, res: Response, next: NextFunction) => {

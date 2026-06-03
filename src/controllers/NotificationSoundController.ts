@@ -27,7 +27,7 @@ import { processAudio } from '@/utils/audio';
 import { Types } from 'mongoose';
 import { WsServer } from '@/ws/server';
 import { JWTPayload } from '@/utils/jwt';
-import { injectable } from 'inversify';
+import { getDocumentId } from '@/utils/mongooseId';
 import {
     ApiTags,
     ApiOperation,
@@ -43,7 +43,6 @@ import {
 } from './dto/notification-sound.response.dto';
 
 @ApiTags('Notification Sounds')
-@injectable()
 @Controller('api/v1/notification-sounds')
 @ApiBearerAuth()
 export class NotificationSoundController {
@@ -126,9 +125,12 @@ export class NotificationSoundController {
             };
 
             const updatedSounds = [...currentSounds, newSound];
-            await this.userRepo.updateSettings(user._id, {
-                notificationSounds: updatedSounds,
-            });
+            await this.userRepo.updateSettings(
+                getDocumentId(user) as Types.ObjectId,
+                {
+                    notificationSounds: updatedSounds,
+                },
+            );
 
             this.wsServer.broadcastToUser(userId, {
                 type: 'notification_sounds_updated',
@@ -169,9 +171,12 @@ export class NotificationSoundController {
             throw new NotFoundException('Sound not found');
 
         const updatedSounds = currentSounds.filter((s) => s.id !== id);
-        await this.userRepo.updateSettings(user._id, {
-            notificationSounds: updatedSounds,
-        });
+        await this.userRepo.updateSettings(
+            getDocumentId(user) as Types.ObjectId,
+            {
+                notificationSounds: updatedSounds,
+            },
+        );
 
         const filePath = path.join(this.soundsDir, `${id}.ogg`);
         await fsPromises.unlink(filePath).catch(() => {});

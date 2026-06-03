@@ -158,7 +158,7 @@ export class ReactionController {
                         sender: authenticatedUser.username,
                         message: {
                             messageId: messageId,
-                            _id: messageId,
+                            id: messageId,
                             senderId: authorId,
                             senderUsername: author.username ?? 'Unknown User',
                             receiverId: message.receiverId.toString(),
@@ -289,7 +289,7 @@ export class ReactionController {
                         channelId,
                         message: {
                             messageId: messageId,
-                            _id: messageId,
+                            id: messageId,
                             serverId,
                             channelId,
                             senderId: authorId,

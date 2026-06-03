@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -22,6 +23,8 @@ const badgeSchema = new Schema<IBadge>({
     color: { type: String, required: true, default: '#3b82f6' },
     createdAt: { type: Date, default: Date.now },
 });
+
+badgeSchema.plugin(mongooseIdPlugin);
 
 // Badge model
 export const Badge = model<IBadge>('Badge', badgeSchema);

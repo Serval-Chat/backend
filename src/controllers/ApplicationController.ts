@@ -16,7 +16,6 @@ import {
     ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
-import { injectable } from 'inversify';
 import { Types } from 'mongoose';
 import { SlashCommandDTO } from './dto/bot.response.dto';
 
@@ -28,10 +27,10 @@ import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Bot } from '@/models/Bot';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { SetCommandsRequestDTO } from './dto/application.request.dto';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 @ApiTags('Applications')
 @ApiBearerAuth()
-@injectable()
 @Controller('api/v1/applications')
 export class ApplicationController {
     public constructor(
@@ -55,7 +54,7 @@ export class ApplicationController {
                 type: 'commands_updated',
                 payload: {
                     serverId: serverId.toString(),
-                    botId: bot._id.toString(),
+                    botId: getDocumentIdString(bot),
                 },
             });
         });
@@ -71,7 +70,9 @@ export class ApplicationController {
         const bot = await Bot.findOne({ userId: req.user.id }).lean();
         if (bot === null) throw new ForbiddenException('Forbidden');
 
-        return this.slashCommandRepo.findByBotId(bot._id);
+        return this.slashCommandRepo.findByBotId(
+            getDocumentId(bot) as Types.ObjectId,
+        );
     }
 
     @UseGuards(JwtAuthGuard)
@@ -90,13 +91,15 @@ export class ApplicationController {
         const bot = await Bot.findOne({ userId: req.user.id }).lean();
         if (bot === null) throw new ForbiddenException('Forbidden');
 
-        await this.slashCommandRepo.deleteByBotId(bot._id);
+        await this.slashCommandRepo.deleteByBotId(
+            getDocumentId(bot) as Types.ObjectId,
+        );
 
         const created = [];
         for (const cmd of body.commands) {
             created.push(
                 await this.slashCommandRepo.create({
-                    botId: bot._id,
+                    botId: getDocumentId(bot) as Types.ObjectId,
                     name: cmd.name.toLowerCase(),
                     description: cmd.description,
                     options: cmd.options ?? [],

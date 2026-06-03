@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Document, Model } from 'mongoose';
 import mongoose, { Schema, Types } from 'mongoose';
 
@@ -34,6 +35,7 @@ const friendshipSchema = new Schema<IFriendship>({
     friendId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
     createdAt: { type: Date, default: Date.now },
 });
+friendshipSchema.plugin(mongooseIdPlugin);
 friendshipSchema.index({ user: 1, friend: 1 }, { unique: true, sparse: true });
 friendshipSchema.index(
     { userId: 1, friendId: 1 },
@@ -52,6 +54,7 @@ const friendRequestSchema = new Schema<IFriendRequest>({
     },
     createdAt: { type: Date, default: Date.now },
 });
+friendRequestSchema.plugin(mongooseIdPlugin);
 friendRequestSchema.index({ from: 1, to: 1 }, { unique: true, sparse: true });
 friendRequestSchema.index(
     { fromId: 1, toId: 1 },

@@ -20,7 +20,7 @@ export class UnreadCountsResponseDTO {
 
 export class DmMessageResponseDTO {
     @ApiProperty()
-    public _id!: string;
+    public id!: string;
 
     @ApiProperty()
     public senderId!: string;

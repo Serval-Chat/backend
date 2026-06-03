@@ -1,3 +1,4 @@
+import { mongooseIdPlugin } from '@/utils/mongooseId';
 import type { Types, Document, Model } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -56,6 +57,8 @@ const schema = new Schema<IBan>({
         default: [],
     },
 });
+
+schema.plugin(mongooseIdPlugin);
 
 // Check and deactivate expired bans for a user
 //

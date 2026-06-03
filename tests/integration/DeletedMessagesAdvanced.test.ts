@@ -94,7 +94,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
                 .set('Authorization', `Bearer ${regularUserToken}`)
                 .send({ text: 'Sensitive message' });
 
-            deletedMessageId = sendRes.body._id;
+            deletedMessageId = sendRes.body.id;
 
             await request(app)
                 .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}`)
@@ -124,7 +124,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
                 .set('Authorization', `Bearer ${serverOwnerToken}`);
 
             expect(res.status).toBe(200);
-            expect(res.body.message._id).toBe(deletedMessageId);
+            expect(res.body.message.id).toBe(deletedMessageId);
         });
 
         it('should allow administrator to retrieve single deleted message', async () => {
@@ -133,7 +133,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
                 .set('Authorization', `Bearer ${adminToken}`);
 
             expect(res.status).toBe(200);
-            expect(res.body.message._id).toBe(deletedMessageId);
+            expect(res.body.message.id).toBe(deletedMessageId);
         });
 
         it('should hide soft-deleted pinned messages from regular users', async () => {
@@ -145,7 +145,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
                 .set('Authorization', `Bearer ${regularUserToken}`);
 
             expect(res.status).toBe(200);
-            expect(res.body.some((m: { _id: string }) => m._id === deletedMessageId)).toBe(false);
+            expect(res.body.some((m: { id: string }) => m.id === deletedMessageId)).toBe(false);
         });
 
         it('should show soft-deleted pinned messages to audit users', async () => {
@@ -156,7 +156,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
                 .set('Authorization', `Bearer ${auditToken}`);
 
             expect(res.status).toBe(200);
-            expect(res.body.some((m: { _id: string }) => m._id === deletedMessageId)).toBe(true);
+            expect(res.body.some((m: { id: string }) => m.id === deletedMessageId)).toBe(true);
         });
     });
 
@@ -168,7 +168,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
                 .set('Authorization', `Bearer ${regularUserToken}`)
                 .send({ text });
 
-            const messageId = sendRes.body._id;
+            const messageId = sendRes.body.id;
 
             await request(app)
                 .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${messageId}`)
@@ -194,7 +194,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
                 .set('Authorization', `Bearer ${regularUserToken}`)
                 .send({ text: 'Fixed text' });
 
-            deletedMessageId = sendRes.body._id;
+            deletedMessageId = sendRes.body.id;
 
             await request(app)
                 .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}`)

@@ -40,7 +40,6 @@ import {
     BotUploadPictureResponseDTO,
     BotUploadBannerResponseDTO,
 } from './dto/bot.response.dto';
-import { injectable } from 'inversify';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { Types } from 'mongoose';
@@ -78,6 +77,7 @@ import {
     mapBotToServerPermissions,
 } from '@/utils/botPermissions';
 import { PermissionService } from '@/permissions/PermissionService';
+import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import {
     GetBotTokenRequestDTO,
     CreateBotRequestDTO,
@@ -135,7 +135,6 @@ async function sanitizeBotUsername(name: string): Promise<string> {
 
 @ApiTags('Bots')
 @ApiBearerAuth()
-@injectable()
 @Controller('api/v1/bots')
 export class BotController {
     public constructor(
@@ -163,7 +162,7 @@ export class BotController {
                 type: 'commands_updated',
                 payload: {
                     serverId: serverId.toString(),
-                    botId: bot._id.toString(),
+                    botId: getDocumentIdString(bot),
                 },
             });
         });
@@ -193,7 +192,7 @@ export class BotController {
         };
 
         const serverCount = await ServerMember.countDocuments({
-            userId: botUser._id,
+            userId: getDocumentId(botUser) as Types.ObjectId,
         });
 
         const mappedUser = mapUser(botUser);
@@ -253,7 +252,7 @@ export class BotController {
         }
 
         const token = generateJWT({
-            id: botUser._id.toString(),
+            id: getDocumentIdString(botUser),
             login: `bot.${client_id}`,
             username: botUser.username,
             tokenVersion: botUser.tokenVersion,
@@ -305,12 +304,12 @@ export class BotController {
         const bot = await Bot.create({
             clientId,
             clientSecretHash,
-            userId: botUser._id,
+            userId: getDocumentId(botUser) as Types.ObjectId,
             ownerId,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS },
         });
 
-        const botDoc = await Bot.findById(bot._id)
+        const botDoc = await Bot.findById(getDocumentId(bot))
             .populate(
                 'userId',
                 'username displayName bio profilePicture banner bannerColor isBot createdAt',
@@ -559,7 +558,7 @@ export class BotController {
         }
 
         const updatedUser = await User.findByIdAndUpdate(
-            botUser._id,
+            getDocumentId(botUser) as Types.ObjectId,
             { $inc: { tokenVersion: 1 } },
             { new: true },
         ).lean();
@@ -567,7 +566,7 @@ export class BotController {
         if (updatedUser === null) throw new NotFoundException('User not found');
 
         const token = generateJWT({
-            id: botUser._id.toString(),
+            id: getDocumentIdString(botUser),
             login: `bot.${clientId}`,
             username: botUser.username,
             tokenVersion: updatedUser.tokenVersion ?? 0,
@@ -667,19 +666,22 @@ export class BotController {
             serverId: serverOid,
             name: botName,
             managed: true,
-            managedBotId: bot._id,
+            managedBotId: getDocumentId(bot) as Types.ObjectId,
             position,
             separateFromOtherRoles: true,
             permissions: serverPerms,
             glowEnabled: false,
         });
 
-        const roles: Types.ObjectId[] = [managedRole._id];
+        const roles: Types.ObjectId[] = [
+            getDocumentId(managedRole) as Types.ObjectId,
+        ];
         const everyoneRole = await Role.findOne({
             serverId: serverOid,
             name: '@everyone',
         }).lean();
-        if (everyoneRole !== null) roles.push(everyoneRole._id);
+        if (everyoneRole !== null)
+            roles.push(getDocumentId(everyoneRole) as Types.ObjectId);
         if (server.defaultRoleId) roles.push(server.defaultRoleId);
 
         await ServerMember.create({
@@ -745,7 +747,9 @@ export class BotController {
             throw new ForbiddenException('Not your bot');
         }
 
-        return this.slashCommandRepo.findByBotId(bot._id);
+        return this.slashCommandRepo.findByBotId(
+            getDocumentId(bot) as Types.ObjectId,
+        );
     }
 
     @UseGuards(JwtAuthGuard)
@@ -766,13 +770,15 @@ export class BotController {
         const isSelf = bot.userId.toString() === req.user.id;
         if (!isOwner && !isSelf) throw new ForbiddenException('Not your bot');
 
-        await this.slashCommandRepo.deleteByBotId(bot._id);
+        await this.slashCommandRepo.deleteByBotId(
+            getDocumentId(bot) as Types.ObjectId,
+        );
 
         const created = [];
         for (const cmd of body.commands) {
             created.push(
                 await this.slashCommandRepo.create({
-                    botId: bot._id,
+                    botId: getDocumentId(bot) as Types.ObjectId,
                     name: cmd.name.toLowerCase(),
                     description: cmd.description,
                     options: cmd.options || [],
@@ -881,14 +887,17 @@ export class BotController {
                 ),
             );
 
-            await this.userRepo.updateProfilePicture(botUser._id, filename);
+            await this.userRepo.updateProfilePicture(
+                getDocumentId(botUser) as Types.ObjectId,
+                filename,
+            );
             const pictureUrl = `/api/v1/profile/picture/${filename}`;
 
             const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
-                botUser._id,
+                getDocumentId(botUser) as Types.ObjectId,
             );
             const updatePayload = {
-                userId: botUser._id.toString(),
+                userId: getDocumentIdString(botUser),
                 profilePicture: pictureUrl,
             };
             serverIds.forEach((sid) => {
@@ -1001,11 +1010,14 @@ export class BotController {
                 ),
             );
 
-            await this.userRepo.updateBanner(botUser._id, filename);
+            await this.userRepo.updateBanner(
+                getDocumentId(botUser) as Types.ObjectId,
+                filename,
+            );
             const bannerUrl = `/api/v1/profile/banner/${filename}`;
 
             const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
-                botUser._id,
+                getDocumentId(botUser) as Types.ObjectId,
             );
             const bannerPayload = {
                 username: botUser.username ?? '',
