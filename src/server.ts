@@ -111,6 +111,8 @@ export function setupExpressApp(app: Application): Application {
                                   'http://localhost:8001',
                                   'http://127.0.0.1:8000',
                                   'http://127.0.0.1:8001',
+                                  'http://localhost:5151',
+                                  'http://127.0.0.1:5151',
                               ]
                             : []),
                     ],
@@ -146,6 +148,8 @@ export function setupExpressApp(app: Application): Application {
                                   'ws://localhost:8001',
                                   'ws://127.0.0.1:8000',
                                   'ws://127.0.0.1:8001',
+                                  'http://localhost:5151',
+                                  'http://127.0.0.1:5151',
                               ]
                             : []),
                     ],

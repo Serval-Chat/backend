@@ -24,13 +24,24 @@ function mergeHighestRolePermission(
     rolesByAscPosition: readonly ServerRole[],
     permission: PermissionKey,
 ): boolean | undefined {
-    // Process low -> high, where higher position overrides lower.
-    let value: boolean | undefined;
+    let hasAnyTrue = false;
+    let hasAnyDefined = false;
+
     for (const role of rolesByAscPosition) {
         const v = getPermissionValue(role.permissions, permission);
-        if (v !== undefined) value = v;
+        if (v !== undefined) {
+            hasAnyDefined = true;
+            if (v === true) {
+                hasAnyTrue = true;
+            }
+        }
     }
-    return value;
+
+    if (hasAnyTrue) return true;
+
+    if (hasAnyDefined) return false;
+
+    return undefined;
 }
 
 function applyOverridesForRoles(
@@ -40,14 +51,29 @@ function applyOverridesForRoles(
 ): boolean | undefined {
     if (!overrides) return undefined;
 
-    // Process low -> high, where higher position overrides lower.
-    let value: boolean | undefined;
+    // Use OR logic: if ANY role's override grants the permission, return true
+    let hasAnyTrue = false;
+    let hasAnyDefined = false;
+
     for (const role of rolesByAscPosition) {
         const roleOverride = overrides.get(role.id.toString());
         const v = getPermissionValue(roleOverride, permission);
-        if (v !== undefined) value = v;
+        if (v !== undefined) {
+            hasAnyDefined = true;
+            if (v === true) {
+                hasAnyTrue = true;
+            }
+        }
     }
-    return value;
+
+    // If any role's override grants the permission, return true
+    if (hasAnyTrue) return true;
+
+    // If at least one role has an override defined (but all are false), return false
+    if (hasAnyDefined) return false;
+
+    // If no role has an override for this permission, return undefined (fall through)
+    return undefined;
 }
 
 export class PermissionResolver {
