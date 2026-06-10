@@ -218,6 +218,21 @@ describe('EmbedService', () => {
             expect(mockScraperService.scrape).not.toHaveBeenCalled();
         });
 
+        it('should skip Klipy links', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                serverId: new Types.ObjectId(),
+                channelId: new Types.ObjectId(),
+                text: 'Check out this GIF: https://klipy.com/gifs/so-cute-cat-5--kAIU192Mj',
+                embeds: [],
+            } as unknown as IServerMessage;
+
+            await service.processServerMessage(message);
+
+            expect(mockScraperService.scrape).not.toHaveBeenCalled();
+            expect(mockServerMessageRepo.update).not.toHaveBeenCalled();
+        });
+
         it('should handle trailing slash differences during comparison', async () => {
             const message = {
                 _id: new Types.ObjectId(),

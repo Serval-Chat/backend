@@ -93,6 +93,7 @@ export class EmbedService {
             if (url.includes('/api/v1/files/download/')) continue;
             if (url.includes('/api/v1/files/proxy/')) continue;
             if (isInternalUrl(url)) continue;
+            if (url.includes('klipy.com/')) continue;
 
             const norm = url.replace(/\/$/, '');
             const currentCount = textCounts[norm] ?? 0;
