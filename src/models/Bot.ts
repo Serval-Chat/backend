@@ -1,7 +1,6 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
 import { Schema, model } from 'mongoose';
 import type { Document, Types } from 'mongoose';
-import crypto from 'crypto';
 
 export const BOT_PERMISSION_KEYS = [
     'readMessages',
@@ -70,19 +69,23 @@ export const DEFAULT_BOT_PERMISSIONS: BotPermissions = {
 export interface IBot extends Document {
     _id: Types.ObjectId;
     clientId: string;
-    clientSecretHash: string;
+    botTokenHash: string;
     userId: Types.ObjectId;
     ownerId: Types.ObjectId;
     botPermissions: BotPermissions;
     createdAt: Date;
     updatedAt: Date;
-    verifySecret(secret: string): boolean;
 }
 
 const schema = new Schema<IBot>(
     {
         clientId: { type: String, required: true, unique: true },
-        clientSecretHash: { type: String, required: true, select: false },
+        botTokenHash: {
+            type: String,
+            required: true,
+            select: false,
+            index: true,
+        },
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         botPermissions: {
@@ -123,10 +126,5 @@ const schema = new Schema<IBot>(
 );
 
 schema.plugin(mongooseIdPlugin);
-
-schema.methods.verifySecret = function (secret: string): boolean {
-    const hash = crypto.createHash('sha256').update(secret).digest('hex');
-    return hash === this.clientSecretHash;
-};
 
 export const Bot = model<IBot>('Bot', schema);

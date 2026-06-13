@@ -32,7 +32,6 @@ import {
     BotTokenResponseDTO,
     BotResponseDTO,
     CreateBotResponseDTO,
-    BotSecretResponseDTO,
     BotDeleteResponseDTO,
     BotServerCountResponseDTO,
     BotAuthorizeResponseDTO,
@@ -41,7 +40,6 @@ import {
     BotUploadBannerResponseDTO,
 } from './dto/bot.response.dto';
 import crypto from 'crypto';
-import bcrypt from 'bcrypt';
 import { Types } from 'mongoose';
 
 import { TYPES } from '@/di/types';
@@ -55,7 +53,6 @@ import {
 } from '@/models/Bot';
 import { User } from '@/models/User';
 import { Server, ServerMember, ServerBan, Role } from '@/models/Server';
-import { generateJWT } from '@/utils/jwt';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { storage, imageFileFilter } from '@/config/multer';
@@ -79,7 +76,6 @@ import {
 import { PermissionService } from '@/permissions/PermissionService';
 import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import {
-    GetBotTokenRequestDTO,
     CreateBotRequestDTO,
     UpdateBotRequestDTO,
     UpdateBotPermissionsRequestDTO,
@@ -87,24 +83,16 @@ import {
     UpdateBotCommandsRequestDTO,
 } from './dto/bot.request.dto';
 
-async function hashSecret(secret: string): Promise<string> {
-    return bcrypt.hash(secret, 12);
-}
-
-async function verifySecret(secret: string, hash: string): Promise<boolean> {
-    if (hash.startsWith('$2b$') || hash.startsWith('$2a$')) {
-        return bcrypt.compare(secret, hash);
-    }
-    const sha256 = crypto.createHash('sha256').update(secret).digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(sha256), Buffer.from(hash));
-}
-
 function generateClientId(): string {
     return crypto.randomBytes(16).toString('hex');
 }
 
-function generateClientSecret(): string {
-    return crypto.randomBytes(32).toString('hex');
+function generateBotToken(): string {
+    return `serchat_${crypto.randomBytes(32).toString('hex')}`;
+}
+
+function hashBotToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 function validateClientId(clientId: string): void {
@@ -212,56 +200,6 @@ export class BotController {
         };
     }
 
-    @Post('token')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Exchange client credentials for a bot token' })
-    @ApiOkResponse({ type: BotTokenResponseDTO })
-    public async getToken(@Body() body: GetBotTokenRequestDTO) {
-        const { client_id, client_secret } = body;
-
-        if (client_id === '' || client_secret === '') {
-            throw new BadRequestException(
-                'client_id and client_secret required',
-            );
-        }
-
-        const bot = await Bot.findOne({ clientId: client_id })
-            .select('+clientSecretHash')
-            .populate('userId', 'username tokenVersion deletedAt isBot')
-            .lean();
-
-        if (bot === null) {
-            throw new ForbiddenException('Invalid credentials');
-        }
-
-        const isValid = await verifySecret(client_secret, bot.clientSecretHash);
-        if (!isValid) {
-            throw new ForbiddenException('Invalid credentials');
-        }
-
-        const botUser = bot.userId as unknown as {
-            _id: Types.ObjectId;
-            username: string;
-            tokenVersion: number;
-            deletedAt?: Date;
-            isBot: boolean;
-        };
-
-        if (botUser.deletedAt !== undefined) {
-            throw new ForbiddenException('Bot account disabled');
-        }
-
-        const token = generateJWT({
-            id: getDocumentIdString(botUser),
-            login: `bot.${client_id}`,
-            username: botUser.username,
-            tokenVersion: botUser.tokenVersion,
-            isBot: true,
-        });
-
-        return { token };
-    }
-
     @UseGuards(JwtAuthGuard)
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -287,8 +225,8 @@ export class BotController {
         }
 
         const clientId = generateClientId();
-        const clientSecret = generateClientSecret();
-        const clientSecretHash = await hashSecret(clientSecret);
+        const botToken = generateBotToken();
+        const botTokenHash = hashBotToken(botToken);
 
         const username = await sanitizeBotUsername(name.trim());
         const botUser = await User.create({
@@ -303,7 +241,7 @@ export class BotController {
 
         const bot = await Bot.create({
             clientId,
-            clientSecretHash,
+            botTokenHash,
             userId: getDocumentId(botUser) as Types.ObjectId,
             ownerId,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS },
@@ -323,7 +261,7 @@ export class BotController {
             }
         }
 
-        return { bot: botDoc, clientSecret };
+        return { bot: botDoc, token: botToken };
     }
 
     @UseGuards(JwtAuthGuard)
@@ -500,35 +438,11 @@ export class BotController {
     }
 
     @UseGuards(JwtAuthGuard)
-    @Post(':clientId/reset-secret')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Reset bot client secret (owner only)' })
-    @ApiOkResponse({ type: BotSecretResponseDTO })
-    public async resetSecret(
-        @Req() req: AuthenticatedRequest,
-        @Param('clientId') clientId: string,
-    ) {
-        validateClientId(clientId);
-        const bot = await Bot.findOne({ clientId });
-        if (bot === null) throw new NotFoundException('Bot not found');
-        if (bot.ownerId.toString() !== req.user.id) {
-            throw new ForbiddenException('Not your bot');
-        }
-
-        const newSecret = generateClientSecret();
-        bot.clientSecretHash = await hashSecret(newSecret);
-        await bot.save();
-        await User.findByIdAndUpdate(bot.userId, { $inc: { tokenVersion: 1 } });
-
-        return { clientSecret: newSecret };
-    }
-
-    @UseGuards(JwtAuthGuard)
     @Post(':clientId/reset-token')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary:
-            'Invalidate all existing bot tokens and return a new one (owner only)',
+            'Regenerate bot token, invalidating the previous one (owner only)',
     })
     @ApiOkResponse({ type: BotTokenResponseDTO })
     public async resetToken(
@@ -536,44 +450,24 @@ export class BotController {
         @Param('clientId') clientId: string,
     ) {
         validateClientId(clientId);
-        const bot = await Bot.findOne({ clientId })
-            .populate('userId', 'username tokenVersion deletedAt isBot')
-            .lean();
+        const bot = await Bot.findOne({ clientId });
 
         if (bot === null) throw new NotFoundException('Bot not found');
         if (bot.ownerId.toString() !== req.user.id) {
             throw new ForbiddenException('Not your bot');
         }
 
-        const botUser = bot.userId as unknown as {
-            _id: Types.ObjectId;
-            username: string;
-            tokenVersion: number;
-            deletedAt?: Date;
-            isBot: boolean;
-        };
-
-        if (botUser.deletedAt !== undefined) {
+        const botUser = await User.findById(bot.userId).lean();
+        if (botUser === null || botUser.deletedAt !== undefined) {
             throw new ForbiddenException('Bot account disabled');
         }
 
-        const updatedUser = await User.findByIdAndUpdate(
-            getDocumentId(botUser) as Types.ObjectId,
-            { $inc: { tokenVersion: 1 } },
-            { new: true },
-        ).lean();
+        const newToken = generateBotToken();
+        bot.botTokenHash = hashBotToken(newToken);
+        await bot.save();
+        await User.findByIdAndUpdate(bot.userId, { $inc: { tokenVersion: 1 } });
 
-        if (updatedUser === null) throw new NotFoundException('User not found');
-
-        const token = generateJWT({
-            id: getDocumentIdString(botUser),
-            login: `bot.${clientId}`,
-            username: botUser.username,
-            tokenVersion: updatedUser.tokenVersion ?? 0,
-            isBot: true,
-        });
-
-        return { token };
+        return { token: newToken };
     }
 
     @UseGuards(JwtAuthGuard, IsHumanGuard)

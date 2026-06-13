@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 import {
     BadRequestException,
     ConflictException,
@@ -98,10 +96,6 @@ jest.mock('@/models/Server', () => ({
     Role: { find: jest.fn(), findOne: jest.fn() },
 }));
 
-jest.mock('@/utils/jwt', () => ({
-    generateJWT: jest.fn().mockReturnValue('mock.jwt.token'),
-}));
-
 import { Bot } from '@/models/Bot';
 import { Server, ServerBan, ServerMember, Role } from '@/models/Server';
 import { User } from '@/models/User';
@@ -113,10 +107,6 @@ function makeChain(value: unknown) {
         populate: jest.fn().mockReturnThis(),
         lean: jest.fn().mockResolvedValue(value),
     };
-}
-
-function sha256(input: string) {
-    return crypto.createHash('sha256').update(input).digest('hex');
 }
 
 const OWNER_ID = new Types.ObjectId().toHexString();
@@ -205,93 +195,6 @@ describe('getPublicInfo', () => {
         expect(result.username).toBe('mybot');
         expect(result.displayName).toBe('My Bot');
         expect(result.serverCount).toBe(7);
-    });
-});
-
-describe('getToken', () => {
-    it('throws BadRequestException when client_id or client_secret missing', async () => {
-        await expect(
-            controller.getToken({ client_id: '', client_secret: 'x' }),
-        ).rejects.toThrow(BadRequestException);
-
-        await expect(
-            controller.getToken({ client_id: 'x', client_secret: '' }),
-        ).rejects.toThrow(BadRequestException);
-    });
-
-    it('throws ForbiddenException when bot does not exist', async () => {
-        (Bot.findOne as jest.Mock).mockReturnValue(makeChain(null));
-        await expect(
-            controller.getToken({
-                client_id: '0123456789abcdef0123456789abcdef',
-                client_secret: 'secret',
-            }),
-        ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('throws ForbiddenException when secret is wrong', async () => {
-        (Bot.findOne as jest.Mock).mockReturnValue(
-            makeChain({
-                clientId: '0123456789abcdef0123456789abcdef',
-                clientSecretHash: sha256('correct-secret'),
-                userId: {
-                    _id: new Types.ObjectId(),
-                    username: 'bot',
-                    tokenVersion: 0,
-                    isBot: true,
-                },
-            }),
-        );
-        await expect(
-            controller.getToken({
-                client_id: '0123456789abcdef0123456789abcdef',
-                client_secret: 'wrong-secret',
-            }),
-        ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('throws ForbiddenException when bot account is disabled', async () => {
-        const secret = 'valid-secret';
-        (Bot.findOne as jest.Mock).mockReturnValue(
-            makeChain({
-                clientId: '0123456789abcdef0123456789abcdef',
-                clientSecretHash: sha256(secret),
-                userId: {
-                    _id: new Types.ObjectId(),
-                    username: 'bot',
-                    tokenVersion: 0,
-                    isBot: true,
-                    deletedAt: new Date(),
-                },
-            }),
-        );
-        await expect(
-            controller.getToken({
-                client_id: '0123456789abcdef0123456789abcdef',
-                client_secret: secret,
-            }),
-        ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('returns a token on valid credentials', async () => {
-        const secret = 'valid-secret';
-        (Bot.findOne as jest.Mock).mockReturnValue(
-            makeChain({
-                clientId: '0123456789abcdef0123456789abcdef',
-                clientSecretHash: sha256(secret),
-                userId: {
-                    _id: new Types.ObjectId(),
-                    username: 'testbot',
-                    tokenVersion: 1,
-                    isBot: true,
-                },
-            }),
-        );
-        const result = await controller.getToken({
-            client_id: '0123456789abcdef0123456789abcdef',
-            client_secret: secret,
-        });
-        expect(result).toEqual({ token: 'mock.jwt.token' });
     });
 });
 

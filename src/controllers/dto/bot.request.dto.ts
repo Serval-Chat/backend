@@ -11,16 +11,6 @@ import { MAX_MESSAGE_LENGTH } from '@/config/env';
 import { Type } from 'class-transformer';
 import { SlashCommandOptionDTO } from './application.request.dto';
 
-export class GetBotTokenRequestDTO {
-    @ApiProperty()
-    @IsString()
-    public client_id!: string;
-
-    @ApiProperty()
-    @IsString()
-    public client_secret!: string;
-}
-
 export class CreateBotRequestDTO {
     @ApiProperty()
     @IsString()

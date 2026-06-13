@@ -65,17 +65,12 @@ export class CreateBotResponseDTO {
     public bot!: BotResponseDTO;
 
     @ApiProperty()
-    public clientSecret!: string;
+    public token!: string;
 }
 
 export class BotTokenResponseDTO {
     @ApiProperty()
     public token!: string;
-}
-
-export class BotSecretResponseDTO {
-    @ApiProperty()
-    public clientSecret!: string;
 }
 
 export class BotDeleteResponseDTO {

@@ -7,6 +7,7 @@ import {
     ForbiddenException,
     Inject,
 } from '@nestjs/common';
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { Reflector } from '@nestjs/core';
 import { TYPES } from '@/di/types';
@@ -17,6 +18,7 @@ import * as jwt from 'jsonwebtoken';
 import { JWTPayload } from '@/utils/jwt';
 import { PERMISSIONS_KEY } from './permissions.decorator';
 import { IUser } from '@/models/User';
+import { Bot } from '@/models/Bot';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -51,70 +53,106 @@ export class JwtAuthGuard implements CanActivate {
             throw new UnauthorizedException('No token provided');
         }
 
+        let decoded: JWTPayload | null = null;
         try {
-            const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-            if (decoded.type && decoded.type !== 'access') {
-                throw new UnauthorizedException('Invalid token');
-            }
+            const verified = jwt.verify(token, JWT_SECRET) as JWTPayload;
+            if (!verified.type || verified.type === 'access')
+                decoded = verified;
+        } catch {}
 
-            // Check if account is deleted and validate tokenVersion
-            const user = await this.userRepo.findById(
-                new mongoose.Types.ObjectId(decoded.id),
-            );
-
-            if (!user || user.deletedAt) {
-                throw new UnauthorizedException('Invalid token');
-            }
-
-            // Validate tokenVersion
-            if (
-                Number(user.tokenVersion ?? 0) !== Number(decoded.tokenVersion)
-            ) {
-                throw new UnauthorizedException('Token expired');
-            }
-
-            // Check for bans
-            await this.banRepo.checkExpired(
-                new mongoose.Types.ObjectId(decoded.id),
-            );
-            const activeBan = await this.banRepo.findActiveByUserId(
-                new mongoose.Types.ObjectId(decoded.id),
-            );
-            if (activeBan) {
-                throw new ForbiddenException({
-                    error: 'Account banned',
-                    ban: {
-                        reason: activeBan.reason,
-                        expirationTimestamp: activeBan.expirationTimestamp,
-                    },
-                });
-            }
-
-            // Check permissions if required
-            if (
-                requiredPermissions !== undefined &&
-                requiredPermissions.length > 0
-            ) {
-                const userPermissions = (user as IUser).permissions;
-                if (!userPermissions) {
-                    throw new ForbiddenException('Insufficient permissions');
-                }
-
-                const hasAllPermissions = requiredPermissions.every(
-                    (p) =>
-                        (userPermissions as unknown as Record<string, boolean>)[
-                            p
-                        ] === true,
+        try {
+            if (decoded !== null) {
+                const user = await this.userRepo.findById(
+                    new mongoose.Types.ObjectId(decoded.id),
                 );
 
-                if (!hasAllPermissions) {
-                    throw new ForbiddenException('Insufficient permissions');
+                if (!user || user.deletedAt) {
+                    throw new UnauthorizedException('Invalid token');
                 }
+
+                if (
+                    Number(user.tokenVersion ?? 0) !==
+                    Number(decoded.tokenVersion)
+                ) {
+                    throw new UnauthorizedException('Token expired');
+                }
+
+                await this.banRepo.checkExpired(
+                    new mongoose.Types.ObjectId(decoded.id),
+                );
+                const activeBan = await this.banRepo.findActiveByUserId(
+                    new mongoose.Types.ObjectId(decoded.id),
+                );
+                if (activeBan) {
+                    throw new ForbiddenException({
+                        error: 'Account banned',
+                        ban: {
+                            reason: activeBan.reason,
+                            expirationTimestamp: activeBan.expirationTimestamp,
+                        },
+                    });
+                }
+
+                if (
+                    requiredPermissions !== undefined &&
+                    requiredPermissions.length > 0
+                ) {
+                    const userPermissions = (user as IUser).permissions;
+                    if (!userPermissions)
+                        throw new ForbiddenException(
+                            'Insufficient permissions',
+                        );
+                    const hasAll = requiredPermissions.every(
+                        (p) =>
+                            (
+                                userPermissions as unknown as Record<
+                                    string,
+                                    boolean
+                                >
+                            )[p] === true,
+                    );
+                    if (!hasAll)
+                        throw new ForbiddenException(
+                            'Insufficient permissions',
+                        );
+                }
+
+                if (request.user === undefined) request.user = decoded;
+                return true;
             }
 
-            if (request.user === undefined) {
-                request.user = decoded;
-            }
+            const tokenHash = crypto
+                .createHash('sha256')
+                .update(token)
+                .digest('hex');
+            const bot = await Bot.findOne({ botTokenHash: tokenHash })
+                .select('+botTokenHash')
+                .populate('userId', 'username tokenVersion deletedAt isBot')
+                .lean();
+
+            if (!bot) throw new UnauthorizedException('Invalid token');
+
+            const botUser = bot.userId as unknown as {
+                _id: mongoose.Types.ObjectId;
+                username: string;
+                tokenVersion: number;
+                deletedAt?: Date;
+                isBot: boolean;
+            };
+
+            if (botUser.deletedAt !== undefined)
+                throw new UnauthorizedException('Invalid token');
+
+            const botPayload: JWTPayload = {
+                type: 'access',
+                id: botUser._id.toString(),
+                login: `bot.${bot.clientId}`,
+                username: botUser.username,
+                tokenVersion: botUser.tokenVersion,
+                isBot: true,
+            };
+
+            if (request.user === undefined) request.user = botPayload;
             return true;
         } catch (err: unknown) {
             if (
