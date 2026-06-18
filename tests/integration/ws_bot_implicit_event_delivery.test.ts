@@ -226,7 +226,7 @@ describe('WS bot implicit event delivery', () => {
 
         const botDoc = await Bot.create({
             clientId: `cid_${Date.now()}`,
-            clientSecretHash: crypto.createHash('sha256').update('secret').digest('hex'),
+            botTokenHash: crypto.createHash('sha256').update('secret').digest('hex'),
             ownerId: owner._id,
             userId: botUser._id,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS, joinServers: true },

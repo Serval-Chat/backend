@@ -61,6 +61,10 @@ describe('ServerMessageController embeds', () => {
                     }),
                 }),
             } as never, // IRedisService
+            {
+                indexChannelMessage: jest.fn().mockResolvedValue(undefined),
+                removeChannelMessage: jest.fn().mockResolvedValue(undefined),
+            } as never, // IMessageSearchService
         );
 
         mockServerRepo.findById.mockResolvedValue({

@@ -31,7 +31,7 @@ describe('Irrevocable Bot Roles Integration', () => {
         const botUser = await createTestUser({ username: 'test_bot', isBot: true });
         const bot = await Bot.create({
             clientId: '0123456789abcdef0123456789abcdef',
-            clientSecretHash: 'hash',
+            botTokenHash: 'hash',
             userId: botUser._id,
             ownerId: owner._id,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS, joinServers: true },

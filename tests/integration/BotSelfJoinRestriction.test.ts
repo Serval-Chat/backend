@@ -31,7 +31,7 @@ describe('Bot Self-Authorization Restriction', () => {
         const botUser = await createTestUser({ username: 'self_joining_bot', isBot: true });
         const bot = await Bot.create({
             clientId: '1234567890abcdef1234567890abcdef',
-            clientSecretHash: 'hash',
+            botTokenHash: 'hash',
             userId: botUser._id,
             ownerId: owner._id,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS },
@@ -57,7 +57,7 @@ describe('Bot Self-Authorization Restriction', () => {
         const botUser = await createTestUser({ username: 'legit_bot', isBot: true });
         const bot = await Bot.create({
             clientId: 'abcdef1234567890abcdef1234567890',
-            clientSecretHash: 'hash',
+            botTokenHash: 'hash',
             userId: botUser._id,
             ownerId: owner._id,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS },

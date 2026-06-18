@@ -49,6 +49,7 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { EmbedService } from '@/services/EmbedService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
+import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import type {
     IMessageServerEvent,
     IChannelUnreadUpdatedEvent,
@@ -98,6 +99,8 @@ export class ServerMessageController {
         private embedService: EmbedService,
         @Inject(TYPES.RedisService)
         private redisService: IRedisService,
+        @Inject(TYPES.MessageSearchService)
+        private searchService: IMessageSearchService,
     ) {}
 
     private allowlistProxyUrls(msgs: IServerMessage[]): void {
@@ -414,6 +417,15 @@ export class ServerMessageController {
         await this.channelRepo.updateLastMessageAt(
             new mongoose.Types.ObjectId(channelId),
         );
+
+        this.searchService
+            .indexChannelMessage(message, isBot)
+            .catch((err: unknown) => {
+                this.logger.error(
+                    'Failed to index channel message',
+                    (err as Error).stack,
+                );
+            });
 
         // Track message metrics
         messagesSentCounter.labels('server').inc();
@@ -1166,6 +1178,15 @@ export class ServerMessageController {
             new mongoose.Types.ObjectId(messageId),
         );
 
+        this.searchService
+            .removeChannelMessage(messageId)
+            .catch((err: unknown) => {
+                this.logger.error(
+                    'Failed to remove channel message from index',
+                    (err as Error).stack,
+                );
+            });
+
         await this.wsServer.broadcastToServerWithPermission(
             serverId,
             {
@@ -1327,6 +1348,18 @@ export class ServerMessageController {
         if (updated === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
+
+        this.searchService
+            .updateChannelMessageFlags(messageId, {
+                isPinned: updated.isPinned ?? false,
+            })
+            .catch((err: unknown) => {
+                this.logger.error(
+                    '[ServerMessageController] Failed to re-index pinned message',
+                    err,
+                );
+            });
+
         return updated;
     }
 
@@ -1428,6 +1461,18 @@ export class ServerMessageController {
         if (updated === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
+
+        this.searchService
+            .updateChannelMessageFlags(messageId, {
+                isSticky: updated.isSticky ?? false,
+            })
+            .catch((err: unknown) => {
+                this.logger.error(
+                    '[ServerMessageController] Failed to re-index stickied message',
+                    err,
+                );
+            });
+
         return updated;
     }
 }

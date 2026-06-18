@@ -16,6 +16,7 @@ import { ScraperService } from '@/services/ScraperService';
 import { EmbedService } from '@/services/EmbedService';
 import { ServerVerificationService } from '@/services/ServerVerificationService';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
+import { MessageSearchService } from '@/services/MessageSearchService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 import { container } from '@/di/container';
@@ -95,6 +96,11 @@ const esConfig = elasticsearchConfig as {
             useClass: ServerDiscoveryService,
         },
         {
+            provide: TYPES.MessageSearchService,
+            useFactory: () =>
+                container.get<MessageSearchService>(TYPES.MessageSearchService),
+        },
+        {
             provide: TYPES.ElasticsearchConfig,
             useValue: esConfig,
         },
@@ -115,6 +121,7 @@ const esConfig = elasticsearchConfig as {
         TYPES.EmbedService,
         TYPES.ServerVerificationService,
         TYPES.ServerDiscoveryService,
+        TYPES.MessageSearchService,
         TYPES.ElasticsearchConfig,
     ],
 })

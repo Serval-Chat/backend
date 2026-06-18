@@ -79,6 +79,8 @@ import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
+import { MessageSearchService } from '@/services/MessageSearchService';
+import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import { LiveKitService } from '@/services/LiveKitService';
 import { RedisService } from '@/services/RedisService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
@@ -306,6 +308,11 @@ container
 container
     .bind<ServerDiscoveryService>(TYPES.ServerDiscoveryService)
     .to(ServerDiscoveryService)
+    .inSingletonScope();
+
+container
+    .bind<IMessageSearchService>(TYPES.MessageSearchService)
+    .to(MessageSearchService)
     .inSingletonScope();
 
 container.bind(TYPES.ElasticsearchConfig).toConstantValue(elasticsearchConfig);

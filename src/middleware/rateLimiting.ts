@@ -147,6 +147,18 @@ export const webhookExecutionLimiter = rateLimit({
     message: 'Too many webhook requests, please try again later.',
 });
 
+export const messageSearchLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:message-search:') }
+        : {}),
+    windowMs: 60_000,
+    max: 30,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many search requests, please try again later.',
+});
+
 export const discoverySearchLimiter = rateLimit({
     ...(process.env.NODE_ENV !== 'test'
         ? { store: getStore('rl:discovery:search:') }

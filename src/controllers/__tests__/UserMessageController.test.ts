@@ -60,6 +60,9 @@ describe('UserMessageController', () => {
                 processServerMessage: jest.fn().mockResolvedValue(undefined),
                 processUserMessage: jest.fn().mockResolvedValue(undefined),
             } as unknown as EmbedService,
+            {
+                removeDmMessage: jest.fn().mockResolvedValue(undefined),
+            } as never,
         );
     });
 

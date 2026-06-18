@@ -65,6 +65,7 @@ import crypto from 'crypto';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
+import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { JWTPayload } from '@/utils/jwt';
 import {
@@ -173,6 +174,8 @@ export class WebhookController {
         private redisService: IRedisService,
         @Inject(TYPES.EmbedService)
         private embedService: EmbedService,
+        @Inject(TYPES.MessageSearchService)
+        private searchService: IMessageSearchService,
     ) {
         // Ensure the uploads directory exists for webhook avatars
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -849,6 +852,15 @@ export class WebhookController {
                     ),
                 );
         }
+
+        this.searchService
+            .indexChannelMessage(message)
+            .catch((err: unknown) => {
+                this.logger.error(
+                    '[WebhookController] Failed to index webhook message',
+                    err,
+                );
+            });
 
         return {
             id: getDocumentIdString(message),

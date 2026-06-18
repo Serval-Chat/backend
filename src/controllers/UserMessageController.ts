@@ -48,6 +48,7 @@ import { JWTPayload } from '@/utils/jwt';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { WsServer } from '@/ws/server';
 import { EmbedService } from '@/services/EmbedService';
+import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import {
     UserEditMessageRequestDTO,
     GetMessagesQueryDTO,
@@ -94,6 +95,8 @@ export class UserMessageController {
         private wsServer: WsServer,
         @Inject(TYPES.EmbedService)
         private embedService: EmbedService,
+        @Inject(TYPES.MessageSearchService)
+        private searchService: IMessageSearchService,
     ) {}
 
     @Get('unread')
@@ -520,6 +523,12 @@ export class UserMessageController {
 
         const deleted = await this.messageRepo.delete(new Types.ObjectId(id));
         if (deleted) {
+            this.searchService.removeDmMessage(id).catch((err: unknown) => {
+                this.logger.error(
+                    'Failed to remove DM message from index',
+                    (err as Error).stack,
+                );
+            });
             this.wsServer.broadcastToUser(message.senderId.toString(), {
                 type: 'message_dm_deleted',
                 payload: { messageId: id },

@@ -39,6 +39,8 @@ import { ServerEmojiController } from './controllers/ServerEmojiController';
 import { ServerStickerController } from './controllers/ServerStickerController';
 import { StickerController } from './controllers/StickerController';
 import { ServerMessageController } from './controllers/ServerMessageController';
+import { ServerMessageSearchController } from './controllers/ServerMessageSearchController';
+import { UserMessageSearchController } from './controllers/UserMessageSearchController';
 import { ServerPublicController } from './controllers/ServerPublicController';
 import { ServerDiscoveryController } from './controllers/ServerDiscoveryController';
 import { SystemController } from './controllers/SystemController';
@@ -57,6 +59,7 @@ import {
     discoverySearchLimiter,
     discoverySettingsLimiter,
     loginLimiter,
+    messageSearchLimiter,
     passwordResetLimiter,
     registrationLimiter,
     sensitiveOperationLimiter,
@@ -152,10 +155,12 @@ import {
         ServerEmojiController,
         ServerStickerController,
         StickerController,
+        ServerMessageSearchController,
         ServerMessageController,
         ServerPublicController,
         ServerDiscoveryController,
         SystemController,
+        UserMessageSearchController,
         UserMessageController,
         SettingsController,
         PushController,
@@ -205,6 +210,17 @@ export class AppModule {
             path: 'api/v1/webhooks/:token',
             method: RequestMethod.POST,
         });
+
+        consumer.apply(messageSearchLimiter).forRoutes(
+            {
+                path: 'api/v1/messages/search',
+                method: RequestMethod.GET,
+            },
+            {
+                path: 'api/v1/servers/:serverId/channels/:channelId/messages/search',
+                method: RequestMethod.GET,
+            },
+        );
 
         consumer.apply(discoverySearchLimiter).forRoutes({
             path: 'api/v1/discovery/servers',

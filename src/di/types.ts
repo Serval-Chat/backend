@@ -53,6 +53,7 @@ export const TYPES = {
     EmbedService: Symbol.for('EmbedService'),
     ServerVerificationService: Symbol.for('ServerVerificationService'),
     ServerDiscoveryService: Symbol.for('ServerDiscoveryService'),
+    MessageSearchService: Symbol.for('MessageSearchService'),
     ElasticsearchConfig: Symbol.for('ElasticsearchConfig'),
 
     // Application

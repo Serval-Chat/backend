@@ -37,6 +37,7 @@ import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepositor
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
+import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import logger from '@/utils/logger';
 import { getDocumentIdString } from '@/utils/mongooseId';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
@@ -69,6 +70,8 @@ export class ChatController {
         private embedService: EmbedService,
         @inject(TYPES.RedisService)
         private redisService: IRedisService,
+        @inject(TYPES.MessageSearchService)
+        private searchService: IMessageSearchService,
     ) {}
 
     /**
@@ -176,6 +179,15 @@ export class ChatController {
                 );
 
                 return { created: msg, newCount: count };
+            });
+
+        this.searchService
+            .indexDmMessage(created, authenticatedUser.isBot)
+            .catch((err: unknown) => {
+                logger.error(
+                    '[ChatController] Failed to index DM message',
+                    (err as Error).stack,
+                );
             });
 
         const redis = this.redisService.getClient();
@@ -409,6 +421,13 @@ export class ChatController {
         }
 
         await this.messageRepo.delete(new Types.ObjectId(messageId));
+
+        this.searchService.removeDmMessage(messageId).catch((err: unknown) => {
+            logger.error(
+                '[ChatController] Failed to remove DM message from index',
+                (err as Error).stack,
+            );
+        });
 
         logger.info(
             `[ChatController] DM message ${messageId} deleted by ${userId}`,

@@ -120,6 +120,10 @@ function buildController(): void {
                 }),
             }),
         } as never,
+        {
+            indexChannelMessage: jest.fn().mockResolvedValue(undefined),
+            removeChannelMessage: jest.fn().mockResolvedValue(undefined),
+        } as never,
     );
 }
 
@@ -168,7 +172,7 @@ beforeEach(() => {
     buildController();
 });
 
-describe('sendMessage — poll creation', () => {
+describe('sendMessage  -  poll creation', () => {
     it('creates a message with a poll attached', async () => {
         const poll = makePoll();
         mockServerMessageRepo.create.mockResolvedValue(makeMessage(poll));
@@ -332,7 +336,7 @@ describe('sendMessage — poll creation', () => {
     });
 });
 
-describe('votePoll — access control', () => {
+describe('votePoll  -  access control', () => {
     it('throws ForbiddenException when user is not a server member', async () => {
         mockMemberRepo.findByServerAndUser.mockResolvedValue(null);
 
@@ -391,7 +395,7 @@ describe('votePoll — access control', () => {
     });
 });
 
-describe('votePoll — poll validation', () => {
+describe('votePoll  -  poll validation', () => {
     it('throws BadRequestException when the message has no poll', async () => {
         const msgWithoutPoll: IServerMessage = {
             _id: new Types.ObjectId(MSG_ID),
@@ -472,7 +476,7 @@ describe('votePoll — poll validation', () => {
     });
 });
 
-describe('votePoll — vote mutation logic', () => {
+describe('votePoll  -  vote mutation logic', () => {
     it("adds the user ObjectId to the selected option's votes array", async () => {
         const poll = makePoll();
         const targetId = poll.options[0]!.id;
@@ -625,7 +629,7 @@ describe('votePoll — vote mutation logic', () => {
     });
 });
 
-describe('votePoll — WebSocket broadcast', () => {
+describe('votePoll  -  WebSocket broadcast', () => {
     it('broadcasts poll_vote_updated_server to the correct channel', async () => {
         const poll = makePoll();
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
@@ -691,7 +695,7 @@ describe('votePoll — WebSocket broadcast', () => {
     });
 });
 
-describe('votePoll — return value', () => {
+describe('votePoll  -  return value', () => {
     it('returns the updated message object from the repository', async () => {
         const poll = makePoll();
         const updatedMsg = { ...makeMessage(poll), text: 'updated' };

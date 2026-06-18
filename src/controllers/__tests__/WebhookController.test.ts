@@ -68,6 +68,9 @@ describe('WebhookController', () => {
                 }),
             } as never,
             {} as never,
+            {
+                indexChannelMessage: jest.fn().mockResolvedValue(undefined),
+            } as never,
         );
     });
 

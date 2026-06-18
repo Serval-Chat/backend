@@ -16,7 +16,7 @@ import {
     IsIn,
     IsMongoId,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
     IsColor,
     IsIntensity,
@@ -27,6 +27,7 @@ import {
     IsFilename,
 } from '@/validation/schemas/common';
 import { VALID_USERNAME_FONTS } from '@/validation/schemas/profile';
+import { sanitizeDisplayName } from '@/utils/textSanitize';
 
 export class UsernameGradientDTO {
     @ApiProperty()
@@ -146,6 +147,9 @@ export class UpdatePronounsRequestDTO {
 export class UpdateDisplayNameRequestDTO {
     @ApiProperty()
     @IsString()
+    @Transform(({ value }) =>
+        typeof value === 'string' ? sanitizeDisplayName(value) : value,
+    )
     @MinLength(1)
     @MaxLength(32)
     @IsOptional()

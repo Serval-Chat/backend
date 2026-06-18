@@ -143,6 +143,7 @@ describe('DM Polls', () => {
             logger as unknown as ILogger,
             wsServer as unknown as any,
             {} as any,
+            { removeDmMessage: jest.fn().mockResolvedValue(undefined) } as any,
         );
 
         chatController = new ChatController(
@@ -156,7 +157,15 @@ describe('DM Polls', () => {
             } as any, // MuteRepository
             transactionManager as unknown as TransactionManager,
             {} as any, // EmbedService
-            {} as any, // RedisService
+            {
+                getClient: jest.fn().mockReturnValue({
+                    setex: jest.fn().mockResolvedValue('OK'),
+                }),
+            } as any, // RedisService
+            {
+                indexDmMessage: jest.fn().mockResolvedValue(undefined),
+                removeDmMessage: jest.fn().mockResolvedValue(undefined),
+            } as any,
         );
         (chatController as unknown as any).wsServer =
             wsServer as unknown as IWsServer;
