@@ -1,5 +1,5 @@
 import { injectable } from 'inversify';
-import { type FilterQuery, type PipelineStage, Types } from 'mongoose';
+import { type QueryFilter, type PipelineStage, Types } from 'mongoose';
 import type {
     IReactionRepository,
     ReactionData,
@@ -53,7 +53,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         }
 
         // Check if this emoji type already exists on the message
-        const emojiExistsQuery: FilterQuery<IReaction> = {
+        const emojiExistsQuery: QueryFilter<IReaction> = {
             messageId,
             messageType,
         };
@@ -102,7 +102,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         emojiId?: string,
     ): Promise<boolean> {
         // Build query
-        const query: FilterQuery<IReaction> = {
+        const query: QueryFilter<IReaction> = {
             messageId,
             messageType,
             userId,
@@ -332,7 +332,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         emoji?: string,
         emojiId?: string,
     ): Promise<boolean> {
-        const query: FilterQuery<IReaction> = {
+        const query: QueryFilter<IReaction> = {
             messageId,
             messageType,
             userId,
@@ -378,7 +378,7 @@ export class MongooseReactionRepository implements IReactionRepository {
         emojiId?: string,
     ): Promise<number> {
         // Build query
-        const query: FilterQuery<IReaction> = {
+        const query: QueryFilter<IReaction> = {
             messageId,
             messageType,
         };

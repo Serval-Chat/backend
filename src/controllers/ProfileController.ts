@@ -142,7 +142,7 @@ export class ProfileController {
 
     private mapConnection(connection: IUserConnection) {
         return {
-            id: connection.id.toString(),
+            id: connection._id.toString(),
             type: connection.type,
             value: connection.value,
             status: connection.status,
@@ -158,7 +158,7 @@ export class ProfileController {
             .exec();
 
         return connections.map((connection) => ({
-            id: connection.id.toString(),
+            id: connection._id.toString(),
             type: connection.type,
             value: connection.value,
         }));
@@ -501,7 +501,7 @@ export class ProfileController {
             return {
                 message: 'Website is already verified',
                 connection: {
-                    id: connection.id.toString(),
+                    id: connection._id.toString(),
                     type: connection.type,
                     value: connection.value,
                 },
@@ -554,7 +554,7 @@ export class ProfileController {
         return {
             message: 'Website verified successfully',
             connection: {
-                id: connection.id.toString(),
+                id: connection._id.toString(),
                 type: connection.type,
                 value: connection.value,
             },

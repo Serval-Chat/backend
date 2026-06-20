@@ -29,22 +29,14 @@ router.use(express.static(PUBLIC_FOLDER_PATH));
 let cachedHtml: string | null = null;
 
 /**
- * SPA Fallback Handler
- * Serves index.html for any unknown non-API routes to support client-side routing.
+ * SPA server
  */
-router.get('*', (req, res, next) => {
-    // Skip API routes - they should be handled by API router
+router.get(/.*/, (req, res, next) => {
     if (req.path.startsWith('/api/')) {
         return next();
     }
 
-    // Skip Swagger UI
     if (req.path.startsWith('/docs')) {
-        return next();
-    }
-
-    // Skip socket.io routes
-    if (req.path.startsWith('/socket.io/')) {
         return next();
     }
 

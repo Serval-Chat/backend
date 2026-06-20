@@ -237,7 +237,6 @@ describe('Deleted Message Visibility Advanced Integration', () => {
             await Friendship.create({
                 user: regularUser.username,
                 friend: otherUser.username,
-                status: 'accepted'
             });
 
             const dmMsg = await Message.create({

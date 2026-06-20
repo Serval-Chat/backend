@@ -8,7 +8,7 @@ import { ServerMessage } from '@/models/Server';
 import { IEmbed } from '@/models/Embed';
 import { Reaction } from '@/models/Reaction';
 import type { IPoll } from '@/models/Message';
-import { type FilterQuery, Types, ClientSession } from 'mongoose';
+import { type QueryFilter, Types, ClientSession } from 'mongoose';
 import type { ReactionData } from '@/di/interfaces/IReactionRepository';
 import type { IMessageAttachment } from '@/models/Attachment';
 
@@ -166,7 +166,7 @@ export class MongooseServerMessageRepository
         id: Types.ObjectId,
         includeDeleted?: boolean,
     ): Promise<IServerMessage | null> {
-        const filter: FilterQuery<IServerMessage> = { _id: id };
+        const filter: QueryFilter<IServerMessage> = { _id: id };
         if (includeDeleted !== true) {
             filter.deletedAt = { $exists: false };
         }
@@ -200,7 +200,7 @@ export class MongooseServerMessageRepository
         let messages: PopulatedServerMessageDoc[] = [];
 
         if (around !== undefined && around !== '') {
-            const targetFilter: FilterQuery<IServerMessage> = {
+            const targetFilter: QueryFilter<IServerMessage> = {
                 _id: new Types.ObjectId(around),
             };
             if (includeDeleted !== true) {
@@ -214,7 +214,7 @@ export class MongooseServerMessageRepository
 
             const targetDate = targetMessage.createdAt;
 
-            const commonFilter: FilterQuery<IServerMessage> = {
+            const commonFilter: QueryFilter<IServerMessage> = {
                 channelId: new Types.ObjectId(channelId.toString()),
             };
             if (includeDeleted !== true) {
@@ -250,7 +250,7 @@ export class MongooseServerMessageRepository
                 (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
             );
         } else {
-            const query: FilterQuery<IServerMessage> = {
+            const query: QueryFilter<IServerMessage> = {
                 channelId: new Types.ObjectId(channelId.toString()),
             };
             if (includeDeleted !== true) {
@@ -377,7 +377,7 @@ export class MongooseServerMessageRepository
         channelId: Types.ObjectId,
         includeDeleted?: boolean,
     ): Promise<number> {
-        const filter: FilterQuery<IServerMessage> = { channelId };
+        const filter: QueryFilter<IServerMessage> = { channelId };
         if (includeDeleted !== true) {
             filter.deletedAt = { $exists: false };
         }
@@ -402,7 +402,7 @@ export class MongooseServerMessageRepository
         userId: Types.ObjectId,
         includeDeleted?: boolean,
     ): Promise<IServerMessage | null> {
-        const filter: FilterQuery<IServerMessage> = {
+        const filter: QueryFilter<IServerMessage> = {
             channelId,
             senderId: userId,
         };
@@ -420,7 +420,7 @@ export class MongooseServerMessageRepository
         channelId: Types.ObjectId,
         includeDeleted?: boolean,
     ): Promise<IServerMessage[]> {
-        const filter: FilterQuery<IServerMessage> = {
+        const filter: QueryFilter<IServerMessage> = {
             channelId: new Types.ObjectId(channelId.toString()),
             $or: [{ isPinned: true }, { isSticky: true }],
         };

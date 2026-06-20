@@ -76,12 +76,10 @@ import { AuthService } from '@/services/AuthService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
 import { ExportService } from '@/services/ExportService';
-import { KlipyService } from '@/services/KlipyService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 import { MessageSearchService } from '@/services/MessageSearchService';
 import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
-import { LiveKitService } from '@/services/LiveKitService';
 import { RedisService } from '@/services/RedisService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { ScraperService } from '@/services/ScraperService';
@@ -269,16 +267,6 @@ container
 container
     .bind<ExportService>(TYPES.ExportService)
     .to(ExportService)
-    .inSingletonScope();
-
-container
-    .bind<KlipyService>(TYPES.KlipyService)
-    .to(KlipyService)
-    .inSingletonScope();
-
-container
-    .bind<LiveKitService>(TYPES.LiveKitService)
-    .to(LiveKitService)
     .inSingletonScope();
 
 container

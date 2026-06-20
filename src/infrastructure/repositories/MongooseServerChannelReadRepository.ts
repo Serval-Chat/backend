@@ -12,13 +12,15 @@ import { ErrorMessages } from '@/constants/errorMessages';
 //
 // Implements IServerChannelReadRepository using Mongoose ServerChannelRead model
 @injectable()
-export class MongooseServerChannelReadRepository implements IServerChannelReadRepository {
+export class MongooseServerChannelReadRepository
+    implements IServerChannelReadRepository
+{
     public async findByServerAndUser(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,
     ): Promise<IServerChannelRead[]> {
         return (await ServerChannelRead.find({
-            serverId,
+            serverId: serverId.toString(),
             userId,
         }).lean()) as unknown as IServerChannelRead[];
     }
@@ -39,7 +41,11 @@ export class MongooseServerChannelReadRepository implements IServerChannelReadRe
         session?: ClientSession,
     ): Promise<IServerChannelRead> {
         const result = (await ServerChannelRead.findOneAndUpdate(
-            { serverId, channelId, userId },
+            {
+                serverId: serverId.toString(),
+                channelId: channelId.toString(),
+                userId,
+            },
             { lastReadAt: new Date() },
             { new: true, upsert: true, session },
         ).lean()) as unknown as IServerChannelRead | null;
@@ -57,7 +63,7 @@ export class MongooseServerChannelReadRepository implements IServerChannelReadRe
         userId: Types.ObjectId,
     ): Promise<void> {
         await ServerChannelRead.updateMany(
-            { serverId, userId },
+            { serverId: serverId.toString(), userId },
             { $set: { lastReadAt: new Date() } },
         );
     }

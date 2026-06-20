@@ -35,7 +35,6 @@ import type {
 import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import { ExportService } from '@/services/ExportService';
-import { LiveKitService } from '@/services/LiveKitService';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { isPermissionKey, Permissions } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -65,7 +64,6 @@ import {
     MessageResponseDTO,
     ReorderResponseDTO,
     PermissionsResponseDTO,
-    VoiceTokenResponseDTO,
 } from './dto/server-channel.response.dto';
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Channels')
@@ -97,8 +95,6 @@ export class ServerChannelController {
         private auditLogRepo: IAuditLogRepository,
         @Inject(TYPES.ServerAuditLogService)
         private serverAuditLogService: IServerAuditLogService,
-        @Inject(TYPES.LiveKitService)
-        private liveKitService: LiveKitService,
         @Inject(TYPES.RoleRepository)
         private roleRepo: IRoleRepository,
         @Inject(TYPES.RedisService)
@@ -1416,76 +1412,5 @@ export class ServerChannelController {
         }
 
         return result;
-    }
-
-    @Get('channels/:channelId/voice-token')
-    @ApiOperation({ summary: 'Get LiveKit voice channel token' })
-    @ApiOkResponse({
-        type: VoiceTokenResponseDTO,
-        description: 'Token generated successfully',
-    })
-    @ApiResponse({ status: 403, description: 'Forbidden' })
-    @ApiResponse({ status: 404, description: 'Channel Not Found' })
-    public async getVoiceToken(
-        @Param('serverId') serverId: string,
-        @Param('channelId') channelId: string,
-        @Req() req: Request,
-    ): Promise<{ token: string; url: string }> {
-        const payload = (req as Request & { user: JWTPayload }).user;
-        const userId = payload.id;
-        const userUsername = payload.username || userId;
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-
-        const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
-        );
-        if (!member) {
-            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
-        }
-
-        const [canView, canConnect] = await Promise.all([
-            this.permissionService.hasChannelPermission(
-                serverOid,
-                userOid,
-                channelOid,
-                'viewChannels',
-            ),
-            this.permissionService.hasChannelPermission(
-                serverOid,
-                userOid,
-                channelOid,
-                'connect',
-            ),
-        ]);
-
-        if (canView !== true) {
-            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
-        }
-
-        const channel = await this.channelRepo.findById(channelOid);
-        if (channel === null || channel.serverId.toString() !== serverId) {
-            throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
-        }
-
-        if (channel.type !== 'voice') {
-            throw new ApiError(400, 'Channel is not a voice channel');
-        }
-
-        if (canConnect !== true) {
-            throw new ApiError(
-                403,
-                ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-            );
-        }
-
-        const roomName = `${serverId}:${channelId}`;
-        return this.liveKitService.generateToken(
-            roomName,
-            userId,
-            userUsername,
-        );
     }
 }

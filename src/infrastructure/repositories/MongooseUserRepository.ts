@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import type { FilterQuery } from 'mongoose';
+import type { QueryFilter } from 'mongoose';
 import {
     IUserRepository,
     IUser,
@@ -280,7 +280,7 @@ export class MongooseUserRepository implements IUserRepository {
             filter,
             includeDeleted,
         } = options;
-        const query: FilterQuery<IUserModel> = {};
+        const query: QueryFilter<IUserModel> = {};
 
         if (includeDeleted !== true) {
             query.deleted = { $ne: true };
@@ -335,10 +335,9 @@ export class MongooseUserRepository implements IUserRepository {
     }
 
     public async removeBadgeFromAllUsers(badgeId: string): Promise<void> {
-        const bid = new Types.ObjectId(badgeId);
         await this.userModel.updateMany(
-            { badges: bid },
-            { $pull: { badges: bid } },
+            { badges: badgeId },
+            { $pull: { badges: badgeId } },
         );
     }
 

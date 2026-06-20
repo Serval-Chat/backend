@@ -1,5 +1,5 @@
 import { type PipelineStage } from 'mongoose';
-import type { FilterQuery } from 'mongoose';
+import type { QueryFilter } from 'mongoose';
 import {
     IServerRepository,
     IServer,
@@ -35,7 +35,7 @@ export class MongooseServerRepository implements IServerRepository {
         id: RepositoryId,
         includeDeleted: boolean = false,
     ): Promise<IServer | null> {
-        const query: FilterQuery<unknown> = { _id: toObjectId(id) };
+        const query: QueryFilter<unknown> = { _id: toObjectId(id) };
         if (includeDeleted !== true) {
             query.deletedAt = { $exists: false };
         }
@@ -131,7 +131,7 @@ export class MongooseServerRepository implements IServerRepository {
         search?: string;
         includeDeleted?: boolean;
     }): Promise<IServer[]> {
-        const query: FilterQuery<IServer> = {};
+        const query: QueryFilter<unknown> = {};
 
         if (options.includeDeleted !== true) {
             query.deletedAt = { $exists: false };
@@ -154,7 +154,7 @@ export class MongooseServerRepository implements IServerRepository {
     }
 
     public async count(includeDeleted: boolean = false): Promise<number> {
-        const query: FilterQuery<IServer> = {};
+        const query: QueryFilter<unknown> = {};
         if (includeDeleted !== true) {
             query.deletedAt = { $exists: false };
         }

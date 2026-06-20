@@ -9,7 +9,6 @@ import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
 import { MetricsService } from '@/services/MetricsService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
-import { LiveKitService } from '@/services/LiveKitService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { RegistrationInviteService } from '@/services/RegistrationInviteService';
 import { ScraperService } from '@/services/ScraperService';
@@ -64,10 +63,6 @@ const esConfig = elasticsearchConfig as {
             useClass: KlipyService,
         },
         {
-            provide: TYPES.LiveKitService,
-            useClass: LiveKitService,
-        },
-        {
             provide: TYPES.ServerAuditLogService,
             useClass: ServerAuditLogService,
         },
@@ -113,7 +108,6 @@ const esConfig = elasticsearchConfig as {
         TYPES.MetricsService,
         TYPES.ExportService,
         TYPES.KlipyService,
-        TYPES.LiveKitService,
         TYPES.ServerAuditLogService,
         TYPES.ImageDeliveryService,
         TYPES.RegistrationInviteService,

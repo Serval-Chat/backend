@@ -8,15 +8,14 @@ import {
 import { Category } from '@/models/Server';
 
 // Transform MongoDB document to match ICategory interface
-const transformCategory = (
-    doc: Record<string, unknown> | null,
-): ICategory | null => {
-    if (!doc) return null;
+const transformCategory = (doc: unknown): ICategory | null => {
+    if (doc === null || doc === undefined) return null;
+    const record = doc as Record<string, unknown>;
 
     return {
-        ...doc,
-        _id: doc._id,
-        serverId: doc.serverId,
+        ...record,
+        _id: record._id,
+        serverId: record.serverId,
     } as unknown as ICategory;
 };
 

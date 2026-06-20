@@ -14,7 +14,6 @@ import type { ExportService } from '@/services/ExportService';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import type { LiveKitService } from '@/services/LiveKitService';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { ChannelTypeDTO } from '../dto/common.request.dto';
@@ -43,7 +42,6 @@ const mockAuditLogRepo = {};
 const mockServerAuditLogService = {
     createAndBroadcast: jest.fn(),
 };
-const mockLiveKitService = {};
 const mockRoleRepo = {};
 const mockRedisService = {};
 
@@ -61,7 +59,6 @@ function buildController(): ServerChannelController {
         mockServerRepo as unknown as IServerRepository,
         mockAuditLogRepo as unknown as IAuditLogRepository,
         mockServerAuditLogService as unknown as IServerAuditLogService,
-        mockLiveKitService as unknown as LiveKitService,
         mockRoleRepo as unknown as IRoleRepository,
         mockRedisService as unknown as IRedisService,
     );

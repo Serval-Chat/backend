@@ -1,4 +1,4 @@
-import { Types, type FilterQuery } from 'mongoose';
+import { Types, type QueryFilter } from 'mongoose';
 import {
     IWarningRepository,
     IWarning,
@@ -15,7 +15,7 @@ export class MongooseWarningRepository implements IWarningRepository {
         userId: Types.ObjectId,
         acknowledged?: boolean,
     ): Promise<IWarning[]> {
-        const filter: FilterQuery<IWarning> = {
+        const filter: QueryFilter<unknown> = {
             userId,
         };
         if (acknowledged !== undefined) {

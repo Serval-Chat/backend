@@ -14,7 +14,6 @@ import type { ExportService } from '@/services/ExportService';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import type { LiveKitService } from '@/services/LiveKitService';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 
@@ -48,7 +47,6 @@ function buildController(): ServerChannelController {
         {} as unknown as IServerRepository,
         {} as unknown as IAuditLogRepository,
         mockServerAuditLogService as unknown as IServerAuditLogService,
-        {} as unknown as LiveKitService,
         {} as unknown as IRoleRepository,
         {} as unknown as IRedisService,
     );

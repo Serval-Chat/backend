@@ -13,7 +13,9 @@ export async function parseNotificationText(text: string): Promise<string> {
     // replace <userid:'id'>
     const userIds = [
         ...new Set(
-            [...parsedText.matchAll(/<userid:'([^']+)'>/g)].map((m) => m[1]),
+            [...parsedText.matchAll(/<userid:'([^']+)'>/g)]
+                .map((m) => m[1])
+                .filter((id): id is string => id !== undefined),
         ),
     ];
     if (userIds.length > 0) {
@@ -42,7 +44,9 @@ export async function parseNotificationText(text: string): Promise<string> {
     // replace <roleid:'id'>
     const roleIds = [
         ...new Set(
-            [...parsedText.matchAll(/<roleid:'([^']+)'>/g)].map((m) => m[1]),
+            [...parsedText.matchAll(/<roleid:'([^']+)'>/g)]
+                .map((m) => m[1])
+                .filter((id): id is string => id !== undefined),
         ),
     ];
     if (roleIds.length > 0) {

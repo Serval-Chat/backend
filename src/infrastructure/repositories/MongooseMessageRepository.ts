@@ -1,4 +1,4 @@
-import { type FilterQuery, Types, ClientSession } from 'mongoose';
+import { type QueryFilter, Types, ClientSession } from 'mongoose';
 import {
     IMessageRepository,
     IMessage,
@@ -100,7 +100,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         around?: string,
         after?: string,
     ): Promise<IMessage[]> {
-        const baseQuery: FilterQuery<IMessage> = {
+        const baseQuery: QueryFilter<IMessage> = {
             $or: [
                 { senderId: user1Id, receiverId: user2Id },
                 { senderId: user2Id, receiverId: user1Id },

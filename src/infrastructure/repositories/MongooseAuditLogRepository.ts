@@ -1,4 +1,4 @@
-import { type FilterQuery, Types } from 'mongoose';
+import { type QueryFilter, Types } from 'mongoose';
 import type {
     IAuditLog,
     IAuditLogChange,
@@ -61,7 +61,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         endDate?: Date;
         reason?: string;
     }): Promise<IAuditLog[]> {
-        const query: FilterQuery<IAuditLog> = {};
+        const query: QueryFilter<IAuditLog> = {};
 
         if (options.serverId !== undefined) {
             query.serverId = options.serverId;
@@ -131,7 +131,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         startDate?: Date;
         endDate?: Date;
     }): Promise<number> {
-        const query: FilterQuery<IAuditLog> = {};
+        const query: QueryFilter<IAuditLog> = {};
 
         if (options.serverId !== undefined) {
             query.serverId = options.serverId;

@@ -1,7 +1,7 @@
 import { injectable } from 'inversify';
 import { IPingRepository, IPing } from '@/di/interfaces/IPingRepository';
 import { Ping } from '@/models/Ping';
-import { type FilterQuery, Types } from 'mongoose';
+import { Types } from 'mongoose';
 import {
     PingMentionMessageDTO,
     PingExportMessageDTO,
@@ -21,7 +21,7 @@ export class MongoosePingRepository implements IPingRepository {
         userId: Types.ObjectId,
         maxAge?: number,
     ): Promise<IPing[]> {
-        const query: FilterQuery<IPing> = {
+        const query: { userId: Types.ObjectId; timestamp?: { $gte: Date } } = {
             userId,
         };
 

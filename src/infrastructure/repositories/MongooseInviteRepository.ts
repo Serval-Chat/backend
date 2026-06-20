@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import type { FilterQuery } from 'mongoose';
+import type { QueryFilter } from 'mongoose';
 
 import { injectable } from 'inversify';
 import {
@@ -33,14 +33,12 @@ export class MongooseInviteRepository implements IInviteRepository {
     public async findByCodeOrCustomPath(
         codeOrPath: string,
     ): Promise<IInvite | null> {
-        const query: FilterQuery<IInvite> = {
+        const query: QueryFilter<IInvite> = {
             $or: [{ code: codeOrPath }, { customPath: codeOrPath }],
         };
 
         if (codeOrPath.match(/^[0-9a-fA-F]{24}$/)) {
-            query.$or?.push({
-                _id: codeOrPath as unknown as FilterQuery<IInvite>,
-            });
+            query.$or?.push({ _id: codeOrPath });
         }
 
         return (await Invite.findOne(query).lean()) as IInvite | null;

@@ -7,7 +7,8 @@ import { User } from '../models/User';
 import logger from '../utils/logger';
 import { VAPID_PUB, VAPID_PRI } from '../config/env';
 import { parseNotificationText } from '../utils/textParser';
-import type * as admin from 'firebase-admin';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import { container } from '../di/container';
 import { TYPES } from '../di/types';
 import type { IRedisService } from '../di/interfaces/IRedisService';
@@ -28,21 +29,21 @@ export function initWebPush() {
     }
 }
 
-let _fcmAdmin: typeof admin | null = null;
-async function getFCM() {
-    if (_fcmAdmin !== null) return _fcmAdmin;
+let _fcmInitialized = false;
+function getFCM() {
     if (process.env.FIREBASE_SERVICE_ACCOUNT === undefined) return null;
 
-    const admin = await import('firebase-admin');
-    if (admin.apps.length === 0) {
-        admin.initializeApp({
-            credential: admin.credential.cert(
-                JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT),
-            ),
-        });
+    if (!_fcmInitialized) {
+        if (getApps().length === 0) {
+            initializeApp({
+                credential: cert(
+                    JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT),
+                ),
+            });
+        }
+        _fcmInitialized = true;
     }
-    _fcmAdmin = admin;
-    return _fcmAdmin;
+    return getMessaging();
 }
 
 type NotificationType = 'mention' | 'friend_request' | 'dm' | 'custom';
@@ -184,8 +185,8 @@ async function sendToSubscription(
             }
         }
     } else {
-        const admin = await getFCM();
-        if (admin === null) {
+        const messaging = getFCM();
+        if (messaging === null) {
             logger.debug(
                 `[PushService] FCM skipped (no credentials) for sub ${sub._id}`,
             );
@@ -200,7 +201,7 @@ async function sendToSubscription(
         }
         try {
             logger.debug(`[PushService] Sending FCM to ${sub.userId}`);
-            await admin.messaging().send({
+            await messaging.send({
                 token: sub.fcmToken,
                 notification: { title: payload.title, body: payload.body },
                 data: { ...(payload.data ?? {}), tag: payload.tag ?? '' },
