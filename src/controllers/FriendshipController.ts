@@ -111,6 +111,7 @@ export class FriendshipController {
         const friendships = await this.friendshipRepo.findByUserId(userOid);
         const friendIds = new Set<string>();
         const friendshipCreatedAtByFriendId = new Map<string, Date>();
+        const isPinnedByFriendId = new Map<string, boolean>();
         const legacyUsernames = new Set<string>();
 
         friendships.forEach((rel) => {
@@ -129,6 +130,9 @@ export class FriendshipController {
                     ) {
                         friendshipCreatedAtByFriendId.set(otherId, createdAt);
                     }
+                }
+                if (userIdStr === userId && rel.isPinned === true) {
+                    isPinnedByFriendId.set(otherId, true);
                 }
             } else if (rel.friend !== undefined && rel.friend !== '') {
                 legacyUsernames.add(rel.friend);
@@ -219,6 +223,8 @@ export class FriendshipController {
                 const payload = this.mapUserToFriendPayload(friend);
                 if (payload !== null) {
                     payload.latestMessageAt = latestMessageAt;
+                    payload.isPinned =
+                        isPinnedByFriendId.get(payload.id) ?? false;
 
                     if (friend.deletedAt !== undefined) {
                         payload.profilePicture = '/images/deleted-cat.jpg';
@@ -638,6 +644,44 @@ export class FriendshipController {
         }
 
         return { message: 'friend request cancelled' };
+    }
+
+    @Post(':friendId/pin')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Toggle DM pin for a friend' })
+    @ApiResponse({ status: 404, description: 'User Not Found' })
+    public async togglePinFriend(
+        @Param('friendId') friendId: string,
+        @Req() req: Request,
+    ): Promise<{ friendId: string; isPinned: boolean }> {
+        const meId = (req as unknown as RequestWithUser).user.id;
+        const meOid = new Types.ObjectId(meId);
+        const friendOid = new Types.ObjectId(friendId);
+
+        if (!(await this.friendshipRepo.areFriends(meOid, friendOid))) {
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        const friendships = await this.friendshipRepo.findByUserId(meOid);
+        const myRow = friendships.find(
+            (f) =>
+                f.userId.toString() === meId &&
+                f.friendId.toString() === friendId,
+        );
+        const nextPinned = !(myRow?.isPinned ?? false);
+        await this.friendshipRepo.setPinned(meOid, friendOid, nextPinned);
+
+        try {
+            this.wsServer.broadcastToUser(meId, {
+                type: 'friend_pin_updated',
+                payload: { friendId, isPinned: nextPinned },
+            });
+        } catch (err) {
+            this.logger.error('Failed to emit friend_pin_updated event:', err);
+        }
+
+        return { friendId, isPinned: nextPinned };
     }
 
     @Delete(':friendId')

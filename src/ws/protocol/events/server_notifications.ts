@@ -8,7 +8,7 @@ import type { IRole } from '@/di/interfaces/IRoleRepository';
 import type { mapAuditLogEntry } from '@/utils/auditLog';
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Server details updated.
  */
 export interface IServerUpdatedEvent
@@ -22,7 +22,7 @@ export interface IServerUpdatedEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Server deleted.
  */
 export interface IServerDeletedEvent
@@ -35,7 +35,7 @@ export interface IServerDeletedEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Server icon updated.
  */
 export interface IServerIconUpdatedEvent
@@ -49,7 +49,7 @@ export interface IServerIconUpdatedEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Server banner updated.
  */
 export interface IServerBannerUpdatedEvent
@@ -306,7 +306,7 @@ export interface IStickerUpdatedEvent
     > {}
 
 /**
- * Server → Client (Direct)
+ * Server -> Client (Direct)
  * Warning issued to user.
  */
 export interface IWarningEvent

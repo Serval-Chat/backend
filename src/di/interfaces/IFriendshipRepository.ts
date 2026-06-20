@@ -12,6 +12,7 @@ export interface IFriendship {
     userId: Types.ObjectId;
     friendId: Types.ObjectId;
     createdAt?: Date;
+    isPinned?: boolean;
 }
 
 // Friend Request interface (domain model)
@@ -47,6 +48,13 @@ export interface IFriendshipRepository {
 
     // Remove friendship
     remove(userId: Types.ObjectId, friendId: Types.ObjectId): Promise<boolean>;
+
+    // Set pinned state for a single direction of a friendship (private to userId)
+    setPinned(
+        userId: Types.ObjectId,
+        friendId: Types.ObjectId,
+        isPinned: boolean,
+    ): Promise<IFriendship | null>;
 
     // Create friend request
     createRequest(

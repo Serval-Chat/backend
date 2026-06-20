@@ -2,7 +2,7 @@ import type { WsEvent } from '@/ws/protocol/event';
 import type { FriendResponseDTO } from '@/controllers/dto/friendship.response.dto';
 
 /**
- * Server → Client (Unicast)
+ * Server -> Client (Unicast)
  * Received an incoming friend request.
  */
 export interface IIncomingRequestAddedEvent
@@ -17,7 +17,7 @@ export interface IIncomingRequestAddedEvent
     > {}
 
 /**
- * Server → Client (Unicast)
+ * Server -> Client (Unicast)
  * Friend request removed (accepted/rejected/cancelled).
  */
 export interface IIncomingRequestRemovedEvent
@@ -30,7 +30,7 @@ export interface IIncomingRequestRemovedEvent
     > {}
 
 /**
- * Server → Client (Unicast)
+ * Server -> Client (Unicast)
  * New friend added (request accepted).
  */
 export interface IFriendAddedEvent
@@ -42,7 +42,7 @@ export interface IFriendAddedEvent
     > {}
 
 /**
- * Server → Client (Unicast)
+ * Server -> Client (Unicast)
  * Friend removed.
  */
 export interface IFriendRemovedEvent
@@ -51,5 +51,18 @@ export interface IFriendRemovedEvent
         {
             username: string;
             userId: string;
+        }
+    > {}
+
+/**
+ * Server -> Client (Unicast)
+ * DM pin state changed for a friend (private to the pinning user).
+ */
+export interface IFriendPinUpdatedEvent
+    extends WsEvent<
+        'friend_pin_updated',
+        {
+            friendId: string;
+            isPinned: boolean;
         }
     > {}

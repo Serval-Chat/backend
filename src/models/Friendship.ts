@@ -14,6 +14,7 @@ interface IFriendship extends Document {
     userId: Types.ObjectId; // New userId reference
     friendId: Types.ObjectId; // New userId reference
     createdAt: Date;
+    isPinned?: boolean; // Whether this user has pinned the DM with friendId
 }
 
 // Friend Request interface
@@ -34,6 +35,7 @@ const friendshipSchema = new Schema<IFriendship>({
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
     friendId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
     createdAt: { type: Date, default: Date.now },
+    isPinned: { type: Boolean, default: false },
 });
 friendshipSchema.plugin(mongooseIdPlugin);
 friendshipSchema.index({ user: 1, friend: 1 }, { unique: true, sparse: true });

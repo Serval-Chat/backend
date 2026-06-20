@@ -1,7 +1,7 @@
 import type { WsEvent } from '@/ws/protocol/event';
 
 /**
- * Server → Client (Automatic on authentication)
+ * Server -> Client (Automatic on authentication)
  * Initial sync of online users (friends + current server members).
  */
 export interface IPresenceSyncEvent
@@ -22,7 +22,7 @@ export interface IPresenceSyncEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * A user came online.
  */
 export interface IUserOnlineEvent
@@ -41,7 +41,7 @@ export interface IUserOnlineEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * A user went offline.
  */
 export interface IUserOfflineEvent
@@ -54,7 +54,7 @@ export interface IUserOfflineEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Set custom status text.
  */
 export interface ISetStatusEvent
@@ -66,7 +66,7 @@ export interface ISetStatusEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * User's status was updated.
  */
 export interface IStatusUpdatedEvent
@@ -85,7 +85,7 @@ export interface IStatusUpdatedEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * User's profile details updated (badges, profile picture).
  */
 export interface IUserUpdatedEvent
@@ -144,7 +144,7 @@ export interface IUserUpdatedEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * User's banner updated.
  */
 export interface IUserBannerUpdatedEvent
@@ -157,7 +157,7 @@ export interface IUserBannerUpdatedEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * User's display name updated.
  */
 export interface IDisplayNameUpdatedEvent
@@ -170,7 +170,7 @@ export interface IDisplayNameUpdatedEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Legacy status update event.
  */
 export interface IStatusUpdateLegacyEvent

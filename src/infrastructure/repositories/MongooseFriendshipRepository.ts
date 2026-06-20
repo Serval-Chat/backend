@@ -80,6 +80,20 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
         return result.deletedCount > 0;
     }
 
+    public async setPinned(
+        userId: Types.ObjectId,
+        friendId: Types.ObjectId,
+        isPinned: boolean,
+    ): Promise<IFriendship | null> {
+        return await this.friendshipModel
+            .findOneAndUpdate(
+                { userId, friendId },
+                { $set: { isPinned } },
+                { new: true },
+            )
+            .lean();
+    }
+
     public async acceptRequest(
         requestId: Types.ObjectId,
     ): Promise<IFriendRequest | null> {

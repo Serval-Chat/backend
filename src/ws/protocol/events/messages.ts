@@ -11,7 +11,7 @@ import type { ReactionData } from '@/di/interfaces/IReactionRepository';
 // ============================================================================
 
 /**
- * Client → Server
+ * Client -> Server
  * Send a direct message to another user.
  */
 export interface ISendMessageDmEvent
@@ -37,7 +37,7 @@ export interface ISendMessageDmEvent
     > {}
 
 /**
- * Server → Client (Response to send_message_dm)
+ * Server -> Client (Response to send_message_dm)
  * Confirms message was sent and saved.
  */
 export interface IMessageDmSentEvent
@@ -105,13 +105,13 @@ export interface IMessageDm {
 }
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * New DM received or sent (broadcast to both sender and receiver sessions).
  */
 export interface IMessageDmEvent extends WsEvent<'message_dm', IMessageDm> {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Edit an existing direct message.
  */
 export interface IEditMessageDmEvent
@@ -124,7 +124,7 @@ export interface IEditMessageDmEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * DM was edited.
  */
 export interface IMessageDmEditedEvent
@@ -141,7 +141,7 @@ export interface IMessageDmEditedEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Delete a direct message.
  */
 export interface IDeleteMessageDmEvent
@@ -153,7 +153,7 @@ export interface IDeleteMessageDmEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * DM was deleted.
  */
 export interface IMessageDmDeletedEvent
@@ -164,7 +164,7 @@ export interface IMessageDmDeletedEvent
         }
     > {}
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Poll vote updated.
  */
 export interface IPollVoteUpdatedDmEvent
@@ -177,7 +177,7 @@ export interface IPollVoteUpdatedDmEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Message embeds were updated (e.g. after async scraping).
  */
 export interface IMessageDmEmbedsUpdatedEvent
@@ -190,7 +190,7 @@ export interface IMessageDmEmbedsUpdatedEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Mark a DM conversation as read.
  */
 export interface IMarkDmReadEvent
@@ -202,7 +202,7 @@ export interface IMarkDmReadEvent
     > {}
 
 /**
- * Server → Client (Broadcast to user's sessions)
+ * Server -> Client (Broadcast to user's sessions)
  * Unread count for a DM conversation updated.
  */
 export interface IDmUnreadUpdatedEvent
@@ -216,7 +216,7 @@ export interface IDmUnreadUpdatedEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Indicate typing in a DM conversation.
  */
 export interface ITypingDmEvent
@@ -228,7 +228,7 @@ export interface ITypingDmEvent
     > {}
 
 /**
- * Server → Client (Broadcast to receiver)
+ * Server -> Client (Broadcast to receiver)
  * User is typing in DM.
  */
 export interface ITypingDmBroadcastEvent
@@ -245,7 +245,7 @@ export interface ITypingDmBroadcastEvent
 // ============================================================================
 
 /**
- * Client → Server
+ * Client -> Server
  * Subscribe to server-wide events.
  */
 export interface IJoinServerEvent
@@ -257,7 +257,7 @@ export interface IJoinServerEvent
     > {}
 
 /**
- * Server → Client (Response)
+ * Server -> Client (Response)
  * Successfully joined server.
  */
 export interface IServerJoinedEvent
@@ -270,7 +270,7 @@ export interface IServerJoinedEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Unsubscribe from server events.
  */
 export interface ILeaveServerEvent
@@ -282,7 +282,7 @@ export interface ILeaveServerEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Subscribe to channel-specific events.
  */
 export interface IJoinChannelEvent
@@ -295,7 +295,7 @@ export interface IJoinChannelEvent
     > {}
 
 /**
- * Server → Client (Response)
+ * Server -> Client (Response)
  * Successfully joined channel.
  */
 export interface IChannelJoinedEvent
@@ -308,7 +308,7 @@ export interface IChannelJoinedEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Unsubscribe from channel events.
  */
 export interface ILeaveChannelEvent
@@ -320,7 +320,7 @@ export interface ILeaveChannelEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Send a message to a server channel.
  */
 export interface ISendMessageServerEvent
@@ -347,7 +347,7 @@ export interface ISendMessageServerEvent
     > {}
 
 /**
- * Server → Client (Response)
+ * Server -> Client (Response)
  * Confirms server message was sent.
  */
 export interface IMessageServerSentEvent
@@ -418,14 +418,14 @@ export interface IMessageServer {
 }
 
 /**
- * Server → Client (Broadcast to channel)
+ * Server -> Client (Broadcast to channel)
  * New server message.
  */
 export interface IMessageServerEvent
     extends WsEvent<'message_server', IMessageServer> {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Edit a server message.
  */
 export interface IEditMessageServerEvent
@@ -438,7 +438,7 @@ export interface IEditMessageServerEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Server message was edited.
  */
 export interface IMessageServerEditedEvent
@@ -458,7 +458,7 @@ export interface IMessageServerEditedEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Delete a server message.
  */
 export interface IDeleteMessageServerEvent
@@ -471,7 +471,7 @@ export interface IDeleteMessageServerEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Server message was deleted.
  */
 export interface IMessageServerDeletedEvent
@@ -486,7 +486,7 @@ export interface IMessageServerDeletedEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Poll vote updated.
  */
 export interface IPollVoteUpdatedServerEvent
@@ -501,7 +501,7 @@ export interface IPollVoteUpdatedServerEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Multiple server messages were deleted.
  */
 export interface IMessagesServerBulkDeletedEvent
@@ -515,7 +515,7 @@ export interface IMessagesServerBulkDeletedEvent
         }
     > {}
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Server message pin status updated.
  */
 export interface IMessageServerPinUpdatedEvent
@@ -531,7 +531,7 @@ export interface IMessageServerPinUpdatedEvent
     > {}
 
 /**
- * Server → Client (Broadcast)
+ * Server -> Client (Broadcast)
  * Message embeds were updated (e.g. after async scraping).
  */
 export interface IMessageServerEmbedsUpdatedEvent
@@ -546,7 +546,7 @@ export interface IMessageServerEmbedsUpdatedEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Mark a channel as read.
  */
 export interface IMarkChannelReadEvent
@@ -559,7 +559,7 @@ export interface IMarkChannelReadEvent
     > {}
 
 /**
- * Server → Client (Broadcast to user's sessions)
+ * Server -> Client (Broadcast to user's sessions)
  * Channel unread status updated.
  */
 export interface IChannelUnreadUpdatedEvent
@@ -575,7 +575,7 @@ export interface IChannelUnreadUpdatedEvent
     > {}
 
 /**
- * Server → Client (Broadcast to user's sessions)
+ * Server -> Client (Broadcast to user's sessions)
  * Server-level unread status updated (e.g. after channel message or mark channel read).
  */
 export interface IServerUnreadUpdatedEvent
@@ -588,7 +588,7 @@ export interface IServerUnreadUpdatedEvent
     > {}
 
 /**
- * Client → Server
+ * Client -> Server
  * Indicate typing in a channel.
  */
 export interface ITypingServerEvent
@@ -601,7 +601,7 @@ export interface ITypingServerEvent
     > {}
 
 /**
- * Server → Client (Broadcast to channel)
+ * Server -> Client (Broadcast to channel)
  * User is typing in channel.
  */
 export interface ITypingServerBroadcastEvent

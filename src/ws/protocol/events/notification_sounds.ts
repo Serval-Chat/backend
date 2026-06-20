@@ -1,7 +1,7 @@
 import type { WsEvent } from '@/ws/protocol/event';
 
 /**
- * Server → Client (Broadcast to user)
+ * Server -> Client (Broadcast to user)
  * User's notification sounds have been updated (sync across clients).
  */
 export interface INotificationSoundsUpdatedEvent

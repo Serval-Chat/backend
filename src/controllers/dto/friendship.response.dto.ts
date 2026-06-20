@@ -26,6 +26,9 @@ export class FriendResponseDTO {
 
     @ApiPropertyOptional({ nullable: true })
     public latestMessageAt?: string | null;
+
+    @ApiPropertyOptional()
+    public isPinned?: boolean;
 }
 
 export class IncomingFriendRequestResponseDTO {
