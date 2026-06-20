@@ -124,7 +124,9 @@ export class MongooseServerMessageRepository
         const message = new ServerMessage(createData);
         const savedMessage = await message.save({ session });
         return this.transformMessage(
-            savedMessage.toObject() as unknown as PopulatedServerMessageDoc,
+            savedMessage.toObject({
+                transform: false,
+            }) as unknown as PopulatedServerMessageDoc,
         );
     }
 

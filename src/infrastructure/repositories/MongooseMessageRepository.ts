@@ -216,7 +216,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         };
         const message = new this.messageModel(createData);
         const savedMessage = await message.save({ session });
-        const msgObj = savedMessage.toObject();
+        const msgObj = savedMessage.toObject({ transform: false });
         return this.transformMessage(msgObj);
     }
 
