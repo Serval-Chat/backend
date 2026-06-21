@@ -425,15 +425,12 @@ export class WebhookController {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageWebhooks',
-            )) !== true
-        ) {
-            throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageWebhooks',
+            new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN),
+        );
 
         const channel = await this.channelRepo.findByIdAndServer(
             channelOid,
@@ -482,15 +479,12 @@ export class WebhookController {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageWebhooks',
-            )) !== true
-        ) {
-            throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageWebhooks',
+            new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN),
+        );
 
         const channel = await this.channelRepo.findByIdAndServer(
             channelOid,
@@ -550,15 +544,12 @@ export class WebhookController {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageWebhooks',
-            )) !== true
-        ) {
-            throw new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageWebhooks',
+            new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN),
+        );
 
         const webhook = await this.webhookRepo.findById(webhookOid);
         if (
@@ -623,12 +614,6 @@ export class WebhookController {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        const canManage = await this.permissionService.hasPermission(
-            serverOid,
-            userOid,
-            'manageWebhooks',
-        );
-
         const webhook = await this.webhookRepo.findById(webhookOid);
         if (
             webhook === null ||
@@ -638,11 +623,14 @@ export class WebhookController {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        if (canManage !== true) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageWebhooks',
+            new ForbiddenException(
                 ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-            );
-        }
+            ),
+        );
 
         const filename = `${webhookId}-${Date.now()}.png`;
         const filepath = path.join(this.UPLOADS_DIR, filename);

@@ -140,17 +140,14 @@ export class ServerRoleController {
     ): Promise<IRole> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageRoles',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageRoles',
+            new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-            );
-        }
+            ),
+        );
 
         // New roles are placed at the top of the hierarchy by default
         const maxPositionRole =
@@ -236,17 +233,14 @@ export class ServerRoleController {
     ): Promise<IRole[]> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageRoles',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageRoles',
+            new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-            );
-        }
+            ),
+        );
 
         const server = await this.serverRepo.findById(serverOid);
         const isOwner = server !== null && String(server.ownerId) === userId;
@@ -358,17 +352,14 @@ export class ServerRoleController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageRoles',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageRoles',
+            new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-            );
-        }
+            ),
+        );
 
         const role = await this.roleRepo.findById(roleOid);
         if (role === null || !role.serverId.equals(serverOid)) {
@@ -574,17 +565,14 @@ export class ServerRoleController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
-        const hasPermission =
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageRoles',
-            )) === true;
-        if (hasPermission === false) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageRoles',
+            new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-            );
-        }
+            ),
+        );
 
         const role = await this.roleRepo.findById(roleOid);
         if (role === null || !role.serverId.equals(serverOid)) {
@@ -679,17 +667,14 @@ export class ServerRoleController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageRoles',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageRoles',
+            new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-            );
-        }
+            ),
+        );
 
         const role = await this.roleRepo.findById(roleOid);
         if (role === null || !role.serverId.equals(serverOid)) {

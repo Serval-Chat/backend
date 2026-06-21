@@ -61,7 +61,6 @@ export class ServerAuditLogController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
-        // Verify membership
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverOid,
             userOid,
@@ -70,17 +69,14 @@ export class ServerAuditLogController {
             throw new ForbiddenException('You are not a member of this server');
         }
 
-        // Require manageServer permission to view audit log
-        const hasPermission = await this.permissionService.hasPermission(
+        await this.permissionService.requirePermission(
             serverOid,
             userOid,
             'manageServer',
-        );
-        if (hasPermission !== true) {
-            throw new ForbiddenException(
+            new ForbiddenException(
                 'You do not have permission to view the audit log',
-            );
-        }
+            ),
+        );
 
         const limit = Math.min(Number(query.limit) || 50, 100);
 

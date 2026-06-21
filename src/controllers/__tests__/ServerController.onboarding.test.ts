@@ -33,6 +33,20 @@ describe('ServerController onboarding settings', () => {
     const mockServerChannelReadRepo = {};
     const mockPermissionService = {
         hasPermission: jest.fn(),
+        requirePermission: jest.fn(async function (
+            this: { hasPermission: (...args: unknown[]) => Promise<boolean> },
+            serverId: unknown,
+            userId: unknown,
+            permission: unknown,
+            error: Error,
+        ) {
+            if (
+                (await this.hasPermission(serverId, userId, permission)) !==
+                true
+            ) {
+                throw error;
+            }
+        }),
         invalidateCache: jest.fn(),
     };
     const mockWsServer = {

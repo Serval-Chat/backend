@@ -284,15 +284,12 @@ export class ServerChannelController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const maxPositionChannel =
             await this.channelRepo.findMaxPositionByServerId(serverOid);
@@ -383,15 +380,12 @@ export class ServerChannelController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const existingChannels =
             await this.channelRepo.findByServerId(serverOid);
@@ -527,15 +521,12 @@ export class ServerChannelController {
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const existingChannel = await this.channelRepo.findById(channelOid);
         if (
@@ -700,15 +691,12 @@ export class ServerChannelController {
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const channel = await this.channelRepo.findById(channelOid);
         const server = await this.serverRepo.findById(serverOid);
@@ -754,15 +742,12 @@ export class ServerChannelController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const maxPositionCategory =
             await this.categoryRepo.findMaxPositionByServerId(serverOid);
@@ -819,15 +804,12 @@ export class ServerChannelController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         for (const { categoryId, position } of body.categoryPositions) {
             await this.categoryRepo.update(new Types.ObjectId(categoryId), {
@@ -864,15 +846,12 @@ export class ServerChannelController {
         const categoryOid = new Types.ObjectId(categoryId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const updates: Partial<ICategory> = {};
         if (body.name !== undefined && body.name !== '')
@@ -945,15 +924,12 @@ export class ServerChannelController {
         const categoryOid = new Types.ObjectId(categoryId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const category = await this.categoryRepo.findById(categoryOid);
         if (category === null) {
@@ -1022,15 +998,12 @@ export class ServerChannelController {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const channel = await this.channelRepo.findById(channelOid);
         if (channel === null) {
@@ -1063,15 +1036,12 @@ export class ServerChannelController {
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const channel = await this.channelRepo.findById(channelOid);
         if (channel === null) {
@@ -1191,15 +1161,12 @@ export class ServerChannelController {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const category = await this.categoryRepo.findById(categoryOid);
         if (category === null) {
@@ -1232,15 +1199,12 @@ export class ServerChannelController {
         const categoryOid = new Types.ObjectId(categoryId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageChannels',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageChannels',
+            new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
+        );
 
         const category = await this.categoryRepo.findById(categoryOid);
         if (category === null) {

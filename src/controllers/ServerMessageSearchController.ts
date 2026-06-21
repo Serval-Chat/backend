@@ -116,18 +116,14 @@ export class ServerMessageSearchController {
             );
         }
 
-        const canView = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
             'viewChannels',
+            new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND),
         );
-        if (canView !== true) {
-            throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
-        }
 
-        // build the positive channel scope from inChannel + inCategory chips.
-        // if neither is specified we fall back to the URL channelId.
         let searchChannelId: string | string[] = channelId;
         const hasPositiveScope =
             (inChannel !== undefined && inChannel.length > 0) ||

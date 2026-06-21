@@ -556,15 +556,12 @@ export class ServerController {
     ): Promise<NonNullable<IServer['onboarding']>> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageServer',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageServer',
+            new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
+        );
 
         const server = await this.serverRepo.findById(serverOid);
         if (server === null) {
@@ -588,15 +585,12 @@ export class ServerController {
     ): Promise<NonNullable<IServer['onboarding']>> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageServer',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageServer',
+            new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
+        );
 
         const server = await this.serverRepo.findById(serverOid);
         if (server === null) {
@@ -782,15 +776,12 @@ export class ServerController {
     ): Promise<IServer> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageServer',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageServer',
+            new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
+        );
 
         const updates: Record<string, unknown> = {};
         if (body.name !== undefined && body.name !== '')
@@ -934,15 +925,12 @@ export class ServerController {
     ): Promise<ServerDiscoveryStatusDTO> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageServer',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageServer',
+            new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
+        );
 
         return await this.discoveryService.getStatus(serverOid);
     }
@@ -962,15 +950,12 @@ export class ServerController {
         const userOid = new Types.ObjectId(userId);
         const { roleId } = body;
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageServer',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageServer',
+            new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
+        );
 
         if (roleId !== null && roleId !== '') {
             const role = await this.roleRepo.findById(
@@ -1155,15 +1140,12 @@ export class ServerController {
     ): Promise<{ icon: string }> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageServer',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageServer',
+            new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
+        );
 
         if (icon === undefined) {
             throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
@@ -1258,15 +1240,12 @@ export class ServerController {
     ): Promise<{ banner: string }> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageServer',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageServer',
+            new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
+        );
 
         if (banner === undefined) {
             throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
@@ -1345,15 +1324,12 @@ export class ServerController {
         const userOid = new Types.ObjectId(userId);
         const { roleId } = body;
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageServer',
-            )) !== true
-        ) {
-            throw new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE);
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageServer',
+            new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
+        );
 
         if (roleId !== '') {
             const role = await this.roleRepo.findById(

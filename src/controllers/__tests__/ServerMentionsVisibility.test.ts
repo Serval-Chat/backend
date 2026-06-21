@@ -15,7 +15,7 @@ import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { EmbedService } from '@/services/EmbedService';
 
-jest.mock('@/services/pushService', () => ({
+jest.mock('@/services/PushService', () => ({
     notifyUser: jest.fn().mockResolvedValue(undefined),
     notifyUsers: jest.fn().mockResolvedValue(undefined),
 }));

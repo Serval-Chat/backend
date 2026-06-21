@@ -1,6 +1,5 @@
 import { ReactionController } from '../ReactionController';
 import { Types } from 'mongoose';
-import type { Request } from 'express';
 import type { AddUnicodeReactionRequestDTO } from '../dto/reaction.request.dto';
 import { EmojiTypeDTO } from '../dto/reaction.request.dto';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
@@ -38,6 +37,27 @@ describe('ReactionController', () => {
     } as unknown as IChannelRepository;
     const mockPermissionService = {
         hasChannelPermission: jest.fn().mockResolvedValue(true),
+        requireChannelPermission: jest.fn(async function (
+            this: {
+                hasChannelPermission: (...args: unknown[]) => Promise<boolean>;
+            },
+            serverId: unknown,
+            userId: unknown,
+            channelId: unknown,
+            permission: unknown,
+            error: Error,
+        ) {
+            if (
+                (await this.hasChannelPermission(
+                    serverId,
+                    userId,
+                    channelId,
+                    permission,
+                )) !== true
+            ) {
+                throw error;
+            }
+        }),
     } as unknown as PermissionService;
     const mockWsServer = {
         broadcastToServer: jest.fn(),
@@ -94,15 +114,12 @@ describe('ReactionController', () => {
                 emojiType: EmojiTypeDTO.UNICODE,
             };
 
-            const req = {
-                user: { id: USER_ID, username: 'testuser' },
-            } as unknown as Request;
-
             await controller.addServerReaction(
                 SERVER_ID,
                 CHANNEL_ID,
                 MESSAGE_ID,
-                req,
+                USER_ID,
+                'testuser',
                 body,
             );
 
@@ -129,16 +146,13 @@ describe('ReactionController', () => {
                 userId: new Types.ObjectId(USER_ID),
             });
 
-            const req = {
-                user: { id: USER_ID, username: 'testuser' },
-            } as unknown as Request;
-
             await expect(
                 controller.addServerReaction(
                     SERVER_ID,
                     CHANNEL_ID,
                     MESSAGE_ID,
-                    req,
+                    USER_ID,
+                    'testuser',
                     {
                         emoji: '👍',
                         emojiType: EmojiTypeDTO.UNICODE,

@@ -8,7 +8,6 @@ import {
     Param,
     Query,
     UseGuards,
-    Req,
     Inject,
     NotFoundException,
     ForbiddenException,
@@ -57,8 +56,6 @@ import type {
     IMessageServerPinUpdatedEvent,
 } from '@/ws/protocol/events/messages';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
-import type { Request as ExpressRequest } from 'express';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -187,15 +184,13 @@ export class ServerMessageController {
             );
         }
 
-        const canView = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
             'viewChannels',
+            new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND),
         );
-        if (canView !== true) {
-            throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
-        }
 
         const includeDeleted =
             await this.permissionService.hasChannelPermission(
@@ -256,10 +251,11 @@ export class ServerMessageController {
     public async sendMessage(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
+        @CurrentUser('isBot') isUserBot: boolean | undefined,
+        @CurrentUser('username') senderUsername: string,
         @Body() body: SendMessageRequestDTO,
     ): Promise<IServerMessage> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -283,17 +279,13 @@ export class ServerMessageController {
             );
         }
 
-        const canSend = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
             'sendMessages',
+            new ForbiddenException(ErrorMessages.CHANNEL.NO_PERMISSION_SEND),
         );
-        if (canSend !== true) {
-            throw new ForbiddenException(
-                ErrorMessages.CHANNEL.NO_PERMISSION_SEND,
-            );
-        }
 
         const channel = await this.channelRepo.findById(
             new mongoose.Types.ObjectId(channelId),
@@ -350,8 +342,7 @@ export class ServerMessageController {
         const embeds = body.embeds;
         const components = body.components;
         const attachments = body.attachments ?? [];
-        const isBot =
-            (req as ExpressRequest & { user: JWTPayload }).user.isBot === true;
+        const isBot = isUserBot === true;
 
         if (embeds !== undefined && embeds.length > 0) {
             if (isBot === false) {
@@ -439,11 +430,8 @@ export class ServerMessageController {
                 serverId: serverId,
                 channelId: channelId,
                 senderId: userId,
-                senderIsBot:
-                    (req as ExpressRequest & { user: JWTPayload }).user.isBot ??
-                    false,
-                senderUsername: (req as ExpressRequest & { user: JWTPayload })
-                    .user.username,
+                senderIsBot: isUserBot ?? false,
+                senderUsername,
                 text: messageText,
                 createdAt:
                     message.createdAt instanceof Date
@@ -541,15 +529,13 @@ export class ServerMessageController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const canView = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
             'viewChannels',
+            new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND),
         );
-        if (canView !== true) {
-            throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
-        }
 
         const includeDeleted =
             await this.permissionService.hasChannelPermission(
@@ -623,15 +609,13 @@ export class ServerMessageController {
             );
         }
 
-        const canView = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
             'viewChannels',
+            new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND),
         );
-        if (canView !== true) {
-            throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
-        }
 
         const includeDeleted =
             await this.permissionService.hasChannelPermission(
@@ -726,10 +710,10 @@ export class ServerMessageController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
+        @CurrentUser('isBot') isUserBot: boolean | undefined,
         @Body() body: ServerEditMessageRequestDTO,
     ): Promise<IServerMessage> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
             true,
@@ -773,8 +757,7 @@ export class ServerMessageController {
         const messageText = (body.content ?? body.text ?? message.text).trim();
         const embeds = body.embeds;
         const components = body.components;
-        const isBot =
-            (req as ExpressRequest & { user: JWTPayload }).user.isBot === true;
+        const isBot = isUserBot === true;
         if (embeds !== undefined && embeds.length > 0 && isBot === false) {
             throw new ForbiddenException(
                 'Only bots can edit messages with rich embeds',
@@ -903,15 +886,13 @@ export class ServerMessageController {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const canView = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
             'viewChannels',
+            new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND),
         );
-        if (canView !== true) {
-            throw new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND);
-        }
 
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
@@ -1260,15 +1241,13 @@ export class ServerMessageController {
         @Param('messageId') messageId: string,
         @CurrentUser('id') userId: string,
     ): Promise<IServerMessage> {
-        const canPin = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
             'pinMessages',
+            new ForbiddenException('No permission to pin messages'),
         );
-        if (canPin !== true) {
-            throw new ForbiddenException('No permission to pin messages');
-        }
 
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
@@ -1371,15 +1350,13 @@ export class ServerMessageController {
         @Param('messageId') messageId: string,
         @CurrentUser('id') userId: string,
     ): Promise<IServerMessage> {
-        const canPin = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
             new mongoose.Types.ObjectId(channelId),
             'pinMessages',
+            new ForbiddenException('No permission to pin messages'),
         );
-        if (canPin !== true) {
-            throw new ForbiddenException('No permission to pin messages');
-        }
 
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),

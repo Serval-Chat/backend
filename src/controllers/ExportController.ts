@@ -58,18 +58,12 @@ export class ExportController {
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'exportChannelMessages',
-            )) !== true
-        ) {
-            throw new ApiError(
-                403,
-                'You do not have permission to export messages',
-            );
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'exportChannelMessages',
+            new ApiError(403, 'You do not have permission to export messages'),
+        );
 
         return await this.exportService.getExportState(channelOid);
     }
@@ -88,18 +82,12 @@ export class ExportController {
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'exportChannelMessages',
-            )) !== true
-        ) {
-            throw new ApiError(
-                403,
-                'You do not have permission to export messages',
-            );
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'exportChannelMessages',
+            new ApiError(403, 'You do not have permission to export messages'),
+        );
 
         try {
             const job = await this.exportService.requestExport(

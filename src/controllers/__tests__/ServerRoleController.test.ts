@@ -40,6 +40,20 @@ describe('ServerRoleController', () => {
 
     const mockPermissionService = {
         hasPermission: jest.fn().mockResolvedValue(true),
+        requirePermission: jest.fn(async function (
+            this: { hasPermission: (...args: unknown[]) => Promise<boolean> },
+            serverId: unknown,
+            userId: unknown,
+            permission: unknown,
+            error: Error,
+        ) {
+            if (
+                (await this.hasPermission(serverId, userId, permission)) !==
+                true
+            ) {
+                throw error;
+            }
+        }),
         invalidateCache: jest.fn(),
         getHighestRolePosition: jest.fn().mockResolvedValue(100),
     } as unknown as PermissionService;

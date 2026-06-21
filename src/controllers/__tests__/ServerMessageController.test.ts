@@ -36,6 +36,27 @@ describe('ServerMessageController Manual Instance', () => {
     } as unknown as IReactionRepository;
     const mockPermissionService = {
         hasChannelPermission: jest.fn().mockResolvedValue(true),
+        requireChannelPermission: jest.fn(async function (
+            this: {
+                hasChannelPermission: (...args: unknown[]) => Promise<boolean>;
+            },
+            serverId: unknown,
+            userId: unknown,
+            channelId: unknown,
+            permission: unknown,
+            error: Error,
+        ) {
+            if (
+                (await this.hasChannelPermission(
+                    serverId,
+                    userId,
+                    channelId,
+                    permission,
+                )) !== true
+            ) {
+                throw error;
+            }
+        }),
     } as unknown as PermissionService;
     const mockLogger = {
         info: jest.fn(),
@@ -155,9 +176,6 @@ describe('ServerMessageController Manual Instance', () => {
     });
 
     describe('sendMessage search indexing', () => {
-        const makeReq = (isBot: boolean): Request =>
-            ({ user: { id: VALID_USER_ID, isBot } }) as unknown as Request;
-
         beforeEach(() => {
             (mockServerMessageRepo.create as jest.Mock).mockImplementation(
                 async (data: Record<string, unknown>) => ({
@@ -172,7 +190,9 @@ describe('ServerMessageController Manual Instance', () => {
             await controller.sendMessage(
                 VALID_SERVER_ID,
                 VALID_CHANNEL_ID,
-                makeReq(true),
+                VALID_USER_ID,
+                true,
+                'testuser',
                 { text: 'hello from a bot' } as never,
             );
 
@@ -188,7 +208,9 @@ describe('ServerMessageController Manual Instance', () => {
             await controller.sendMessage(
                 VALID_SERVER_ID,
                 VALID_CHANNEL_ID,
-                makeReq(false),
+                VALID_USER_ID,
+                false,
+                'testuser',
                 { text: 'hello from a human' } as never,
             );
 

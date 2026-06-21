@@ -22,7 +22,6 @@ import {
     PushPreferencesResponseDTO,
 } from './dto/push.response.dto';
 import type { Request as ExpressRequest } from 'express';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { PushSubscription } from '@/models/PushSubscription';
@@ -67,9 +66,9 @@ export class PushController {
     @ApiOkResponse({ type: SuccessResponseDTO })
     public async subscribeWeb(
         @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: WebPushDto,
     ) {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         await PushSubscription.updateOne(
             { userId, 'endpointData.endpoint': body.subscription.endpoint },
             {
@@ -91,9 +90,9 @@ export class PushController {
     @ApiOkResponse({ type: SuccessResponseDTO })
     public async subscribeFcm(
         @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: FcmDto,
     ) {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         if (body.deviceId !== undefined && body.deviceId.trim() !== '') {
             await PushSubscription.deleteMany({
                 userId,
@@ -169,9 +168,9 @@ export class PushController {
     @ApiOkResponse({ type: SuccessResponseDTO })
     public async migrateVapid(
         @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: MigrateVapidDto,
     ) {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         await PushSubscription.deleteOne({
             userId,
             'endpointData.endpoint': body.oldEndpoint,

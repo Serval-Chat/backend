@@ -44,6 +44,27 @@ const slashCommandRepo = {
 
 const permissionService = {
     hasChannelPermission: jest.fn(),
+    requireChannelPermission: jest.fn(async function (
+        this: {
+            hasChannelPermission: (...args: unknown[]) => Promise<boolean>;
+        },
+        serverId: unknown,
+        userId: unknown,
+        channelId: unknown,
+        permission: unknown,
+        error: Error,
+    ) {
+        if (
+            (await this.hasChannelPermission(
+                serverId,
+                userId,
+                channelId,
+                permission,
+            )) !== true
+        ) {
+            throw error;
+        }
+    }),
     getAllServerPermissions: jest.fn(),
 };
 

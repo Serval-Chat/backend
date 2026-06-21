@@ -2,7 +2,7 @@ import { Types } from 'mongoose';
 
 import { ErrorMessages } from '@/constants/errorMessages';
 
-jest.mock('@/services/pushService', () => ({
+jest.mock('@/services/PushService', () => ({
     notifyUser: jest.fn().mockResolvedValue(undefined),
 }));
 

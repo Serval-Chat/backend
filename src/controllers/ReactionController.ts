@@ -5,7 +5,6 @@ import {
     Delete,
     Body,
     Param,
-    Req,
     UseGuards,
     Inject,
 } from '@nestjs/common';
@@ -40,8 +39,6 @@ import { assertHttpNotMuted } from '@/utils/mute';
 
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { Request } from 'express';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -150,11 +147,11 @@ export class ReactionController {
     @ApiResponse({ status: 404, description: 'Message not found' })
     public async addDmReaction(
         @Param('messageId') messageId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
+        @CurrentUser('username') username: string,
         @Body()
         body: AddUnicodeReactionRequestDTO | AddCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'add reactions');
         const { emoji, emojiType } = body;
         const emojiId =
@@ -236,8 +233,7 @@ export class ReactionController {
             payload: {
                 messageId,
                 userId,
-                username:
-                    (req as Request & { user: JWTPayload }).user.username || '',
+                username: username || '',
                 emoji,
                 emojiType,
                 emojiId,
@@ -361,11 +357,11 @@ export class ReactionController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
+        @CurrentUser('username') username: string,
         @Body()
         body: AddUnicodeReactionRequestDTO | AddCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'add reactions');
         const { emoji, emojiType } = body;
         const emojiId =
@@ -388,19 +384,13 @@ export class ReactionController {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const canAddReactions =
-            await this.permissionService.hasChannelPermission(
-                new Types.ObjectId(serverId),
-                new Types.ObjectId(userId),
-                new Types.ObjectId(channelId),
-                'addReactions',
-            );
-        if (canAddReactions !== true) {
-            throw new ApiError(
-                403,
-                ErrorMessages.REACTION.MISSING_PERMISSION_ADD,
-            );
-        }
+        await this.permissionService.requireChannelPermission(
+            new Types.ObjectId(serverId),
+            new Types.ObjectId(userId),
+            new Types.ObjectId(channelId),
+            'addReactions',
+            new ApiError(403, ErrorMessages.REACTION.MISSING_PERMISSION_ADD),
+        );
 
         const message = await this.serverMessageRepo.findById(
             new Types.ObjectId(messageId),
@@ -454,7 +444,7 @@ export class ReactionController {
             payload: {
                 messageId,
                 userId,
-                username: (req as Request & { user: JWTPayload }).user.username,
+                username,
                 emoji,
                 emojiType,
                 emojiId,

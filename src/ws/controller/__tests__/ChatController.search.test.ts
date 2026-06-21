@@ -9,7 +9,7 @@ import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 
-jest.mock('@/services/pushService', () => ({
+jest.mock('@/services/PushService', () => ({
     notifyUser: jest.fn().mockResolvedValue(undefined),
     notifyUsers: jest.fn().mockResolvedValue(undefined),
 }));
@@ -50,12 +50,10 @@ describe('ChatController search indexing', () => {
 
     beforeEach(() => {
         userRepo = {
-            findById: jest
-                .fn()
-                .mockResolvedValue({
-                    _id: new Types.ObjectId(RECEIVER_ID),
-                    username: 'peer',
-                }),
+            findById: jest.fn().mockResolvedValue({
+                _id: new Types.ObjectId(RECEIVER_ID),
+                username: 'peer',
+            }),
         };
         friendshipRepo = { areFriends: jest.fn().mockResolvedValue(true) };
         messageRepo = {

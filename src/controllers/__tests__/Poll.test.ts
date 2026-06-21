@@ -62,8 +62,6 @@ function makeReq(userId = USER_ID): Request {
     } as unknown as Request;
 }
 
-const makeSendReq = makeReq;
-
 let mockServerMessageRepo: {
     findByChannelId: jest.Mock;
     findById: jest.Mock;
@@ -82,6 +80,7 @@ let mockReactionRepo: {
 };
 let mockPermissionService: {
     hasChannelPermission: jest.Mock;
+    requireChannelPermission: jest.Mock;
 };
 let mockWsServer: {
     broadcastToServer: jest.Mock;
@@ -154,6 +153,27 @@ beforeEach(() => {
 
     mockPermissionService = {
         hasChannelPermission: jest.fn().mockResolvedValue(true),
+        requireChannelPermission: jest.fn(async function (
+            this: {
+                hasChannelPermission: (...args: unknown[]) => Promise<boolean>;
+            },
+            serverId: unknown,
+            userId: unknown,
+            channelId: unknown,
+            permission: unknown,
+            error: Error,
+        ) {
+            if (
+                (await this.hasChannelPermission(
+                    serverId,
+                    userId,
+                    channelId,
+                    permission,
+                )) !== true
+            ) {
+                throw error;
+            }
+        }),
     };
 
     mockWsServer = {
@@ -189,7 +209,9 @@ describe('sendMessage  -  poll creation', () => {
         const result = await controller.sendMessage(
             SERVER_ID,
             CHANNEL_ID,
-            makeSendReq(),
+            USER_ID,
+            false,
+            'testuser',
             body,
         );
         expect(mockServerMessageRepo.create).toHaveBeenCalledTimes(1);
@@ -215,7 +237,9 @@ describe('sendMessage  -  poll creation', () => {
         await controller.sendMessage(
             SERVER_ID,
             CHANNEL_ID,
-            makeSendReq(),
+            USER_ID,
+            false,
+            'testuser',
             body,
         );
 
@@ -248,7 +272,9 @@ describe('sendMessage  -  poll creation', () => {
         await controller.sendMessage(
             SERVER_ID,
             CHANNEL_ID,
-            makeSendReq(),
+            USER_ID,
+            false,
+            'testuser',
             body,
         );
 
@@ -276,7 +302,9 @@ describe('sendMessage  -  poll creation', () => {
         await controller.sendMessage(
             SERVER_ID,
             CHANNEL_ID,
-            makeSendReq(),
+            USER_ID,
+            false,
+            'testuser',
             body,
         );
         expect(capturedPoll!.expiresAt).toBeUndefined();
@@ -299,7 +327,9 @@ describe('sendMessage  -  poll creation', () => {
         const result = await controller.sendMessage(
             SERVER_ID,
             CHANNEL_ID,
-            makeSendReq(),
+            USER_ID,
+            false,
+            'testuser',
             body,
         );
         expect(result.poll).toBeUndefined();
@@ -321,7 +351,9 @@ describe('sendMessage  -  poll creation', () => {
         await controller.sendMessage(
             SERVER_ID,
             CHANNEL_ID,
-            makeSendReq(),
+            USER_ID,
+            false,
+            'testuser',
             body,
         );
 

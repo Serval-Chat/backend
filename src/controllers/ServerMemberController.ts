@@ -631,17 +631,12 @@ export class ServerMemberController {
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                currentOid,
-                'kickMembers',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
-                ErrorMessages.MEMBER.NO_PERMISSION_KICK,
-            );
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            currentOid,
+            'kickMembers',
+            new ForbiddenException(ErrorMessages.MEMBER.NO_PERMISSION_KICK),
+        );
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverOid,
@@ -723,17 +718,12 @@ export class ServerMemberController {
         const { userId, reason } = body;
         const targetOid = new Types.ObjectId(userId);
 
-        if (
-            !(await this.permissionService.hasPermission(
-                serverOid,
-                currentOid,
-                'banMembers',
-            ))
-        ) {
-            throw new ForbiddenException(
-                ErrorMessages.MEMBER.NO_PERMISSION_BAN,
-            );
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            currentOid,
+            'banMembers',
+            new ForbiddenException(ErrorMessages.MEMBER.NO_PERMISSION_BAN),
+        );
 
         const server = await this.serverRepo.findById(serverOid);
         if (server && String(server.ownerId) === userId) {
@@ -820,17 +810,14 @@ export class ServerMemberController {
         const targetOid = new Types.ObjectId(userId);
         const { duration, reason } = body;
 
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                currentOid,
-                'moderateMembers',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            currentOid,
+            'moderateMembers',
+            new ForbiddenException(
                 'You do not have permission to timeout members',
-            );
-        }
+            ),
+        );
 
         const server = await this.serverRepo.findById(serverOid);
         if (server !== null && String(server.ownerId) === userId) {
@@ -916,17 +903,12 @@ export class ServerMemberController {
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                currentOid,
-                'banMembers',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
-                ErrorMessages.MEMBER.NO_PERMISSION_UNBAN,
-            );
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            currentOid,
+            'banMembers',
+            new ForbiddenException(ErrorMessages.MEMBER.NO_PERMISSION_UNBAN),
+        );
 
         await this.serverBanRepo.unban(serverOid, targetOid);
 
@@ -963,17 +945,14 @@ export class ServerMemberController {
     ): Promise<IServerBan[]> {
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                currentOid,
-                'banMembers',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            currentOid,
+            'banMembers',
+            new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_VIEW_BANS,
-            );
-        }
+            ),
+        );
 
         return await this.serverBanRepo.findByServerIdWithUserInfo(serverOid);
     }
@@ -996,17 +975,14 @@ export class ServerMemberController {
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                currentOid,
-                'manageRoles',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            currentOid,
+            'manageRoles',
+            new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-            );
-        }
+            ),
+        );
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverOid,
@@ -1102,17 +1078,14 @@ export class ServerMemberController {
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                currentOid,
-                'manageRoles',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
+        await this.permissionService.requirePermission(
+            serverOid,
+            currentOid,
+            'manageRoles',
+            new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
-            );
-        }
+            ),
+        );
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverOid,

@@ -291,25 +291,21 @@ export class InteractionController {
             throw new ForbiddenException('Not a member of this server');
         }
 
-        const canView = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new Types.ObjectId(serverId),
             new Types.ObjectId(req.user.id),
             new Types.ObjectId(channelId),
             'viewChannels',
+            new ForbiddenException('Cannot view this channel'),
         );
-        if (canView !== true)
-            throw new ForbiddenException('Cannot view this channel');
 
-        const canSend = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new Types.ObjectId(serverId),
             new Types.ObjectId(req.user.id),
             new Types.ObjectId(channelId),
             'sendMessages',
+            new ForbiddenException('Cannot send messages in this channel'),
         );
-        if (canSend !== true)
-            throw new ForbiddenException(
-                'Cannot send messages in this channel',
-            );
 
         const botsInServer = await ServerMember.find({
             serverId: new Types.ObjectId(serverId),
@@ -458,17 +454,13 @@ export class InteractionController {
             }
 
             const targetBotUserId = targetBot.userId.toString();
-            const canBotView =
-                await this.permissionService.hasChannelPermission(
-                    new Types.ObjectId(serverId),
-                    new Types.ObjectId(targetBotUserId),
-                    new Types.ObjectId(channelId),
-                    'viewChannels',
-                );
-
-            if (canBotView !== true) {
-                throw new ForbiddenException('Bot cannot view this channel');
-            }
+            await this.permissionService.requireChannelPermission(
+                new Types.ObjectId(serverId),
+                new Types.ObjectId(targetBotUserId),
+                new Types.ObjectId(channelId),
+                'viewChannels',
+                new ForbiddenException('Bot cannot view this channel'),
+            );
 
             this.wsServer.broadcastToUser(targetBotUserId, interactionEvent);
         } else {
@@ -551,15 +543,13 @@ export class InteractionController {
             throw new ForbiddenException('Not a member of this server');
         }
 
-        const canView = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new Types.ObjectId(serverId),
             new Types.ObjectId(req.user.id),
             new Types.ObjectId(channelId),
             'viewChannels',
+            new ForbiddenException('Cannot view this channel'),
         );
-        if (canView !== true) {
-            throw new ForbiddenException('Cannot view this channel');
-        }
 
         const isPersistentMessage = Types.ObjectId.isValid(messageId);
 
@@ -704,15 +694,13 @@ export class InteractionController {
             throw new ForbiddenException('Bot is not a member of this server');
         }
 
-        const canView = await this.permissionService.hasChannelPermission(
+        await this.permissionService.requireChannelPermission(
             new Types.ObjectId(serverId),
             new Types.ObjectId(req.user.id),
             new Types.ObjectId(channelId),
             'viewChannels',
+            new ForbiddenException('Bot cannot view this channel'),
         );
-        if (canView !== true) {
-            throw new ForbiddenException('Bot cannot view this channel');
-        }
 
         const botUser = await User.findById(req.user.id)
             .select('username profilePicture isBot')

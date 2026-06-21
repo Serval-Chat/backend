@@ -19,7 +19,7 @@ import type { IPoll, IPollOption } from '@/models/Message';
 import type { IWsUser } from '@/ws/types';
 import mongoose from 'mongoose';
 
-jest.mock('@/services/pushService', () => ({
+jest.mock('@/services/PushService', () => ({
     notifyUser: jest.fn().mockResolvedValue(undefined),
     notifyUsers: jest.fn().mockResolvedValue(undefined),
 }));

@@ -33,7 +33,7 @@ import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { notifyUser } from '@/services/pushService';
+import { notifyUser } from '@/services/PushService';
 import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 import { SendFriendRequestDTO } from './dto/friendship.request.dto';

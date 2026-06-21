@@ -105,17 +105,12 @@ export class ServerInviteController {
     ): Promise<(IInvite & { createdByUsername?: string })[]> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageInvites',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
-                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
-            );
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageInvites',
+            new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE),
+        );
 
         const invites = await this.inviteRepo.findByServerId(serverOid);
         const creatorIds = [
@@ -235,16 +230,12 @@ export class ServerInviteController {
         userOid: Types.ObjectId,
         code: string,
     ): Promise<void> {
-        const hasManageInvites = await this.permissionService.hasPermission(
+        await this.permissionService.requirePermission(
             serverOid,
             userOid,
             'manageInvites',
+            new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE),
         );
-        if (hasManageInvites !== true) {
-            throw new ForbiddenException(
-                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
-            );
-        }
 
         const server = await this.serverRepo.findById(serverOid);
         if (server === null || String(server.ownerId) !== userId) {
@@ -263,16 +254,12 @@ export class ServerInviteController {
         serverOid: Types.ObjectId,
         userOid: Types.ObjectId,
     ): Promise<void> {
-        const canInvite = await this.permissionService.hasAnyPermission(
+        await this.permissionService.requireAnyPermission(
             serverOid,
             userOid,
             ['inviteUsers', 'manageInvites'],
+            new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_INVITE),
         );
-        if (!canInvite) {
-            throw new ForbiddenException(
-                ErrorMessages.INVITE.NO_PERMISSION_INVITE,
-            );
-        }
     }
 
     private async reusePreferredInvite(
@@ -307,17 +294,12 @@ export class ServerInviteController {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const inviteOid = new Types.ObjectId(inviteId);
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageInvites',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
-                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
-            );
-        }
+        await this.permissionService.requirePermission(
+            serverOid,
+            userOid,
+            'manageInvites',
+            new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE),
+        );
 
         const invite = await this.inviteRepo.findById(inviteOid);
         if (invite === null || !invite.serverId.equals(serverOid)) {

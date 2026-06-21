@@ -1,4 +1,3 @@
-import type { Request } from 'express';
 import { ForbiddenException } from '@nestjs/common';
 import { Types } from 'mongoose';
 
@@ -27,6 +26,27 @@ describe('ServerMessageController embeds', () => {
     const mockReactionRepo = {};
     const mockPermissionService = {
         hasChannelPermission: jest.fn(),
+        requireChannelPermission: jest.fn(async function (
+            this: {
+                hasChannelPermission: (...args: unknown[]) => Promise<boolean>;
+            },
+            serverId: unknown,
+            userId: unknown,
+            channelId: unknown,
+            permission: unknown,
+            error: Error,
+        ) {
+            if (
+                (await this.hasChannelPermission(
+                    serverId,
+                    userId,
+                    channelId,
+                    permission,
+                )) !== true
+            ) {
+                throw error;
+            }
+        }),
     };
     const mockLogger = { debug: jest.fn() };
     const mockWsServer = {
@@ -85,34 +105,46 @@ describe('ServerMessageController embeds', () => {
     });
 
     it('rejects embeds from non-bot users', async () => {
-        const req = {
-            user: { id: userId, username: 'alice', isBot: false },
-        } as unknown as Request;
+        const username = 'alice';
+        const isBot = false;
 
         await expect(
-            controller.sendMessage(serverId, channelId, req, {
-                embeds: [{ title: 'Hello' }],
-            }),
+            controller.sendMessage(
+                serverId,
+                channelId,
+                userId,
+                isBot,
+                username,
+                {
+                    embeds: [{ title: 'Hello' }],
+                },
+            ),
         ).rejects.toThrow(ForbiddenException);
         expect(mockServerMessageRepo.create).not.toHaveBeenCalled();
     });
 
     it('rejects components from non-bot users', async () => {
-        const req = {
-            user: { id: userId, username: 'alice', isBot: false },
-        } as unknown as Request;
+        const username = 'alice';
+        const isBot = false;
 
         await expect(
-            controller.sendMessage(serverId, channelId, req, {
-                components: [
-                    {
-                        type: 'button',
-                        style: 'primary',
-                        label: 'Click',
-                        custom_id: 'click',
-                    },
-                ],
-            }),
+            controller.sendMessage(
+                serverId,
+                channelId,
+                userId,
+                isBot,
+                username,
+                {
+                    components: [
+                        {
+                            type: 'button',
+                            style: 'primary',
+                            label: 'Click',
+                            custom_id: 'click',
+                        },
+                    ],
+                },
+            ),
         ).rejects.toThrow(ForbiddenException);
         expect(mockServerMessageRepo.create).not.toHaveBeenCalled();
     });
@@ -130,13 +162,19 @@ describe('ServerMessageController embeds', () => {
             components: [],
         });
 
-        const req = {
-            user: { id: userId, username: 'helper-bot', isBot: true },
-        } as unknown as Request;
+        const username = 'helper-bot';
+        const isBot = true;
 
-        await controller.sendMessage(serverId, channelId, req, {
-            embeds: [{ title: 'Bot Embed' }],
-        });
+        await controller.sendMessage(
+            serverId,
+            channelId,
+            userId,
+            isBot,
+            username,
+            {
+                embeds: [{ title: 'Bot Embed' }],
+            },
+        );
 
         expect(mockServerMessageRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -176,13 +214,19 @@ describe('ServerMessageController embeds', () => {
             components,
         });
 
-        const req = {
-            user: { id: userId, username: 'helper-bot', isBot: true },
-        } as unknown as Request;
+        const username = 'helper-bot';
+        const isBot = true;
 
-        await controller.sendMessage(serverId, channelId, req, {
-            components,
-        });
+        await controller.sendMessage(
+            serverId,
+            channelId,
+            userId,
+            isBot,
+            username,
+            {
+                components,
+            },
+        );
 
         expect(mockServerMessageRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({

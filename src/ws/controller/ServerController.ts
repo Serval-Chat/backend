@@ -72,7 +72,7 @@ import logger from '@/utils/logger';
 import { getDocumentIdString } from '@/utils/mongooseId';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
-import { notifyUser } from '@/services/pushService';
+import { notifyUser } from '@/services/PushService';
 import { EmbedService } from '@/services/EmbedService';
 import { assertWsNotMuted } from '@/utils/mute';
 

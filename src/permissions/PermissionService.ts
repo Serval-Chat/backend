@@ -248,6 +248,33 @@ export class PermissionService {
         return resolver.hasServerPermission(userId.toString(), permission);
     }
 
+    // Throws `error` if the user lacks `permission` on the server.
+    public async requirePermission(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        permission: PermissionKey,
+        error: Error,
+    ): Promise<void> {
+        if ((await this.hasPermission(serverId, userId, permission)) !== true) {
+            throw error;
+        }
+    }
+
+    // Throws `error` if the user lacks every permission in `permissions`.
+    public async requireAnyPermission(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        permissions: readonly PermissionKey[],
+        error: Error,
+    ): Promise<void> {
+        if (
+            (await this.hasAnyPermission(serverId, userId, permissions)) !==
+            true
+        ) {
+            throw error;
+        }
+    }
+
     // True if the user holds at least one of the given permissions on the server.
     public async hasAnyPermission(
         serverId: Types.ObjectId,
@@ -289,6 +316,26 @@ export class PermissionService {
             permission,
         );
         return result;
+    }
+
+    // Throws `error` if the user lacks `permission` on the channel.
+    public async requireChannelPermission(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        channelId: Types.ObjectId,
+        permission: PermissionKey,
+        error: Error,
+    ): Promise<void> {
+        if (
+            (await this.hasChannelPermission(
+                serverId,
+                userId,
+                channelId,
+                permission,
+            )) !== true
+        ) {
+            throw error;
+        }
     }
 
     public async hasChannelPermissions(

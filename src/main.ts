@@ -11,7 +11,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { setupExpressApp } from './server';
 import { connectDB } from '@/config/db';
 import { startMetricsUpdater } from '@/utils/metrics-updater';
-import { initWebPush } from '@/services/pushService';
+import { initWebPush } from '@/services/PushService';
 import {
     cleanupOrphanedPings,
     cleanupDeadPings,
