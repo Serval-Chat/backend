@@ -106,7 +106,7 @@ describe('UserMessageSearchController', () => {
 
         const result = await controller.searchMessages(
             dmQuery as never,
-            jwtReq(userId),
+            jwtReq(userId).user?.id as string,
         );
 
         expect(result).toEqual(sampleDmHits);
@@ -114,17 +114,20 @@ describe('UserMessageSearchController', () => {
 
     it('always uses the JWT user id as the requesting party, not an arbitrary query param', async () => {
         // user A passes B's id as "themselves", impossible, but we verify
-        // that searchDmMessages is called with req.user.id first, not query.userId
+        // that searchDmMessages is called with req.user?.id as string first, not query.userId
         mockFriendshipRepo.areFriends.mockResolvedValueOnce(true);
         mockSearchService.searchDmMessages.mockResolvedValueOnce({
             hits: [],
             total: 0,
         });
 
-        await controller.searchMessages(dmQuery as never, jwtReq(userId));
+        await controller.searchMessages(
+            dmQuery as never,
+            jwtReq(userId).user?.id as string,
+        );
 
         expect(mockSearchService.searchDmMessages).toHaveBeenCalledWith(
-            userId, // first arg = JWT user, always locked to req.user.id
+            userId, // first arg = JWT user, always locked to req.user?.id as string
             otherUserId, // second arg = the query param (other conversation partner)
             'hello',
             25,
@@ -137,7 +140,10 @@ describe('UserMessageSearchController', () => {
         mockFriendshipRepo.areFriends.mockResolvedValueOnce(false);
 
         await expect(
-            controller.searchMessages(dmQuery as never, jwtReq(userId)),
+            controller.searchMessages(
+                dmQuery as never,
+                jwtReq(userId).user?.id as string,
+            ),
         ).rejects.toThrow(ForbiddenException);
 
         expect(mockSearchService.searchDmMessages).not.toHaveBeenCalled();
@@ -150,7 +156,10 @@ describe('UserMessageSearchController', () => {
         );
 
         await expect(
-            controller.searchMessages(dmQuery as never, jwtReq(userId)),
+            controller.searchMessages(
+                dmQuery as never,
+                jwtReq(userId).user?.id as string,
+            ),
         ).rejects.toThrow(ServiceUnavailableException);
     });
 
@@ -214,7 +223,7 @@ describe('ServerMessageSearchController', () => {
             serverId,
             channelId,
             channelQuery as never,
-            jwtReq(userId),
+            jwtReq(userId).user?.id as string,
         );
 
         expect(result).toEqual(sampleChannelHits);
@@ -235,7 +244,7 @@ describe('ServerMessageSearchController', () => {
                 serverId,
                 channelId,
                 channelQuery as never,
-                jwtReq(userId),
+                jwtReq(userId).user?.id as string,
             ),
         ).rejects.toThrow(ForbiddenException);
 
@@ -253,7 +262,7 @@ describe('ServerMessageSearchController', () => {
                 serverId,
                 channelId,
                 channelQuery as never,
-                jwtReq(userId),
+                jwtReq(userId).user?.id as string,
             ),
         ).rejects.toThrow(NotFoundException);
     });
@@ -275,7 +284,7 @@ describe('ServerMessageSearchController', () => {
                 serverId,
                 channelId,
                 channelQuery as never,
-                jwtReq(userId),
+                jwtReq(userId).user?.id as string,
             ),
         ).rejects.toThrow(NotFoundException);
     });
@@ -293,7 +302,7 @@ describe('ServerMessageSearchController', () => {
                 serverId,
                 channelId,
                 channelQuery as never,
-                jwtReq(userId),
+                jwtReq(userId).user?.id as string,
             ),
         ).rejects.toThrow(ForbiddenException);
     });
@@ -310,7 +319,7 @@ describe('ServerMessageSearchController', () => {
                 serverId,
                 channelId,
                 channelQuery as never,
-                jwtReq(userId),
+                jwtReq(userId).user?.id as string,
             ),
         ).rejects.toThrow(ForbiddenException);
     });
@@ -330,7 +339,7 @@ describe('ServerMessageSearchController', () => {
                 serverId,
                 channelId,
                 channelQuery as never,
-                jwtReq(userId),
+                jwtReq(userId).user?.id as string,
             ),
         ).rejects.toThrow(ServiceUnavailableException);
     });

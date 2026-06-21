@@ -57,5 +57,8 @@
     "*.cjs",
     "*.mjs",
     "*.config.js"
-  ]
+  ],
+  "ts-node": {
+    "files": true
+  }
 }

@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import type { RedisReply } from 'rate-limit-redis';
 import jwt from 'jsonwebtoken';
@@ -41,7 +41,7 @@ export const loginLimiter = rateLimit({
             typeof req.body?.login === 'string'
                 ? req.body.login.toLowerCase()
                 : '';
-        const ip = req.ip ?? req.socket.remoteAddress ?? 'ip';
+        const ip = ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip');
         return `${ip}:${login}`;
     },
     standardHeaders: 'draft-7',
@@ -63,7 +63,7 @@ export const registrationLimiter = rateLimit({
                 : '';
         const inviteCode =
             typeof req.body?.inviteCode === 'string' ? req.body.inviteCode : '';
-        const ip = req.ip ?? req.socket.remoteAddress ?? 'ip';
+        const ip = ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip');
         return `${ip}:${login}:${inviteCode}`;
     },
     standardHeaders: 'draft-7',
@@ -78,7 +78,7 @@ export const sensitiveOperationLimiter = rateLimit({
     max: 3,
     keyGenerator: (req: Request) => {
         const userId = (req as Request & { user?: JWTPayload }).user?.id;
-        return userId ?? req.ip ?? 'unknown';
+        return userId ?? ipKeyGenerator(req.ip ?? 'unknown');
     },
     standardHeaders: 'draft-7',
     legacyHeaders: false,
@@ -100,7 +100,7 @@ export const passwordResetLimiter = rateLimit({
             typeof req.body?.email === 'string'
                 ? req.body.email.toLowerCase()
                 : '';
-        const ip = req.ip ?? req.socket.remoteAddress ?? 'ip';
+        const ip = ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip');
         return `${ip}:${email}`;
     },
     standardHeaders: 'draft-7',
@@ -120,7 +120,7 @@ export const botTokenLimiter = rateLimit({
     keyGenerator: (req: Request) => {
         const clientId =
             typeof req.body?.client_id === 'string' ? req.body.client_id : '';
-        const ip = req.ip ?? req.socket.remoteAddress ?? 'ip';
+        const ip = ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip');
         return `${ip}:${clientId}`;
     },
     standardHeaders: 'draft-7',
@@ -140,7 +140,7 @@ export const webhookExecutionLimiter = rateLimit({
     keyGenerator: (req: Request) => {
         const token =
             typeof req.params.token === 'string' ? req.params.token : '';
-        return token !== '' ? token : (req.ip ?? 'unknown');
+        return token !== '' ? token : ipKeyGenerator(req.ip ?? 'unknown');
     },
     standardHeaders: 'draft-7',
     legacyHeaders: false,
@@ -206,7 +206,7 @@ function authenticatedUserKey(req: Request): string {
         }
     }
 
-    return req.ip ?? 'unknown';
+    return ipKeyGenerator(req.ip ?? 'unknown');
 }
 
 export const websiteConnectionCreateLimiter = rateLimit({

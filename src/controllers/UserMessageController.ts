@@ -6,7 +6,6 @@ import {
     Body,
     Query,
     Param,
-    Req,
     UseGuards,
     Inject,
     NotFoundException,
@@ -42,9 +41,8 @@ import type {
     ReactionData,
 } from '@/di/interfaces/IReactionRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { WsServer } from '@/ws/server';
 import { EmbedService } from '@/services/EmbedService';
@@ -106,9 +104,8 @@ export class UserMessageController {
         description: 'Unread counts retrieved',
     })
     public async getUnreadCounts(
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') meIdStr: string,
     ): Promise<UnreadCountsResponse> {
-        const meIdStr = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const meId = new Types.ObjectId(meIdStr);
         const docs = await this.dmUnreadRepo.findByUser(meId);
 
@@ -156,10 +153,9 @@ export class UserMessageController {
         description: ErrorMessages.AUTH.USER_NOT_FOUND,
     })
     public async getMessages(
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') meId: string,
         @Query() query: GetMessagesQueryDTO,
     ): Promise<MessageWithReactions[]> {
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { userId, limit, before, around, after } = query;
 
         const userDoc = await this.userRepo.findById(
@@ -224,11 +220,10 @@ export class UserMessageController {
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getMessage(
         @Param() params: MessageIdParamDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') meId: string,
         @Query('userId') userId: string,
     ): Promise<MessageResponse> {
         const { id } = params;
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const userDoc = await this.userRepo.findById(
             new Types.ObjectId(userId),
@@ -289,10 +284,9 @@ export class UserMessageController {
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async getUserMessage(
         @Param() params: UserMessageParamsDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') meId: string,
     ): Promise<MessageResponse> {
         const { userId, messageId } = params;
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         if (
             (await this.friendshipRepo.areFriends(
@@ -348,11 +342,10 @@ export class UserMessageController {
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async editMessage(
         @Param() params: MessageIdParamDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') meId: string,
         @Body() body: UserEditMessageRequestDTO,
     ): Promise<IMessage> {
         const { id } = params;
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const { content } = body;
 
         const message = await this.messageRepo.findById(new Types.ObjectId(id));
@@ -413,11 +406,10 @@ export class UserMessageController {
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async votePoll(
         @Param() params: MessageIdParamDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') meId: string,
         @Body() body: PollVoteRequestDTO,
     ): Promise<IMessage> {
         const { id } = params;
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const message = await this.messageRepo.findById(new Types.ObjectId(id));
         if (message === null) {
@@ -507,10 +499,9 @@ export class UserMessageController {
     @ApiResponse({ status: 404, description: ErrorMessages.MESSAGE.NOT_FOUND })
     public async deleteMessage(
         @Param() params: MessageIdParamDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') meId: string,
     ): Promise<{ success: boolean }> {
         const { id } = params;
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
 
         const message = await this.messageRepo.findById(new Types.ObjectId(id));
         if (message === null) {

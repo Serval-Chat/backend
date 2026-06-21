@@ -27,6 +27,7 @@ import { processAudio } from '@/utils/audio';
 import { Types } from 'mongoose';
 import { WsServer } from '@/ws/server';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { getDocumentId } from '@/utils/mongooseId';
 import {
     ApiTags,
@@ -86,14 +87,13 @@ export class NotificationSoundController {
     @ApiOperation({ summary: 'Upload a custom notification sound' })
     @ApiOkResponse({ type: NotificationSoundResponseDTO })
     public async uploadSound(
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @UploadedFile() file: Express.Multer.File | undefined,
     ) {
         if (file === undefined) {
             throw new BadRequestException('No file uploaded');
         }
 
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const user = await this.userRepo.findById(new Types.ObjectId(userId));
         if (user === null) throw new NotFoundException('User not found');
 
@@ -150,8 +150,7 @@ export class NotificationSoundController {
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Get all custom notification sounds' })
     @ApiOkResponse({ type: [NotificationSoundResponseDTO] })
-    public async getSounds(@Req() req: Request) {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
+    public async getSounds(@CurrentUser('id') userId: string) {
         const user = await this.userRepo.findById(new Types.ObjectId(userId));
         return user?.settings?.notificationSounds ?? [];
     }
@@ -160,8 +159,10 @@ export class NotificationSoundController {
     @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Delete a custom notification sound' })
     @ApiOkResponse({ type: NotificationSoundDeletedResponseDTO })
-    public async deleteSound(@Req() req: Request, @Param('id') id: string) {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
+    public async deleteSound(
+        @CurrentUser('id') userId: string,
+        @Param('id') id: string,
+    ) {
         const user = await this.userRepo.findById(new Types.ObjectId(userId));
         if (user === null) throw new NotFoundException('User not found');
 

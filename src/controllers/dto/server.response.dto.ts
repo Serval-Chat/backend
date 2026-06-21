@@ -92,6 +92,12 @@ export class ServerResponseDTO {
 
     @ApiProperty({ required: false })
     public canManage?: boolean;
+
+    @ApiProperty({ required: false })
+    public canInvite?: boolean;
+
+    @ApiProperty({ required: false })
+    public preferredInviteCode?: string;
 }
 
 export class SetDefaultRoleResponseDTO {

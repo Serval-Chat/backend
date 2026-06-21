@@ -41,6 +41,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -107,9 +108,8 @@ export class ServerChannelController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getChannels(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<ChannelWithReadResponseDTO[]> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
@@ -241,9 +241,8 @@ export class ServerChannelController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getCategories(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<ICategory[]> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
@@ -279,10 +278,9 @@ export class ServerChannelController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async createChannel(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: CreateChannelRequestDTO,
     ): Promise<IChannel> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
@@ -379,10 +377,9 @@ export class ServerChannelController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async reorderChannels(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: ReorderChannelsRequestDTO,
     ): Promise<{ message: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
@@ -462,9 +459,8 @@ export class ServerChannelController {
     public async getChannelStats(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<ChannelStatsResponseDTO> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
@@ -524,10 +520,9 @@ export class ServerChannelController {
     public async updateChannel(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdateChannelRequestDTO,
     ): Promise<IChannel> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
@@ -699,9 +694,8 @@ export class ServerChannelController {
     public async deleteChannel(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
@@ -754,10 +748,9 @@ export class ServerChannelController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async createCategory(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: CreateCategoryRequestDTO,
     ): Promise<ICategory> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
@@ -820,10 +813,9 @@ export class ServerChannelController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async reorderCategories(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: ReorderCategoriesRequestDTO,
     ): Promise<{ message: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 
@@ -865,10 +857,9 @@ export class ServerChannelController {
     public async updateCategory(
         @Param('serverId') serverId: string,
         @Param('categoryId') categoryId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdateCategoryRequestDTO,
     ): Promise<ICategory> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const categoryOid = new Types.ObjectId(categoryId);
         const userOid = new Types.ObjectId(userId);
@@ -948,9 +939,8 @@ export class ServerChannelController {
     public async deleteCategory(
         @Param('serverId') serverId: string,
         @Param('categoryId') categoryId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const categoryOid = new Types.ObjectId(categoryId);
         const userOid = new Types.ObjectId(userId);
@@ -1018,9 +1008,8 @@ export class ServerChannelController {
     public async getChannelPermissions(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
@@ -1067,10 +1056,9 @@ export class ServerChannelController {
     public async updateChannelPermissions(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdatePermissionsRequestDTO,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
@@ -1189,9 +1177,8 @@ export class ServerChannelController {
     public async getCategoryPermissions(
         @Param('serverId') serverId: string,
         @Param('categoryId') categoryId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const categoryOid = new Types.ObjectId(categoryId);
         const userOid = new Types.ObjectId(userId);
@@ -1238,10 +1225,9 @@ export class ServerChannelController {
     public async updateCategoryPermissions(
         @Param('serverId') serverId: string,
         @Param('categoryId') categoryId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdatePermissionsRequestDTO,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const categoryOid = new Types.ObjectId(categoryId);
         const userOid = new Types.ObjectId(userId);
@@ -1359,9 +1345,8 @@ export class ServerChannelController {
     })
     public async getVoiceStates(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<Record<string, string[]>> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 

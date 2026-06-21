@@ -32,6 +32,7 @@ import { ChannelMessageSearchQueryDTO } from './dto/message-search.request.dto';
 import { ChannelMessageSearchResponseDTO } from './dto/message-search.response.dto';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 
@@ -66,9 +67,8 @@ export class ServerMessageSearchController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Query() query: ChannelMessageSearchQueryDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<ChannelMessageSearchResponseDTO> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const {
             q,
             limit,

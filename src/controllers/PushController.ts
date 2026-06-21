@@ -23,6 +23,7 @@ import {
 } from './dto/push.response.dto';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { PushSubscription } from '@/models/PushSubscription';
 import { User } from '@/models/User';
@@ -124,8 +125,7 @@ export class PushController {
     @Delete('unsubscribe')
     @ApiOperation({ summary: 'Unsubscribe from all push notifications' })
     @ApiOkResponse({ type: SuccessResponseDTO })
-    public async unsubscribe(@Req() req: ExpressRequest) {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+    public async unsubscribe(@CurrentUser('id') userId: string) {
         await PushSubscription.deleteMany({ userId });
         return { success: true };
     }
@@ -133,8 +133,7 @@ export class PushController {
     @Get('preferences')
     @ApiOperation({ summary: 'Get notification preferences' })
     @ApiOkResponse({ type: PushPreferencesResponseDTO })
-    public async getPreferences(@Req() req: ExpressRequest) {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+    public async getPreferences(@CurrentUser('id') userId: string) {
         const user = await User.findById(new Types.ObjectId(userId))
             .select('notificationPreferences')
             .lean();
@@ -151,11 +150,9 @@ export class PushController {
     @ApiOperation({ summary: 'Update notification preferences' })
     @ApiOkResponse({ type: SuccessResponseDTO })
     public async updatePreferences(
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdatePreferencesDto,
     ) {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-
         const updateObj: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(body)) {
             updateObj[`notificationPreferences.${k}`] = v;

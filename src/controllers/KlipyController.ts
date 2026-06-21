@@ -20,6 +20,7 @@ import { KlipyService } from '@/services/KlipyService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ToggleFavoriteGifRequestDTO } from '@/controllers/dto/klipy.request.dto';
 import {
     FavoriteGifResponseDTO,
@@ -80,9 +81,8 @@ export class KlipyController {
     @ApiOperation({ summary: 'Get user favorite GIFs' })
     @ApiResponse({ status: 200, type: [FavoriteGifResponseDTO] })
     public async getFavorites(
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<FavoriteGifResponseDTO[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         return this.klipyService.getFavorites(userId);
     }
 
@@ -90,10 +90,9 @@ export class KlipyController {
     @ApiOperation({ summary: 'Toggle GIF in favorites' })
     @ApiResponse({ status: 201, type: ToggleFavoriteResponseDTO })
     public async toggleFavorite(
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: ToggleFavoriteGifRequestDTO,
     ): Promise<ToggleFavoriteResponseDTO> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         return this.klipyService.toggleFavorite(userId, body);
     }
 }

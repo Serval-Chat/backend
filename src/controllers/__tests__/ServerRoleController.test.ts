@@ -107,7 +107,7 @@ describe('ServerRoleController', () => {
             const result = await controller.updateRole(
                 SERVER_ID.toHexString(),
                 ROLE_ID.toHexString(),
-                req,
+                req.user?.id as string,
                 body as unknown as UpdateRoleRequestDTO,
             );
 
@@ -147,7 +147,7 @@ describe('ServerRoleController', () => {
 
             await controller.reorderRoles(
                 SERVER_ID,
-                req,
+                req.user?.id as string,
                 body as unknown as ReorderRolesRequestDTO,
             );
 
@@ -182,7 +182,7 @@ describe('ServerRoleController', () => {
                 controller.deleteRole(
                     SERVER_ID.toHexString(),
                     ROLE_ID.toHexString(),
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow('No permission to manage roles');
         });
@@ -205,7 +205,7 @@ describe('ServerRoleController', () => {
                 controller.deleteRole(
                     SERVER_ID.toHexString(),
                     ROLE_ID.toHexString(),
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow('Cannot delete @everyone role');
         });
@@ -231,7 +231,7 @@ describe('ServerRoleController', () => {
                 controller.deleteRole(
                     SERVER_ID.toHexString(),
                     ROLE_ID.toHexString(),
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow('Cannot delete @everyone role');
         });
@@ -257,7 +257,7 @@ describe('ServerRoleController', () => {
                 controller.deleteRole(
                     SERVER_ID.toHexString(),
                     ROLE_ID.toHexString(),
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow(
                 'You cannot delete a role equal to or higher than your own highest role',
@@ -282,7 +282,7 @@ describe('ServerRoleController', () => {
             const result = await controller.deleteRole(
                 SERVER_ID.toHexString(),
                 ROLE_ID.toHexString(),
-                req,
+                req.user?.id as string,
             );
 
             expect(result).toEqual({ message: 'Role deleted' });
@@ -310,7 +310,7 @@ describe('ServerRoleController', () => {
             const result = await controller.deleteRole(
                 SERVER_ID.toHexString(),
                 ROLE_ID.toHexString(),
-                req,
+                req.user?.id as string,
             );
 
             expect(result).toEqual({ message: 'Role deleted' });

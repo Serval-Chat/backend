@@ -49,6 +49,7 @@ import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import {
     CreateRoleRequestDTO,
@@ -104,9 +105,8 @@ export class ServerRoleController {
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getServerRoles(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IRole[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -135,10 +135,9 @@ export class ServerRoleController {
     })
     public async createRole(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: CreateRoleRequestDTO,
     ): Promise<IRole> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
@@ -232,10 +231,9 @@ export class ServerRoleController {
     })
     public async reorderRoles(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: ReorderRolesRequestDTO,
     ): Promise<IRole[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
@@ -354,10 +352,9 @@ export class ServerRoleController {
     public async updateRole(
         @Param('serverId') serverId: string,
         @Param('roleId') roleId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdateRoleRequestDTO,
     ): Promise<IRole> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
@@ -572,9 +569,8 @@ export class ServerRoleController {
     public async deleteRole(
         @Param('serverId') serverId: string,
         @Param('roleId') roleId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);
@@ -678,9 +674,8 @@ export class ServerRoleController {
         @Param('serverId') serverId: string,
         @Param('roleId') roleId: string,
         @UploadedFile() icon: Express.Multer.File | undefined,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IRole> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const roleOid = new Types.ObjectId(roleId);

@@ -60,12 +60,10 @@ describe('ServerMessageController Manual Instance', () => {
         createAndBroadcast: jest.fn().mockResolvedValue(undefined),
     } as unknown as IServerAuditLogService;
     const mockServerRepo = {
-        findById: jest
-            .fn()
-            .mockResolvedValue({
-                _id: VALID_SERVER_ID,
-                ownerId: VALID_USER_ID,
-            }),
+        findById: jest.fn().mockResolvedValue({
+            _id: VALID_SERVER_ID,
+            ownerId: VALID_USER_ID,
+        }),
     } as unknown as IServerRepository;
 
     beforeEach(() => {
@@ -148,7 +146,7 @@ describe('ServerMessageController Manual Instance', () => {
         const result = await controller.getMessages(
             VALID_SERVER_ID,
             VALID_CHANNEL_ID,
-            req,
+            req.user?.id as string,
         );
 
         expect(result).toHaveLength(1);
@@ -230,7 +228,7 @@ describe('ServerMessageController Manual Instance', () => {
                 VALID_SERVER_ID,
                 VALID_CHANNEL_ID,
                 VALID_MESSAGE_ID,
-                req,
+                req.user?.id as string,
             );
 
             expect(
@@ -255,7 +253,7 @@ describe('ServerMessageController Manual Instance', () => {
                 VALID_SERVER_ID,
                 VALID_CHANNEL_ID,
                 VALID_MESSAGE_ID,
-                req,
+                req.user?.id as string,
             );
 
             expect(

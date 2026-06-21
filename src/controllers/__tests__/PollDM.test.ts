@@ -256,7 +256,7 @@ describe('DM Polls', () => {
             const targetOptionId = poll.options[0]!.id;
             const result = await userMessageController.votePoll(
                 { id: MSG_ID },
-                makeReq(),
+                makeReq().user?.id as string,
                 { optionIds: [targetOptionId] },
             );
 
@@ -278,9 +278,13 @@ describe('DM Polls', () => {
             messageRepo.findById.mockResolvedValue(makeDmMessage(poll));
 
             await expect(
-                userMessageController.votePoll({ id: MSG_ID }, makeReq(), {
-                    optionIds: [poll.options[0]!.id],
-                }),
+                userMessageController.votePoll(
+                    { id: MSG_ID },
+                    makeReq().user?.id as string,
+                    {
+                        optionIds: [poll.options[0]!.id],
+                    },
+                ),
             ).rejects.toThrow(BadRequestException);
         });
 
@@ -289,9 +293,13 @@ describe('DM Polls', () => {
             messageRepo.findById.mockResolvedValue(makeDmMessage(poll));
 
             await expect(
-                userMessageController.votePoll({ id: MSG_ID }, makeReq(), {
-                    optionIds: [poll.options[0]!.id, poll.options[1]!.id],
-                }),
+                userMessageController.votePoll(
+                    { id: MSG_ID },
+                    makeReq().user?.id as string,
+                    {
+                        optionIds: [poll.options[0]!.id, poll.options[1]!.id],
+                    },
+                ),
             ).rejects.toThrow(BadRequestException);
         });
     });

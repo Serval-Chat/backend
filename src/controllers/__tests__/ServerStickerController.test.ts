@@ -134,7 +134,10 @@ describe('ServerStickerController', () => {
                 },
             ]);
 
-            const result = await controller.getServerStickers(SERVER_ID, req);
+            const result = await controller.getServerStickers(
+                SERVER_ID,
+                req.user?.id as string,
+            );
 
             expect(result).toHaveLength(1);
             expect(result[0]?.name).toBe('test');
@@ -147,7 +150,7 @@ describe('ServerStickerController', () => {
             ).mockResolvedValue(null);
 
             await expect(
-                controller.getServerStickers(SERVER_ID, req),
+                controller.getServerStickers(SERVER_ID, req.user?.id as string),
             ).rejects.toThrow(ForbiddenException);
         });
     });
@@ -194,7 +197,7 @@ describe('ServerStickerController', () => {
 
             const result = await controller.uploadSticker(
                 SERVER_ID,
-                req,
+                req.user?.id as string,
                 file,
                 { name: 'test_sticker' },
             );
@@ -217,9 +220,14 @@ describe('ServerStickerController', () => {
             ).mockResolvedValue(false);
 
             await expect(
-                controller.uploadSticker(SERVER_ID, req, file, {
-                    name: 'test',
-                }),
+                controller.uploadSticker(
+                    SERVER_ID,
+                    req.user?.id as string,
+                    file,
+                    {
+                        name: 'test',
+                    },
+                ),
             ).rejects.toThrow(ForbiddenException);
         });
 
@@ -231,9 +239,14 @@ describe('ServerStickerController', () => {
             });
 
             await expect(
-                controller.uploadSticker(SERVER_ID, req, file, {
-                    name: 'test',
-                }),
+                controller.uploadSticker(
+                    SERVER_ID,
+                    req.user?.id as string,
+                    file,
+                    {
+                        name: 'test',
+                    },
+                ),
             ).rejects.toThrow(ForbiddenException);
 
             expect(mockServerRepo.findById).not.toHaveBeenCalled();
@@ -256,7 +269,11 @@ describe('ServerStickerController', () => {
                 isAnimated: false,
             });
 
-            await controller.deleteSticker(SERVER_ID, STICKER_ID, req);
+            await controller.deleteSticker(
+                SERVER_ID,
+                STICKER_ID,
+                req.user?.id as string,
+            );
 
             expect(mockStickerRepo.delete).toHaveBeenCalledWith(
                 expect.any(Types.ObjectId),
@@ -281,7 +298,11 @@ describe('ServerStickerController', () => {
                 isAnimated: false,
             });
 
-            await controller.deleteSticker(SERVER_ID, STICKER_ID, req);
+            await controller.deleteSticker(
+                SERVER_ID,
+                STICKER_ID,
+                req.user?.id as string,
+            );
 
             expect(mockStickerRepo.delete).toHaveBeenCalled();
         });
@@ -297,7 +318,11 @@ describe('ServerStickerController', () => {
             ).mockResolvedValue(false);
 
             await expect(
-                controller.deleteSticker(SERVER_ID, STICKER_ID, req),
+                controller.deleteSticker(
+                    SERVER_ID,
+                    STICKER_ID,
+                    req.user?.id as string,
+                ),
             ).rejects.toThrow(ForbiddenException);
         });
 
@@ -310,7 +335,11 @@ describe('ServerStickerController', () => {
             (mockStickerRepo.findById as jest.Mock).mockResolvedValue(null);
 
             await expect(
-                controller.deleteSticker(SERVER_ID, STICKER_ID, req),
+                controller.deleteSticker(
+                    SERVER_ID,
+                    STICKER_ID,
+                    req.user?.id as string,
+                ),
             ).rejects.toThrow(NotFoundException);
         });
     });

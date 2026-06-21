@@ -41,6 +41,7 @@ import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { IEmoji } from '@/di/interfaces/IEmojiRepository';
 import path from 'path';
 import fs from 'fs';
@@ -105,9 +106,8 @@ export class ServerEmojiController {
     @ApiResponse({ status: 404, description: ErrorMessages.SERVER.NOT_FOUND })
     public async getServerEmojis(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IEmoji[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -156,12 +156,11 @@ export class ServerEmojiController {
     @HttpCode(201)
     public async uploadEmoji(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @UploadedFile(EmojiValidationPipe) emoji: Express.Multer.File,
         @Body() body: UploadEmojiRequestDTO,
     ): Promise<IEmoji> {
         const { name } = body;
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'upload emojis');
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
@@ -267,9 +266,8 @@ export class ServerEmojiController {
     public async getEmoji(
         @Param('serverId') serverId: string,
         @Param('emojiId') emojiId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IEmoji> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const emojiOid = new Types.ObjectId(emojiId);
@@ -301,9 +299,8 @@ export class ServerEmojiController {
     public async deleteEmoji(
         @Param('serverId') serverId: string,
         @Param('emojiId') emojiId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<void> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'delete emojis');
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);

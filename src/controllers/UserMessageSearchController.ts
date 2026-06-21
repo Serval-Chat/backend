@@ -3,7 +3,6 @@ import {
     Get,
     Inject,
     Query,
-    Req,
     UseGuards,
     ForbiddenException,
     ServiceUnavailableException,
@@ -25,8 +24,7 @@ import type {
 } from '@/di/interfaces/IMessageSearchService';
 import { DmMessageSearchQueryDTO } from './dto/message-search.request.dto';
 import { DmMessageSearchResponseDTO } from './dto/message-search.response.dto';
-import type { Request as ExpressRequest } from 'express';
-import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { Types } from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 
@@ -55,9 +53,8 @@ export class UserMessageSearchController {
     @ApiResponse({ status: 503, description: 'Search service unavailable' })
     public async searchMessages(
         @Query() query: DmMessageSearchQueryDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<DmMessageSearchResponseDTO> {
-        const meId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const {
             userId: otherUserId,
             q,
@@ -83,7 +80,7 @@ export class UserMessageSearchController {
         } = query;
 
         const friends = await this.friendshipRepo.areFriends(
-            new Types.ObjectId(meId),
+            new Types.ObjectId(userId),
             new Types.ObjectId(otherUserId),
         );
         if (friends !== true) {
@@ -135,7 +132,7 @@ export class UserMessageSearchController {
 
         try {
             return await this.searchService.searchDmMessages(
-                meId,
+                userId,
                 otherUserId,
                 q,
                 limit,

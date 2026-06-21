@@ -110,7 +110,10 @@ describe('ServerController onboarding settings', () => {
         mockPermissionService.hasPermission.mockResolvedValueOnce(false);
 
         await expect(
-            controller.getOnboardingSettings(serverIdStr, req),
+            controller.getOnboardingSettings(
+                serverIdStr,
+                req.user?.id as string,
+            ),
         ).rejects.toThrow('No permission to manage server');
 
         expect(mockServerRepo.findById).not.toHaveBeenCalled();
@@ -137,15 +140,23 @@ describe('ServerController onboarding settings', () => {
         ]);
 
         await expect(
-            controller.updateOnboardingSettings(serverIdStr, req, {
-                selfAssignableRoleIds: [everyoneId.toHexString()],
-            }),
+            controller.updateOnboardingSettings(
+                serverIdStr,
+                req.user?.id as string,
+                {
+                    selfAssignableRoleIds: [everyoneId.toHexString()],
+                },
+            ),
         ).rejects.toThrow('The @everyone role cannot be self-assignable');
 
         await expect(
-            controller.updateOnboardingSettings(serverIdStr, req, {
-                selfAssignableRoleIds: [managedId.toHexString()],
-            }),
+            controller.updateOnboardingSettings(
+                serverIdStr,
+                req.user?.id as string,
+                {
+                    selfAssignableRoleIds: [managedId.toHexString()],
+                },
+            ),
         ).rejects.toThrow('Managed roles cannot be self-assignable');
     });
 
@@ -161,9 +172,13 @@ describe('ServerController onboarding settings', () => {
         });
 
         await expect(
-            controller.updateOnboardingSettings(serverIdStr, req, {
-                landingChannelId: channelId.toHexString(),
-            }),
+            controller.updateOnboardingSettings(
+                serverIdStr,
+                req.user?.id as string,
+                {
+                    landingChannelId: channelId.toHexString(),
+                },
+            ),
         ).rejects.toThrow('Landing channel cannot be a link channel');
     });
 
@@ -172,11 +187,15 @@ describe('ServerController onboarding settings', () => {
         mockServerRepo.findById.mockResolvedValueOnce(existingServer);
 
         await expect(
-            controller.updateOnboardingSettings(serverIdStr, req, {
-                welcomeChannelIds: Array.from({ length: 9 }, () =>
-                    new Types.ObjectId().toHexString(),
-                ),
-            }),
+            controller.updateOnboardingSettings(
+                serverIdStr,
+                req.user?.id as string,
+                {
+                    welcomeChannelIds: Array.from({ length: 9 }, () =>
+                        new Types.ObjectId().toHexString(),
+                    ),
+                },
+            ),
         ).rejects.toThrow('Welcome channels cannot exceed 8');
     });
 
@@ -223,7 +242,7 @@ describe('ServerController onboarding settings', () => {
 
         const result = await controller.updateOnboardingSettings(
             serverIdStr,
-            req,
+            req.user?.id as string,
             {
                 enabled: true,
                 guidelines: ['Be kind'],

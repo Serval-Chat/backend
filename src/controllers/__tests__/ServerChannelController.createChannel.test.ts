@@ -93,11 +93,15 @@ describe('ServerChannelController - createChannel', () => {
             };
         });
 
-        await controller.createChannel(serverId.toHexString(), req, {
-            name: 'category-channel',
-            type: ChannelTypeDTO.TEXT,
-            categoryId,
-        });
+        await controller.createChannel(
+            serverId.toHexString(),
+            req.user?.id as string,
+            {
+                name: 'category-channel',
+                type: ChannelTypeDTO.TEXT,
+                categoryId,
+            },
+        );
 
         expect(mockChannelRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -118,10 +122,14 @@ describe('ServerChannelController - createChannel', () => {
             };
         });
 
-        await controller.createChannel(serverId.toHexString(), req, {
-            name: 'global-channel',
-            type: ChannelTypeDTO.TEXT,
-        });
+        await controller.createChannel(
+            serverId.toHexString(),
+            req.user?.id as string,
+            {
+                name: 'global-channel',
+                type: ChannelTypeDTO.TEXT,
+            },
+        );
 
         expect(mockChannelRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({

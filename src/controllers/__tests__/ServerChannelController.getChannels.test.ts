@@ -103,7 +103,10 @@ describe('ServerChannelController - getChannels visibility', () => {
         mockChannelRepo.findByServerId.mockResolvedValue([]);
 
         await expect(
-            controller.getChannels(serverId.toHexString(), req),
+            controller.getChannels(
+                serverId.toHexString(),
+                req.user?.id as string,
+            ),
         ).rejects.toThrow();
 
         expect(
@@ -129,7 +132,7 @@ describe('ServerChannelController - getChannels visibility', () => {
 
         const result = await controller.getChannels(
             serverId.toHexString(),
-            req,
+            req.user?.id as string,
         );
 
         expect(result).toHaveLength(1);
@@ -151,7 +154,7 @@ describe('ServerChannelController - getChannels visibility', () => {
 
         const result = await controller.getChannels(
             serverId.toHexString(),
-            req,
+            req.user?.id as string,
         );
 
         expect(result).toHaveLength(0);
@@ -173,7 +176,7 @@ describe('ServerChannelController - getChannels visibility', () => {
 
         const result = await controller.getChannels(
             serverId.toHexString(),
-            req,
+            req.user?.id as string,
         );
 
         expect(result).toHaveLength(1);
@@ -196,7 +199,7 @@ describe('ServerChannelController - getChannels visibility', () => {
 
         const result = await controller.getChannels(
             serverId.toHexString(),
-            req,
+            req.user?.id as string,
         );
 
         expect(result).toHaveLength(0);
@@ -216,7 +219,10 @@ describe('ServerChannelController - getChannels visibility', () => {
             new Map(),
         );
 
-        await controller.getChannels(serverId.toHexString(), req);
+        await controller.getChannels(
+            serverId.toHexString(),
+            req.user?.id as string,
+        );
 
         const [, , categoryIds] = mockPermissionService.hasCategoryPermissions
             .mock.calls[0] as [unknown, unknown, Types.ObjectId[]];
@@ -237,7 +243,10 @@ describe('ServerChannelController - getChannels visibility', () => {
             new Map(),
         );
 
-        await controller.getChannels(serverId.toHexString(), req);
+        await controller.getChannels(
+            serverId.toHexString(),
+            req.user?.id as string,
+        );
 
         const [, , categoryIds] = mockPermissionService.hasCategoryPermissions
             .mock.calls[0] as [unknown, unknown, Types.ObjectId[]];
@@ -258,7 +267,10 @@ describe('ServerChannelController - getChannels visibility', () => {
             makePermMap([[catId, true]]),
         );
 
-        await controller.getChannels(serverId.toHexString(), req);
+        await controller.getChannels(
+            serverId.toHexString(),
+            req.user?.id as string,
+        );
 
         const [, , categoryIds] = mockPermissionService.hasCategoryPermissions
             .mock.calls[0] as [unknown, unknown, Types.ObjectId[]];
@@ -280,7 +292,10 @@ describe('ServerChannelController - getChannels visibility', () => {
             new Map(),
         );
 
-        await controller.getChannels(serverId.toHexString(), req);
+        await controller.getChannels(
+            serverId.toHexString(),
+            req.user?.id as string,
+        );
 
         expect(
             mockPermissionService.hasChannelPermissions,

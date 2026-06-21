@@ -25,6 +25,7 @@ import { ExportService } from '@/services/ExportService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { Request, Response } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
@@ -51,9 +52,8 @@ export class ExportController {
     public async getExportState(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ) {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
@@ -82,9 +82,8 @@ export class ExportController {
     public async requestExport(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ) {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);

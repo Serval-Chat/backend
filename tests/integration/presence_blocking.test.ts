@@ -148,7 +148,7 @@ describe('Presence Blocking Integration', () => {
 
             const req = { user: { id: blocked._id.toString() } } as unknown as Request;
             
-            const members = await controller.getServerMembers(serverId.toString(), req);
+            const members = await controller.getServerMembers(serverId.toString(), req.user?.id as string);
             
             const blockerMember = members.find((m: { userId: string | mongoose.Types.ObjectId, online: boolean }) => m.userId.toString() === blocker._id.toString());
             assert.ok(blockerMember, 'Blocker should still be in the list');

@@ -87,9 +87,13 @@ describe('ServerChannelController - reorderChannels WS visibility', () => {
             { channelId: hiddenChannelId.toHexString(), position: 1 },
         ];
 
-        await controller.reorderChannels(serverId.toHexString(), req, {
-            channelPositions,
-        });
+        await controller.reorderChannels(
+            serverId.toHexString(),
+            req.user?.id as string,
+            {
+                channelPositions,
+            },
+        );
 
         expect(mockWsServer.broadcastToServer).not.toHaveBeenCalledWith(
             serverId.toHexString(),

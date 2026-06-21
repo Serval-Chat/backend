@@ -159,7 +159,7 @@ describe('ServerMemberController', () => {
 
             const result = await controller.acceptOnboardingRules(
                 serverIdStr,
-                req,
+                req.user?.id as string,
             );
 
             expect(mockServerMemberRepo.update).toHaveBeenCalledWith(
@@ -205,7 +205,7 @@ describe('ServerMemberController', () => {
 
             const result = await controller.updateChannelPreferences(
                 serverIdStr,
-                req,
+                req.user?.id as string,
                 {
                     hiddenChannelIds: [channelId.toHexString()],
                     hiddenCategoryIds: [categoryId.toHexString()],
@@ -244,10 +244,14 @@ describe('ServerMemberController', () => {
             mockCategoryRepo.findByServerId.mockResolvedValueOnce([]);
 
             await expect(
-                controller.updateChannelPreferences(serverIdStr, req, {
-                    hiddenChannelIds: [channelId.toHexString()],
-                    hiddenCategoryIds: [],
-                }),
+                controller.updateChannelPreferences(
+                    serverIdStr,
+                    req.user?.id as string,
+                    {
+                        hiddenChannelIds: [channelId.toHexString()],
+                        hiddenCategoryIds: [],
+                    },
+                ),
             ).rejects.toThrow('Hidden channel is not in server');
 
             expect(mockServerMemberRepo.update).not.toHaveBeenCalled();
@@ -272,7 +276,7 @@ describe('ServerMemberController', () => {
 
             const result = await controller.completeOnboarding(
                 serverIdStr,
-                req,
+                req.user?.id as string,
             );
 
             expect(mockServerMemberRepo.update).toHaveBeenCalledWith(
@@ -307,7 +311,7 @@ describe('ServerMemberController', () => {
                 ownerId: new Types.ObjectId(), // someone else
             });
 
-            await controller.leaveServer(serverIdStr, req);
+            await controller.leaveServer(serverIdStr, req.user?.id as string);
 
             expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
                 serverId,
@@ -345,9 +349,13 @@ describe('ServerMemberController', () => {
             });
 
             await expect(
-                controller.updateSelfRoles(serverIdStr, req, {
-                    roleIds: [blockedRoleId.toHexString()],
-                }),
+                controller.updateSelfRoles(
+                    serverIdStr,
+                    req.user?.id as string,
+                    {
+                        roleIds: [blockedRoleId.toHexString()],
+                    },
+                ),
             ).rejects.toThrow('Role is not self-assignable in this server');
 
             expect(mockServerMemberRepo.updateRoles).not.toHaveBeenCalled();
@@ -399,9 +407,13 @@ describe('ServerMemberController', () => {
                 updatedMember,
             );
 
-            const result = await controller.updateSelfRoles(serverIdStr, req, {
-                roleIds: [selfRoleId.toHexString()],
-            });
+            const result = await controller.updateSelfRoles(
+                serverIdStr,
+                req.user?.id as string,
+                {
+                    roleIds: [selfRoleId.toHexString()],
+                },
+            );
 
             expect(mockServerMemberRepo.updateRoles).toHaveBeenCalledWith(
                 serverId,
@@ -450,9 +462,14 @@ describe('ServerMemberController', () => {
                 5,
             ); // target
 
-            await controller.kickMember(serverIdStr, targetIdStr, req, {
-                reason: 'test',
-            });
+            await controller.kickMember(
+                serverIdStr,
+                targetIdStr,
+                req.user?.id as string,
+                {
+                    reason: 'test',
+                },
+            );
 
             expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
                 serverId,
@@ -485,7 +502,7 @@ describe('ServerMemberController', () => {
                 5,
             ); // target
 
-            await controller.banMember(serverIdStr, req, {
+            await controller.banMember(serverIdStr, req.user?.id as string, {
                 userId: targetIdStr,
                 reason: 'test',
             });
@@ -518,7 +535,7 @@ describe('ServerMemberController', () => {
                     serverIdStr,
                     targetIdStr,
                     roleIdStr,
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow('No permission to manage roles');
         });
@@ -534,7 +551,7 @@ describe('ServerMemberController', () => {
                     serverIdStr,
                     targetIdStr,
                     roleIdStr,
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow('Member not found');
         });
@@ -551,7 +568,7 @@ describe('ServerMemberController', () => {
                     serverIdStr,
                     targetIdStr,
                     roleIdStr,
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow('Role not found');
         });
@@ -572,7 +589,7 @@ describe('ServerMemberController', () => {
                     serverIdStr,
                     targetIdStr,
                     roleIdStr,
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow('Cannot remove @everyone role from a member');
         });
@@ -594,7 +611,7 @@ describe('ServerMemberController', () => {
                     serverIdStr,
                     targetIdStr,
                     roleIdStr,
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow('Cannot remove a managed role from a member');
         });
@@ -625,7 +642,7 @@ describe('ServerMemberController', () => {
                     serverIdStr,
                     targetIdStr,
                     roleIdStr,
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow(
                 'You cannot manage roles for a member with a role equal to or higher than your own',
@@ -658,7 +675,7 @@ describe('ServerMemberController', () => {
                     serverIdStr,
                     targetIdStr,
                     roleIdStr,
-                    req,
+                    req.user?.id as string,
                 ),
             ).rejects.toThrow(
                 'You cannot remove a role equal to or higher than your own highest role',
@@ -692,7 +709,7 @@ describe('ServerMemberController', () => {
                 serverIdStr,
                 targetIdStr,
                 roleIdStr,
-                req,
+                req.user?.id as string,
             );
 
             expect(mockServerMemberRepo.removeRole).toHaveBeenCalledWith(
@@ -736,7 +753,7 @@ describe('ServerMemberController', () => {
                 serverIdStr,
                 targetIdStr,
                 roleIdStr,
-                req,
+                req.user?.id as string,
             );
 
             expect(mockServerMemberRepo.removeRole).toHaveBeenCalledWith(

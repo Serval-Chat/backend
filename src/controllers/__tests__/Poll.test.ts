@@ -346,7 +346,7 @@ describe('votePoll  -  access control', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).rejects.toThrow(ForbiddenException);
     });
@@ -360,7 +360,7 @@ describe('votePoll  -  access control', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).rejects.toThrow(ForbiddenException);
     });
@@ -374,7 +374,7 @@ describe('votePoll  -  access control', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).rejects.toThrow(NotFoundException);
     });
@@ -389,7 +389,7 @@ describe('votePoll  -  access control', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).rejects.toThrow(NotFoundException);
     });
@@ -414,7 +414,7 @@ describe('votePoll  -  poll validation', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).rejects.toThrow(BadRequestException);
     });
@@ -425,7 +425,13 @@ describe('votePoll  -  poll validation', () => {
 
         const body: PollVoteRequestDTO = { optionIds: [poll.options[0]!.id] };
         await expect(
-            controller.votePoll(SERVER_ID, CHANNEL_ID, MSG_ID, body, makeReq()),
+            controller.votePoll(
+                SERVER_ID,
+                CHANNEL_ID,
+                MSG_ID,
+                body,
+                makeReq().user?.id as string,
+            ),
         ).rejects.toThrow(BadRequestException);
     });
 
@@ -436,7 +442,13 @@ describe('votePoll  -  poll validation', () => {
 
         const body: PollVoteRequestDTO = { optionIds: [poll.options[0]!.id] };
         await expect(
-            controller.votePoll(SERVER_ID, CHANNEL_ID, MSG_ID, body, makeReq()),
+            controller.votePoll(
+                SERVER_ID,
+                CHANNEL_ID,
+                MSG_ID,
+                body,
+                makeReq().user?.id as string,
+            ),
         ).resolves.toBeDefined();
     });
 
@@ -446,7 +458,13 @@ describe('votePoll  -  poll validation', () => {
 
         const body: PollVoteRequestDTO = { optionIds: ['nonexistent-id'] };
         await expect(
-            controller.votePoll(SERVER_ID, CHANNEL_ID, MSG_ID, body, makeReq()),
+            controller.votePoll(
+                SERVER_ID,
+                CHANNEL_ID,
+                MSG_ID,
+                body,
+                makeReq().user?.id as string,
+            ),
         ).rejects.toThrow(BadRequestException);
     });
 
@@ -458,7 +476,13 @@ describe('votePoll  -  poll validation', () => {
             optionIds: [poll.options[0]!.id, poll.options[1]!.id],
         };
         await expect(
-            controller.votePoll(SERVER_ID, CHANNEL_ID, MSG_ID, body, makeReq()),
+            controller.votePoll(
+                SERVER_ID,
+                CHANNEL_ID,
+                MSG_ID,
+                body,
+                makeReq().user?.id as string,
+            ),
         ).rejects.toThrow(BadRequestException);
     });
 
@@ -471,7 +495,13 @@ describe('votePoll  -  poll validation', () => {
             optionIds: [poll.options[0]!.id, poll.options[1]!.id],
         };
         await expect(
-            controller.votePoll(SERVER_ID, CHANNEL_ID, MSG_ID, body, makeReq()),
+            controller.votePoll(
+                SERVER_ID,
+                CHANNEL_ID,
+                MSG_ID,
+                body,
+                makeReq().user?.id as string,
+            ),
         ).resolves.toBeDefined();
     });
 });
@@ -493,7 +523,7 @@ describe('votePoll  -  vote mutation logic', () => {
             CHANNEL_ID,
             MSG_ID,
             { optionIds: [targetId] },
-            makeReq(),
+            makeReq().user?.id as string,
         );
 
         const target = capturedPoll!.options.find((o) => o.id === targetId);
@@ -529,7 +559,7 @@ describe('votePoll  -  vote mutation logic', () => {
             CHANNEL_ID,
             MSG_ID,
             { optionIds: [targetId] },
-            makeReq(),
+            makeReq().user?.id as string,
         );
 
         const other = capturedPoll!.options.find((o) => o.id === otherId);
@@ -561,7 +591,7 @@ describe('votePoll  -  vote mutation logic', () => {
             CHANNEL_ID,
             MSG_ID,
             { optionIds: [] },
-            makeReq(),
+            makeReq().user?.id as string,
         );
 
         capturedPoll!.options.forEach((o) => expect(o.votes).toHaveLength(0));
@@ -591,7 +621,7 @@ describe('votePoll  -  vote mutation logic', () => {
             CHANNEL_ID,
             MSG_ID,
             { optionIds: [optId] },
-            makeReq(),
+            makeReq().user?.id as string,
         );
 
         const target = capturedPoll!.options.find((o) => o.id === optId);
@@ -621,7 +651,7 @@ describe('votePoll  -  vote mutation logic', () => {
             CHANNEL_ID,
             MSG_ID,
             { optionIds: [optId] },
-            makeReq(),
+            makeReq().user?.id as string,
         );
 
         const target = capturedPoll!.options.find((o) => o.id === optId);
@@ -640,7 +670,7 @@ describe('votePoll  -  WebSocket broadcast', () => {
             CHANNEL_ID,
             MSG_ID,
             { optionIds: [poll.options[0]!.id] },
-            makeReq(),
+            makeReq().user?.id as string,
         );
 
         expect(mockWsServer.broadcastToChannel).toHaveBeenCalledTimes(1);
@@ -660,7 +690,7 @@ describe('votePoll  -  WebSocket broadcast', () => {
             CHANNEL_ID,
             MSG_ID,
             { optionIds: [poll.options[0]!.id] },
-            makeReq(),
+            makeReq().user?.id as string,
         );
 
         expect(mockWsServer.broadcastToChannel).toHaveBeenCalledWith(
@@ -687,7 +717,7 @@ describe('votePoll  -  WebSocket broadcast', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [poll.options[0]!.id] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).rejects.toThrow(NotFoundException);
 
@@ -707,7 +737,7 @@ describe('votePoll  -  return value', () => {
             CHANNEL_ID,
             MSG_ID,
             { optionIds: [poll.options[0]!.id] },
-            makeReq(),
+            makeReq().user?.id as string,
         );
         expect(result).toBe(updatedMsg);
     });
@@ -724,7 +754,7 @@ describe('Poll expiry edge cases', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [poll.options[0]!.id] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).rejects.toThrow(BadRequestException);
     });
@@ -740,7 +770,7 @@ describe('Poll expiry edge cases', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [poll.options[0]!.id] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).resolves.toBeDefined();
     });
@@ -755,7 +785,7 @@ describe('Poll expiry edge cases', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [poll.options[0]!.id] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).rejects.toThrow(BadRequestException);
     });
@@ -773,7 +803,7 @@ describe('Poll expiry edge cases', () => {
                 CHANNEL_ID,
                 MSG_ID,
                 { optionIds: [poll.options[0]!.id] },
-                makeReq(),
+                makeReq().user?.id as string,
             ),
         ).resolves.toBeDefined();
     });

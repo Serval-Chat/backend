@@ -51,6 +51,7 @@ import { WsServer } from '@/ws/server';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { IChannel } from '@/di/interfaces/IChannelRepository';
@@ -267,8 +268,9 @@ export class ServerController {
     @Get()
     @ApiOperation({ summary: 'Get user servers' })
     @ApiResponse({ status: 200, type: [ServerResponseDTO] })
-    public async getServers(@Req() req: Request): Promise<IServer[]> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
+    public async getServers(
+        @CurrentUser('id') userId: string,
+    ): Promise<IServer[]> {
         const userOid = new Types.ObjectId(userId);
         const memberships = await this.serverMemberRepo.findByUserId(userOid);
         const serverIds = memberships.map((m) => m.serverId);
@@ -276,19 +278,28 @@ export class ServerController {
 
         return await Promise.all(
             servers.map(async (server) => {
-                const memberCount = await this.serverMemberRepo.countByServerId(
-                    new Types.ObjectId(server.id),
-                );
+                const serverOid = new Types.ObjectId(server.id);
+                const memberCount =
+                    await this.serverMemberRepo.countByServerId(serverOid);
                 const canManage =
                     (await this.permissionService.hasPermission(
-                        new Types.ObjectId(server.id),
+                        serverOid,
                         userOid,
                         'manageServer',
                     )) === true;
+                const canInvite = await this.permissionService.hasAnyPermission(
+                    serverOid,
+                    userOid,
+                    ['inviteUsers', 'manageInvites'],
+                );
+                const preferredInvite =
+                    await this.inviteRepo.findPreferredByServerId(serverOid);
                 return {
                     ...server,
                     memberCount,
                     canManage,
+                    canInvite,
+                    preferredInviteCode: preferredInvite?.customPath,
                 };
             }),
         );
@@ -306,10 +317,9 @@ export class ServerController {
     })
     @ApiResponse({ status: 400, description: 'Invalid name' })
     public async createServer(
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: CreateServerRequestDTO,
     ): Promise<{ server: IServer; channel: IChannel }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const userOid = new Types.ObjectId(userId);
         const { name } = body;
 
@@ -332,6 +342,7 @@ export class ServerController {
                 banMembers: false,
                 kickMembers: false,
                 manageInvites: false,
+                inviteUsers: true,
                 manageServer: false,
                 administrator: false,
                 pingRolesAndEveryone: false,
@@ -364,9 +375,8 @@ export class ServerController {
         description: 'Unread status per server',
     })
     public async getUnreadStatus(
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<Record<string, { hasUnread: boolean; pingCount: number }>> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const userOid = new Types.ObjectId(userId);
         const memberships = await this.serverMemberRepo.findByUserId(userOid);
         const serverIds = memberships.map((m) => m.serverId);
@@ -455,9 +465,8 @@ export class ServerController {
         description: 'Aggregate list of server emojis',
     })
     public async getAllServerEmojis(
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<EmojiResponseDTO[]> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const userOid = new Types.ObjectId(userId);
 
         const memberships = await this.serverMemberRepo.findByUserId(userOid);
@@ -499,9 +508,8 @@ export class ServerController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async markServerAsRead(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -544,9 +552,8 @@ export class ServerController {
     })
     public async getOnboardingSettings(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<NonNullable<IServer['onboarding']>> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
@@ -576,10 +583,9 @@ export class ServerController {
     })
     public async updateOnboardingSettings(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: ServerOnboardingSettingsRequestDTO,
     ): Promise<NonNullable<IServer['onboarding']>> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
@@ -641,9 +647,8 @@ export class ServerController {
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async getServerDetails(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<IServer> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -675,9 +680,8 @@ export class ServerController {
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async getServerStats(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<ServerStatsResponseDTO> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -773,10 +777,9 @@ export class ServerController {
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async updateServer(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdateServerRequestDTO,
     ): Promise<IServer> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
@@ -927,9 +930,8 @@ export class ServerController {
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async getDiscoveryStatus(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<ServerDiscoveryStatusDTO> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
@@ -953,10 +955,9 @@ export class ServerController {
     @ApiResponse({ status: 404, description: 'Server or role not found' })
     public async setDefaultRole(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: SetDefaultRoleRequestDTO,
     ): Promise<{ defaultRoleId: string | null }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const { roleId } = body;
@@ -1039,9 +1040,8 @@ export class ServerController {
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async requestVerification(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
 
         const server = await this.serverRepo.findById(serverOid);
@@ -1086,9 +1086,8 @@ export class ServerController {
     @ApiResponse({ status: 404, description: 'Server Not Found' })
     public async deleteServer(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const server = await this.serverRepo.findById(serverOid);
@@ -1151,10 +1150,9 @@ export class ServerController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async uploadServerIcon(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @UploadedFile() icon: Express.Multer.File | undefined,
     ): Promise<{ icon: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
@@ -1255,10 +1253,9 @@ export class ServerController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async uploadServerBanner(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @UploadedFile() banner: Express.Multer.File | undefined,
     ): Promise<{ banner: string }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
@@ -1341,10 +1338,9 @@ export class ServerController {
     @ApiResponse({ status: 404, description: 'Server or role not found' })
     public async updateDefaultRole(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdateDefaultRoleRequestDTO,
     ): Promise<{ defaultRoleId: string | null }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const { roleId } = body;
@@ -1422,9 +1418,8 @@ export class ServerController {
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getVoiceStates(
         @Param('serverId') serverId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<Record<string, string[]>> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 

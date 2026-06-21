@@ -42,6 +42,7 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { Request } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import {
@@ -105,10 +106,8 @@ export class ReactionController {
     @ApiResponse({ status: 404, description: 'Message not found' })
     public async getDmReactions(
         @Param('messageId') messageId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
-
         const message = await this.messageRepo.findById(
             new Types.ObjectId(messageId),
         );
@@ -273,11 +272,10 @@ export class ReactionController {
     @ApiResponse({ status: 404, description: 'Message not found' })
     public async removeDmReaction(
         @Param('messageId') messageId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body()
         body: RemoveUnicodeReactionRequestDTO | RemoveCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'remove reactions');
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
@@ -495,11 +493,10 @@ export class ReactionController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
         @Body()
         body: RemoveUnicodeReactionRequestDTO | RemoveCustomReactionRequestDTO,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'remove reactions');
         const emoji = body.emoji;
         const emojiId = 'emojiId' in body ? body.emojiId : undefined;
@@ -628,10 +625,8 @@ export class ReactionController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<{ reactions: ReactionData[] }> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
-
         const member = await this.serverMemberRepo.findByServerAndUser(
             new Types.ObjectId(serverId),
             new Types.ObjectId(userId),

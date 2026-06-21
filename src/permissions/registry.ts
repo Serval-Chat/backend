@@ -27,6 +27,7 @@ export const PERMISSION_REGISTRY = {
     banMembers: { scope: 'server', default: false },
     kickMembers: { scope: 'server', default: false },
     manageInvites: { scope: 'server', default: false },
+    inviteUsers: { scope: 'server', default: true },
     manageServer: { scope: 'server', default: false },
     administrator: { scope: 'server', default: false },
     manageWebhooks: { scope: 'server', default: false },

@@ -45,6 +45,7 @@ import {
 import { isText } from 'istextorbinary';
 import { buildAttachmentMetadata } from '@/utils/attachments';
 import type { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { assertHttpNotMuted } from '@/utils/mute';
 
@@ -91,9 +92,8 @@ export class FileController {
     @ApiResponse({ status: 201, type: FileUploadResponseDTO })
     public async uploadFile(
         @UploadedFile() file: Express.Multer.File | undefined,
-        @Req() req: Request,
+        @CurrentUser('id') userId: string,
     ): Promise<FileUploadResponseDTO> {
-        const userId = (req as Request & { user: JWTPayload }).user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'upload files');
 
         if (file === undefined) {

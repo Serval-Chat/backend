@@ -59,6 +59,7 @@ import type {
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
 import type { Request as ExpressRequest } from 'express';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -160,13 +161,12 @@ export class ServerMessageController {
     public async getMessages(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Query('limit') limit: number = 50,
         @Query('before') before?: string,
         @Query('around') around?: string,
         @Query('after') after?: string,
     ): Promise<IServerMessage[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -531,9 +531,8 @@ export class ServerMessageController {
     public async getPinnedMessages(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IServerMessage[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -599,12 +598,11 @@ export class ServerMessageController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<{
         message: IServerMessage;
         repliedMessage: IServerMessage | null;
     }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -895,10 +893,8 @@ export class ServerMessageController {
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
         @Body() body: PollVoteRequestDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IServerMessage> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-
         const member = await this.serverMemberRepo.findByServerAndUser(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -998,10 +994,8 @@ export class ServerMessageController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Body() body: BulkDeleteMessagesRequestDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string; deletedCount: number }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
-
         const canManage = await this.permissionService.hasChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -1107,9 +1101,8 @@ export class ServerMessageController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const message = await this.serverMessageRepo.findById(
             new mongoose.Types.ObjectId(messageId),
             true,
@@ -1265,9 +1258,8 @@ export class ServerMessageController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IServerMessage> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const canPin = await this.permissionService.hasChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),
@@ -1377,9 +1369,8 @@ export class ServerMessageController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IServerMessage> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const canPin = await this.permissionService.hasChannelPermission(
             new mongoose.Types.ObjectId(serverId),
             new mongoose.Types.ObjectId(userId),

@@ -96,7 +96,7 @@ describe('ServerChannelController - deleteChannel', () => {
         const result = await controller.deleteChannel(
             serverId.toHexString(),
             channelId.toHexString(),
-            req,
+            req.user?.id as string,
         );
         expect(result).toEqual({ message: 'Channel deleted' });
 
@@ -131,7 +131,7 @@ describe('ServerChannelController - deleteChannel', () => {
             controller.deleteChannel(
                 serverId.toHexString(),
                 channelId.toHexString(),
-                req,
+                req.user?.id as string,
             ),
         ).rejects.toThrow('No permission to manage channels');
     });

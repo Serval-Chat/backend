@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import type { OutputInfo } from 'sharp';
+import type { OutputInfo, ResizeOptions } from 'sharp';
 import { writeFile } from 'fs/promises';
 
 /**
@@ -129,7 +129,7 @@ export async function processImage(
     let pipeline = sharp(input, { animated });
 
     if (width !== undefined || height !== undefined) {
-        const resizeOptions: sharp.ResizeOptions = { fit };
+        const resizeOptions: ResizeOptions = { fit };
         if (background && fit === 'contain') {
             resizeOptions.background = background;
         }

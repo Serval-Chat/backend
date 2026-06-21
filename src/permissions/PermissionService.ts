@@ -248,6 +248,19 @@ export class PermissionService {
         return resolver.hasServerPermission(userId.toString(), permission);
     }
 
+    // True if the user holds at least one of the given permissions on the server.
+    public async hasAnyPermission(
+        serverId: Types.ObjectId,
+        userId: Types.ObjectId,
+        permissions: readonly PermissionKey[],
+    ): Promise<boolean> {
+        const resolver = await this.getResolver(serverId);
+        if (!resolver) return false;
+        return permissions.some((permission) =>
+            resolver.hasServerPermission(userId.toString(), permission),
+        );
+    }
+
     public async getAllServerPermissions(
         serverId: Types.ObjectId,
         userId: Types.ObjectId,

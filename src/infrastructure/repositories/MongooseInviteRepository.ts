@@ -73,13 +73,25 @@ export class MongooseInviteRepository implements IInviteRepository {
             .lean()) as IInvite | null;
     }
 
+    public async findPreferredByServerId(
+        serverId: Types.ObjectId,
+    ): Promise<IInvite | null> {
+        return (await Invite.findOne({
+            serverId,
+            customPath: { $exists: true, $ne: '' },
+        })
+            .sort({ createdAt: 1 })
+            .lean()) as IInvite | null;
+    }
+
     public async create(data: CreateInviteDTO): Promise<IInvite> {
         const invite = new Invite({
             ...data,
             customPath: data.customPath,
             uses: 0,
         });
-        return (await invite.save()) as unknown as IInvite;
+        const saved = await invite.save();
+        return saved.toObject({ transform: false }) as unknown as IInvite;
     }
 
     public async incrementUses(id: Types.ObjectId): Promise<IInvite | null> {

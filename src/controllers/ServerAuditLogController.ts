@@ -23,6 +23,7 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { Request as ExpressRequest } from 'express';
 import type { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ServerAuditLogRequestDTO } from './dto/server-audit-log.request.dto';
 import {
     ServerAuditLogResponseDTO,
@@ -55,9 +56,8 @@ export class ServerAuditLogController {
     public async getAuditLog(
         @Param('serverId') serverId: string,
         @Query() query: ServerAuditLogRequestDTO,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<ServerAuditLogResponseDTO> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
 

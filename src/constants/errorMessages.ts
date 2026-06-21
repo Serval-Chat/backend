@@ -116,6 +116,7 @@ export const ErrorMessages = {
         CODE_EXISTS: 'Invite code already exists',
         ALREADY_EXISTS: 'Invite code already exists',
         NO_PERMISSION_MANAGE: 'No permission to manage invites',
+        NO_PERMISSION_INVITE: 'No permission to invite users',
         ONLY_OWNER_CUSTOM: 'Only server owner can create custom invites',
         INVALID_TOKEN: 'invalid invite token',
     },

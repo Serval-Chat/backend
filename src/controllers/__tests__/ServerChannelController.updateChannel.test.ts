@@ -95,7 +95,7 @@ describe('ServerChannelController - updateChannel', () => {
         await controller.updateChannel(
             serverId.toHexString(),
             channelId.toHexString(),
-            req,
+            req.user?.id as string,
             {
                 name: 'new-name',
                 categoryId: null,
@@ -131,7 +131,7 @@ describe('ServerChannelController - updateChannel', () => {
         await controller.updateChannel(
             serverId.toHexString(),
             channelId.toHexString(),
-            req,
+            req.user?.id as string,
             {
                 name: 'new-name',
             },
@@ -167,7 +167,7 @@ describe('ServerChannelController - updateChannel', () => {
         await controller.updateChannel(
             serverId.toHexString(),
             channelId.toHexString(),
-            req,
+            req.user?.id as string,
             {
                 name: 'new-name',
                 categoryId: catId.toHexString(),
@@ -189,7 +189,7 @@ describe('ServerChannelController - updateChannel', () => {
             controller.updateChannel(
                 serverId.toHexString(),
                 channelId.toHexString(),
-                req,
+                req.user?.id as string,
                 {
                     name: 'test',
                 },
@@ -203,7 +203,7 @@ describe('ServerChannelController - updateChannel', () => {
             controller.updateChannel(
                 serverId.toHexString(),
                 channelId.toHexString(),
-                req,
+                req.user?.id as string,
                 {
                     name: 'test',
                 },

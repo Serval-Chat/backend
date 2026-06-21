@@ -68,6 +68,7 @@ import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import {
     CreateWebhookRequestDTO,
     ExecuteWebhookRequestDTO,
@@ -411,9 +412,8 @@ export class WebhookController {
     public async getWebhooks(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<Record<string, unknown>[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
@@ -467,11 +467,9 @@ export class WebhookController {
     public async createWebhook(
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: CreateWebhookRequestDTO,
     ): Promise<IWebhook> {
-        const user = (req as ExpressRequest & { user: JWTPayload }).user;
-        const userId = user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
@@ -538,9 +536,8 @@ export class WebhookController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('webhookId') webhookId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);
@@ -610,10 +607,9 @@ export class WebhookController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @Param('webhookId') webhookId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @UploadedFile() avatar: Express.Multer.File,
     ): Promise<{ avatarUrl: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const channelOid = new Types.ObjectId(channelId);
         const userOid = new Types.ObjectId(userId);

@@ -8,7 +8,6 @@ import {
     Param,
     Query,
     UseGuards,
-    Req,
     Inject,
     NotFoundException,
     ForbiddenException,
@@ -54,8 +53,7 @@ import { PingService } from '@/services/PingService';
 
 import { mapUser } from '@/utils/user';
 import { mapPublicServerMember } from '@/utils/serverMember';
-import type { Request as ExpressRequest } from 'express';
-import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { MappedUser } from '@/utils/user';
 import { IServerBan } from '@/di/interfaces/IServerBanRepository';
 import { IUser } from '@/models/User';
@@ -183,12 +181,11 @@ export class ServerMemberController {
     })
     public async getOnboarding(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<{
         onboarding: ReturnType<ServerMemberController['getOnboardingConfig']>;
         member: IServerMember;
     }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const member = await this.requireMember(serverOid, userOid);
@@ -212,9 +209,8 @@ export class ServerMemberController {
     })
     public async acceptOnboardingRules(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IServerMember> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         await this.requireMember(serverOid, userOid);
@@ -238,10 +234,9 @@ export class ServerMemberController {
     })
     public async updateSelfRoles(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: SelfRolesRequestDTO,
     ): Promise<IServerMember> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const member = await this.requireMember(serverOid, userOid);
@@ -313,10 +308,9 @@ export class ServerMemberController {
     })
     public async updateChannelPreferences(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: ChannelPreferencesRequestDTO,
     ): Promise<IServerMember> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         await this.requireMember(serverOid, userOid);
@@ -372,9 +366,8 @@ export class ServerMemberController {
     })
     public async completeOnboarding(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<IServerMember> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         await this.requireMember(serverOid, userOid);
@@ -401,11 +394,10 @@ export class ServerMemberController {
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getServerMembers(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<
         (IServerMember & { user: MappedUser | null; online: boolean })[]
     > {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -473,11 +465,10 @@ export class ServerMemberController {
     public async searchMembers(
         @Param('serverId') serverId: string,
         @Query('q') q: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<
         (IServerMember & { user: MappedUser | null; online: boolean })[]
     > {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
@@ -545,10 +536,8 @@ export class ServerMemberController {
     public async getMember(
         @Param('serverId') serverId: string,
         @Param('userId') userId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') currentUserId: string,
     ): Promise<IServerMember & { user: MappedUser | null }> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
-            .user.id;
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
@@ -584,9 +573,8 @@ export class ServerMemberController {
     })
     public async leaveServer(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const server = await this.serverRepo.findById(serverOid);
@@ -637,11 +625,9 @@ export class ServerMemberController {
     public async kickMember(
         @Param('serverId') serverId: string,
         @Param('userId') userId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') currentUserId: string,
         @Body() _body: KickMemberRequestDTO,
     ): Promise<{ message: string }> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
-            .user.id;
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
@@ -729,11 +715,9 @@ export class ServerMemberController {
     })
     public async banMember(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') currentUserId: string,
         @Body() body: BanMemberRequestDTO,
     ): Promise<{ message: string }> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
-            .user.id;
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         const { userId, reason } = body;
@@ -828,11 +812,9 @@ export class ServerMemberController {
     public async timeoutMember(
         @Param('serverId') serverId: string,
         @Param('userId') userId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') currentUserId: string,
         @Body() body: TimeoutMemberRequestDTO,
     ): Promise<{ message: string; communicationDisabledUntil: string | null }> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
-            .user.id;
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
@@ -929,10 +911,8 @@ export class ServerMemberController {
     public async unbanMember(
         @Param('serverId') serverId: string,
         @Param('userId') userId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') currentUserId: string,
     ): Promise<{ message: string }> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
-            .user.id;
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
@@ -979,10 +959,8 @@ export class ServerMemberController {
     })
     public async getBans(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') currentUserId: string,
     ): Promise<IServerBan[]> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
-            .user.id;
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         if (
@@ -1012,10 +990,8 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @Param('userId') userId: string,
         @Param('roleId') roleId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') currentUserId: string,
     ): Promise<IServerMember> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
-            .user.id;
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
@@ -1120,10 +1096,8 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @Param('userId') userId: string,
         @Param('roleId') roleId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') currentUserId: string,
     ): Promise<IServerMember> {
-        const currentUserId = (req as ExpressRequest & { user: JWTPayload })
-            .user.id;
         const serverOid = new Types.ObjectId(serverId);
         const currentOid = new Types.ObjectId(currentUserId);
         const targetOid = new Types.ObjectId(userId);
@@ -1232,10 +1206,9 @@ export class ServerMemberController {
     @ApiResponse({ status: 404, description: ErrorMessages.MEMBER.NOT_FOUND })
     public async transferOwnership(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: TransferOwnershipRequestDTO,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const { newOwnerId } = body;

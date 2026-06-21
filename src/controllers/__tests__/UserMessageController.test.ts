@@ -77,7 +77,9 @@ describe('UserMessageController', () => {
             ]);
             mockFriendshipRepo.areFriends.mockResolvedValue(true);
 
-            const result = await controller.getUnreadCounts(req);
+            const result = await controller.getUnreadCounts(
+                req.user?.id as string,
+            );
 
             expect(result.counts).toEqual({ [peerIdStr]: 5 });
             expect(mockDmUnreadRepo.delete).not.toHaveBeenCalled();
@@ -89,7 +91,9 @@ describe('UserMessageController', () => {
             ]);
             mockFriendshipRepo.areFriends.mockResolvedValue(false);
 
-            const result = await controller.getUnreadCounts(req);
+            const result = await controller.getUnreadCounts(
+                req.user?.id as string,
+            );
 
             expect(result.counts).toEqual({});
             expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(meId, peerId);
@@ -102,7 +106,9 @@ describe('UserMessageController', () => {
             ]);
             mockFriendshipRepo.areFriends.mockResolvedValue(false);
 
-            const result = await controller.getUnreadCounts(req);
+            const result = await controller.getUnreadCounts(
+                req.user?.id as string,
+            );
 
             expect(result.counts).toEqual({});
             expect(mockDmUnreadRepo.delete).not.toHaveBeenCalled();

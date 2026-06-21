@@ -45,6 +45,9 @@ export interface IInviteRepository {
         serverId: Types.ObjectId,
     ): Promise<IInvite | null>;
 
+    // Find the server's preferred invite: the oldest vanity invite
+    findPreferredByServerId(serverId: Types.ObjectId): Promise<IInvite | null>;
+
     // Find invite by custom path
     findByCustomPath(customPath: string): Promise<IInvite | null>;
 

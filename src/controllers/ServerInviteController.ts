@@ -6,7 +6,6 @@ import {
     Body,
     Param,
     UseGuards,
-    Req,
     Inject,
     NotFoundException,
     ForbiddenException,
@@ -40,8 +39,7 @@ import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogServ
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 
 import { ErrorMessages } from '@/constants/errorMessages';
-import type { Request as ExpressRequest } from 'express';
-import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import crypto from 'crypto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { CreateInviteRequestDTO } from './dto/server-invite.request.dto';
@@ -53,6 +51,11 @@ import {
 } from '@/controllers/dto/server-invite.response.dto';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 import { getDocumentId } from '@/utils/mongooseId';
+import {
+    isInviteExpired,
+    isInviteMaxedOut,
+    isInviteUsable,
+} from '@/utils/invite';
 
 @Controller('api/v1')
 @ApiTags('Server Invites')
@@ -98,9 +101,8 @@ export class ServerInviteController {
     })
     public async getServerInvites(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
-    ): Promise<IInvite[]> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+        @CurrentUser('id') userId: string,
+    ): Promise<(IInvite & { createdByUsername?: string })[]> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         if (
@@ -115,7 +117,24 @@ export class ServerInviteController {
             );
         }
 
-        return await this.inviteRepo.findByServerId(serverOid);
+        const invites = await this.inviteRepo.findByServerId(serverOid);
+        const creatorIds = [
+            ...new Set(
+                invites.map((invite): string => String(invite.createdByUserId)),
+            ),
+        ].map((id): Types.ObjectId => new Types.ObjectId(id));
+        const creators = await this.userRepo.findByIds(creatorIds);
+        const usernameById = new Map(
+            creators.map((user): [string, string | undefined] => [
+                String(user._id),
+                user.username,
+            ]),
+        );
+
+        return invites.map((invite) => ({
+            ...invite,
+            createdByUsername: usernameById.get(String(invite.createdByUserId)),
+        }));
     }
 
     @Post('servers/:serverId/invites')
@@ -137,45 +156,30 @@ export class ServerInviteController {
     })
     public async createInvite(
         @Param('serverId') serverId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
+        @CurrentUser('username') username: string,
         @Body() body: CreateInviteRequestDTO,
-    ): Promise<IInvite> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
+    ): Promise<IInvite & { createdByUsername?: string }> {
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
-
-        if (
-            (await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
-                'manageInvites',
-            )) !== true
-        ) {
-            throw new ForbiddenException(
-                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
-            );
-        }
-
         const { maxUses, expiresIn, customPath } = body;
 
         let code = customPath;
         if (code !== undefined && code !== '') {
-            // Restrict custom invite codes to the server owner to prevent squatting/abuse
-            const server = await this.serverRepo.findById(serverOid);
-            if (server === null || String(server.ownerId) !== userId) {
-                throw new ForbiddenException(
-                    ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
-                );
+            await this.ensureVanityInviteAllowed(
+                serverOid,
+                userId,
+                userOid,
+                code,
+            );
+        } else {
+            await this.ensureRegularInviteAllowed(serverOid, userOid);
+
+            if (maxUses === undefined && expiresIn === undefined) {
+                const reused = await this.reusePreferredInvite(serverOid);
+                if (reused !== null) return reused;
             }
 
-            const existing = await this.inviteRepo.findByCode(code);
-            if (existing !== null) {
-                throw new BadRequestException(
-                    ErrorMessages.INVITE.ALREADY_EXISTS,
-                );
-            }
-        } else {
-            // Generate a random 8-character hex code if no custom code is provided
             code = crypto.randomBytes(4).toString('hex');
         }
 
@@ -222,7 +226,64 @@ export class ServerInviteController {
 
         await this.discoveryService.refreshServer(serverOid);
 
-        return invite;
+        return { ...invite, createdByUsername: username };
+    }
+
+    private async ensureVanityInviteAllowed(
+        serverOid: Types.ObjectId,
+        userId: string,
+        userOid: Types.ObjectId,
+        code: string,
+    ): Promise<void> {
+        const hasManageInvites = await this.permissionService.hasPermission(
+            serverOid,
+            userOid,
+            'manageInvites',
+        );
+        if (hasManageInvites !== true) {
+            throw new ForbiddenException(
+                ErrorMessages.INVITE.NO_PERMISSION_MANAGE,
+            );
+        }
+
+        const server = await this.serverRepo.findById(serverOid);
+        if (server === null || String(server.ownerId) !== userId) {
+            throw new ForbiddenException(
+                ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
+            );
+        }
+
+        const existing = await this.inviteRepo.findByCode(code);
+        if (existing !== null) {
+            throw new BadRequestException(ErrorMessages.INVITE.ALREADY_EXISTS);
+        }
+    }
+
+    private async ensureRegularInviteAllowed(
+        serverOid: Types.ObjectId,
+        userOid: Types.ObjectId,
+    ): Promise<void> {
+        const canInvite = await this.permissionService.hasAnyPermission(
+            serverOid,
+            userOid,
+            ['inviteUsers', 'manageInvites'],
+        );
+        if (!canInvite) {
+            throw new ForbiddenException(
+                ErrorMessages.INVITE.NO_PERMISSION_INVITE,
+            );
+        }
+    }
+
+    private async reusePreferredInvite(
+        serverOid: Types.ObjectId,
+    ): Promise<(IInvite & { createdByUsername?: string }) | null> {
+        const preferred =
+            await this.inviteRepo.findPreferredByServerId(serverOid);
+        if (preferred === null || !isInviteUsable(preferred)) return null;
+
+        const creator = await this.userRepo.findById(preferred.createdByUserId);
+        return { ...preferred, createdByUsername: creator?.username };
     }
 
     @Delete('servers/:serverId/invites/:inviteId')
@@ -241,9 +302,8 @@ export class ServerInviteController {
     public async deleteInvite(
         @Param('serverId') serverId: string,
         @Param('inviteId') inviteId: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const serverOid = new Types.ObjectId(serverId);
         const userOid = new Types.ObjectId(userId);
         const inviteOid = new Types.ObjectId(inviteId);
@@ -310,21 +370,14 @@ export class ServerInviteController {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        if (
-            invite.expiresAt !== undefined &&
-            new Date(invite.expiresAt) < new Date()
-        ) {
+        if (isInviteExpired(invite)) {
             throw new HttpException(
                 ErrorMessages.INVITE.EXPIRED,
                 HttpStatus.GONE,
             );
         }
 
-        if (
-            invite.maxUses !== undefined &&
-            invite.maxUses > 0 &&
-            invite.uses >= invite.maxUses
-        ) {
+        if (isInviteMaxedOut(invite)) {
             throw new HttpException(
                 ErrorMessages.INVITE.MAX_USES_REACHED,
                 HttpStatus.GONE,
@@ -381,29 +434,21 @@ export class ServerInviteController {
     @ApiResponse({ status: 410, description: ErrorMessages.INVITE.EXPIRED })
     public async joinServer(
         @Param('code') code: string,
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<{ serverId: string }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
         if (invite === null) {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        if (
-            invite.expiresAt !== undefined &&
-            new Date(invite.expiresAt) < new Date()
-        ) {
+        if (isInviteExpired(invite)) {
             throw new HttpException(
                 ErrorMessages.INVITE.EXPIRED,
                 HttpStatus.GONE,
             );
         }
 
-        if (
-            invite.maxUses !== undefined &&
-            invite.maxUses > 0 &&
-            invite.uses >= invite.maxUses
-        ) {
+        if (isInviteMaxedOut(invite)) {
             throw new HttpException(
                 ErrorMessages.INVITE.MAX_USES_REACHED,
                 HttpStatus.GONE,

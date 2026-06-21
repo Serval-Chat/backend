@@ -64,6 +64,9 @@ export class ServerInviteResponseDTO {
     @ApiProperty()
     public createdByUserId!: string;
 
+    @ApiPropertyOptional()
+    public createdByUsername?: string;
+
     @ApiProperty()
     public createdAt!: Date;
 

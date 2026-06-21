@@ -28,6 +28,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { JWTPayload } from '@/utils/jwt';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { UpdateSettingsRequestDTO } from './dto/settings.request.dto';
 import { UpdateServerSettingsRequestDTO } from './dto/server-settings.request.dto';
@@ -98,9 +99,8 @@ export class SettingsController {
         description: ErrorMessages.AUTH.USER_NOT_FOUND,
     })
     public async getSettings(
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
     ): Promise<UserSettings> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const userOid = new Types.ObjectId(userId);
         const user = await this.userRepo.findById(userOid);
 
@@ -144,10 +144,9 @@ export class SettingsController {
         description: ErrorMessages.AUTH.USER_NOT_FOUND,
     })
     public async updateSettings(
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdateSettingsRequestDTO,
     ): Promise<{ message: string; settings: UserSettings }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const userOid = new Types.ObjectId(userId);
 
         const user = await this.userRepo.findById(userOid);
@@ -183,7 +182,7 @@ export class SettingsController {
         description: 'Server settings updated',
     })
     public async updateServerSettings(
-        @Req() req: ExpressRequest,
+        @CurrentUser('id') userId: string,
         @Body() body: UpdateServerSettingsRequestDTO,
     ): Promise<{
         message: string;
@@ -199,7 +198,6 @@ export class SettingsController {
             )[];
         };
     }> {
-        const userId = (req as ExpressRequest & { user: JWTPayload }).user.id;
         const userOid = new Types.ObjectId(userId);
 
         await this.userRepo.update(userOid, {

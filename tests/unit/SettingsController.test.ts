@@ -55,7 +55,7 @@ describe('SettingsController', () => {
                 user: { id: userId.toString() } as JWTPayload,
             }) as unknown as ExpressRequest;
 
-            const result = await controller.getSettings(mockReq);
+            const result = await controller.getSettings(mockReq.user?.id as string);
             const settings = result;
 
             expect(settings).toMatchObject({
@@ -78,7 +78,7 @@ describe('SettingsController', () => {
                 user: { id: userId.toString() } as JWTPayload,
             }) as unknown as ExpressRequest;
 
-            const result = await controller.getSettings(mockReq);
+            const result = await controller.getSettings(mockReq.user?.id as string);
 
             expect(result).toMatchObject({
                 customFontUrl: '',
@@ -107,7 +107,7 @@ describe('SettingsController', () => {
                 user: { id: userId.toString() } as JWTPayload,
             }) as unknown as ExpressRequest;
 
-            const result = await controller.updateSettings(mockReq, updatePayload);
+            const result = await controller.updateSettings(mockReq.user?.id as string, updatePayload);
 
             expect(mockUserRepo.updateSettings).toHaveBeenCalledWith(
                 expect.any(Types.ObjectId),
