@@ -3,12 +3,10 @@ import {
     Get,
     Post,
     Param,
-    Req,
     Res,
     UseGuards,
     Inject,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -23,14 +21,12 @@ import {
 } from '@/controllers/dto/export.response.dto';
 import { ExportService } from '@/services/ExportService';
 import { PermissionService } from '@/permissions/PermissionService';
-import { Request, Response } from 'express';
-import { JWTPayload } from '@/utils/jwt';
+import { Response } from 'express';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
 import fs from 'fs';
-import { getDocumentIdString } from '@/utils/mongooseId';
 
 @Controller('api/v1')
 @ApiTags('Export')
@@ -54,18 +50,14 @@ export class ExportController {
         @Param('channelId') channelId: string,
         @CurrentUser('id') userId: string,
     ) {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'exportChannelMessages',
             new ApiError(403, 'You do not have permission to export messages'),
         );
 
-        return await this.exportService.getExportState(channelOid);
+        return await this.exportService.getExportState(channelId);
     }
 
     @Post('servers/:serverId/channels/:channelId/export')
@@ -78,26 +70,22 @@ export class ExportController {
         @Param('channelId') channelId: string,
         @CurrentUser('id') userId: string,
     ) {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'exportChannelMessages',
             new ApiError(403, 'You do not have permission to export messages'),
         );
 
         try {
             const job = await this.exportService.requestExport(
-                serverOid,
-                channelOid,
-                userOid,
+                serverId,
+                channelId,
+                userId,
             );
             return {
                 message: 'Export started',
-                jobId: getDocumentIdString(job),
+                jobId: job.snowflakeId,
             };
         } catch (err) {
             throw new ApiError(

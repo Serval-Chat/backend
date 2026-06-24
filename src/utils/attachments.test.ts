@@ -29,7 +29,7 @@ import {
     getUploadsDir,
 } from './attachments';
 
-const mockedExecFile = execFile as unknown as jest.Mock;
+const mockedExecFile = jest.mocked(execFile);
 
 describe('attachment metadata helpers', () => {
     const uploadsDir = getUploadsDir();
@@ -78,19 +78,17 @@ describe('attachment metadata helpers', () => {
     });
 
     it('rejects videos when dimensions cannot be read', async () => {
-        mockedExecFile.mockImplementationOnce(
-            (
-                _binary: string,
-                _args: string[],
-                callback: (
-                    error: Error | null,
-                    stdout: string,
-                    stderr: string,
-                ) => void,
-            ) => {
-                callback(null, JSON.stringify({ streams: [{}] }), '');
-            },
-        );
+        mockedExecFile.mockImplementationOnce(((
+            _binary: string,
+            _args: string[],
+            callback: (
+                error: Error | null,
+                stdout: string,
+                stderr: string,
+            ) => void,
+        ) => {
+            callback(null, JSON.stringify({ streams: [{}] }), '');
+        }) as never);
         const filename = 'bad.mp4';
         await fsPromises.writeFile(path.join(uploadsDir, filename), 'not-real');
 

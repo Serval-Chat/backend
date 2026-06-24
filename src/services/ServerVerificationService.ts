@@ -4,7 +4,6 @@ import {
     OnModuleDestroy,
     OnModuleInit,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     Server,
     ServerBan,
@@ -104,7 +103,7 @@ export class ServerVerificationService
             const servers = await Server.find({
                 deletedAt: { $exists: false },
             }).lean();
-            const serverIds = servers.map((server) => server._id);
+            const serverIds = servers.map((server) => server.snowflakeId);
 
             const [memberCounts, banCounts, senderCounts] = await Promise.all([
                 this.countByServer(ServerMember, serverIds),
@@ -113,7 +112,7 @@ export class ServerVerificationService
             ]);
 
             const metrics = servers.map<ServerMetric>((server) => {
-                const serverId = server._id.toString();
+                const serverId = server.snowflakeId;
                 const senderMap = senderCounts.get(serverId) ?? new Map();
                 const messageCount = [...senderMap.values()].reduce(
                     (sum, count) => sum + count,
@@ -203,7 +202,7 @@ export class ServerVerificationService
                     metrics.map((metric) => ({
                         updateOne: {
                             filter: {
-                                _id: new Types.ObjectId(metric.serverId),
+                                snowflakeId: metric.serverId,
                             },
                             update: {
                                 $set: {
@@ -256,24 +255,24 @@ export class ServerVerificationService
 
     private async countByServer(
         model: typeof ServerMember | typeof ServerBan,
-        serverIds: Types.ObjectId[],
+        serverIds: string[],
     ): Promise<Map<string, number>> {
         const rows = await model.aggregate<{
-            _id: Types.ObjectId;
+            _id: string;
             count: number;
         }>([
             { $match: { serverId: { $in: serverIds } } },
             { $group: { _id: '$serverId', count: { $sum: 1 } } },
         ]);
-        return new Map(rows.map((row) => [row._id.toString(), row.count]));
+        return new Map(rows.map((row) => [row._id, row.count]));
     }
 
     private async countRecentMessagesBySender(
-        serverIds: Types.ObjectId[],
+        serverIds: string[],
         since: Date,
     ): Promise<Map<string, Map<string, number>>> {
         const rows = await ServerMessage.aggregate<{
-            _id: { serverId: Types.ObjectId; senderId: Types.ObjectId };
+            _id: { serverId: string; senderId: string };
             count: number;
         }>([
             {
@@ -293,8 +292,8 @@ export class ServerVerificationService
 
         const result = new Map<string, Map<string, number>>();
         for (const row of rows) {
-            const serverId = row._id.serverId.toString();
-            const senderId = row._id.senderId.toString();
+            const serverId = row._id.serverId;
+            const senderId = row._id.senderId;
             const senderMap = result.get(serverId) ?? new Map<string, number>();
             senderMap.set(senderId, row.count);
             result.set(serverId, senderMap);

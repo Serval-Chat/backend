@@ -47,6 +47,7 @@ const INSTANCE_NAME =
     process.env.INSTANCE_NAME ?? `node-${crypto.randomUUID().split('-')[0]}`;
 const SCRAPER_HOST = process.env.SCRAPER_HOST ?? '';
 const SCRAPER_PORT = Number(process.env.SCRAPER_PORT ?? -1);
+const SNOWFLAKE_WORKER_ID = Number(process.env.SNOWFLAKE_WORKER_ID ?? 0);
 
 if (MAILGUN_API_KEY === '')
     console.warn('MAILGUN_API_KEY not set. Password reset will fail.');
@@ -148,4 +149,5 @@ export {
     MAX_MESSAGE_LENGTH,
     SCRAPER_HOST,
     SCRAPER_PORT,
+    SNOWFLAKE_WORKER_ID,
 };

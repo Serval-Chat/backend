@@ -1,7 +1,5 @@
-import { Types } from 'mongoose';
 import { IBanRepository, IBan } from '@/di/interfaces/IBanRepository';
 import { IBanHistoryEntry } from '@/models/Ban';
-import logger from '@/utils/logger';
 import { Ban } from '@/models/Ban';
 import { injectable } from 'inversify';
 
@@ -14,14 +12,12 @@ export class MongooseBanRepository implements IBanRepository {
     private banModel = Ban;
     public constructor() {}
 
-    public async findActiveByUserId(
-        userId: Types.ObjectId,
-    ): Promise<IBan | null> {
+    public async findActiveByUserId(userId: string): Promise<IBan | null> {
         return await this.banModel.findOne({ userId, active: true }).lean();
     }
 
     public async create(
-        userId: Types.ObjectId,
+        userId: string,
         reason: string,
         expirationTimestamp?: Date,
     ): Promise<IBan> {
@@ -34,15 +30,15 @@ export class MongooseBanRepository implements IBanRepository {
         return await ban.save();
     }
 
-    public async expire(banId: Types.ObjectId): Promise<boolean> {
+    public async expire(banId: string): Promise<boolean> {
         const result = await this.banModel.updateOne(
-            { _id: banId },
+            { snowflakeId: banId },
             { active: false },
         );
         return result.modifiedCount > 0;
     }
 
-    public async checkExpired(userId: Types.ObjectId): Promise<void> {
+    public async checkExpired(userId: string): Promise<void> {
         await this.banModel.checkExpired(userId);
     }
 
@@ -53,13 +49,10 @@ export class MongooseBanRepository implements IBanRepository {
             .lean();
     }
 
-    public async findByUserIdWithHistory(
-        userId: Types.ObjectId,
-    ): Promise<IBan | null> {
-        return await this.banModel
-            .findOne({ userId })
-            .populate('history.issuedBy', 'username')
-            .lean();
+    // issuedBy is a plain snowflakeId string, AdminController displays it as-is,
+    // so populating to a User document would be wasted work.
+    public async findByUserIdWithHistory(userId: string): Promise<IBan | null> {
+        return await this.banModel.findOne({ userId }).lean();
     }
 
     // Create or update a ban with history tracking.
@@ -67,18 +60,17 @@ export class MongooseBanRepository implements IBanRepository {
     // If a ban already exists for the user, it is updated and the new ban
     // Is added to the history array. If no ban exists, a new one is created.
     public async createOrUpdateWithHistory(data: {
-        userId: Types.ObjectId;
+        userId: string;
         reason: string;
-        issuedBy: Types.ObjectId;
+        issuedBy: string;
         expirationTimestamp?: Date;
     }): Promise<IBan> {
         const { userId, reason, issuedBy, expirationTimestamp } = data;
-        const issuedById = new Types.ObjectId(issuedBy);
         const now = new Date();
 
         const historyEntry = {
             reason: reason.trim(),
-            issuedBy: issuedById,
+            issuedBy,
             timestamp: now,
             expirationTimestamp,
         };
@@ -97,12 +89,12 @@ export class MongooseBanRepository implements IBanRepository {
                 }
             }
 
-            ban.history.push(historyEntry as unknown as IBanHistoryEntry); // historyEntry doesn't have endedAt yet, which is optional in IBanHistoryEntry but Mongoose might be strict
+            ban.history.push(historyEntry as IBanHistoryEntry);
             ban.reason = historyEntry.reason;
             if (historyEntry.expirationTimestamp !== undefined) {
                 ban.expirationTimestamp = historyEntry.expirationTimestamp;
             }
-            ban.issuedBy = issuedById;
+            ban.issuedBy = issuedBy;
             ban.timestamp = now;
             ban.active = true;
             await ban.save();
@@ -110,7 +102,7 @@ export class MongooseBanRepository implements IBanRepository {
         } else {
             const newBan = await this.banModel.create({
                 userId,
-                issuedBy: issuedById,
+                issuedBy,
                 reason: historyEntry.reason,
                 expirationTimestamp: historyEntry.expirationTimestamp,
                 timestamp: now,
@@ -122,7 +114,7 @@ export class MongooseBanRepository implements IBanRepository {
     }
 
     public async deactivateAllForUser(
-        userId: Types.ObjectId,
+        userId: string,
     ): Promise<{ modifiedCount: number }> {
         const result = await this.banModel.updateMany(
             { userId, active: true },
@@ -132,51 +124,24 @@ export class MongooseBanRepository implements IBanRepository {
     }
 
     public async deleteAllForUser(
-        userId: Types.ObjectId,
+        userId: string,
     ): Promise<{ deletedCount: number }> {
         const result = await this.banModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }
 
+    // userId/issuedBy are plain snowflakeId strings, AdminBansAndMutes.tsx
+    // displays them as-is and never needs a populated user shape.
     public async findAll(options: {
         limit?: number;
         offset?: number;
     }): Promise<IBan[]> {
-        try {
-            return await this.banModel
-                .find({})
-                .sort({ timestamp: -1 })
-                .limit(options.limit ?? 50)
-                .skip(options.offset ?? 0)
-                .populate([
-                    {
-                        path: 'userId',
-                        select: 'username',
-                        match: { deletedAt: { $exists: false } }, // Only populate non-deleted users
-                    },
-                    {
-                        path: 'issuedBy',
-                        select: 'username',
-                        match: { deletedAt: { $exists: false } }, // Only populate non-deleted users
-                    },
-                ])
-                .lean();
-        } catch (error) {
-            // Fallback to unpopulated query if there are issues with population
-            // (e.g., missing users).
-
-            logger.error(
-                'Failed to populate ban data. Fallback to unpopulated query.',
-                error,
-            );
-
-            return await this.banModel
-                .find({})
-                .sort({ timestamp: -1 })
-                .limit(options.limit ?? 50)
-                .skip(options.offset ?? 0)
-                .lean();
-        }
+        return await this.banModel
+            .find({})
+            .sort({ timestamp: -1 })
+            .limit(options.limit ?? 50)
+            .skip(options.offset ?? 0)
+            .lean();
     }
 
     public async countActive(): Promise<number> {

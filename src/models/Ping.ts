@@ -1,18 +1,20 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import type { Document, Model, Types } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type { Document, Model } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
 // Ping interface
 //
 // Represents a notification/mention for a user
 interface IPing extends Document {
-    userId: Types.ObjectId; // User ID who received the ping
+    snowflakeId: string;
+    userId: string; // user ID who received the ping
     type: 'mention' | 'export_status';
     sender: string; // Username of the sender. TODO: Remove this dependency in favor of senderId
-    senderId: Types.ObjectId; // User ID of the sender
-    serverId?: Types.ObjectId; // Server ID if ping is from a server message
-    channelId?: Types.ObjectId; // Channel ID if ping is from a server message
-    messageId: Types.ObjectId; // Reference to the message that triggered the ping
+    senderId: string; // user ID of the sender
+    serverId?: string; // server ID if ping is from a server message
+    channelId?: string; // channel ID if ping is from a server message
+    messageId: string; // reference to the message that triggered the ping
     message: Record<string, unknown>; // Full message object (stored for quick access)
     timestamp: Date;
     createdAt: Date;
@@ -21,8 +23,7 @@ interface IPing extends Document {
 const pingSchema = new Schema<IPing>(
     {
         userId: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
             index: true,
         },
@@ -33,18 +34,16 @@ const pingSchema = new Schema<IPing>(
             default: 'mention',
         },
         sender: { type: String, required: true },
-        senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        senderId: { type: String, required: true },
         serverId: {
-            type: Schema.Types.ObjectId,
-            ref: 'Server',
+            type: String,
             required: false,
         },
         channelId: {
-            type: Schema.Types.ObjectId,
-            ref: 'Channel',
+            type: String,
             required: false,
         },
-        messageId: { type: Schema.Types.ObjectId, required: true },
+        messageId: { type: String, required: true },
         message: { type: Schema.Types.Mixed, required: true }, // Store full message object
         timestamp: {
             type: Date,
@@ -61,6 +60,8 @@ const pingSchema = new Schema<IPing>(
 );
 
 pingSchema.plugin(mongooseIdPlugin);
+
+pingSchema.plugin(snowflakeIdPlugin);
 
 // Compound index for efficient queries
 pingSchema.index({ userId: 1, timestamp: -1 });

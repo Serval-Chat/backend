@@ -6,13 +6,12 @@ import {
     Delete,
     Body,
     Param,
-    Req,
     UseGuards,
     UseInterceptors,
     UploadedFile,
     Inject,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
+import { isValidSnowflakeId } from '@/utils/snowflake';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiTags,
@@ -49,8 +48,6 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { WsServer } from '@/ws/server';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { Request } from 'express';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -85,7 +82,7 @@ import {
     ServerDiscoveryService,
     normalizeDiscoveryTags,
 } from '@/services/ServerDiscoveryService';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
+import { getDocumentIdString } from '@/utils/mongooseId';
 
 @Controller('api/v1/servers')
 @ApiTags('Servers')
@@ -144,20 +141,9 @@ export class ServerController {
     ): NonNullable<IServer['onboarding']> {
         const stringArray = (value: unknown): string[] =>
             Array.isArray(value)
-                ? value
-                      .map((item): string | null => {
-                          if (item instanceof Types.ObjectId) {
-                              return item.toHexString();
-                          }
-                          if (
-                              typeof item === 'string' &&
-                              Types.ObjectId.isValid(item)
-                          ) {
-                              return item;
-                          }
-                          return null;
-                      })
-                      .filter((item): item is string => item !== null)
+                ? value.filter((item): item is string =>
+                      isValidSnowflakeId(item),
+                  )
                 : [];
 
         return {
@@ -182,7 +168,6 @@ export class ServerController {
         body: ServerOnboardingSettingsRequestDTO,
         current: NonNullable<IServer['onboarding']>,
     ): Promise<NonNullable<IServer['onboarding']>> {
-        const serverOid = new Types.ObjectId(serverId);
         const next: NonNullable<IServer['onboarding']> = {
             enabled: body.enabled ?? current.enabled,
             guidelines:
@@ -196,10 +181,8 @@ export class ServerController {
 
         if (body.selfAssignableRoleIds !== undefined) {
             const uniqueRoleIds = [...new Set(body.selfAssignableRoleIds)];
-            const roles = await this.roleRepo.findByServerId(serverOid);
-            const roleMap = new Map(
-                roles.map((r) => [getDocumentIdString(r), r]),
-            );
+            const roles = await this.roleRepo.findByServerId(serverId);
+            const roleMap = new Map(roles.map((r) => [r.snowflakeId, r]));
             next.selfAssignableRoleIds = uniqueRoleIds.map((roleId) => {
                 const role = roleMap.get(roleId);
                 if (role === undefined) {
@@ -229,8 +212,8 @@ export class ServerController {
                 next.landingChannelId = null;
             } else {
                 const channel = await this.channelRepo.findByIdAndServer(
-                    new Types.ObjectId(body.landingChannelId),
-                    serverOid,
+                    body.landingChannelId,
+                    serverId,
                 );
                 if (channel === null) {
                     throw new ApiError(400, 'Landing channel is not in server');
@@ -250,10 +233,8 @@ export class ServerController {
                 throw new ApiError(400, 'Welcome channels cannot exceed 8');
             }
             const uniqueChannelIds = [...new Set(body.welcomeChannelIds)];
-            const channels = await this.channelRepo.findByServerId(serverOid);
-            const channelIds = new Set(
-                channels.map((c) => getDocumentIdString(c)),
-            );
+            const channels = await this.channelRepo.findByServerId(serverId);
+            const channelIds = new Set(channels.map((c) => c.snowflakeId));
             next.welcomeChannelIds = uniqueChannelIds.map((channelId) => {
                 if (!channelIds.has(channelId)) {
                     throw new ApiError(400, 'Welcome channel is not in server');
@@ -271,29 +252,28 @@ export class ServerController {
     public async getServers(
         @CurrentUser('id') userId: string,
     ): Promise<IServer[]> {
-        const userOid = new Types.ObjectId(userId);
-        const memberships = await this.serverMemberRepo.findByUserId(userOid);
+        const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId);
         const servers = await this.serverRepo.findByIds(serverIds);
 
         return await Promise.all(
             servers.map(async (server) => {
-                const serverOid = new Types.ObjectId(server.id);
-                const memberCount =
-                    await this.serverMemberRepo.countByServerId(serverOid);
+                const memberCount = await this.serverMemberRepo.countByServerId(
+                    server.id,
+                );
                 const canManage =
                     (await this.permissionService.hasPermission(
-                        serverOid,
-                        userOid,
+                        server.id,
+                        userId,
                         'manageServer',
                     )) === true;
                 const canInvite = await this.permissionService.hasAnyPermission(
-                    serverOid,
-                    userOid,
+                    server.id,
+                    userId,
                     ['inviteUsers', 'manageInvites'],
                 );
                 const preferredInvite =
-                    await this.inviteRepo.findPreferredByServerId(serverOid);
+                    await this.inviteRepo.findPreferredByServerId(server.id);
                 return {
                     ...server,
                     memberCount,
@@ -320,7 +300,6 @@ export class ServerController {
         @CurrentUser('id') userId: string,
         @Body() body: CreateServerRequestDTO,
     ): Promise<{ server: IServer; channel: IChannel }> {
-        const userOid = new Types.ObjectId(userId);
         const { name } = body;
 
         const server = await this.serverRepo.create({
@@ -330,7 +309,7 @@ export class ServerController {
 
         // Initialize default '@everyone' role with default permissions
         await this.roleRepo.create({
-            serverId: new Types.ObjectId(server.id),
+            serverId: server.id,
             name: '@everyone',
             color: '#99aab5',
             position: 0,
@@ -352,7 +331,7 @@ export class ServerController {
 
         // Create initial '#general' text channel
         const channel = await this.channelRepo.create({
-            serverId: new Types.ObjectId(server.id),
+            serverId: server.id,
             name: 'general',
             type: 'text',
             position: 0,
@@ -360,8 +339,8 @@ export class ServerController {
 
         // Automatically add the creator as the first member
         await this.serverMemberRepo.create({
-            serverId: new Types.ObjectId(server.id),
-            userId: userOid,
+            serverId: server.id,
+            userId: userId,
             roles: [],
         });
 
@@ -377,15 +356,14 @@ export class ServerController {
     public async getUnreadStatus(
         @CurrentUser('id') userId: string,
     ): Promise<Record<string, { hasUnread: boolean; pingCount: number }>> {
-        const userOid = new Types.ObjectId(userId);
-        const memberships = await this.serverMemberRepo.findByUserId(userOid);
+        const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId);
 
         if (serverIds.length === 0) return {};
 
         const channels = await this.channelRepo.findByServerIds(serverIds);
-        const reads = await this.serverChannelReadRepo.findByUserId(userOid);
-        const pings = await this.pingService.getPingsForUser(userOid);
+        const reads = await this.serverChannelReadRepo.findByUserId(userId);
+        const pings = await this.pingService.getPingsForUser(userId);
 
         const readMap = new Map<string, Date>();
         reads.forEach((read) =>
@@ -412,9 +390,9 @@ export class ServerController {
             if (serverChannels.length === 0) continue;
 
             const perms = await this.permissionService.hasChannelPermissions(
-                serverId as Types.ObjectId,
-                userOid,
-                serverChannels.map((c) => getDocumentId(c) as Types.ObjectId),
+                serverId,
+                userId,
+                serverChannels.map((c) => c.snowflakeId),
                 'viewChannels',
             );
             permissionMapsByServer.set(serverIdStr, perms);
@@ -428,13 +406,13 @@ export class ServerController {
 
             const hasPerm = permissionMapsByServer
                 .get(serverIdStr)
-                ?.get(getDocumentIdString(channel));
+                ?.get(channel.snowflakeId);
             if (hasPerm !== true) continue;
 
             const lastMessageAt = channel.lastMessageAt;
             if (lastMessageAt === undefined) continue;
 
-            const lastReadAt = readMap.get(getDocumentIdString(channel));
+            const lastReadAt = readMap.get(channel.snowflakeId);
             if (
                 lastReadAt === undefined ||
                 new Date(lastMessageAt) > new Date(lastReadAt)
@@ -467,9 +445,7 @@ export class ServerController {
     public async getAllServerEmojis(
         @CurrentUser('id') userId: string,
     ): Promise<EmojiResponseDTO[]> {
-        const userOid = new Types.ObjectId(userId);
-
-        const memberships = await this.serverMemberRepo.findByUserId(userOid);
+        const memberships = await this.serverMemberRepo.findByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId);
 
         if (serverIds.length === 0) return [];
@@ -510,26 +486,24 @@ export class ServerController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const channels = await this.channelRepo.findByServerId(serverOid);
+        const channels = await this.channelRepo.findByServerId(serverId);
         if (channels.length > 0) {
             const ServerChannelReadModel = mongoose.model('ServerChannelRead');
             // Bulk update read timestamps for all channels in the server
             const operations = channels.map((channel) => ({
                 updateOne: {
                     filter: {
-                        serverId: serverOid,
-                        channelId: getDocumentId(channel),
-                        userId: userOid,
+                        serverId: serverId,
+                        channelId: channel.snowflakeId,
+                        userId: userId,
                     },
                     update: { $set: { lastReadAt: new Date() } },
                     upsert: true,
@@ -538,7 +512,7 @@ export class ServerController {
             await ServerChannelReadModel.bulkWrite(operations);
         }
 
-        await this.pingService.clearServerPings(userOid, serverOid);
+        await this.pingService.clearServerPings(userId, serverId);
 
         return { message: 'Server marked as read' };
     }
@@ -554,16 +528,14 @@ export class ServerController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<NonNullable<IServer['onboarding']>> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageServer',
             new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
         );
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -583,16 +555,14 @@ export class ServerController {
         @CurrentUser('id') userId: string,
         @Body() body: ServerOnboardingSettingsRequestDTO,
     ): Promise<NonNullable<IServer['onboarding']>> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageServer',
             new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
         );
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -604,7 +574,7 @@ export class ServerController {
             current,
         );
 
-        const updatedServer = await this.serverRepo.update(serverOid, {
+        const updatedServer = await this.serverRepo.update(serverId, {
             onboarding,
         });
         if (updatedServer === null) {
@@ -617,10 +587,10 @@ export class ServerController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'update_server',
-            targetId: serverOid,
+            targetId: serverId,
             targetType: 'server',
             changes: [
                 {
@@ -643,23 +613,21 @@ export class ServerController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<IServer> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
         const memberCount =
-            await this.serverMemberRepo.countByServerId(serverOid);
+            await this.serverMemberRepo.countByServerId(serverId);
 
         return {
             ...server,
@@ -676,27 +644,25 @@ export class ServerController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<ServerStatsResponseDTO> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const members = await this.serverMemberRepo.findByServerId(serverOid);
+        const members = await this.serverMemberRepo.findByServerId(serverId);
         const totalCount = members.length;
 
         const userIds = members.map((m) => m.userId);
         const users = await this.userRepo.findByIds(userIds);
-        const userMap = new Map(users.map((u) => [getDocumentIdString(u), u]));
+        const userMap = new Map(users.map((u) => [u.snowflakeId, u]));
 
         // Calculate online count by checking presence for each member
         let onlineCount = 0;
@@ -707,12 +673,10 @@ export class ServerController {
             }
         }
 
-        const bannedUsers = await this.serverBanRepo.findByServerId(serverOid);
+        const bannedUsers = await this.serverBanRepo.findByServerId(serverId);
         const bannedUserCount = bannedUsers.length;
 
-        const owner = await this.userRepo.findById(
-            new Types.ObjectId(server.ownerId),
-        );
+        const owner = await this.userRepo.findById(server.ownerId);
         const ownerName =
             owner !== null
                 ? (owner.displayName ?? owner.username ?? 'Unknown')
@@ -732,19 +696,19 @@ export class ServerController {
             newestMemberUser?.username ??
             'Unknown';
 
-        const channels = await this.channelRepo.findByServerId(serverOid);
+        const channels = await this.channelRepo.findByServerId(serverId);
         const channelCount = channels.length;
 
         const EmojiModel = mongoose.model('Emoji');
         const emojiCount = await EmojiModel.countDocuments({
-            serverId: serverOid,
+            serverId: serverId,
         }).exec();
 
         // Update all-time high if current online count exceeds previous record
         let allTimeHigh = server.allTimeHigh ?? 0;
         if (onlineCount > allTimeHigh) {
             allTimeHigh = onlineCount;
-            await this.serverRepo.update(serverOid, { allTimeHigh });
+            await this.serverRepo.update(serverId, { allTimeHigh });
         }
 
         return {
@@ -774,11 +738,9 @@ export class ServerController {
         @CurrentUser('id') userId: string,
         @Body() body: UpdateServerRequestDTO,
     ): Promise<IServer> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageServer',
             new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
         );
@@ -805,9 +767,7 @@ export class ServerController {
         if (body.defaultRoleId !== undefined) {
             const roleId = body.defaultRoleId;
             if (roleId !== null && roleId !== '') {
-                const role = await this.roleRepo.findById(
-                    new Types.ObjectId(roleId),
-                );
+                const role = await this.roleRepo.findById(roleId);
                 if (role === null) {
                     throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
                 }
@@ -820,19 +780,19 @@ export class ServerController {
                         ErrorMessages.ROLE.CANNOT_SET_EVERYONE_DEFAULT,
                     );
                 }
-                updates.defaultRoleId = new Types.ObjectId(roleId);
+                updates.defaultRoleId = roleId;
             } else {
                 updates.defaultRoleId = null;
             }
         }
 
-        const existingServer = await this.serverRepo.findById(serverOid);
-        const server = await this.serverRepo.update(serverOid, updates);
+        const existingServer = await this.serverRepo.findById(serverId);
+        const server = await this.serverRepo.update(serverId, updates);
         if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_updated',
@@ -900,16 +860,16 @@ export class ServerController {
 
         if (changes.length > 0) {
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'update_server',
-                targetId: serverOid,
+                targetId: serverId,
                 targetType: 'server',
                 changes,
             });
         }
 
-        await this.discoveryService.refreshServer(serverOid);
+        await this.discoveryService.refreshServer(serverId);
 
         return server;
     }
@@ -923,16 +883,14 @@ export class ServerController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<ServerDiscoveryStatusDTO> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageServer',
             new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
         );
 
-        return await this.discoveryService.getStatus(serverOid);
+        return await this.discoveryService.getStatus(serverId);
     }
 
     @Post(':serverId/roles/default')
@@ -946,21 +904,17 @@ export class ServerController {
         @CurrentUser('id') userId: string,
         @Body() body: SetDefaultRoleRequestDTO,
     ): Promise<{ defaultRoleId: string | null }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const { roleId } = body;
 
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageServer',
             new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
         );
 
         if (roleId !== null && roleId !== '') {
-            const role = await this.roleRepo.findById(
-                new Types.ObjectId(roleId),
-            );
+            const role = await this.roleRepo.findById(roleId);
             if (role === null) {
                 throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
             }
@@ -975,14 +929,14 @@ export class ServerController {
             }
         }
 
-        const existingServer = await this.serverRepo.findById(serverOid);
-        const server = await this.serverRepo.update(serverOid, {
+        const existingServer = await this.serverRepo.findById(serverId);
+        const server = await this.serverRepo.update(serverId, {
             defaultRoleId:
                 roleId !== null && roleId !== '' ? roleId : undefined,
         });
 
         if (server !== null) {
-            this.permissionService.invalidateCache(serverOid);
+            this.permissionService.invalidateCache(serverId);
             this.wsServer.broadcastToServer(serverId.toString(), {
                 type: 'server_updated',
                 payload: {
@@ -993,10 +947,10 @@ export class ServerController {
             });
 
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'update_server',
-                targetId: serverOid,
+                targetId: serverId,
                 targetType: 'server',
                 changes: [
                     {
@@ -1027,9 +981,7 @@ export class ServerController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -1045,14 +997,14 @@ export class ServerController {
             return { message: 'Already verified or request pending.' };
         }
 
-        await this.serverRepo.update(serverOid, {
+        await this.serverRepo.update(serverId, {
             verificationRequested: true,
         });
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: new Types.ObjectId(userId),
+            serverId: serverId,
+            actorId: userId,
             actionType: 'request_server_verification',
-            targetId: serverOid,
+            targetId: serverId,
             targetType: 'server',
             changes: [
                 { field: 'verificationRequested', before: false, after: true },
@@ -1073,9 +1025,7 @@ export class ServerController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -1084,13 +1034,13 @@ export class ServerController {
             throw new ApiError(403, ErrorMessages.SERVER.ONLY_OWNER_DELETE);
         }
 
-        await this.serverRepo.delete(serverOid);
-        await this.channelRepo.deleteByServerId(serverOid);
-        await this.serverMemberRepo.deleteByServerId(serverOid);
-        await this.roleRepo.deleteByServerId(serverOid);
-        await this.inviteRepo.deleteByServerId(serverOid);
-        await this.serverMessageRepo.deleteByServerId(serverOid);
-        await this.discoveryService.removeServer(serverOid);
+        await this.serverRepo.delete(serverId);
+        await this.channelRepo.deleteByServerId(serverId);
+        await this.serverMemberRepo.deleteByServerId(serverId);
+        await this.roleRepo.deleteByServerId(serverId);
+        await this.inviteRepo.deleteByServerId(serverId);
+        await this.serverMessageRepo.deleteByServerId(serverId);
+        await this.discoveryService.removeServer(serverId);
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'server_deleted',
@@ -1098,10 +1048,10 @@ export class ServerController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'delete_server',
-            targetId: serverOid,
+            targetId: serverId,
             targetType: 'server',
             changes: [{ field: 'status', before: 'active', after: 'deleted' }],
         });
@@ -1138,11 +1088,9 @@ export class ServerController {
         @CurrentUser('id') userId: string,
         @UploadedFile() icon: Express.Multer.File | undefined,
     ): Promise<{ icon: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageServer',
             new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
         );
@@ -1167,8 +1115,8 @@ export class ServerController {
             );
 
             const iconUrl = `/api/v1/servers/icon/${filename}`;
-            const existingServer = await this.serverRepo.findById(serverOid);
-            const updatedServer = await this.serverRepo.update(serverOid, {
+            const existingServer = await this.serverRepo.findById(serverId);
+            const updatedServer = await this.serverRepo.update(serverId, {
                 icon: iconUrl,
             });
             if (updatedServer === null) {
@@ -1185,10 +1133,10 @@ export class ServerController {
             });
 
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'update_server',
-                targetId: serverOid,
+                targetId: serverId,
                 targetType: 'server',
                 changes: [
                     {
@@ -1199,7 +1147,7 @@ export class ServerController {
                 ],
             });
 
-            await this.discoveryService.refreshServer(serverOid);
+            await this.discoveryService.refreshServer(serverId);
 
             return { icon: iconUrl };
         } finally {
@@ -1238,11 +1186,9 @@ export class ServerController {
         @CurrentUser('id') userId: string,
         @UploadedFile() banner: Express.Multer.File | undefined,
     ): Promise<{ banner: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageServer',
             new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
         );
@@ -1268,8 +1214,8 @@ export class ServerController {
             );
 
             const bannerUrl = `/api/v1/servers/banner/${filename}`;
-            const existingServer = await this.serverRepo.findById(serverOid);
-            const updatedServer = await this.serverRepo.update(serverOid, {
+            const existingServer = await this.serverRepo.findById(serverId);
+            const updatedServer = await this.serverRepo.update(serverId, {
                 banner: { type: 'image', value: bannerUrl },
             });
             if (updatedServer === null) {
@@ -1286,10 +1232,10 @@ export class ServerController {
             });
 
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'update_server',
-                targetId: serverOid,
+                targetId: serverId,
                 targetType: 'server',
                 changes: [
                     {
@@ -1300,7 +1246,7 @@ export class ServerController {
                 ],
             });
 
-            await this.discoveryService.refreshServer(serverOid);
+            await this.discoveryService.refreshServer(serverId);
 
             return { banner: bannerUrl };
         } finally {
@@ -1320,21 +1266,17 @@ export class ServerController {
         @CurrentUser('id') userId: string,
         @Body() body: UpdateDefaultRoleRequestDTO,
     ): Promise<{ defaultRoleId: string | null }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const { roleId } = body;
 
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageServer',
             new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
         );
 
         if (roleId !== '') {
-            const role = await this.roleRepo.findById(
-                new Types.ObjectId(roleId),
-            );
+            const role = await this.roleRepo.findById(roleId);
             if (role === null) {
                 throw new ApiError(404, ErrorMessages.ROLE.NOT_FOUND);
             }
@@ -1349,8 +1291,8 @@ export class ServerController {
             }
         }
 
-        const existingServer = await this.serverRepo.findById(serverOid);
-        const server = await this.serverRepo.update(serverOid, {
+        const existingServer = await this.serverRepo.findById(serverId);
+        const server = await this.serverRepo.update(serverId, {
             defaultRoleId: roleId !== '' ? roleId : undefined,
         });
 
@@ -1364,10 +1306,10 @@ export class ServerController {
             });
 
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'update_server',
-                targetId: serverOid,
+                targetId: serverId,
                 targetType: 'server',
                 changes: [
                     {
@@ -1396,12 +1338,9 @@ export class ServerController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<Record<string, string[]>> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
@@ -1434,11 +1373,11 @@ export class ServerController {
                             channelId !== ''
                         ) {
                             const canView =
-                                Types.ObjectId.isValid(channelId) &&
+                                isValidSnowflakeId(channelId) &&
                                 (await this.permissionService.hasChannelPermission(
-                                    serverOid,
-                                    userOid,
-                                    new Types.ObjectId(channelId),
+                                    serverId,
+                                    userId,
+                                    channelId,
                                     'viewChannels',
                                 ));
                             if (canView) {

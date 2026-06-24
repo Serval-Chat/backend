@@ -30,10 +30,10 @@ type WsReceivedEnvelope = {
 
 const WS_EVENT_TIMEOUT_MS = 2000;
 
-function makeAccessToken(user: { _id: { toString(): string }, login: string, username: string, tokenVersion?: number, isBot?: boolean }) {
+function makeAccessToken(user: { snowflakeId: string, login: string, username: string, tokenVersion?: number, isBot?: boolean }) {
     return jwt.sign(
         {
-            id: user._id.toString(),
+            id: user.snowflakeId,
             login: user.login,
             username: user.username,
             tokenVersion: user.tokenVersion ?? 0,
@@ -119,17 +119,17 @@ describe('Timeout WebSocket Events', () => {
     it('should broadcast member_updated when user is timed out via slash command', async () => {
         const owner = await createTestUser({ username: 'owner', login: 'owner@test.com' });
         const target = await createTestUser({ username: 'target', login: 'target@test.com' });
-        const serverDoc = await createTestServer(owner._id.toString());
-        const channelDoc = await createTestChannel(serverDoc._id.toString());
+        const serverDoc = await createTestServer(owner.snowflakeId);
+        const channelDoc = await createTestChannel(serverDoc.snowflakeId);
 
-        await ServerMember.create({ serverId: serverDoc._id, userId: target._id, roles: [] });
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: target.snowflakeId, roles: [] });
 
         const ownerToken = makeAccessToken(owner);
         const ownerSocket = await openAuthenticatedSocket(wsUrl, ownerToken);
 
         ownerSocket.send(JSON.stringify({
             id: crypto.randomUUID(),
-            event: { type: 'join_server', payload: { serverId: serverDoc._id.toString() } }
+            event: { type: 'join_server', payload: { serverId: serverDoc.snowflakeId } }
         }));
         await waitForWsEvent(ownerSocket, 'server_joined');
 
@@ -144,14 +144,14 @@ describe('Timeout WebSocket Events', () => {
                     { name: 'user', value: 'target' },
                     { name: 'duration', value: '10' }
                 ],
-                serverId: serverDoc._id.toString(),
-                channelId: channelDoc._id.toString(),
+                serverId: serverDoc.snowflakeId,
+                channelId: channelDoc.snowflakeId,
             });
 
         expect(res.status).toBe(200);
 
         const event = await eventPromise;
-        expect(event.event.payload.userId).toBe(target._id.toString());
+        expect(event.event.payload.userId).toBe(target.snowflakeId);
         expect((event.event.payload.member as { communicationDisabledUntil?: string }).communicationDisabledUntil).toBeTruthy();
 
         ownerSocket.close();
@@ -160,13 +160,13 @@ describe('Timeout WebSocket Events', () => {
     it('should broadcast member_updated when timeout is removed via slash command', async () => {
         const owner = await createTestUser({ username: 'owner2', login: 'owner2@test.com' });
         const target = await createTestUser({ username: 'target2', login: 'target2@test.com' });
-        const serverDoc = await createTestServer(owner._id.toString());
-        const channelDoc = await createTestChannel(serverDoc._id.toString());
+        const serverDoc = await createTestServer(owner.snowflakeId);
+        const channelDoc = await createTestChannel(serverDoc.snowflakeId);
 
         const until = new Date(Date.now() + 100000);
         await ServerMember.create({ 
-            serverId: serverDoc._id, 
-            userId: target._id, 
+            serverId: serverDoc.snowflakeId, 
+            userId: target.snowflakeId, 
             roles: [],
             communicationDisabledUntil: until
         });
@@ -176,7 +176,7 @@ describe('Timeout WebSocket Events', () => {
 
         ownerSocket.send(JSON.stringify({
             id: crypto.randomUUID(),
-            event: { type: 'join_server', payload: { serverId: serverDoc._id.toString() } }
+            event: { type: 'join_server', payload: { serverId: serverDoc.snowflakeId } }
         }));
         await waitForWsEvent(ownerSocket, 'server_joined');
 
@@ -190,14 +190,14 @@ describe('Timeout WebSocket Events', () => {
                 options: [
                     { name: 'user', value: 'target2' }
                 ],
-                serverId: serverDoc._id.toString(),
-                channelId: channelDoc._id.toString(),
+                serverId: serverDoc.snowflakeId,
+                channelId: channelDoc.snowflakeId,
             });
 
         expect(res.status).toBe(200);
 
         const event = await eventPromise;
-        expect(event.event.payload.userId).toBe(target._id.toString());
+        expect(event.event.payload.userId).toBe(target.snowflakeId);
         expect((event.event.payload.member as { communicationDisabledUntil?: string }).communicationDisabledUntil).toBeFalsy();
 
         ownerSocket.close();

@@ -26,7 +26,6 @@ import {
     normalizeBackupCode,
     verifyTotp,
 } from '@/utils/totp';
-import { Types } from 'mongoose';
 import { isNonEmptyString } from '@/utils/typeGuards';
 import type { NonEmptyString } from '@/types/branded';
 // Authentication result
@@ -115,7 +114,10 @@ export class AuthService {
         }
 
         // Validate password via repository
-        const valid = await this.userRepo.comparePassword(user._id, password);
+        const valid = await this.userRepo.comparePassword(
+            user.snowflakeId,
+            password,
+        );
         if (!valid) {
             this.logger.warn(
                 `Login failed: Invalid password - ${normalizedLogin}`,
@@ -127,8 +129,10 @@ export class AuthService {
         }
 
         // Check for bans
-        await this.banRepo.checkExpired(user._id);
-        const activeBan = await this.banRepo.findActiveByUserId(user._id);
+        await this.banRepo.checkExpired(user.snowflakeId);
+        const activeBan = await this.banRepo.findActiveByUserId(
+            user.snowflakeId,
+        );
 
         if (activeBan) {
             this.logger.warn(
@@ -149,7 +153,7 @@ export class AuthService {
         this.logger.info(`Login successful: ${normalizedLogin}`);
         return {
             success: true,
-            user: user as unknown as IUser,
+            user: user,
         };
     }
 
@@ -157,8 +161,7 @@ export class AuthService {
         userId: string,
         username: string,
     ): Promise<{ otpauthUri: string }> {
-        const oid = new Types.ObjectId(userId);
-        const user = await this.userRepo.findById(oid);
+        const user = await this.userRepo.findById(userId);
         if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         if (user.totpEnabled === true) {
             throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_ALREADY_ENABLED);
@@ -166,7 +169,7 @@ export class AuthService {
 
         const secret = generateTotpSecret();
         const encryptedSecret = encryptSecret(secret);
-        await this.userRepo.update(oid, {
+        await this.userRepo.update(userId, {
             totpSecret: encryptedSecret as NonEmptyString,
             totpEnabled: false,
             totpVerifiedAt: null,
@@ -186,8 +189,7 @@ export class AuthService {
         userId: string,
         code: string,
     ): Promise<{ backupCodes: string[] }> {
-        const oid = new Types.ObjectId(userId);
-        const user = await this.userRepo.findById(oid);
+        const user = await this.userRepo.findById(userId);
         if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         if (!isNonEmptyString(user.totpSecret)) {
             throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_SETUP_REQUIRED);
@@ -200,7 +202,7 @@ export class AuthService {
         }
 
         const backupCodes = generateBackupCodes(10);
-        await this.userRepo.update(oid, {
+        await this.userRepo.update(userId, {
             totpEnabled: true,
             totpVerifiedAt: new Date(),
             backupCodes: backupCodes.map(hashRecoveryCode),
@@ -235,8 +237,7 @@ export class AuthService {
         backupCode?: string;
         requireEnabled?: boolean;
     }): Promise<void> {
-        const oid = new Types.ObjectId(input.userId);
-        const user = await this.userRepo.findById(oid);
+        const user = await this.userRepo.findById(input.userId);
         if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         if (input.requireEnabled === true && user.totpEnabled !== true) {
             throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_NOT_ENABLED);
@@ -284,7 +285,7 @@ export class AuthService {
             const failures = (user.totpVerifyFailures ?? 0) + 1;
             const lock =
                 failures >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
-            await this.userRepo.update(oid, {
+            await this.userRepo.update(input.userId, {
                 totpVerifyFailures: failures >= 5 ? 0 : failures,
                 totpLockedUntil: lock,
             });
@@ -293,7 +294,7 @@ export class AuthService {
 
         const replayHash = hashRecoveryCode(replayKey);
         const existing = await TotpUsedCode.findOne({
-            userId: oid,
+            userId: input.userId,
             code: replayHash,
             expiresAt: { $gt: now },
         })
@@ -305,7 +306,7 @@ export class AuthService {
 
         try {
             await TotpUsedCode.create({
-                userId: oid,
+                userId: input.userId,
                 code: replayHash,
                 expiresAt: replayExpiry,
             });
@@ -322,7 +323,7 @@ export class AuthService {
                 (x) => x !== consumeBackupCodeHash,
             );
         }
-        await this.userRepo.update(oid, updateData);
+        await this.userRepo.update(input.userId, updateData);
     }
 
     public async regenerateBackupCodes(
@@ -335,7 +336,7 @@ export class AuthService {
             requireEnabled: true,
         });
         const backupCodes = generateBackupCodes(10);
-        await this.userRepo.update(new Types.ObjectId(userId), {
+        await this.userRepo.update(userId, {
             backupCodes: backupCodes.map(hashRecoveryCode),
         });
         return { backupCodes };
@@ -352,7 +353,7 @@ export class AuthService {
             backupCode,
             requireEnabled: true,
         });
-        await this.userRepo.update(new Types.ObjectId(userId), {
+        await this.userRepo.update(userId, {
             totpSecret: null,
             totpEnabled: false,
             totpVerifiedAt: null,
@@ -400,7 +401,7 @@ export class AuthService {
         // Rate limit check and creation using transaction
         const resetRequest = await this.passwordResetRepo.createIfUnderLimit(
             {
-                userId: user._id,
+                userId: user.snowflakeId,
                 hashedToken,
                 expiresAt,
                 ipParam: ip,
@@ -414,7 +415,7 @@ export class AuthService {
 
         if (!resetRequest) {
             this.logger.warn(
-                `[${requestId}] Password reset rate limit exceeded for user: ${user._id} or IP: ${ip}`,
+                `[${requestId}] Password reset rate limit exceeded for user: ${user.snowflakeId} or IP: ${ip}`,
             );
             this.metrics.increment('password_reset.rate_limited');
             return requestId;
@@ -441,9 +442,9 @@ export class AuthService {
 
         // Audit log
         await this.auditLogRepo.create({
-            actorId: user._id,
+            actorId: user.snowflakeId,
             actionType: 'PASSWORD_RESET_REQUESTED',
-            targetUserId: user._id,
+            targetUserId: user.snowflakeId,
             additionalData: { ip, requestId },
         });
 
@@ -480,7 +481,7 @@ export class AuthService {
 
         // Prevent password reuse
         const isSamePassword = await this.userRepo.comparePassword(
-            user._id,
+            user.snowflakeId,
             newPassword,
         );
         if (isSamePassword) {

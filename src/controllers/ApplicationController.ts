@@ -16,7 +16,6 @@ import {
     ApiOkResponse,
     ApiBearerAuth,
 } from '@nestjs/swagger';
-import { Types } from 'mongoose';
 import { SlashCommandDTO } from './dto/bot.response.dto';
 
 import { TYPES } from '@/di/types';
@@ -27,7 +26,6 @@ import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { Bot } from '@/models/Bot';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { SetCommandsRequestDTO } from './dto/application.request.dto';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 @ApiTags('Applications')
 @ApiBearerAuth()
@@ -42,8 +40,8 @@ export class ApplicationController {
     ) {}
 
     private async broadcastCommandsUpdated(bot: {
-        _id: Types.ObjectId;
-        userId: Types.ObjectId;
+        snowflakeId: string;
+        userId: string;
     }): Promise<void> {
         const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
             bot.userId,
@@ -54,7 +52,7 @@ export class ApplicationController {
                 type: 'commands_updated',
                 payload: {
                     serverId: serverId.toString(),
-                    botId: getDocumentIdString(bot),
+                    botId: bot.snowflakeId,
                 },
             });
         });
@@ -70,9 +68,7 @@ export class ApplicationController {
         const bot = await Bot.findOne({ userId: req.user.id }).lean();
         if (bot === null) throw new ForbiddenException('Forbidden');
 
-        return this.slashCommandRepo.findByBotId(
-            getDocumentId(bot) as Types.ObjectId,
-        );
+        return this.slashCommandRepo.findByBotId(bot.snowflakeId);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -91,15 +87,13 @@ export class ApplicationController {
         const bot = await Bot.findOne({ userId: req.user.id }).lean();
         if (bot === null) throw new ForbiddenException('Forbidden');
 
-        await this.slashCommandRepo.deleteByBotId(
-            getDocumentId(bot) as Types.ObjectId,
-        );
+        await this.slashCommandRepo.deleteByBotId(bot.snowflakeId);
 
         const created = [];
         for (const cmd of body.commands) {
             created.push(
                 await this.slashCommandRepo.create({
-                    botId: getDocumentId(bot) as Types.ObjectId,
+                    botId: bot.snowflakeId,
                     name: cmd.name.toLowerCase(),
                     description: cmd.description,
                     options: cmd.options ?? [],

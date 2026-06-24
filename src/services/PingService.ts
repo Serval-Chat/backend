@@ -1,5 +1,4 @@
 import { injectable, inject } from 'inversify';
-import mongoose from 'mongoose';
 import { Inject } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import { IPingRepository } from '@/di/interfaces/IPingRepository';
@@ -9,7 +8,7 @@ import {
     PingMentionMessageDTO,
     PingExportMessageDTO,
 } from '@/controllers/dto/types.dto';
-import { getDocumentIdString } from '@/utils/mongooseId';
+import { isValidSnowflakeId } from '@/utils/snowflake';
 
 export interface PingNotification {
     id: string;
@@ -38,7 +37,7 @@ export class PingService {
 
     // Store a ping for a user (both online and offline)
     public async addPing(
-        userId: mongoose.Types.ObjectId,
+        userId: string,
         pingData: Omit<PingNotification, 'id' | 'timestamp'>,
     ): Promise<PingNotification> {
         // Check if ping already exists
@@ -49,10 +48,7 @@ export class PingService {
         const messageId = (msg._id ?? msg.messageId ?? 'unknown').toString();
         const senderId = pingData.senderId.toString();
 
-        if (
-            !mongoose.Types.ObjectId.isValid(senderId) ||
-            !mongoose.Types.ObjectId.isValid(messageId)
-        ) {
+        if (!isValidSnowflakeId(senderId) || !isValidSnowflakeId(messageId)) {
             return {
                 id: 'temporary',
                 type: pingData.type,
@@ -63,11 +59,7 @@ export class PingService {
             };
         }
 
-        const exists = await this.pingRepo.exists(
-            userId,
-            new mongoose.Types.ObjectId(senderId),
-            new mongoose.Types.ObjectId(messageId),
-        );
+        const exists = await this.pingRepo.exists(userId, senderId, messageId);
         if (exists) {
             // Return existing ping format
             const existingPings = await this.pingRepo.findByUserId(userId);
@@ -83,33 +75,29 @@ export class PingService {
 
         // Create new ping
         const createData: {
-            userId: mongoose.Types.ObjectId;
+            userId: string;
             type: 'mention' | 'export_status';
             sender: string;
-            senderId: mongoose.Types.ObjectId;
-            serverId?: mongoose.Types.ObjectId;
-            channelId?: mongoose.Types.ObjectId;
-            messageId: mongoose.Types.ObjectId;
+            senderId: string;
+            serverId?: string;
+            channelId?: string;
+            messageId: string;
             message: PingMentionMessageDTO | PingExportMessageDTO;
             timestamp?: Date;
         } = {
             userId,
             type: pingData.type,
             sender: pingData.sender,
-            senderId: new mongoose.Types.ObjectId(senderId),
-            messageId: new mongoose.Types.ObjectId(messageId),
+            senderId,
+            messageId,
             message: pingData.message,
         };
 
         if (pingData.serverId !== undefined && pingData.serverId !== '') {
-            createData.serverId = new mongoose.Types.ObjectId(
-                pingData.serverId,
-            );
+            createData.serverId = pingData.serverId;
         }
         if (pingData.channelId !== undefined && pingData.channelId !== '') {
-            createData.channelId = new mongoose.Types.ObjectId(
-                pingData.channelId,
-            );
+            createData.channelId = pingData.channelId;
         }
 
         const created = await this.pingRepo.create(createData);
@@ -118,12 +106,12 @@ export class PingService {
     }
 
     // Get all pings for a user (with age filtering)
-    public async getPingsForUser(
-        userId: mongoose.Types.ObjectId,
-    ): Promise<PingNotification[]> {
+    public async getPingsForUser(userId: string): Promise<PingNotification[]> {
         const pings = await this.pingRepo.findByUserId(userId, this.maxAge);
 
-        const dmPings = pings.filter((p) => !p.serverId);
+        const dmPings = pings.filter(
+            (p) => p.serverId === undefined || p.serverId === '',
+        );
         const senderIds = [
             ...new Set(dmPings.map((p) => p.senderId.toString())),
         ];
@@ -131,21 +119,20 @@ export class PingService {
         const validSenderIds = new Set<string>();
         await Promise.all(
             senderIds.map(async (senderIdStr) => {
-                const senderOid = new mongoose.Types.ObjectId(senderIdStr);
                 const areFriends = await this.friendshipRepo.areFriends(
                     userId,
-                    senderOid,
+                    senderIdStr,
                 );
                 if (areFriends) {
                     validSenderIds.add(senderIdStr);
                 } else {
-                    await this.pingRepo.deleteBetweenUsers(userId, senderOid);
+                    await this.pingRepo.deleteBetweenUsers(userId, senderIdStr);
                 }
             }),
         );
 
         const filteredPings = pings.filter((p) => {
-            if (!p.serverId) {
+            if (p.serverId === undefined || p.serverId === '') {
                 return validSenderIds.has(p.senderId.toString());
             }
             return true;
@@ -155,37 +142,34 @@ export class PingService {
     }
 
     // Remove a specific ping
-    public async removePing(
-        userId: mongoose.Types.ObjectId,
-        pingId: mongoose.Types.ObjectId,
-    ): Promise<boolean> {
+    public async removePing(userId: string, pingId: string): Promise<boolean> {
         return await this.pingRepo.delete(pingId);
     }
 
     // Clear all pings for a specific channel
     public async clearChannelPings(
-        userId: mongoose.Types.ObjectId,
-        channelId: mongoose.Types.ObjectId,
+        userId: string,
+        channelId: string,
     ): Promise<number> {
         return await this.pingRepo.deleteByChannelId(userId, channelId);
     }
 
     public async clearServerPings(
-        userId: mongoose.Types.ObjectId,
-        serverId: mongoose.Types.ObjectId,
+        userId: string,
+        serverId: string,
     ): Promise<number> {
         return await this.pingRepo.deleteByServerId(userId, serverId);
     }
 
     // Clear all pings for a user
-    public async clearAllPings(userId: mongoose.Types.ObjectId): Promise<void> {
+    public async clearAllPings(userId: string): Promise<void> {
         await this.pingRepo.deleteByUserId(userId);
     }
 
     // Clear all DM pings between two users
     public async clearPingsBetweenUsers(
-        user1: mongoose.Types.ObjectId,
-        user2: mongoose.Types.ObjectId,
+        user1: string,
+        user2: string,
     ): Promise<number> {
         return await this.pingRepo.deleteBetweenUsers(user1, user2);
     }
@@ -193,23 +177,21 @@ export class PingService {
     // Map database ping to notification format
     private mapToNotification(ping: IPing): PingNotification {
         const notification: PingNotification = {
-            id: getDocumentIdString(ping),
+            id: ping.snowflakeId,
             type: ping.type,
             sender: ping.sender,
             senderId: ping.senderId.toString(),
-            message: ping.message as unknown as
-                | PingMentionMessageDTO
-                | PingExportMessageDTO,
+            message: ping.message,
             timestamp:
                 ping.timestamp instanceof Date
                     ? ping.timestamp.getTime()
                     : new Date(ping.timestamp).getTime(),
         };
 
-        if (ping.serverId) {
+        if (ping.serverId !== undefined && ping.serverId !== '') {
             notification.serverId = ping.serverId.toString();
         }
-        if (ping.channelId) {
+        if (ping.channelId !== undefined && ping.channelId !== '') {
             notification.channelId = ping.channelId.toString();
         }
 

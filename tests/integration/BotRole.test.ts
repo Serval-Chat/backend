@@ -20,7 +20,7 @@ describe('Irrevocable Bot Roles Integration', () => {
 
         owner = await createTestUser();
         ownerToken = generateAuthToken(owner);
-        testServer = await createTestServer(owner._id.toString());
+        testServer = await createTestServer(owner.snowflakeId);
     });
 
     afterAll(async () => {
@@ -32,8 +32,8 @@ describe('Irrevocable Bot Roles Integration', () => {
         const bot = await Bot.create({
             clientId: '0123456789abcdef0123456789abcdef',
             botTokenHash: 'hash',
-            userId: botUser._id,
-            ownerId: owner._id,
+            userId: botUser.snowflakeId,
+            ownerId: owner.snowflakeId,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS, joinServers: true },
         });
 
@@ -41,7 +41,7 @@ describe('Irrevocable Bot Roles Integration', () => {
             .post(`/api/v1/bots/${bot.clientId}/authorize`)
             .set('Authorization', `Bearer ${ownerToken}`)
             .send({
-                serverId: testServer._id.toString(),
+                serverId: testServer.snowflakeId,
             });
 
         if (res.status !== 200) {
@@ -50,9 +50,9 @@ describe('Irrevocable Bot Roles Integration', () => {
         expect(res.status).toBe(200);
 
         const managedRole = await Role.findOne({
-            serverId: testServer._id,
+            serverId: testServer.snowflakeId,
             managed: true,
-            managedBotId: bot._id,
+            managedBotId: bot.snowflakeId,
         });
 
         console.log('Created managed role:', managedRole?._id, 'for bot:', bot._id);
@@ -62,11 +62,11 @@ describe('Irrevocable Bot Roles Integration', () => {
         expect(managedRole?.name).toBe('test_bot');
 
         const member = await ServerMember.findOne({
-            serverId: testServer._id,
-            userId: botUser._id,
+            serverId: testServer.snowflakeId,
+            userId: botUser.snowflakeId,
         });
 
-        expect(member?.roles).toContainEqual(managedRole?._id);
+        expect(member?.roles).toContainEqual(managedRole?.snowflakeId);
     });
 
     it('should prevent deleting a managed role', async () => {
@@ -74,7 +74,7 @@ describe('Irrevocable Bot Roles Integration', () => {
         expect(managedRole).toBeDefined();
 
         const res = await request(app)
-            .delete(`/api/v1/servers/${testServer._id}/roles/${managedRole?._id}`)
+            .delete(`/api/v1/servers/${testServer.snowflakeId}/roles/${managedRole?.snowflakeId}`)
             .set('Authorization', `Bearer ${ownerToken}`);
 
         expect(res.status).toBe(403);
@@ -83,11 +83,11 @@ describe('Irrevocable Bot Roles Integration', () => {
 
     it('should prevent removing a managed role from a member', async () => {
         const managedRole = await Role.findOne({ managed: true });
-        const botUser = await Bot.findOne({ _id: managedRole?.managedBotId });
+        const botUser = await Bot.findOne({ snowflakeId: managedRole?.managedBotId });
         const botUserId = botUser?.userId;
 
         const res = await request(app)
-            .delete(`/api/v1/servers/${testServer._id}/members/${botUserId}/roles/${managedRole?._id}`)
+            .delete(`/api/v1/servers/${testServer.snowflakeId}/members/${botUserId}/roles/${managedRole?.snowflakeId}`)
             .set('Authorization', `Bearer ${ownerToken}`);
 
         expect(res.status).toBe(403);
@@ -101,15 +101,15 @@ describe('Irrevocable Bot Roles Integration', () => {
             .post(`/api/v1/bots/0123456789abcdef0123456789abcdef/authorize`)
             .set('Authorization', `Bearer ${ownerToken}`)
             .send({
-                serverId: testServer._id.toString(),
+                serverId: testServer.snowflakeId,
             });
 
         const managedRole = await Role.findOne({ managed: true });
-        const botUser = await Bot.findOne({ _id: managedRole?.managedBotId });
+        const botUser = await Bot.findOne({ snowflakeId: managedRole?.managedBotId });
         const botUserId = botUser?.userId;
 
         const res = await request(app)
-            .delete(`/api/v1/servers/${testServer._id}/members/${botUserId}`)
+            .delete(`/api/v1/servers/${testServer.snowflakeId}/members/${botUserId}`)
             .set('Authorization', `Bearer ${ownerToken}`)
             .send({ reason: 'Test kick' });
 

@@ -23,15 +23,13 @@ import { InteractionSuccessResponseDTO } from '@/controllers/dto/interaction.res
 import { Types } from 'mongoose';
 
 import { TYPES } from '@/di/types';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
+import { getDocumentId } from '@/utils/mongooseId';
+import { generateSnowflakeId, isValidSnowflakeId } from '@/utils/snowflake';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 
 import type {
-    IMessageServerEvent,
     IInteractionCreateServerEvent,
     IComponentInteractionCreateServerEvent,
-    IInteractionResponseServerEvent,
-    IMessageServerEditedEvent,
 } from '@/ws/protocol/events/messages';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
 import type { ISlashCommand } from '@/models/SlashCommand';
@@ -85,8 +83,8 @@ interface InteractionCommand {
 
 const mapToInteractionCommand = (cmd: ISlashCommand): InteractionCommand => {
     return {
-        id: getDocumentIdString(cmd),
-        botId: cmd.botId.toString(),
+        id: cmd.snowflakeId,
+        botId: cmd.botId,
         name: cmd.name,
         description: cmd.description,
         options: (cmd.options ?? []).map((opt) => ({
@@ -101,6 +99,7 @@ const mapToInteractionCommand = (cmd: ISlashCommand): InteractionCommand => {
 
 interface PopulatedUser {
     _id: Types.ObjectId;
+    snowflakeId: string;
     username: string;
     displayName?: string;
     profilePicture?: string;
@@ -109,7 +108,8 @@ interface PopulatedUser {
 
 interface PopulatedServerMember {
     _id: Types.ObjectId;
-    userId: PopulatedUser;
+    userId: string;
+    userIdUser: PopulatedUser;
     serverId: Types.ObjectId;
     communicationDisabledUntil?: Date;
 }
@@ -206,13 +206,13 @@ export class InteractionController {
         @Req() req: AuthenticatedRequest,
         @Param('serverId') serverId: string,
     ) {
-        if (!Types.ObjectId.isValid(serverId)) {
+        if (!isValidSnowflakeId(serverId)) {
             throw new NotFoundException('Invalid serverId');
         }
 
         const member = await ServerMember.findOne({
-            serverId: new Types.ObjectId(serverId),
-            userId: new Types.ObjectId(req.user.id),
+            serverId: serverId,
+            userId: req.user.id,
         }).lean();
 
         if (member === null) {
@@ -220,30 +220,25 @@ export class InteractionController {
         }
 
         const botsInServer = await ServerMember.find({
-            serverId: new Types.ObjectId(serverId),
+            serverId: serverId,
         })
-            .populate<{ userId: { isBot: boolean; _id: Types.ObjectId } }>(
-                'userId',
-                'isBot _id',
-            )
+            .populate<{
+                userIdUser: { isBot: boolean; snowflakeId: string };
+            }>('userIdUser', 'isBot snowflakeId')
             .lean();
 
         const botUserIds = botsInServer
-            .filter((m) => m.userId.isBot === true)
-            .map((m) => m.userId._id);
+            .filter((m) => m.userIdUser.isBot === true)
+            .map((m) => m.userIdUser.snowflakeId);
 
         const bots = await Bot.find({ userId: { $in: botUserIds } }).lean();
 
         const commandArrays = await Promise.all(
-            bots.map((b) =>
-                this.slashCommandRepo.findByBotId(
-                    getDocumentId(b) as Types.ObjectId,
-                ),
-            ),
+            bots.map((b) => this.slashCommandRepo.findByBotId(b.snowflakeId)),
         );
 
         const botCommands = commandArrays.flat().map((cmd) => ({
-            id: getDocumentIdString(cmd),
+            id: cmd.snowflakeId,
             name: cmd.name,
             description: cmd.description,
             options: cmd.options !== undefined ? cmd.options : [],
@@ -275,16 +270,13 @@ export class InteractionController {
             'use slash commands',
         );
 
-        if (
-            !Types.ObjectId.isValid(serverId) ||
-            !Types.ObjectId.isValid(channelId)
-        ) {
+        if (!isValidSnowflakeId(serverId) || !isValidSnowflakeId(channelId)) {
             throw new BadRequestException('Invalid serverId or channelId');
         }
 
         const member = await ServerMember.findOne({
-            serverId: new Types.ObjectId(serverId),
-            userId: new Types.ObjectId(req.user.id),
+            serverId: serverId,
+            userId: req.user.id,
         }).lean();
 
         if (member === null) {
@@ -292,49 +284,46 @@ export class InteractionController {
         }
 
         await this.permissionService.requireChannelPermission(
-            new Types.ObjectId(serverId),
-            new Types.ObjectId(req.user.id),
-            new Types.ObjectId(channelId),
+            serverId,
+            req.user.id,
+            channelId,
             'viewChannels',
             new ForbiddenException('Cannot view this channel'),
         );
 
         await this.permissionService.requireChannelPermission(
-            new Types.ObjectId(serverId),
-            new Types.ObjectId(req.user.id),
-            new Types.ObjectId(channelId),
+            serverId,
+            req.user.id,
+            channelId,
             'sendMessages',
             new ForbiddenException('Cannot send messages in this channel'),
         );
 
         const botsInServer = await ServerMember.find({
-            serverId: new Types.ObjectId(serverId),
+            serverId: serverId,
         })
-            .populate<{ userId: { isBot: boolean; _id: Types.ObjectId } }>(
-                'userId',
-                'isBot _id',
-            )
+            .populate<{
+                userIdUser: { isBot: boolean; snowflakeId: string };
+            }>('userIdUser', 'isBot snowflakeId')
             .lean();
 
         const botUserIds = botsInServer
-            .filter((m) => m.userId.isBot === true)
-            .map((m) => m.userId._id);
+            .filter((m) => m.userIdUser.isBot === true)
+            .map((m) => m.userIdUser.snowflakeId);
 
         const bots = await Bot.find({ userId: { $in: botUserIds } }).lean();
-        const botsById = new Map(bots.map((b) => [getDocumentIdString(b), b]));
-        const botIds = bots.map((b) => getDocumentId(b) as Types.ObjectId);
+        const botsById = new Map(bots.map((b) => [b.snowflakeId, b]));
+        const botIds = bots.map((b) => b.snowflakeId);
 
         let commandDef: InteractionCommand | null = null;
         if (commandId !== undefined) {
             commandDef =
                 SYSTEM_COMMANDS.find((c) => c.id === commandId) ?? null;
-            if (commandDef === null && Types.ObjectId.isValid(commandId)) {
-                const dbCmd = await this.slashCommandRepo.findById(
-                    new Types.ObjectId(commandId),
-                );
+            if (commandDef === null && isValidSnowflakeId(commandId)) {
+                const dbCmd = await this.slashCommandRepo.findById(commandId);
                 if (
                     dbCmd !== null &&
-                    botIds.some((botId) => botId.equals(dbCmd.botId))
+                    botIds.some((botId) => botId === dbCmd.botId)
                 ) {
                     commandDef = mapToInteractionCommand(dbCmd);
                 }
@@ -379,9 +368,9 @@ export class InteractionController {
 
         if (commandDef.shouldReply === true) {
             const serverMessage = await ServerMessage.create({
-                serverId: new Types.ObjectId(serverId),
-                channelId: new Types.ObjectId(channelId),
-                senderId: new Types.ObjectId(req.user.id),
+                serverId: serverId,
+                channelId: channelId,
+                senderId: req.user.id,
                 text: '',
                 interaction: {
                     command: resolvedCommandName,
@@ -389,7 +378,7 @@ export class InteractionController {
                     user: { id: req.user.id, username: req.user.username },
                 },
             });
-            invocationId = getDocumentIdString(serverMessage);
+            invocationId = serverMessage.snowflakeId;
 
             this.wsServer.broadcastToChannel(channelId, {
                 type: 'message_server',
@@ -419,13 +408,13 @@ export class InteractionController {
                     stickerId: serverMessage.stickerId?.toString() ?? null,
                     poll: serverMessage.poll ?? null,
                 },
-            } as IMessageServerEvent);
+            });
         }
 
         const senderPermissions =
             await this.permissionService.getAllServerPermissions(
-                new Types.ObjectId(serverId),
-                new Types.ObjectId(req.user.id),
+                serverId,
+                req.user.id,
             );
 
         const resolvedCommandId = commandDef.id;
@@ -455,9 +444,9 @@ export class InteractionController {
 
             const targetBotUserId = targetBot.userId.toString();
             await this.permissionService.requireChannelPermission(
-                new Types.ObjectId(serverId),
-                new Types.ObjectId(targetBotUserId),
-                new Types.ObjectId(channelId),
+                serverId,
+                targetBotUserId,
+                channelId,
                 'viewChannels',
                 new ForbiddenException('Bot cannot view this channel'),
             );
@@ -524,10 +513,7 @@ export class InteractionController {
             invocationId,
             botUserId,
         } = body;
-        if (
-            !Types.ObjectId.isValid(serverId) ||
-            !Types.ObjectId.isValid(channelId)
-        ) {
+        if (!isValidSnowflakeId(serverId) || !isValidSnowflakeId(channelId)) {
             throw new BadRequestException('Invalid serverId or channelId');
         }
 
@@ -536,22 +522,22 @@ export class InteractionController {
         }
 
         const member = await ServerMember.findOne({
-            serverId: new Types.ObjectId(serverId),
-            userId: new Types.ObjectId(req.user.id),
+            serverId: serverId,
+            userId: req.user.id,
         }).lean();
         if (member === null) {
             throw new ForbiddenException('Not a member of this server');
         }
 
         await this.permissionService.requireChannelPermission(
-            new Types.ObjectId(serverId),
-            new Types.ObjectId(req.user.id),
-            new Types.ObjectId(channelId),
+            serverId,
+            req.user.id,
+            channelId,
             'viewChannels',
             new ForbiddenException('Cannot view this channel'),
         );
 
-        const isPersistentMessage = Types.ObjectId.isValid(messageId);
+        const isPersistentMessage = isValidSnowflakeId(messageId);
 
         if (!isPersistentMessage) {
             if (botUserId === undefined) {
@@ -560,7 +546,7 @@ export class InteractionController {
                 );
             }
 
-            const botUser = await User.findById(botUserId)
+            const botUser = await User.findOne({ snowflakeId: botUserId })
                 .select('isBot')
                 .lean();
             if (botUser?.isBot !== true) {
@@ -569,8 +555,8 @@ export class InteractionController {
 
             const senderPermissions =
                 await this.permissionService.getAllServerPermissions(
-                    new Types.ObjectId(serverId),
-                    new Types.ObjectId(req.user.id),
+                    serverId,
+                    req.user.id,
                 );
 
             const event: IComponentInteractionCreateServerEvent = {
@@ -585,8 +571,7 @@ export class InteractionController {
                     senderId: req.user.id,
                     senderUsername: req.user.username,
                     senderPermissions,
-                    invocationId:
-                        invocationId ?? new Types.ObjectId().toString(),
+                    invocationId: invocationId ?? generateSnowflakeId(),
                 },
             };
             this.wsServer.broadcastToUser(botUserId, event);
@@ -594,9 +579,9 @@ export class InteractionController {
         }
 
         const message = await ServerMessage.findOne({
-            _id: new Types.ObjectId(messageId),
-            serverId: new Types.ObjectId(serverId),
-            channelId: new Types.ObjectId(channelId),
+            snowflakeId: messageId,
+            serverId: serverId,
+            channelId: channelId,
         }).lean();
         if (message === null) {
             throw new NotFoundException('Message not found');
@@ -616,7 +601,9 @@ export class InteractionController {
             throw new BadRequestException('Link buttons cannot be invoked');
         }
 
-        const messageSender = await User.findById(message.senderId)
+        const messageSender = await User.findOne({
+            snowflakeId: message.senderId,
+        })
             .select('isBot')
             .lean();
         if (messageSender?.isBot !== true) {
@@ -627,11 +614,11 @@ export class InteractionController {
 
         const senderPermissions =
             await this.permissionService.getAllServerPermissions(
-                new Types.ObjectId(serverId),
-                new Types.ObjectId(req.user.id),
+                serverId,
+                req.user.id,
             );
 
-        const generatedInvocationId = new Types.ObjectId().toString();
+        const generatedInvocationId = generateSnowflakeId();
         const event: IComponentInteractionCreateServerEvent = {
             type: 'component_interaction_create_server',
             payload: {
@@ -678,16 +665,13 @@ export class InteractionController {
             components,
         } = body;
 
-        if (
-            !Types.ObjectId.isValid(serverId) ||
-            !Types.ObjectId.isValid(channelId)
-        ) {
+        if (!isValidSnowflakeId(serverId) || !isValidSnowflakeId(channelId)) {
             throw new BadRequestException('Invalid serverId or channelId');
         }
 
         const botMember = await ServerMember.findOne({
-            serverId: new Types.ObjectId(serverId),
-            userId: new Types.ObjectId(req.user.id),
+            serverId: serverId,
+            userId: req.user.id,
         }).lean();
 
         if (botMember === null) {
@@ -695,14 +679,14 @@ export class InteractionController {
         }
 
         await this.permissionService.requireChannelPermission(
-            new Types.ObjectId(serverId),
-            new Types.ObjectId(req.user.id),
-            new Types.ObjectId(channelId),
+            serverId,
+            req.user.id,
+            channelId,
             'viewChannels',
             new ForbiddenException('Bot cannot view this channel'),
         );
 
-        const botUser = await User.findById(req.user.id)
+        const botUser = await User.findOne({ snowflakeId: req.user.id })
             .select('username profilePicture isBot')
             .lean();
         const botProfilePicture =
@@ -729,9 +713,9 @@ export class InteractionController {
             );
         } else {
             const serverMessage = await ServerMessage.create({
-                serverId: new Types.ObjectId(serverId),
-                channelId: new Types.ObjectId(channelId),
-                senderId: new Types.ObjectId(req.user.id),
+                serverId: serverId,
+                channelId: channelId,
+                senderId: req.user.id,
                 text: text ?? '',
                 embeds: body.embeds,
                 components,
@@ -740,8 +724,8 @@ export class InteractionController {
             this.wsServer.broadcastToChannel(channelId, {
                 type: 'message_server',
                 payload: {
-                    messageId: getDocumentIdString(serverMessage),
-                    id: getDocumentIdString(serverMessage),
+                    messageId: serverMessage.snowflakeId,
+                    id: serverMessage.snowflakeId,
                     serverId,
                     channelId,
                     senderId: req.user.id,
@@ -761,7 +745,7 @@ export class InteractionController {
                     stickerId: serverMessage.stickerId?.toString() ?? null,
                     poll: serverMessage.poll ?? null,
                 },
-            } as IMessageServerEvent);
+            });
         }
 
         return { success: true };
@@ -802,8 +786,8 @@ export class InteractionController {
             (command === 'nick' && isTargetingOther)
         ) {
             const canModerate = await this.permissionService.hasPermission(
-                new Types.ObjectId(serverId),
-                new Types.ObjectId(actorId),
+                serverId,
+                actorId,
                 'moderateMembers',
             );
 
@@ -825,31 +809,25 @@ export class InteractionController {
         )
             return;
 
+        const userOptionIsSnowflake: boolean = isValidSnowflakeId(userOption);
+
+        const findMemberByUserId = async (
+            uid: string,
+        ): Promise<PopulatedServerMember | null> =>
+            (await ServerMember.findOne({
+                serverId,
+                userId: uid,
+            }).populate<{ userIdUser: PopulatedUser }>(
+                'userIdUser',
+            )) as PopulatedServerMember | null;
+
         let targetMember: PopulatedServerMember | null = null;
         if (userOption === undefined) {
-            targetMember = (await ServerMember.findOne({
-                serverId: new Types.ObjectId(serverId),
-                userId: new Types.ObjectId(actorId),
-            }).populate<{ userId: PopulatedUser }>(
-                'userId',
-            )) as unknown as PopulatedServerMember;
+            targetMember = await findMemberByUserId(actorId);
         } else if (typeof userOption === 'object' && 'id' in userOption) {
-            targetMember = (await ServerMember.findOne({
-                serverId: new Types.ObjectId(serverId),
-                userId: new Types.ObjectId(userOption.id as string),
-            }).populate<{ userId: PopulatedUser }>(
-                'userId',
-            )) as unknown as PopulatedServerMember;
-        } else if (
-            typeof userOption === 'string' &&
-            Types.ObjectId.isValid(userOption)
-        ) {
-            targetMember = (await ServerMember.findOne({
-                serverId: new Types.ObjectId(serverId),
-                userId: new Types.ObjectId(userOption),
-            }).populate<{ userId: PopulatedUser }>(
-                'userId',
-            )) as unknown as PopulatedServerMember;
+            targetMember = await findMemberByUserId(userOption.id);
+        } else if (userOptionIsSnowflake && typeof userOption === 'string') {
+            targetMember = await findMemberByUserId(userOption);
         } else if (typeof userOption === 'string') {
             const escaped = userOption.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const foundUser = await User.findOne({
@@ -860,12 +838,7 @@ export class InteractionController {
             }).lean();
 
             if (foundUser !== null) {
-                targetMember = (await ServerMember.findOne({
-                    serverId: new Types.ObjectId(serverId),
-                    userId: getDocumentId(foundUser) as Types.ObjectId,
-                }).populate<{ userId: PopulatedUser }>(
-                    'userId',
-                )) as unknown as PopulatedServerMember;
+                targetMember = await findMemberByUserId(foundUser.snowflakeId);
             }
         }
 
@@ -880,7 +853,7 @@ export class InteractionController {
             return;
         }
 
-        const targetUserId = getDocumentIdString(targetMember.userId);
+        const targetUserId = targetMember.userIdUser.snowflakeId;
 
         if (command === 'timeout') {
             const durationStr = options.find(
@@ -925,7 +898,7 @@ export class InteractionController {
             await this.sendResponse(
                 serverId,
                 channelId,
-                `**${targetMember.userId.username}** has been timed out for ${duration} minutes. Reason: ${reason}`,
+                `**${targetMember.userIdUser.username}** has been timed out for ${duration} minutes. Reason: ${reason}`,
                 invocationId,
             );
         } else if (command === 'untimeout') {
@@ -950,7 +923,7 @@ export class InteractionController {
             await this.sendResponse(
                 serverId,
                 channelId,
-                `Timeout removed from **${targetMember.userId.username}**.`,
+                `Timeout removed from **${targetMember.userIdUser.username}**.`,
                 invocationId,
             );
         } else if (command === 'nick') {
@@ -1044,7 +1017,7 @@ export class InteractionController {
                 invocationId,
                 ephemeral: true,
             },
-        } as IInteractionResponseServerEvent);
+        });
     }
 
     private async sendResponse(
@@ -1056,7 +1029,7 @@ export class InteractionController {
         if (invocationId === undefined || invocationId === '') return;
 
         await ServerMessage.updateOne(
-            { _id: new Types.ObjectId(invocationId) },
+            { snowflakeId: invocationId },
             { $set: { text } },
         );
 
@@ -1070,7 +1043,7 @@ export class InteractionController {
                 editedAt: new Date().toISOString(),
                 isEdited: false,
             },
-        } as IMessageServerEditedEvent);
+        });
     }
 
     private async resolveOptions(
@@ -1137,13 +1110,13 @@ export class InteractionController {
         const mentionMatch = value.match(/^<(?:userid:'|@!?)([^'>]+)'?>$/);
         if (mentionMatch !== null) {
             userId = mentionMatch[1];
-        } else if (Types.ObjectId.isValid(value)) {
+        } else if (isValidSnowflakeId(value)) {
             userId = value;
         }
 
         let user;
         if (userId !== undefined && userId !== '') {
-            user = await User.findById(userId).lean();
+            user = await User.findOne({ snowflakeId: userId }).lean();
         } else {
             const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const foundUsers = await User.find({
@@ -1157,7 +1130,7 @@ export class InteractionController {
                 for (const u of foundUsers) {
                     const member = await ServerMember.findOne({
                         serverId: serverId,
-                        userId: getDocumentId(u) as Types.ObjectId,
+                        userId: u.snowflakeId,
                     }).lean();
                     if (member) {
                         user = u;
@@ -1168,8 +1141,8 @@ export class InteractionController {
                 if (user === undefined) {
                     for (const u of foundUsers) {
                         const ban = await ServerBan.findOne({
-                            serverId: new Types.ObjectId(serverId),
-                            userId: getDocumentId(u) as Types.ObjectId,
+                            serverId: serverId,
+                            userId: u.snowflakeId,
                         }).lean();
                         if (ban) {
                             user = u;
@@ -1185,13 +1158,12 @@ export class InteractionController {
         if (user === undefined || user === null)
             throw new Error(`User "${value}" not found in this server`);
 
-        const u = user as unknown as PopulatedUser;
         return {
-            id: getDocumentIdString(u),
-            username: u.username,
-            displayName: u.displayName,
-            profilePicture: u.profilePicture,
-            isBot: u.isBot,
+            id: user.snowflakeId,
+            username: user.username,
+            displayName: user.displayName,
+            profilePicture: user.profilePicture,
+            isBot: user.isBot,
         };
     }
 
@@ -1206,19 +1178,19 @@ export class InteractionController {
         const linkMatch = value.match(/\/channel\/([a-zA-Z0-9]+)/);
         if (linkMatch !== null) {
             channelId = linkMatch[1];
-        } else if (Types.ObjectId.isValid(value)) {
+        } else if (isValidSnowflakeId(value)) {
             channelId = value;
         }
 
         let channel;
         if (channelId !== undefined && channelId !== '') {
             channel = await Channel.findOne({
-                serverId: new Types.ObjectId(serverId),
-                _id: new Types.ObjectId(channelId),
+                serverId: serverId,
+                snowflakeId: channelId,
             }).lean();
         } else {
             channel = await Channel.findOne({
-                serverId: new Types.ObjectId(serverId),
+                serverId: serverId,
                 name: new RegExp(
                     `^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
                     'i',
@@ -1229,15 +1201,10 @@ export class InteractionController {
         if (channel === null)
             throw new Error(`Channel "${value}" not found in this server`);
 
-        const c = channel as unknown as {
-            _id: Types.ObjectId;
-            name: string;
-            type: string;
-        };
         return {
-            id: getDocumentIdString(c),
-            name: c.name,
-            type: c.type,
+            id: channel.snowflakeId,
+            name: channel.name,
+            type: channel.type,
         };
     }
 
@@ -1252,19 +1219,19 @@ export class InteractionController {
         const mentionMatch = value.match(/^<roleid:'([^']+)'>$/);
         if (mentionMatch !== null) {
             roleId = mentionMatch[1];
-        } else if (Types.ObjectId.isValid(value)) {
+        } else if (isValidSnowflakeId(value)) {
             roleId = value;
         }
 
         let role;
         if (roleId !== undefined && roleId !== '') {
             role = await Role.findOne({
-                serverId: new Types.ObjectId(serverId),
-                _id: new Types.ObjectId(roleId),
+                serverId: serverId,
+                snowflakeId: roleId,
             }).lean();
         } else {
             role = await Role.findOne({
-                serverId: new Types.ObjectId(serverId),
+                serverId: serverId,
                 name: new RegExp(
                     `^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
                     'i',
@@ -1275,15 +1242,10 @@ export class InteractionController {
         if (role === null)
             throw new Error(`Role "${value}" not found in this server`);
 
-        const r = role as unknown as {
-            _id: Types.ObjectId;
-            name: string;
-            color?: string;
-        };
         return {
-            id: getDocumentIdString(r),
-            name: r.name,
-            color: r.color,
+            id: role.snowflakeId,
+            name: role.name,
+            color: role.color,
         };
     }
 }

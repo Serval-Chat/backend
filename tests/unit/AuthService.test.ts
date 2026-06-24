@@ -1,13 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
 import { AuthService } from '../../src/services/AuthService';
 import { createTestUser, createTestBan } from '../utils/test-utils';
-import type { ILogger } from '../../src/di/interfaces/ILogger';
-import type { IUserRepository } from '../../src/di/interfaces/IUserRepository';
-import type { IBanRepository } from '../../src/di/interfaces/IBanRepository';
-import type { IPasswordResetRepository } from '../../src/di/interfaces/IPasswordResetRepository';
-import type { IMailService } from '../../src/di/interfaces/IMailService';
-import type { IMetricsService } from '../../src/di/interfaces/IMetricsService';
-import type { IAuditLogRepository } from '../../src/di/interfaces/IAuditLogRepository';
 
 describe('AuthService', () => {
     let mockLogger: Record<string, jest.Mock>;
@@ -64,13 +58,13 @@ describe('AuthService', () => {
         };
 
         authService = new AuthService(
-            mockLogger as unknown as ILogger,
-            mockUserRepo as unknown as IUserRepository,
-            mockBanRepo as unknown as IBanRepository,
-            mockPasswordResetRepo as unknown as IPasswordResetRepository,
-            mockMailService as unknown as IMailService,
-            mockMetrics as unknown as IMetricsService,
-            mockAuditLogRepo as unknown as IAuditLogRepository
+            mockLogger as any,
+            mockUserRepo as any,
+            mockBanRepo as any,
+            mockPasswordResetRepo as any,
+            mockMailService as any,
+            mockMetrics as any,
+            mockAuditLogRepo as any
         );
     });
 
@@ -150,7 +144,7 @@ describe('AuthService', () => {
     it('login with banned account (permanent ban)', async () => {
         const testUser = createTestUser();
         const activeBan = createTestBan({
-            userId: testUser._id,
+            userId: testUser.snowflakeId,
             reason: 'Violation of terms of service',
             active: true
         });
@@ -174,7 +168,7 @@ describe('AuthService', () => {
         const testUser = createTestUser();
         const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); 
         const activeBan = createTestBan({
-            userId: testUser._id,
+            userId: testUser.snowflakeId,
             reason: 'Spamming',
             active: true,
             expirationTimestamp: futureDate
@@ -201,7 +195,7 @@ describe('AuthService', () => {
         await authService.login('testuser', 'password');
 
         expect(mockBanRepo.checkExpired).toHaveBeenCalledTimes(1);
-        expect(mockBanRepo.checkExpired).toHaveBeenCalledWith(testUser._id);
+        expect(mockBanRepo.checkExpired).toHaveBeenCalledWith(testUser.snowflakeId);
     });
 
     it('login without active ban succeeds', async () => {

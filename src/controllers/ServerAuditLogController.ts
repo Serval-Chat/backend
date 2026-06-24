@@ -3,12 +3,10 @@ import {
     Get,
     Query,
     Param,
-    Req,
     UseGuards,
     Inject,
     ForbiddenException,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -21,8 +19,6 @@ import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import type { Request as ExpressRequest } from 'express';
-import type { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ServerAuditLogRequestDTO } from './dto/server-audit-log.request.dto';
 import {
@@ -30,7 +26,6 @@ import {
     ServerAuditLogEntryDTO,
 } from './dto/server-audit-log.response.dto';
 import { mapAuditLogEntry } from '@/utils/auditLog';
-import { getDocumentIdString } from '@/utils/mongooseId';
 
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Audit Log')
@@ -58,20 +53,17 @@ export class ServerAuditLogController {
         @Query() query: ServerAuditLogRequestDTO,
         @CurrentUser('id') userId: string,
     ): Promise<ServerAuditLogResponseDTO> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException('You are not a member of this server');
         }
 
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageServer',
             new ForbiddenException(
                 'You do not have permission to view the audit log',
@@ -81,17 +73,17 @@ export class ServerAuditLogController {
         const limit = Math.min(Number(query.limit) || 50, 100);
 
         const entries = await this.auditLogRepo.find({
-            serverId: serverOid,
+            serverId: serverId,
             limit: limit + 1, // fetch one extra to determine if there's a next page
             cursor: query.cursor,
             actionType: query.action,
             actorId:
                 query.moderatorId !== undefined && query.moderatorId !== ''
-                    ? new Types.ObjectId(query.moderatorId)
+                    ? query.moderatorId
                     : undefined,
             targetId:
                 query.targetId !== undefined && query.targetId !== ''
-                    ? new Types.ObjectId(query.targetId)
+                    ? query.targetId
                     : undefined,
             startDate:
                 query.after !== undefined && query.after !== ''
@@ -107,15 +99,12 @@ export class ServerAuditLogController {
         const hasMore = entries.length > limit;
         const pageEntries = hasMore ? entries.slice(0, limit) : entries;
         const lastEntry = pageEntries[pageEntries.length - 1];
-        const nextCursor =
-            hasMore && lastEntry ? getDocumentIdString(lastEntry) : null;
+        const nextCursor = hasMore && lastEntry ? lastEntry.snowflakeId : null;
 
         return {
             entries: pageEntries.map((entry) =>
-                mapAuditLogEntry(
-                    entry as Parameters<typeof mapAuditLogEntry>[0],
-                ),
-            ) as unknown as ServerAuditLogEntryDTO[],
+                mapAuditLogEntry(entry),
+            ) as ServerAuditLogEntryDTO[],
             nextCursor,
         };
     }

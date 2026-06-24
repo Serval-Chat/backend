@@ -53,9 +53,8 @@ import {
     MessageIdParamDTO,
     UserMessageParamsDTO,
 } from './dto/user-message.request.dto';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import { PollVoteRequestDTO } from './dto/poll-vote.request.dto';
-import mongoose, { Types } from 'mongoose';
+import mongoose from 'mongoose';
 import { BadRequestException } from '@nestjs/common';
 
 interface UnreadCountsResponse {
@@ -106,7 +105,7 @@ export class UserMessageController {
     public async getUnreadCounts(
         @CurrentUser('id') meIdStr: string,
     ): Promise<UnreadCountsResponse> {
-        const meId = new Types.ObjectId(meIdStr);
+        const meId = meIdStr;
         const docs = await this.dmUnreadRepo.findByUser(meId);
 
         const unreadCounts: Record<string, number> = {};
@@ -158,38 +157,33 @@ export class UserMessageController {
     ): Promise<MessageWithReactions[]> {
         const { userId, limit, before, around, after } = query;
 
-        const userDoc = await this.userRepo.findById(
-            new Types.ObjectId(userId),
-        );
+        const userDoc = await this.userRepo.findById(userId);
         if (userDoc === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
-        const otherUserId = getDocumentIdString(userDoc);
+        const otherUserId = userDoc.snowflakeId;
 
         if (
-            (await this.friendshipRepo.areFriends(
-                new Types.ObjectId(meId),
-                new Types.ObjectId(otherUserId),
-            )) !== true
+            (await this.friendshipRepo.areFriends(meId, otherUserId)) !== true
         ) {
             throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
         const messageLimit = Math.min(limit, 500);
         const msgs = await this.messageRepo.findByConversation(
-            new Types.ObjectId(meId),
-            new Types.ObjectId(otherUserId),
+            meId,
+            otherUserId,
             messageLimit,
             before,
             around,
             after,
         );
 
-        const messageIds = msgs.map((m) => getDocumentId(m) as Types.ObjectId);
+        const messageIds = msgs.map((m) => m.snowflakeId);
         const reactionsMap = await this.reactionRepo.getReactionsForMessages(
             messageIds,
             'dm',
-            new Types.ObjectId(meId),
+            meId,
         );
 
         const messagesWithReactions = msgs.map(
@@ -198,7 +192,7 @@ export class UserMessageController {
                     ...msg,
                     reactions:
                         (reactionsMap as Record<string, unknown[]>)[
-                            getDocumentIdString(msg)
+                            msg.snowflakeId
                         ] || [],
                 }) as MessageWithReactions,
         );
@@ -225,26 +219,19 @@ export class UserMessageController {
     ): Promise<MessageResponse> {
         const { id } = params;
 
-        const userDoc = await this.userRepo.findById(
-            new Types.ObjectId(userId),
-        );
+        const userDoc = await this.userRepo.findById(userId);
         if (userDoc === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
-        const otherUserId = getDocumentIdString(userDoc);
+        const otherUserId = userDoc.snowflakeId;
 
         if (
-            (await this.friendshipRepo.areFriends(
-                new Types.ObjectId(meId),
-                new Types.ObjectId(otherUserId),
-            )) !== true
+            (await this.friendshipRepo.areFriends(meId, otherUserId)) !== true
         ) {
             throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
         }
 
-        const targetMessage = await this.messageRepo.findById(
-            new Types.ObjectId(id),
-        );
+        const targetMessage = await this.messageRepo.findById(id);
         if (targetMessage === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -288,12 +275,7 @@ export class UserMessageController {
     ): Promise<MessageResponse> {
         const { userId, messageId } = params;
 
-        if (
-            (await this.friendshipRepo.areFriends(
-                new Types.ObjectId(meId),
-                new Types.ObjectId(userId),
-            )) !== true
-        ) {
+        if ((await this.friendshipRepo.areFriends(meId, userId)) !== true) {
             if (meId !== userId) {
                 throw new ForbiddenException(
                     ErrorMessages.FRIENDSHIP.NOT_FRIENDS,
@@ -301,9 +283,7 @@ export class UserMessageController {
             }
         }
 
-        const message = await this.messageRepo.findById(
-            new Types.ObjectId(messageId),
-        );
+        const message = await this.messageRepo.findById(messageId);
         if (message === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -348,7 +328,7 @@ export class UserMessageController {
         const { id } = params;
         const { content } = body;
 
-        const message = await this.messageRepo.findById(new Types.ObjectId(id));
+        const message = await this.messageRepo.findById(id);
         if (message === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -357,10 +337,7 @@ export class UserMessageController {
             throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
-        const updated = await this.messageRepo.update(
-            new Types.ObjectId(id),
-            content,
-        );
+        const updated = await this.messageRepo.update(id, content);
         if (updated === null) {
             throw new InternalServerErrorException(
                 ErrorMessages.SYSTEM.INTERNAL_ERROR,
@@ -368,7 +345,7 @@ export class UserMessageController {
         }
 
         const broadcastPayload = {
-            messageId: getDocumentIdString(updated),
+            messageId: updated.snowflakeId,
             text: updated.text,
             editedAt: updated.editedAt
                 ? updated.editedAt.toISOString()
@@ -411,7 +388,7 @@ export class UserMessageController {
     ): Promise<IMessage> {
         const { id } = params;
 
-        const message = await this.messageRepo.findById(new Types.ObjectId(id));
+        const message = await this.messageRepo.findById(id);
         if (message === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -445,7 +422,7 @@ export class UserMessageController {
             );
         }
 
-        const userObjId = new Types.ObjectId(meId);
+        const userObjId = meId;
 
         const newOptions = poll.options.map((opt) => {
             const votes = opt.votes.filter((v) => v.toString() !== meId);
@@ -456,8 +433,8 @@ export class UserMessageController {
         });
 
         const MessageModel = mongoose.model('Message');
-        const updatedDoc = (await MessageModel.findByIdAndUpdate(
-            new Types.ObjectId(id),
+        const updatedDoc = (await MessageModel.findOneAndUpdate(
+            { snowflakeId: id },
             { 'poll.options': newOptions },
             { new: true },
         ).lean()) as IMessage | null;
@@ -503,7 +480,7 @@ export class UserMessageController {
     ): Promise<{ success: boolean }> {
         const { id } = params;
 
-        const message = await this.messageRepo.findById(new Types.ObjectId(id));
+        const message = await this.messageRepo.findById(id);
         if (message === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -512,7 +489,7 @@ export class UserMessageController {
             throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
-        const deleted = await this.messageRepo.delete(new Types.ObjectId(id));
+        const deleted = await this.messageRepo.delete(id);
         if (deleted) {
             this.searchService.removeDmMessage(id).catch((err: unknown) => {
                 this.logger.error(

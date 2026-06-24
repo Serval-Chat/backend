@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Types } from 'mongoose';
 import { ChatController } from '../ChatController';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
-import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
-import type { IDmUnreadRepository } from '@/di/interfaces/IDmUnreadRepository';
-import type { TransactionManager } from '@/infrastructure/TransactionManager';
-import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { IWsUser } from '@/ws/types';
 
 jest.mock('@/services/PushService', () => ({
@@ -26,7 +20,7 @@ function makeWsUser(overrides: Partial<IWsUser> = {}): IWsUser {
         username: 'testuser',
         isBot: false,
         ...overrides,
-    } as unknown as IWsUser;
+    } as IWsUser;
 }
 
 describe('ChatController search indexing', () => {
@@ -81,18 +75,17 @@ describe('ChatController search indexing', () => {
         };
 
         chatController = new ChatController(
-            userRepo as unknown as IUserRepository,
-            messageRepo as unknown as IMessageRepository,
-            dmUnreadRepo as unknown as IDmUnreadRepository,
-            friendshipRepo as unknown as IFriendshipRepository,
+            userRepo as any,
+            messageRepo as any,
+            dmUnreadRepo as any,
+            friendshipRepo as any,
             muteRepo as any,
-            transactionManager as unknown as TransactionManager,
+            transactionManager,
             {} as any, // EmbedService
             redisService as any,
             searchService as any,
         );
-        (chatController as unknown as { wsServer: IWsServer }).wsServer =
-            wsServer as unknown as IWsServer;
+        (chatController as any).wsServer = wsServer as any;
     });
 
     it("indexes the DM message with the sender's bot status when the sender is a bot", async () => {
@@ -103,7 +96,7 @@ describe('ChatController search indexing', () => {
         }));
 
         await chatController.onSendMessageDm(
-            { receiverId: RECEIVER_ID, text: 'hello' } as any,
+            { receiverId: RECEIVER_ID, text: 'hello' },
             makeWsUser({ isBot: true }),
         );
 
@@ -121,7 +114,7 @@ describe('ChatController search indexing', () => {
         }));
 
         await chatController.onSendMessageDm(
-            { receiverId: RECEIVER_ID, text: 'hello' } as any,
+            { receiverId: RECEIVER_ID, text: 'hello' },
             makeWsUser({ isBot: false }),
         );
 
@@ -139,7 +132,7 @@ describe('ChatController search indexing', () => {
         });
 
         await chatController.onDeleteMessageDm(
-            { messageId: MSG_ID } as any,
+            { messageId: MSG_ID },
             makeWsUser(),
         );
 

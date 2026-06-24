@@ -1,19 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ServerController } from '@/ws/controller/ServerController';
 import { Types } from 'mongoose';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
-import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { PingService } from '@/services/PingService';
-import type { IRedisService } from '@/di/interfaces/IRedisService';
-import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IWsUser } from '@/ws/types';
-import type { EmbedService } from '@/services/EmbedService';
 
 jest.mock('@/services/PushService', () => ({
     notifyUser: jest.fn().mockResolvedValue(undefined),
@@ -28,7 +16,7 @@ const USER_ID = hex();
 const MSG_ID = hex();
 
 function makeWsUser(userId = USER_ID): IWsUser {
-    return { userId, username: 'testuser', isBot: false } as unknown as IWsUser;
+    return { userId, username: 'testuser', isBot: false } as IWsUser;
 }
 
 describe('Server WS Polls', () => {
@@ -150,24 +138,24 @@ describe('Server WS Polls', () => {
         };
 
         serverController = new ServerController(
-            serverRepo as unknown as IServerRepository,
-            userRepo as unknown as IUserRepository,
-            serverMessageRepo as unknown as IServerMessageRepository,
-            serverMemberRepo as unknown as IServerMemberRepository,
-            channelRepo as unknown as IChannelRepository,
-            serverChannelReadRepo as unknown as IServerChannelReadRepository,
-            roleRepo as unknown as IRoleRepository,
-            permissionService as unknown as PermissionService,
-            pingService as unknown as PingService,
+            serverRepo as any,
+            userRepo as any,
+            serverMessageRepo as any,
+            serverMemberRepo as any,
+            channelRepo as any,
+            serverChannelReadRepo as any,
+            roleRepo as any,
+            permissionService as any,
+            pingService as any,
             {
                 findActiveByUserId: jest.fn().mockResolvedValue(null),
                 checkExpired: jest.fn().mockResolvedValue(undefined),
             } as any, // MuteRepository
-            transactionManager as unknown as TransactionManager,
-            redisService as unknown as IRedisService,
-            embedService as unknown as EmbedService,
+            transactionManager,
+            redisService as any,
+            embedService as any,
         );
-        (serverController as unknown as any).wsServer = wsServer;
+        (serverController as any).wsServer = wsServer;
     });
 
     describe('ServerController.onSendMessageServer (Poll Creation)', () => {
@@ -193,7 +181,7 @@ describe('Server WS Polls', () => {
                     serverId: SERVER_ID,
                     channelId: CHANNEL_ID,
                     text: 'Vote!',
-                    poll: pollData as unknown as any,
+                    poll: pollData,
                 },
                 makeWsUser(),
             );

@@ -25,7 +25,6 @@ import type {
 import { DmMessageSearchQueryDTO } from './dto/message-search.request.dto';
 import { DmMessageSearchResponseDTO } from './dto/message-search.response.dto';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
-import { Types } from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
 
 @Controller('api/v1/messages')
@@ -80,8 +79,8 @@ export class UserMessageSearchController {
         } = query;
 
         const friends = await this.friendshipRepo.areFriends(
-            new Types.ObjectId(userId),
-            new Types.ObjectId(otherUserId),
+            userId,
+            otherUserId,
         );
         if (friends !== true) {
             throw new ForbiddenException(ErrorMessages.FRIENDSHIP.NOT_FRIENDS);
@@ -107,27 +106,27 @@ export class UserMessageSearchController {
         if (fromUser !== undefined && fromUser !== '') {
             const sender = await this.userRepo.findByUsername(fromUser);
             if (!sender) return { hits: [], total: 0 };
-            filters.fromUserId = sender._id.toString();
+            filters.fromUserId = sender.snowflakeId;
         }
 
         // resolve mentions: username -> userId
         if (mentionsUser !== undefined && mentionsUser !== '') {
             const mentioned = await this.userRepo.findByUsername(mentionsUser);
             if (!mentioned) return { hits: [], total: 0 };
-            filters.mentionsUserId = mentioned._id.toString();
+            filters.mentionsUserId = mentioned.snowflakeId;
         }
 
         // resolve negated from: username -> userId
         if (notFromUser !== undefined && notFromUser !== '') {
             const sender = await this.userRepo.findByUsername(notFromUser);
-            if (sender) filters.notFromUserId = sender._id.toString();
+            if (sender) filters.notFromUserId = sender.snowflakeId;
         }
 
         // resolve negated mentions: username -> userId
         if (notMentionsUser !== undefined && notMentionsUser !== '') {
             const mentioned =
                 await this.userRepo.findByUsername(notMentionsUser);
-            if (mentioned) filters.notMentionsUserId = mentioned._id.toString();
+            if (mentioned) filters.notMentionsUserId = mentioned.snowflakeId;
         }
 
         try {

@@ -5,12 +5,13 @@ import type { Types } from 'mongoose';
 // Represents a server invitation that can be used by new members to join
 export interface IInvite {
     _id: Types.ObjectId;
-    serverId: Types.ObjectId;
+    snowflakeId: string;
+    serverId: string;
     // Unique random code for the invite
     code: string;
     // Custom invite code
     customPath?: string;
-    createdByUserId: Types.ObjectId;
+    createdByUserId: string;
     maxUses?: number;
     uses: number;
     expiresAt?: Date;
@@ -19,10 +20,10 @@ export interface IInvite {
 
 // Invite creation DTO
 export interface CreateInviteDTO {
-    serverId: Types.ObjectId;
+    serverId: string;
     code: string;
     customPath?: string;
-    createdByUserId: Types.ObjectId;
+    createdByUserId: string;
     maxUses?: number;
     expiresAt?: Date;
 }
@@ -35,18 +36,16 @@ export interface IInviteRepository {
     findByCode(code: string): Promise<IInvite | null>;
 
     // Find invite by ID
-    findById(id: Types.ObjectId): Promise<IInvite | null>;
+    findById(id: string): Promise<IInvite | null>;
 
     // Find all invites for a server
-    findByServerId(serverId: Types.ObjectId): Promise<IInvite[]>;
+    findByServerId(serverId: string): Promise<IInvite[]>;
 
     // Find a vanity invite eligible for public discovery
-    findDiscoveryInviteByServerId(
-        serverId: Types.ObjectId,
-    ): Promise<IInvite | null>;
+    findDiscoveryInviteByServerId(serverId: string): Promise<IInvite | null>;
 
     // Find the server's preferred invite: the oldest vanity invite
-    findPreferredByServerId(serverId: Types.ObjectId): Promise<IInvite | null>;
+    findPreferredByServerId(serverId: string): Promise<IInvite | null>;
 
     // Find invite by custom path
     findByCustomPath(customPath: string): Promise<IInvite | null>;
@@ -58,11 +57,11 @@ export interface IInviteRepository {
     create(data: CreateInviteDTO): Promise<IInvite>;
 
     // Increment uses count
-    incrementUses(id: Types.ObjectId): Promise<IInvite | null>;
+    incrementUses(id: string): Promise<IInvite | null>;
 
     // Delete invite by ID
-    delete(id: Types.ObjectId): Promise<boolean>;
+    delete(id: string): Promise<boolean>;
 
     // Delete all invites for a server (bulk delete)
-    deleteByServerId(serverId: Types.ObjectId): Promise<number>;
+    deleteByServerId(serverId: string): Promise<number>;
 }

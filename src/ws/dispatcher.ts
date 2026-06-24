@@ -121,7 +121,7 @@ export class WsDispatcher {
                 Reflect.getMetadata(WS_EVENT_METADATA, ctrl.constructor) ?? [];
             for (const { type, method } of events) {
                 this.handlers.set(type, {
-                    instance: ctrl as object,
+                    instance: ctrl,
                     method: method as string,
                 });
                 this.logger.debug(
@@ -501,9 +501,7 @@ export class WsDispatcher {
 
         // Evict oldest entry if cache is full
         if (messageMap.size >= MAX_DEDUP_CACHE_SIZE) {
-            const firstKey = messageMap.keys().next().value as
-                | string
-                | undefined;
+            const firstKey = messageMap.keys().next().value;
             if (firstKey !== undefined) {
                 messageMap.delete(firstKey);
             }

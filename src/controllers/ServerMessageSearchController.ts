@@ -4,7 +4,6 @@ import {
     Inject,
     Param,
     Query,
-    Req,
     UseGuards,
     ForbiddenException,
     NotFoundException,
@@ -30,11 +29,9 @@ import type {
 import { PermissionService } from '@/permissions/PermissionService';
 import { ChannelMessageSearchQueryDTO } from './dto/message-search.request.dto';
 import { ChannelMessageSearchResponseDTO } from './dto/message-search.response.dto';
-import type { Request as ExpressRequest } from 'express';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
-import mongoose from 'mongoose';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { isValidSnowflakeId } from '@/utils/snowflake';
 
 @Controller('api/v1/servers/:serverId/channels/:channelId/messages')
 @ApiTags('Message Search')
@@ -97,16 +94,14 @@ export class ServerMessageSearchController {
         } = query;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const channel = await this.channelRepo.findById(
-            new mongoose.Types.ObjectId(channelId),
-        );
+        const channel = await this.channelRepo.findById(channelId);
         if (channel === null || channel.serverId.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
@@ -117,9 +112,9 @@ export class ServerMessageSearchController {
         }
 
         await this.permissionService.requireChannelPermission(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
-            new mongoose.Types.ObjectId(channelId),
+            serverId,
+            userId,
+            channelId,
             'viewChannels',
             new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND),
         );
@@ -134,21 +129,20 @@ export class ServerMessageSearchController {
             (notInCategory !== undefined && notInCategory.length > 0)
         ) {
             // fetch all server channels once; needed for category expansion
-            const allServerChannels = await this.channelRepo.findByServerId(
-                new mongoose.Types.ObjectId(serverId),
-            );
+            const allServerChannels =
+                await this.channelRepo.findByServerId(serverId);
 
             const positiveIds: string[] = [];
 
             // resolve explicit inChannel IDs
             for (const chId of inChannel ?? []) {
-                if (!mongoose.Types.ObjectId.isValid(chId)) {
+                if (!isValidSnowflakeId(chId)) {
                     throw new NotFoundException(
                         ErrorMessages.CHANNEL.NOT_FOUND,
                     );
                 }
                 const target = allServerChannels.find(
-                    (c) => c._id.toString() === chId,
+                    (c) => c.snowflakeId === chId,
                 );
                 if (!target) {
                     throw new NotFoundException(
@@ -162,24 +156,24 @@ export class ServerMessageSearchController {
                 }
                 const canViewTarget =
                     await this.permissionService.hasChannelPermission(
-                        new mongoose.Types.ObjectId(serverId),
-                        new mongoose.Types.ObjectId(userId),
-                        target._id,
+                        serverId,
+                        userId,
+                        target.snowflakeId,
                         'viewChannels',
                     );
                 if (canViewTarget === true) {
-                    positiveIds.push(target._id.toString());
+                    positiveIds.push(target.snowflakeId);
                 }
             }
 
             // expand inCategory: add all accessible text channels in each category
             for (const catId of inCategory ?? []) {
-                if (!mongoose.Types.ObjectId.isValid(catId)) {
+                if (!isValidSnowflakeId(catId)) {
                     throw new NotFoundException('Category not found');
                 }
                 const category = await this.categoryRepo.findByIdAndServer(
-                    new mongoose.Types.ObjectId(catId),
-                    new mongoose.Types.ObjectId(serverId),
+                    catId,
+                    serverId,
                 );
                 if (!category) {
                     throw new NotFoundException('Category not found');
@@ -189,16 +183,16 @@ export class ServerMessageSearchController {
                     if (ch.type !== 'text') continue;
                     const canView =
                         await this.permissionService.hasChannelPermission(
-                            new mongoose.Types.ObjectId(serverId),
-                            new mongoose.Types.ObjectId(userId),
-                            ch._id,
+                            serverId,
+                            userId,
+                            ch.snowflakeId,
                             'viewChannels',
                         );
                     if (
                         canView === true &&
-                        !positiveIds.includes(ch._id.toString())
+                        !positiveIds.includes(ch.snowflakeId)
                     ) {
-                        positiveIds.push(ch._id.toString());
+                        positiveIds.push(ch.snowflakeId);
                     }
                 }
             }
@@ -206,19 +200,19 @@ export class ServerMessageSearchController {
             // build exclusion set from notInCategory
             const excludedIds = new Set<string>();
             for (const catId of notInCategory ?? []) {
-                if (!mongoose.Types.ObjectId.isValid(catId)) {
+                if (!isValidSnowflakeId(catId)) {
                     throw new NotFoundException('Category not found');
                 }
                 const category = await this.categoryRepo.findByIdAndServer(
-                    new mongoose.Types.ObjectId(catId),
-                    new mongoose.Types.ObjectId(serverId),
+                    catId,
+                    serverId,
                 );
                 if (!category) {
                     throw new NotFoundException('Category not found');
                 }
                 for (const ch of allServerChannels) {
                     if (ch.categoryId?.toString() === catId) {
-                        excludedIds.add(ch._id.toString());
+                        excludedIds.add(ch.snowflakeId);
                     }
                 }
             }
@@ -234,15 +228,15 @@ export class ServerMessageSearchController {
                 const expandedIds: string[] = [];
                 for (const ch of allServerChannels) {
                     if (ch.type !== 'text') continue;
-                    if (excludedIds.has(ch._id.toString())) continue;
+                    if (excludedIds.has(ch.snowflakeId)) continue;
                     const canView =
                         await this.permissionService.hasChannelPermission(
-                            new mongoose.Types.ObjectId(serverId),
-                            new mongoose.Types.ObjectId(userId),
-                            ch._id,
+                            serverId,
+                            userId,
+                            ch.snowflakeId,
                             'viewChannels',
                         );
-                    if (canView === true) expandedIds.push(ch._id.toString());
+                    if (canView === true) expandedIds.push(ch.snowflakeId);
                 }
                 searchChannelId =
                     expandedIds.length > 0 ? expandedIds : channelId;
@@ -270,27 +264,27 @@ export class ServerMessageSearchController {
         if (fromUser !== undefined && fromUser !== '') {
             const sender = await this.userRepo.findByUsername(fromUser);
             if (!sender) return { hits: [], total: 0 };
-            filters.fromUserId = sender._id.toString();
+            filters.fromUserId = sender.snowflakeId;
         }
 
         // resolve mentions: username -> userId
         if (mentionsUser !== undefined && mentionsUser !== '') {
             const mentioned = await this.userRepo.findByUsername(mentionsUser);
             if (!mentioned) return { hits: [], total: 0 };
-            filters.mentionsUserId = mentioned._id.toString();
+            filters.mentionsUserId = mentioned.snowflakeId;
         }
 
         // resolve negated from: username -> userId
         if (notFromUser !== undefined && notFromUser !== '') {
             const sender = await this.userRepo.findByUsername(notFromUser);
-            if (sender) filters.notFromUserId = sender._id.toString();
+            if (sender) filters.notFromUserId = sender.snowflakeId;
         }
 
         // resolve negated mentions: username -> userId
         if (notMentionsUser !== undefined && notMentionsUser !== '') {
             const mentioned =
                 await this.userRepo.findByUsername(notMentionsUser);
-            if (mentioned) filters.notMentionsUserId = mentioned._id.toString();
+            if (mentioned) filters.notMentionsUserId = mentioned.snowflakeId;
         }
 
         try {

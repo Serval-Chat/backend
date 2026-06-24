@@ -32,8 +32,6 @@ import {
     AdminSimpleMessageResponseDTO,
     BadgeUserActionResponseDTO,
 } from './dto/admin-badges.dto';
-import mongoose from 'mongoose';
-import { getDocumentId } from '@/utils/mongooseId';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -52,7 +50,7 @@ export class AdminBadgeController {
     @ApiResponse({ status: 200, type: [BadgeResponseDTO] })
     public async getBadges(): Promise<BadgeResponseDTO[]> {
         const badges = await Badge.find().sort({ createdAt: 1 }).lean();
-        return badges as BadgeResponseDTO[];
+        return badges;
     }
 
     @Post('badges')
@@ -74,7 +72,7 @@ export class AdminBadgeController {
         });
 
         await badge.save();
-        return badge.toObject() as BadgeResponseDTO;
+        return badge.toObject();
     }
 
     @Put('badges/:badgeId')
@@ -98,7 +96,7 @@ export class AdminBadgeController {
         if (data.color !== undefined) badge.color = data.color;
 
         await badge.save();
-        return badge.toObject() as BadgeResponseDTO;
+        return badge.toObject();
     }
 
     @Delete('badges/:badgeId')
@@ -132,16 +130,14 @@ export class AdminBadgeController {
     public async getUserBadges(
         @Path('userId') userId: string,
     ): Promise<BadgeResponseDTO[]> {
-        const user = await this.userRepo.findById(
-            new mongoose.Types.ObjectId(userId),
-        );
+        const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new NotFoundException('User not found');
         }
 
         const badgeIds = user.badges || [];
         const badges = await Badge.find({ id: { $in: badgeIds } }).lean();
-        return badges as BadgeResponseDTO[];
+        return badges;
     }
 
     @Post('users/:userId/badges')
@@ -157,9 +153,7 @@ export class AdminBadgeController {
         @Path('userId') userId: string,
         @Body('badgeId') badgeId: string,
     ): Promise<{ message: string; badges: string[] }> {
-        const user = await this.userRepo.findById(
-            new mongoose.Types.ObjectId(userId),
-        );
+        const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new NotFoundException('User not found');
         }
@@ -175,10 +169,7 @@ export class AdminBadgeController {
         }
 
         badges.push(badgeId);
-        await this.userRepo.update(
-            getDocumentId(user) as mongoose.Types.ObjectId,
-            { badges },
-        );
+        await this.userRepo.update(user.snowflakeId, { badges });
 
         return { message: 'Badge added successfully', badges };
     }
@@ -198,9 +189,7 @@ export class AdminBadgeController {
         @Path('userId') userId: string,
         @Path('badgeId') badgeId: string,
     ): Promise<{ message: string; badges: string[] }> {
-        const user = await this.userRepo.findById(
-            new mongoose.Types.ObjectId(userId),
-        );
+        const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new NotFoundException('User not found');
         }
@@ -212,10 +201,7 @@ export class AdminBadgeController {
         }
 
         badges.splice(index, 1);
-        await this.userRepo.update(
-            getDocumentId(user) as mongoose.Types.ObjectId,
-            { badges },
-        );
+        await this.userRepo.update(user.snowflakeId, { badges });
 
         return { message: 'Badge removed successfully', badges };
     }

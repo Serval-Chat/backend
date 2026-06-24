@@ -70,20 +70,20 @@ describe('FriendshipController', () => {
 
             expect(result.message).toBe('Friend removed successfully');
             expect(mockFriendshipRepo.remove).toHaveBeenCalledWith(
-                meId,
-                friendId,
+                meId.toHexString(),
+                friendIdStr,
             );
             expect(mockPingService.clearPingsBetweenUsers).toHaveBeenCalledWith(
-                meId,
-                friendId,
+                meId.toHexString(),
+                friendIdStr,
             );
             expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(
-                meId,
-                friendId,
+                meId.toHexString(),
+                friendIdStr,
             );
             expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(
-                friendId,
-                meId,
+                friendIdStr,
+                meId.toHexString(),
             );
             expect(mockWsServer.broadcastToUser).toHaveBeenCalledTimes(2);
         });
@@ -96,33 +96,32 @@ describe('FriendshipController', () => {
             const olderCreatedAt = new Date('2026-01-01T00:00:00.000Z');
             const newerCreatedAt = new Date('2026-02-01T00:00:00.000Z');
 
-            mockUserRepo.findById.mockImplementation(
-                async (id: Types.ObjectId) => {
-                    const idStr = id.toHexString();
-                    if (idStr === meId.toHexString()) {
-                        return { _id: meId, username: 'alice' };
-                    }
-                    if (idStr === olderFriendId.toHexString()) {
-                        return {
-                            _id: olderFriendId,
-                            username: 'older-friend',
-                            createdAt: olderCreatedAt,
-                            profilePicture: null,
-                            customStatus: null,
-                        };
-                    }
-                    if (idStr === newerFriendId.toHexString()) {
-                        return {
-                            _id: newerFriendId,
-                            username: 'newer-friend',
-                            createdAt: newerCreatedAt,
-                            profilePicture: null,
-                            customStatus: null,
-                        };
-                    }
-                    return null;
-                },
-            );
+            mockUserRepo.findById.mockImplementation(async (idStr: string) => {
+                if (idStr === meId.toHexString()) {
+                    return { _id: meId, snowflakeId: idStr, username: 'alice' };
+                }
+                if (idStr === olderFriendId.toHexString()) {
+                    return {
+                        _id: olderFriendId,
+                        snowflakeId: idStr,
+                        username: 'older-friend',
+                        createdAt: olderCreatedAt,
+                        profilePicture: null,
+                        customStatus: null,
+                    };
+                }
+                if (idStr === newerFriendId.toHexString()) {
+                    return {
+                        _id: newerFriendId,
+                        snowflakeId: idStr,
+                        username: 'newer-friend',
+                        createdAt: newerCreatedAt,
+                        profilePicture: null,
+                        customStatus: null,
+                    };
+                }
+                return null;
+            });
             mockFriendshipRepo.findByUserId.mockResolvedValue([
                 {
                     _id: new Types.ObjectId(),

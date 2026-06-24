@@ -1,4 +1,5 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
@@ -7,19 +8,20 @@ import mongoose, { Schema } from 'mongoose';
 // Stores emoji reactions for messages (both DM and server messages)
 // Supports Unicode emojis and custom emojis from servers
 export interface IReaction extends Document {
+    snowflakeId: string;
     _id: Types.ObjectId;
-    messageId: Types.ObjectId; // Reference to Message or ServerMessage
+    messageId: string; // reference to Message or ServerMessage
     messageType: 'dm' | 'server'; // Type of message
-    userId: Types.ObjectId; // User who reacted
+    userId: string; // user who reacted
     emoji: string; // Unicode emoji character OR custom emoji name
     emojiType: 'unicode' | 'custom'; // Type of emoji
-    emojiId?: Types.ObjectId; // Reference to Emoji model (custom emojis only)
+    emojiId?: string; // reference to Emoji model's snowflakeId (custom emojis only)
     createdAt: Date;
 }
 
 const reactionSchema = new Schema<IReaction>({
     messageId: {
-        type: Schema.Types.ObjectId,
+        type: String,
         required: true,
         index: true,
     },
@@ -29,8 +31,7 @@ const reactionSchema = new Schema<IReaction>({
         required: true,
     },
     userId: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
+        type: String,
         required: true,
     },
     emoji: {
@@ -43,8 +44,7 @@ const reactionSchema = new Schema<IReaction>({
         required: true,
     },
     emojiId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Emoji',
+        type: String,
         required: false,
     },
     createdAt: {
@@ -55,6 +55,7 @@ const reactionSchema = new Schema<IReaction>({
 
 // Compound index: ensure user can only react once per emoji per message
 reactionSchema.plugin(mongooseIdPlugin);
+reactionSchema.plugin(snowflakeIdPlugin);
 
 // For Unicode emoji: (messageId, messageType, userId, emoji)
 // For custom emoji: (messageId, messageType, userId, emojiId)

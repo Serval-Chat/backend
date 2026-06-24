@@ -1,8 +1,10 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import mongoose, { Schema } from 'mongoose';
 import type { Document, Model } from 'mongoose';
 
 export interface IKlipyCache extends Document {
+    snowflakeId: string;
     klipyId: string;
     slug?: string;
     url: string;
@@ -28,6 +30,8 @@ const schema = new Schema<IKlipyCache>(
 );
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 
 export const KlipyCache: Model<IKlipyCache> = mongoose.model(
     'KlipyCache',

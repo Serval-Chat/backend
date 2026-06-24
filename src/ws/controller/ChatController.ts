@@ -39,9 +39,8 @@ import type { IWsUser } from '@/ws/types';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import logger from '@/utils/logger';
-import { getDocumentIdString } from '@/utils/mongooseId';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
-import { Types } from 'mongoose';
+import { generateSnowflakeId } from '@/utils/snowflake';
 import { notifyUser } from '@/services/PushService';
 import { EmbedService } from '@/services/EmbedService';
 import { assertWsNotMuted } from '@/utils/mute';
@@ -105,9 +104,7 @@ export class ChatController {
 
         await assertWsNotMuted(this.muteRepo, senderId, 'send messages');
 
-        const receiverUser = await this.userRepo.findById(
-            new Types.ObjectId(receiverId),
-        );
+        const receiverUser = await this.userRepo.findById(receiverId);
         if (!receiverUser) {
             throw new Error('NOT_FOUND: Receiver not found');
         }
@@ -115,10 +112,8 @@ export class ChatController {
         const receiverUsername = receiverUser.username ?? '';
 
         if (
-            (await this.friendshipRepo.areFriends(
-                new Types.ObjectId(senderId),
-                new Types.ObjectId(receiverId),
-            )) === false
+            (await this.friendshipRepo.areFriends(senderId, receiverId)) ===
+            false
         ) {
             throw new Error('FORBIDDEN: Not friends with receiver');
         }
@@ -129,25 +124,23 @@ export class ChatController {
 
         let repliedToMessage = null;
         if (replyToId !== undefined && replyToId !== '') {
-            repliedToMessage = await this.messageRepo.findById(
-                new Types.ObjectId(replyToId),
-            );
+            repliedToMessage = await this.messageRepo.findById(replyToId);
         }
 
         const { created, newCount } =
             await this.transactionManager.runInTransaction(async (session) => {
                 const msg = await this.messageRepo.create(
                     {
-                        senderId: new Types.ObjectId(senderId),
-                        receiverId: new Types.ObjectId(receiverId),
+                        senderId: senderId,
+                        receiverId: receiverId,
                         text: text ?? '',
                         attachments,
                         noEmbeds,
                         ...(replyToId !== undefined && replyToId !== ''
-                            ? { replyToId: new Types.ObjectId(replyToId) }
+                            ? { replyToId }
                             : {}),
                         ...(stickerId !== undefined && stickerId !== ''
-                            ? { stickerId: new Types.ObjectId(stickerId) }
+                            ? { stickerId }
                             : {}),
                         poll: poll
                             ? {
@@ -159,7 +152,7 @@ export class ChatController {
                                           : undefined,
                                   options: poll.options.map((opt) => ({
                                       ...opt,
-                                      id: new Types.ObjectId().toString(),
+                                      id: generateSnowflakeId(),
                                       votes: [],
                                   })),
                               }
@@ -173,8 +166,8 @@ export class ChatController {
                 );
 
                 const count = await this.dmUnreadRepo.increment(
-                    new Types.ObjectId(receiverId),
-                    new Types.ObjectId(senderId),
+                    receiverId,
+                    senderId,
                     session,
                 );
 
@@ -198,8 +191,8 @@ export class ChatController {
         );
 
         const broadcastPayload: IMessageDmEvent['payload'] = {
-            messageId: getDocumentIdString(created),
-            id: getDocumentIdString(created),
+            messageId: created.snowflakeId,
+            id: created.snowflakeId,
             senderId,
             senderUsername: authenticatedUser.username,
             receiverId,
@@ -210,7 +203,7 @@ export class ChatController {
             replyToId: created.replyToId?.toString(),
             repliedTo: repliedToMessage
                 ? {
-                      messageId: getDocumentIdString(repliedToMessage),
+                      messageId: repliedToMessage.snowflakeId,
                       senderId: repliedToMessage.senderId.toString(),
                       senderUsername: '', // Will be populated in broadcast
                       text: repliedToMessage.text,
@@ -277,8 +270,8 @@ export class ChatController {
         }
 
         return {
-            messageId: getDocumentIdString(created),
-            id: getDocumentIdString(created),
+            messageId: created.snowflakeId,
+            id: created.snowflakeId,
             senderId,
             senderUsername: authenticatedUser.username,
             receiverId,
@@ -298,7 +291,7 @@ export class ChatController {
             senderIsBot: authenticatedUser.isBot,
             repliedTo: repliedToMessage
                 ? {
-                      messageId: getDocumentIdString(repliedToMessage),
+                      messageId: repliedToMessage.snowflakeId,
                       senderId: repliedToMessage.senderId.toString(),
                       text: repliedToMessage.text,
                   }
@@ -328,9 +321,7 @@ export class ChatController {
 
         await assertWsNotMuted(this.muteRepo, userId, 'edit messages');
 
-        const message = await this.messageRepo.findById(
-            new Types.ObjectId(messageId),
-        );
+        const message = await this.messageRepo.findById(messageId);
         if (!message) {
             throw new Error('NOT_FOUND: Message not found');
         }
@@ -339,10 +330,7 @@ export class ChatController {
             throw new Error('FORBIDDEN: Can only edit your own messages');
         }
 
-        const updated = await this.messageRepo.update(
-            new Types.ObjectId(messageId),
-            text,
-        );
+        const updated = await this.messageRepo.update(messageId, text);
         if (!updated) {
             throw new Error('INTERNAL_ERROR: Failed to update message');
         }
@@ -409,9 +397,7 @@ export class ChatController {
         const { messageId } = payload;
         const userId = authenticatedUser.userId;
 
-        const message = await this.messageRepo.findById(
-            new Types.ObjectId(messageId),
-        );
+        const message = await this.messageRepo.findById(messageId);
         if (!message) {
             throw new Error('NOT_FOUND: Message not found');
         }
@@ -420,7 +406,7 @@ export class ChatController {
             throw new Error('FORBIDDEN: Can only delete your own messages');
         }
 
-        await this.messageRepo.delete(new Types.ObjectId(messageId));
+        await this.messageRepo.delete(messageId);
 
         this.searchService.removeDmMessage(messageId).catch((err: unknown) => {
             logger.error(
@@ -491,17 +477,12 @@ export class ChatController {
         }
 
         // Reset unread count
-        await this.dmUnreadRepo.reset(
-            new Types.ObjectId(userId),
-            new Types.ObjectId(peerId),
-        );
+        await this.dmUnreadRepo.reset(userId, peerId);
 
         await redis.setex(userReadKey, 3600 * 24 * 7, Date.now().toString());
 
         // Get peer username for broadcast
-        const peerUser = await this.userRepo.findById(
-            new Types.ObjectId(peerId),
-        );
+        const peerUser = await this.userRepo.findById(peerId);
         const peerUsername = peerUser ? (peerUser.username ?? '') : '';
 
         logger.debug(
@@ -547,10 +528,8 @@ export class ChatController {
         );
 
         if (
-            (await this.friendshipRepo.areFriends(
-                new Types.ObjectId(senderId),
-                new Types.ObjectId(receiverId),
-            )) === false
+            (await this.friendshipRepo.areFriends(senderId, receiverId)) ===
+            false
         ) {
             return;
         }

@@ -1,21 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Types } from 'mongoose';
 import type { Request } from 'express';
 import type { JWTPayload } from '@/utils/jwt';
 import { ServerChannelController } from '../ServerChannelController';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
-import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import type { WsServer } from '@/ws/server';
-import type { ExportService } from '@/services/ExportService';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
-import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
-import type { IRedisService } from '@/di/interfaces/IRedisService';
 
 const mockChannelRepo = {
     findById: jest.fn(),
@@ -56,20 +43,20 @@ const mockRedisService = {};
 
 function buildController(): ServerChannelController {
     return new ServerChannelController(
-        mockChannelRepo as unknown as IChannelRepository,
-        mockServerMemberRepo as unknown as IServerMemberRepository,
-        mockServerChannelReadRepo as unknown as IServerChannelReadRepository,
-        mockCategoryRepo as unknown as ICategoryRepository,
-        mockServerMessageRepo as unknown as IServerMessageRepository,
-        mockPermissionService as unknown as PermissionService,
-        mockLogger as unknown as ILogger,
-        mockWsServer as unknown as WsServer,
-        mockExportService as unknown as ExportService,
-        mockServerRepo as unknown as IServerRepository,
-        mockAuditLogRepo as unknown as IAuditLogRepository,
-        mockServerAuditLogService as unknown as IServerAuditLogService,
-        mockRoleRepo as unknown as IRoleRepository,
-        mockRedisService as unknown as IRedisService,
+        mockChannelRepo as any,
+        mockServerMemberRepo as any,
+        mockServerChannelReadRepo as any,
+        mockCategoryRepo as any,
+        mockServerMessageRepo as any,
+        mockPermissionService as any,
+        mockLogger as any,
+        mockWsServer as any,
+        mockExportService as any,
+        mockServerRepo as any,
+        mockAuditLogRepo as any,
+        mockServerAuditLogService,
+        mockRoleRepo as any,
+        mockRedisService as any,
     );
 }
 
@@ -80,7 +67,7 @@ describe('ServerChannelController - updateChannel', () => {
     const channelId = new Types.ObjectId();
     const req = {
         user: { id: userId.toHexString() } as JWTPayload,
-    } as unknown as Request;
+    } as Request;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -114,14 +101,14 @@ describe('ServerChannelController - updateChannel', () => {
         );
 
         expect(mockChannelRepo.update).toHaveBeenCalledWith(
-            expect.any(Types.ObjectId),
+            expect.any(String),
             expect.objectContaining({
                 name: 'new-name',
                 categoryId: null,
             }),
         );
         expect(mockPermissionService.invalidateCache).toHaveBeenCalledWith(
-            serverId,
+            serverId.toHexString(),
         );
     });
 
@@ -149,7 +136,7 @@ describe('ServerChannelController - updateChannel', () => {
         );
 
         expect(mockChannelRepo.update).toHaveBeenCalledWith(
-            expect.any(Types.ObjectId),
+            expect.any(String),
             expect.objectContaining({
                 name: 'new-name',
             }),
@@ -186,10 +173,10 @@ describe('ServerChannelController - updateChannel', () => {
         );
 
         expect(mockChannelRepo.update).toHaveBeenCalledWith(
-            expect.any(Types.ObjectId),
+            expect.any(String),
             expect.objectContaining({
                 name: 'new-name',
-                categoryId: expect.any(Types.ObjectId),
+                categoryId: expect.any(String),
             }),
         );
     });

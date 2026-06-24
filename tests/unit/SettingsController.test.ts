@@ -1,9 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
 import { Types } from 'mongoose';
 import { SettingsController } from '../../src/controllers/SettingsController';
 import { createTestUser, createMockRequest } from '../utils/test-utils';
-import type { Request as ExpressRequest } from 'express';
-import type { JWTPayload } from '../../src/utils/jwt';
 
 describe('SettingsController', () => {
     let mockUserRepo: Record<string, jest.Mock>;
@@ -25,15 +24,9 @@ describe('SettingsController', () => {
         };
 
         controller = new SettingsController(
-            mockUserRepo as unknown as ConstructorParameters<
-                typeof SettingsController
-            >[0],
-            mockLogger as unknown as ConstructorParameters<
-                typeof SettingsController
-            >[1],
-            mockWsServer as unknown as ConstructorParameters<
-                typeof SettingsController
-            >[2],
+            mockUserRepo as any,
+            mockLogger as any,
+            mockWsServer as any,
         );
     });
 
@@ -52,8 +45,8 @@ describe('SettingsController', () => {
             (mockUserRepo.findById as jest.Mock).mockResolvedValue(mockUser);
 
             const mockReq = createMockRequest({
-                user: { id: userId.toString() } as JWTPayload,
-            }) as unknown as ExpressRequest;
+                user: { id: userId.toString() },
+            });
 
             const result = await controller.getSettings(mockReq.user?.id as string);
             const settings = result;
@@ -75,8 +68,8 @@ describe('SettingsController', () => {
             (mockUserRepo.findById as jest.Mock).mockResolvedValue(mockUser);
 
             const mockReq = createMockRequest({
-                user: { id: userId.toString() } as JWTPayload,
-            }) as unknown as ExpressRequest;
+                user: { id: userId.toString() },
+            });
 
             const result = await controller.getSettings(mockReq.user?.id as string);
 
@@ -104,13 +97,13 @@ describe('SettingsController', () => {
             }); // After update
 
             const mockReq = createMockRequest({
-                user: { id: userId.toString() } as JWTPayload,
-            }) as unknown as ExpressRequest;
+                user: { id: userId.toString() },
+            });
 
             const result = await controller.updateSettings(mockReq.user?.id as string, updatePayload);
 
             expect(mockUserRepo.updateSettings).toHaveBeenCalledWith(
-                expect.any(Types.ObjectId),
+                userId.toString(),
                 updatePayload,
             );
             expect(mockWsServer.broadcastToUser).toHaveBeenCalledWith(

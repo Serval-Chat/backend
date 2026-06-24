@@ -12,7 +12,6 @@ import {
     Inject,
     HttpCode,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -22,7 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { SimpleMessageResponseDTO } from './dto/profile.extra.response.dto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import type { Request } from 'express';
+import type { AuthenticatedRequest } from '@/middleware/auth';
 import { TYPES } from '@/di/types';
 import { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import {
@@ -37,13 +36,6 @@ import {
 } from './dto/block.response.dto';
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import { ApiError } from '@/utils/ApiError';
-import { JWTPayload } from '@/utils/jwt';
-import { getDocumentIdString } from '@/utils/mongooseId';
-
-interface RequestWithUser extends Request {
-    user: JWTPayload;
-}
-
 import { NoBot } from '@/modules/auth/bot.decorator';
 
 @ApiTags('Blocks')
@@ -67,14 +59,12 @@ export class BlockController {
     @ApiOperation({ summary: 'Get all block profiles for the current user' })
     @ApiResponse({ status: 200, type: [BlockProfileResponseDTO] })
     public async getProfiles(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<BlockProfileResponseDTO[]> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const profiles = await this.blockRepo.findProfilesByOwner(
-            new Types.ObjectId(userId),
-        );
+        const userId = req.user.id;
+        const profiles = await this.blockRepo.findProfilesByOwner(userId);
         return profiles.map((p) => ({
-            id: getDocumentIdString(p),
+            id: p.snowflakeId,
             name: p.name,
             flags: p.flags,
             createdAt: p.createdAt,
@@ -89,24 +79,22 @@ export class BlockController {
     @ApiResponse({ status: 201, type: BlockProfileResponseDTO })
     @ApiResponse({ status: 403, description: 'Maximum profile limit reached' })
     public async createProfile(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: CreateBlockProfileRequestDTO,
     ): Promise<BlockProfileResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
-
-        const count = await this.blockRepo.countProfilesByOwner(userOid);
+        const userId = req.user.id;
+        const count = await this.blockRepo.countProfilesByOwner(userId);
         if (count >= 4096) {
             throw new ApiError(409, 'Maximum of 4096 block profiles allowed');
         }
 
         const profile = await this.blockRepo.createProfile(
-            userOid,
+            userId,
             body.name,
             body.flags,
         );
         return {
-            id: getDocumentIdString(profile),
+            id: profile.snowflakeId,
             name: profile.name,
             flags: profile.flags,
             createdAt: profile.createdAt,
@@ -121,23 +109,19 @@ export class BlockController {
     @ApiResponse({ status: 200, type: BlockProfileResponseDTO })
     @ApiResponse({ status: 404, description: 'Profile not found' })
     public async updateProfile(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Param('id') id: string,
         @Body() body: UpdateBlockProfileRequestDTO,
     ): Promise<BlockProfileResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const profile = await this.blockRepo.updateProfile(
-            new Types.ObjectId(id),
-            new Types.ObjectId(userId),
-            body,
-        );
+        const userId = req.user.id;
+        const profile = await this.blockRepo.updateProfile(id, userId, body);
 
         if (profile === null) {
             throw new ApiError(404, 'Block profile not found');
         }
 
         return {
-            id: getDocumentIdString(profile),
+            id: profile.snowflakeId,
             name: profile.name,
             flags: profile.flags,
             createdAt: profile.createdAt,
@@ -158,14 +142,11 @@ export class BlockController {
     })
     @ApiResponse({ status: 404, description: 'Profile not found' })
     public async deleteProfile(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Param('id') id: string,
     ): Promise<{ message: string }> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const deleted = await this.blockRepo.deleteProfile(
-            new Types.ObjectId(id),
-            new Types.ObjectId(userId),
-        );
+        const userId = req.user.id;
+        const deleted = await this.blockRepo.deleteProfile(id, userId);
 
         if (!deleted) {
             throw new ApiError(404, 'Block profile not found');
@@ -180,12 +161,10 @@ export class BlockController {
     @ApiOperation({ summary: 'Get all users blocked by the current user' })
     @ApiResponse({ status: 200, type: [BlockRelationshipResponseDTO] })
     public async getBlocks(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<BlockRelationshipResponseDTO[]> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const blocks = await this.blockRepo.findBlocksByBlocker(
-            new Types.ObjectId(userId),
-        );
+        const userId = req.user.id;
+        const blocks = await this.blockRepo.findBlocksByBlocker(userId);
         return blocks.map((b) => ({
             targetUserId: b.targetId,
             targetUsername: b.targetUsername,
@@ -200,36 +179,30 @@ export class BlockController {
     @ApiOperation({ summary: 'Block a user or update their block profile' })
     @ApiResponse({ status: 200, type: BlockRelationshipResponseDTO })
     public async blockUser(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Param('targetUserId') targetUserId: string,
         @Body() body: UpsertBlockRelationshipRequestDTO,
     ): Promise<BlockRelationshipResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const blockerOid = new Types.ObjectId(userId);
-        const targetOid = new Types.ObjectId(targetUserId);
-        const profileOid = new Types.ObjectId(body.profileId);
+        const userId = req.user.id;
 
         if (userId === targetUserId) {
             throw new ApiError(400, 'You cannot block yourself');
         }
 
-        const profile = await this.blockRepo.findProfileById(profileOid);
+        const profile = await this.blockRepo.findProfileById(body.profileId);
         if (profile === null || profile.ownerId.toString() !== userId) {
             throw new ApiError(400, 'Invalid block profile');
         }
 
-        await this.blockRepo.upsertBlock(blockerOid, targetOid, profileOid);
+        await this.blockRepo.upsertBlock(userId, targetUserId, body.profileId);
 
         // automatically unfriend and clear requests when blocking.
         await Promise.all([
-            this.friendshipRepo.remove(blockerOid, targetOid),
-            this.friendshipRepo.removeRequestBetweenUsers(
-                blockerOid,
-                targetOid,
-            ),
+            this.friendshipRepo.remove(userId, targetUserId),
+            this.friendshipRepo.removeRequestBetweenUsers(userId, targetUserId),
         ]);
 
-        const targetUser = await this.userRepo.findById(targetOid);
+        const targetUser = await this.userRepo.findById(targetUserId);
 
         return {
             targetUserId,
@@ -246,13 +219,10 @@ export class BlockController {
     @ApiOperation({ summary: 'Unblock a user' })
     @ApiResponse({ status: 204, description: 'User unblocked' })
     public async unblockUser(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Param('targetUserId') targetUserId: string,
     ): Promise<void> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        await this.blockRepo.deleteBlock(
-            new Types.ObjectId(userId),
-            new Types.ObjectId(targetUserId),
-        );
+        const userId = req.user.id;
+        await this.blockRepo.deleteBlock(userId, targetUserId);
     }
 }

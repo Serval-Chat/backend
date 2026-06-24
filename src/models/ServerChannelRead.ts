@@ -1,5 +1,6 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import type { Document, Types } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type { Document } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
 // Server channel read status interface
@@ -7,7 +8,8 @@ import { Schema, model } from 'mongoose';
 // Tracks the last time a user read a specific channel
 // Used to calculate unread message counts and display indicators
 export interface IServerChannelRead extends Document {
-    userId: Types.ObjectId;
+    snowflakeId: string;
+    userId: string;
     serverId: string;
     channelId: string;
     lastReadAt: Date;
@@ -18,8 +20,7 @@ export interface IServerChannelRead extends Document {
 const schema = new Schema<IServerChannelRead>(
     {
         userId: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
             index: true,
         },
@@ -33,6 +34,8 @@ const schema = new Schema<IServerChannelRead>(
 );
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 schema.index({ userId: 1, channelId: 1 }, { unique: true });
 
 // Server channel read status model

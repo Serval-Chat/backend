@@ -1,9 +1,11 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import type { Document, Types } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type { Document } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
 export interface IPasswordReset extends Document {
-    userId: Types.ObjectId;
+    snowflakeId: string;
+    userId: string;
     hashedToken: string;
     expiresAt: Date;
     usedAt?: Date;
@@ -13,7 +15,7 @@ export interface IPasswordReset extends Document {
 
 const schema = new Schema<IPasswordReset>(
     {
-        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        userId: { type: String, required: true },
         hashedToken: { type: String, required: true },
         expiresAt: { type: Date, required: true },
         usedAt: { type: Date },
@@ -25,6 +27,8 @@ const schema = new Schema<IPasswordReset>(
 );
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 schema.index({ hashedToken: 1 });
 schema.index({ userId: 1, expiresAt: 1, usedAt: 1 });
 schema.index({ ipParam: 1, createdAt: 1, usedAt: 1 });

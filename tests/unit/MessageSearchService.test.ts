@@ -21,6 +21,7 @@ jest.mock('@elastic/elasticsearch', () => ({
 
 jest.mock('../../src/config/env', () => ({
     ELASTICSEARCH_URL: 'http://localhost:9200',
+    SNOWFLAKE_WORKER_ID: 0,
 }));
 
 // mock the TYPES so @Inject resolves without a real DI container
@@ -47,6 +48,7 @@ const mockRedisService = {
 const makeDmMessage = (overrides: Partial<IMessage> = {}): IMessage =>
     ({
         _id: new Types.ObjectId(),
+        snowflakeId: new Types.ObjectId().toString(),
         senderId: new Types.ObjectId(),
         receiverId: new Types.ObjectId(),
         text: 'hello world',
@@ -54,18 +56,19 @@ const makeDmMessage = (overrides: Partial<IMessage> = {}): IMessage =>
         senderDeleted: false,
         receiverDeleted: false,
         ...overrides,
-    }) as unknown as IMessage;
+    }) as IMessage;
 
 const makeChannelMessage = (overrides: Partial<IServerMessage> = {}): IServerMessage =>
     ({
         _id: new Types.ObjectId(),
+        snowflakeId: new Types.ObjectId().toString(),
         senderId: new Types.ObjectId(),
         channelId: new Types.ObjectId(),
         serverId: new Types.ObjectId(),
         text: 'channel hello',
         createdAt: new Date('2026-01-01T12:00:00.000Z'),
         ...overrides,
-    }) as unknown as IServerMessage;
+    }) as IServerMessage;
 
 const makeSearchResponse = (hits: unknown[], total: number) => ({
     hits: {
@@ -147,9 +150,9 @@ describe('MessageSearchService', () => {
             expect(mockClient.index).toHaveBeenCalledWith(
                 expect.objectContaining({
                     index: DM_MESSAGES_INDEX,
-                    id: msg._id.toString(),
+                    id: msg.snowflakeId,
                     document: expect.objectContaining({
-                        id: msg._id.toString(),
+                        id: msg.snowflakeId,
                         senderId: msg.senderId.toString(),
                         receiverId: msg.receiverId.toString(),
                         text: msg.text,
@@ -178,9 +181,9 @@ describe('MessageSearchService', () => {
             expect(mockClient.index).toHaveBeenCalledWith(
                 expect.objectContaining({
                     index: CHANNEL_MESSAGES_INDEX,
-                    id: msg._id.toString(),
+                    id: msg.snowflakeId,
                     document: expect.objectContaining({
-                        id: msg._id.toString(),
+                        id: msg.snowflakeId,
                         senderId: msg.senderId.toString(),
                         channelId: msg.channelId.toString(),
                         serverId: msg.serverId.toString(),

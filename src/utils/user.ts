@@ -6,7 +6,6 @@ import {
     type AdminPermissions,
     DEFAULT_PERMISSIONS,
 } from '@/permissions/AdminPermissions';
-import { getDocumentIdString } from '@/utils/mongooseId';
 
 export interface Badge {
     id: string;
@@ -45,6 +44,7 @@ export interface UserConnection {
 export interface DBUser {
     _id: { toString(): string };
     id?: string;
+    snowflakeId: string;
     username: string;
     displayName?: string | null;
     profilePicture?: string | null;
@@ -138,7 +138,7 @@ export function mapUser(
         : [];
 
     return {
-        id: getDocumentIdString(u),
+        id: u.snowflakeId,
         username: u.username,
         displayName: u.displayName ?? null,
         profilePicture: profilePictureUrl,
@@ -154,9 +154,7 @@ export function mapUser(
             color: '#ffffff',
             intensity: 5,
         },
-        customStatus: resolveSerializedCustomStatus(
-            u.customStatus as Record<string, unknown> | null | undefined,
-        ),
+        customStatus: resolveSerializedCustomStatus(u.customStatus),
         createdAt: u.createdAt,
         bio: u.bio ?? '',
         pronouns: u.pronouns ?? '',

@@ -2,7 +2,6 @@ import { Client } from '@elastic/elasticsearch';
 import type { estypes } from '@elastic/elasticsearch';
 import { Inject, Logger, OnModuleInit } from '@nestjs/common';
 import { injectable } from 'inversify';
-import { Types } from 'mongoose';
 import { ELASTICSEARCH_URL } from '@/config/env';
 import { TYPES } from '@/di/types';
 import type {
@@ -259,7 +258,7 @@ export class ServerDiscoveryService implements OnModuleInit {
         }
     }
 
-    public async refreshServer(serverId: Types.ObjectId): Promise<void> {
+    public async refreshServer(serverId: string): Promise<void> {
         const server = await this.serverRepo.findById(serverId, true);
         const invite =
             await this.inviteRepo.findDiscoveryInviteByServerId(serverId);
@@ -310,11 +309,11 @@ export class ServerDiscoveryService implements OnModuleInit {
         }
     }
 
-    public async removeServer(serverId: Types.ObjectId): Promise<void> {
+    public async removeServer(serverId: string): Promise<void> {
         try {
             await this.client.delete({
                 index: DISCOVERY_INDEX,
-                id: serverId.toString(),
+                id: serverId,
             });
             await this.clearSearchCache();
         } catch (error) {
@@ -322,7 +321,7 @@ export class ServerDiscoveryService implements OnModuleInit {
                 .meta?.statusCode;
             if (statusCode !== 404) {
                 this.logger.warn(
-                    `Failed to remove discovery server ${serverId.toString()}: ${
+                    `Failed to remove discovery server ${serverId}: ${
                         error instanceof Error ? error.message : String(error)
                     }`,
                 );
@@ -339,18 +338,18 @@ export class ServerDiscoveryService implements OnModuleInit {
                 deletedAt: { $exists: false },
                 $or: [{ discoveryEnabled: true }, { verified: true }],
             })
-                .select('_id')
-                .lean<Array<{ _id: Types.ObjectId }>>();
+                .select('snowflakeId')
+                .lean<Array<{ snowflakeId: string }>>();
 
             await Promise.all(
-                servers.map((server) => this.refreshServer(server._id)),
+                servers.map((server) => this.refreshServer(server.snowflakeId)),
             );
         } finally {
             this.reindexingAllServers = false;
         }
     }
 
-    public async getStatus(serverId: Types.ObjectId): Promise<DiscoveryStatus> {
+    public async getStatus(serverId: string): Promise<DiscoveryStatus> {
         const server = await this.serverRepo.findById(serverId, true);
         const invite =
             await this.inviteRepo.findDiscoveryInviteByServerId(serverId);
@@ -541,7 +540,7 @@ export class ServerDiscoveryService implements OnModuleInit {
             ? parsedCursorOffset
             : 0;
 
-        const servers = toApiId(
+        const serversRaw: unknown = toApiId(
             await Server.find({
                 discoveryEnabled: true,
                 verified: true,
@@ -549,14 +548,17 @@ export class ServerDiscoveryService implements OnModuleInit {
             })
                 .sort({ createdAt: -1 })
                 .lean(),
-        ) as unknown as IServer[];
+        );
+        const servers = (
+            serversRaw as (IServer & { snowflakeId: string })[]
+        ).map((server) => ({ ...server, id: server.snowflakeId }));
 
         const eligible: { doc: DiscoveryServerDocument; score: number }[] = [];
         const facetCounts = new Map<string, number>();
 
         for (const server of servers) {
             const invite = await this.inviteRepo.findDiscoveryInviteByServerId(
-                new Types.ObjectId(server.id),
+                server.id,
             );
             if (!isValidDiscoveryInvite(invite) || invite === null) continue;
             const inviteCode = getDiscoveryInvitePath(invite);
@@ -609,7 +611,7 @@ export class ServerDiscoveryService implements OnModuleInit {
             }
 
             const memberCount = await this.serverMemberRepo.countByServerId(
-                new Types.ObjectId(server.id),
+                server.id,
             );
 
             const verificationBoost = server.verified === true ? 1.5 : 1.0;

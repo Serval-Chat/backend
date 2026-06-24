@@ -8,7 +8,6 @@ import {
     Headers,
     Param,
     UseGuards,
-    Req,
     Inject,
     UseInterceptors,
     UploadedFile,
@@ -19,7 +18,6 @@ import {
     InternalServerErrorException,
     StreamableFile,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -37,7 +35,7 @@ import {
 } from './dto/webhook.response.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TYPES } from '@/di/types';
-import { getDocumentIdString } from '@/utils/mongooseId';
+import { isValidSnowflakeId, SYSTEM_SENDER_ID } from '@/utils/snowflake';
 import type {
     IWebhookRepository,
     IWebhook,
@@ -57,17 +55,15 @@ import type {
     IChannelUnreadUpdatedEvent,
 } from '@/ws/protocol/events/messages';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
-import type { Request as ExpressRequest, Response } from 'express';
+import type { Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import {
     CreateWebhookRequestDTO,
@@ -414,35 +410,32 @@ export class WebhookController {
         @Param('channelId') channelId: string,
         @CurrentUser('id') userId: string,
     ): Promise<Record<string, unknown>[]> {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageWebhooks',
             new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN),
         );
 
         const channel = await this.channelRepo.findByIdAndServer(
-            channelOid,
-            serverOid,
+            channelId,
+            serverId,
         );
         if (channel === null) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const webhooks = await this.webhookRepo.findByChannelId(channelOid);
+        const webhooks = await this.webhookRepo.findByChannelId(channelId);
         return webhooks.map((w) => ({
-            id: getDocumentIdString(w),
+            id: w.snowflakeId,
             name: w.name,
             token: w.token,
             avatarUrl: w.avatarUrl,
@@ -467,28 +460,24 @@ export class WebhookController {
         @CurrentUser('id') userId: string,
         @Body() body: CreateWebhookRequestDTO,
     ): Promise<IWebhook> {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageWebhooks',
             new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN),
         );
 
         const channel = await this.channelRepo.findByIdAndServer(
-            channelOid,
-            serverOid,
+            channelId,
+            serverId,
         );
         if (channel === null) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
@@ -505,12 +494,12 @@ export class WebhookController {
         } while (await this.webhookRepo.findByToken(token));
 
         const webhook = await this.webhookRepo.create({
-            serverId: serverOid,
-            channelId: channelOid,
+            serverId: serverId,
+            channelId: channelId,
             name: body.name.trim(),
             token,
             avatarUrl: body.avatarUrl?.trim() ?? undefined,
-            createdBy: userOid,
+            createdBy: userId,
         });
 
         return webhook;
@@ -532,35 +521,31 @@ export class WebhookController {
         @Param('webhookId') webhookId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-        const webhookOid = new Types.ObjectId(webhookId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageWebhooks',
             new ForbiddenException(ErrorMessages.WEBHOOK.FORBIDDEN),
         );
 
-        const webhook = await this.webhookRepo.findById(webhookOid);
+        const webhook = await this.webhookRepo.findById(webhookId);
         if (
             webhook === null ||
-            !webhook.serverId.equals(serverOid) ||
-            !webhook.channelId.equals(channelOid)
+            webhook.serverId !== serverId ||
+            webhook.channelId !== channelId
         ) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        await this.webhookRepo.delete(webhookOid);
+        await this.webhookRepo.delete(webhookId);
 
         return { message: 'Webhook deleted successfully' };
     }
@@ -601,31 +586,26 @@ export class WebhookController {
         @CurrentUser('id') userId: string,
         @UploadedFile() avatar: Express.Multer.File,
     ): Promise<{ avatarUrl: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-        const webhookOid = new Types.ObjectId(webhookId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        const webhook = await this.webhookRepo.findById(webhookOid);
+        const webhook = await this.webhookRepo.findById(webhookId);
         if (
             webhook === null ||
-            !webhook.serverId.equals(serverOid) ||
-            !webhook.channelId.equals(channelOid)
+            webhook.serverId !== serverId ||
+            webhook.channelId !== channelId
         ) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageWebhooks',
             new ForbiddenException(
                 ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
@@ -648,7 +628,7 @@ export class WebhookController {
         }
 
         const avatarUrl = `/api/v1/webhooks/avatar/${filename}`;
-        await this.webhookRepo.update(webhookOid, { avatarUrl });
+        await this.webhookRepo.update(webhookId, { avatarUrl });
 
         return { avatarUrl };
     }
@@ -720,7 +700,7 @@ export class WebhookController {
         const translatedBody: TranslatedWebhookBody = this.isGitHubWebhook(
             headers,
         )
-            ? this.translateGitHubWebhook(body as GitHubWebhookPayload, headers)
+            ? this.translateGitHubWebhook(body, headers)
             : await this.validateSerchatWebhookBody(body);
 
         const { content, username, avatarUrl, embeds, components } =
@@ -737,14 +717,10 @@ export class WebhookController {
 
         await this.allowlistWebhookAvatarUrl(webhookAvatarUrl);
 
-        const webhookSystemUserId = new mongoose.Types.ObjectId(
-            '000000000000000000000000',
-        );
-
         const message = await this.serverMessageRepo.create({
             serverId: webhook.serverId,
             channelId: webhook.channelId,
-            senderId: webhookSystemUserId,
+            senderId: SYSTEM_SENDER_ID,
             text: content ?? '',
             isWebhook: true,
             webhookUsername,
@@ -760,11 +736,11 @@ export class WebhookController {
         const messagePayload: IMessageServerEvent = {
             type: 'message_server',
             payload: {
-                messageId: getDocumentIdString(message),
-                id: getDocumentIdString(message),
+                messageId: message.snowflakeId,
+                id: message.snowflakeId,
                 serverId: webhook.serverId.toString(),
                 channelId: webhook.channelId.toString(),
-                senderId: webhookSystemUserId.toHexString(),
+                senderId: SYSTEM_SENDER_ID,
                 senderIsBot: true,
                 senderUsername: webhookUsername,
                 text: content ?? '',
@@ -814,7 +790,7 @@ export class WebhookController {
                     message.createdAt instanceof Date
                         ? message.createdAt.toISOString()
                         : new Date().toISOString(),
-                senderId: webhookSystemUserId.toHexString(),
+                senderId: SYSTEM_SENDER_ID,
             },
         };
         this.wsServer.broadcastToServer(
@@ -847,7 +823,7 @@ export class WebhookController {
             });
 
         return {
-            id: getDocumentIdString(message),
+            id: message.snowflakeId,
             timestamp: message.createdAt,
         };
     }
@@ -865,18 +841,16 @@ export class WebhookController {
     ): Promise<{ message: string }> {
         const { token, messageId } = params;
         const webhook = await this.webhookRepo.findByToken(token);
-        if (webhook === null || !Types.ObjectId.isValid(messageId)) {
+        if (webhook === null || !isValidSnowflakeId(messageId)) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(
-            new Types.ObjectId(messageId),
-        );
+        const message = await this.serverMessageRepo.findById(messageId);
         if (
             message === null ||
             message.isWebhook !== true ||
-            !message.serverId.equals(webhook.serverId) ||
-            !message.channelId.equals(webhook.channelId)
+            message.serverId !== webhook.serverId ||
+            message.channelId !== webhook.channelId
         ) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -907,7 +881,7 @@ export class WebhookController {
         await this.allowlistWebhookAvatarUrl(webhookAvatarUrl);
 
         const updatedMessage = await this.serverMessageRepo.update(
-            new Types.ObjectId(messageId),
+            messageId,
             updateData,
         );
         if (updatedMessage === null) {
@@ -975,25 +949,22 @@ export class WebhookController {
     ): Promise<{ message: string }> {
         const { token, messageId } = params;
         const webhook = await this.webhookRepo.findByToken(token);
-        if (webhook === null || !Types.ObjectId.isValid(messageId)) {
+        if (webhook === null || !isValidSnowflakeId(messageId)) {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(
-            new Types.ObjectId(messageId),
-            true,
-        );
+        const message = await this.serverMessageRepo.findById(messageId, true);
         if (
             message === null ||
             message.isWebhook !== true ||
-            !message.serverId.equals(webhook.serverId) ||
-            !message.channelId.equals(webhook.channelId)
+            message.serverId !== webhook.serverId ||
+            message.channelId !== webhook.channelId
         ) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
         if (message.deletedAt === undefined) {
-            await this.serverMessageRepo.delete(new Types.ObjectId(messageId));
+            await this.serverMessageRepo.delete(messageId);
         }
 
         const event: IMessageServerDeletedEvent = {

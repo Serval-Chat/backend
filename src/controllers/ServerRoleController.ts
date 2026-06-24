@@ -17,7 +17,6 @@ import {
     Res,
     HttpCode,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -48,7 +47,6 @@ import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 
 import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import {
@@ -68,7 +66,6 @@ import fs from 'fs';
 import { randomBytes } from 'crypto';
 import type { Response } from 'express';
 import { ApiError } from '@/utils/ApiError';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 @Controller('api/v1/servers/:serverId/roles')
 @ApiTags('Server Roles')
 @ApiBearerAuth()
@@ -107,17 +104,15 @@ export class ServerRoleController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<IRole[]> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        return await this.roleRepo.findByServerId(serverOid);
+        return await this.roleRepo.findByServerId(serverId);
     }
 
     @Post()
@@ -138,11 +133,9 @@ export class ServerRoleController {
         @CurrentUser('id') userId: string,
         @Body() body: CreateRoleRequestDTO,
     ): Promise<IRole> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageRoles',
             new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -151,7 +144,7 @@ export class ServerRoleController {
 
         // New roles are placed at the top of the hierarchy by default
         const maxPositionRole =
-            await this.roleRepo.findMaxPositionByServerId(serverOid);
+            await this.roleRepo.findMaxPositionByServerId(serverId);
         const position =
             maxPositionRole !== null ? maxPositionRole.position + 1 : 1;
 
@@ -183,7 +176,7 @@ export class ServerRoleController {
         }
 
         const role = await this.roleRepo.create({
-            serverId: serverOid,
+            serverId: serverId,
             name: body.name.trim(),
             color: roleColor as string,
             colors,
@@ -195,7 +188,7 @@ export class ServerRoleController {
                 body.glowEnabled !== undefined ? body.glowEnabled : true,
             description: body.description,
         });
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_created',
@@ -203,10 +196,10 @@ export class ServerRoleController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'role_create',
-            targetId: getDocumentId(role) as Types.ObjectId,
+            targetId: role.snowflakeId,
             targetType: 'role',
             metadata: { roleName: role.name },
         });
@@ -231,30 +224,26 @@ export class ServerRoleController {
         @CurrentUser('id') userId: string,
         @Body() body: ReorderRolesRequestDTO,
     ): Promise<IRole[]> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageRoles',
             new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
             ),
         );
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         const isOwner = server !== null && String(server.ownerId) === userId;
 
         if (!isOwner) {
             const currentUserHighest =
                 await this.permissionService.getHighestRolePosition(
-                    serverOid,
-                    userOid,
+                    serverId,
+                    userId,
                 );
             for (const { roleId, position } of body.rolePositions) {
-                const r = await this.roleRepo.findById(
-                    new Types.ObjectId(roleId),
-                );
+                const r = await this.roleRepo.findById(roleId);
                 if (r && currentUserHighest <= r.position) {
                     throw new ForbiddenException(
                         'You cannot move a role equal to or higher than your own highest role',
@@ -269,19 +258,17 @@ export class ServerRoleController {
         }
 
         // Bulk update role positions to reflect the new hierarchy
-        const everyoneRole = await this.roleRepo.findEveryoneRole(serverOid);
+        const everyoneRole = await this.roleRepo.findEveryoneRole(serverId);
         const everyoneId =
-            everyoneRole !== null
-                ? getDocumentIdString(everyoneRole)
-                : undefined;
+            everyoneRole !== null ? everyoneRole.snowflakeId : undefined;
 
-        const oldAllRoles = await this.roleRepo.findByServerId(serverOid);
+        const oldAllRoles = await this.roleRepo.findByServerId(serverId);
         const roleMap = new Map(
-            oldAllRoles.map((r) => [getDocumentIdString(r), r.name]),
+            oldAllRoles.map((r) => [r.snowflakeId, r.name]),
         );
 
         const oldOrderedNames = oldAllRoles
-            .filter((r) => getDocumentIdString(r) !== everyoneId)
+            .filter((r) => r.snowflakeId !== everyoneId)
             .sort((a, b) => b.position - a.position)
             .map((r) => r.name);
 
@@ -292,11 +279,11 @@ export class ServerRoleController {
                 roleId === everyoneId
             )
                 continue;
-            await this.roleRepo.update(new Types.ObjectId(roleId), {
+            await this.roleRepo.update(roleId, {
                 position,
             });
         }
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         const filteredPositions = body.rolePositions.filter(
             (rp) => rp.roleId !== everyoneId,
@@ -318,10 +305,10 @@ export class ServerRoleController {
                 .map(({ roleId }) => roleMap.get(roleId) ?? 'Unknown');
 
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'roles_reordered',
-                targetId: serverOid,
+                targetId: serverId,
                 targetType: 'server',
                 metadata: {
                     roleOrder: orderedNames,
@@ -330,7 +317,7 @@ export class ServerRoleController {
             });
         }
 
-        return await this.roleRepo.findByServerId(serverOid);
+        return await this.roleRepo.findByServerId(serverId);
     }
 
     @Patch(':roleId')
@@ -349,31 +336,28 @@ export class ServerRoleController {
         @CurrentUser('id') userId: string,
         @Body() body: UpdateRoleRequestDTO,
     ): Promise<IRole> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const roleOid = new Types.ObjectId(roleId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageRoles',
             new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
             ),
         );
 
-        const role = await this.roleRepo.findById(roleOid);
-        if (role === null || !role.serverId.equals(serverOid)) {
+        const role = await this.roleRepo.findById(roleId);
+        if (role === null || role.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         const isOwner = server !== null && String(server.ownerId) === userId;
 
         if (!isOwner) {
             const currentUserHighest =
                 await this.permissionService.getHighestRolePosition(
-                    serverOid,
-                    userOid,
+                    serverId,
+                    userId,
                 );
             if (currentUserHighest <= role.position) {
                 throw new ForbiddenException(
@@ -452,12 +436,12 @@ export class ServerRoleController {
         if (body.description !== undefined)
             updates.description = body.description;
 
-        const updatedRole = await this.roleRepo.update(roleOid, updates);
+        const updatedRole = await this.roleRepo.update(roleId, updates);
         if (updatedRole === null) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_updated',
@@ -530,10 +514,10 @@ export class ServerRoleController {
 
         if (changes.length > 0) {
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'role_update',
-                targetId: roleOid,
+                targetId: roleId,
                 targetType: 'role',
                 changes,
                 metadata: { roleName: role.name },
@@ -562,31 +546,28 @@ export class ServerRoleController {
         @Param('roleId') roleId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const roleOid = new Types.ObjectId(roleId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageRoles',
             new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
             ),
         );
 
-        const role = await this.roleRepo.findById(roleOid);
-        if (role === null || !role.serverId.equals(serverOid)) {
+        const role = await this.roleRepo.findById(roleId);
+        if (role === null || role.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         const isOwner = server !== null && String(server.ownerId) === userId;
 
         if (!isOwner) {
             const currentUserHighest =
                 await this.permissionService.getHighestRolePosition(
-                    serverOid,
-                    userOid,
+                    serverId,
+                    userId,
                 );
             if (currentUserHighest <= role.position) {
                 throw new ForbiddenException(
@@ -605,9 +586,9 @@ export class ServerRoleController {
             throw new ForbiddenException('Cannot delete a managed role');
         }
 
-        await this.roleRepo.delete(roleOid);
+        await this.roleRepo.delete(roleId);
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_deleted',
@@ -615,10 +596,10 @@ export class ServerRoleController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'role_delete',
-            targetId: roleOid,
+            targetId: roleId,
             targetType: 'role',
             metadata: { roleName: role.name },
         });
@@ -664,20 +645,17 @@ export class ServerRoleController {
         @UploadedFile() icon: Express.Multer.File | undefined,
         @CurrentUser('id') userId: string,
     ): Promise<IRole> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const roleOid = new Types.ObjectId(roleId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageRoles',
             new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
             ),
         );
 
-        const role = await this.roleRepo.findById(roleOid);
-        if (role === null || !role.serverId.equals(serverOid)) {
+        const role = await this.roleRepo.findById(roleId);
+        if (role === null || role.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
@@ -736,7 +714,7 @@ export class ServerRoleController {
             throw new ApiError(500, 'Failed to process role icon');
         }
 
-        const updatedRole = await this.roleRepo.update(roleOid, {
+        const updatedRole = await this.roleRepo.update(roleId, {
             icon: filename,
         });
         if (updatedRole === null) {
@@ -753,10 +731,10 @@ export class ServerRoleController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'role_icon_updated',
-            targetId: roleOid,
+            targetId: roleId,
             targetType: 'role',
             metadata: { roleName: role.name },
         });

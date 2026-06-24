@@ -75,11 +75,12 @@ describe('EmbedService', () => {
         it('should scrape a new URL and save it as an embed', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'Check this out: https://example.com',
                 embeds: [],
-            } as unknown as IServerMessage;
+            } as any;
 
             mockScraperService.scrape.mockResolvedValue(mockFetchResult);
 
@@ -89,7 +90,7 @@ describe('EmbedService', () => {
                 'https://example.com',
             );
             expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
-                message._id,
+                message.snowflakeId,
                 expect.objectContaining({
                     embeds: [
                         expect.objectContaining({
@@ -107,11 +108,12 @@ describe('EmbedService', () => {
         it('should allow multiple embeds for the same URL if it appears multiple times', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'https://example.com and again https://example.com',
                 embeds: [],
-            } as unknown as IServerMessage;
+            } as any;
 
             mockScraperService.scrape.mockResolvedValue(mockFetchResult);
 
@@ -119,7 +121,7 @@ describe('EmbedService', () => {
 
             expect(mockScraperService.scrape).toHaveBeenCalledTimes(2);
             expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
-                message._id,
+                message.snowflakeId,
                 expect.objectContaining({
                     embeds: [
                         expect.objectContaining({
@@ -136,11 +138,12 @@ describe('EmbedService', () => {
         it('should use cached embed if available', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'https://cached.com',
                 embeds: [],
-            } as unknown as IServerMessage;
+            } as any;
 
             const cachedEmbed = {
                 type: 'link',
@@ -153,7 +156,7 @@ describe('EmbedService', () => {
 
             expect(mockScraperService.scrape).not.toHaveBeenCalled();
             expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
-                message._id,
+                message.snowflakeId,
                 expect.objectContaining({
                     embeds: [expect.objectContaining({ title: 'Cached' })],
                 }),
@@ -163,11 +166,12 @@ describe('EmbedService', () => {
         it('should not re-scrape if message already has enough embeds for that URL', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'https://example.com',
                 embeds: [{ type: 'link', url: 'https://example.com/' }],
-            } as unknown as IServerMessage;
+            } as any;
 
             await service.processServerMessage(message);
 
@@ -178,11 +182,12 @@ describe('EmbedService', () => {
         it('should supplement missing embeds if count in text is higher than current embeds', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'https://example.com https://example.com',
                 embeds: [{ type: 'link', url: 'https://example.com/' }],
-            } as unknown as IServerMessage;
+            } as any;
 
             mockScraperService.scrape.mockResolvedValue(mockFetchResult);
 
@@ -190,7 +195,7 @@ describe('EmbedService', () => {
 
             expect(mockScraperService.scrape).toHaveBeenCalledTimes(1);
             expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
-                message._id,
+                message.snowflakeId,
                 expect.objectContaining({
                     embeds: [
                         expect.objectContaining({
@@ -207,11 +212,12 @@ describe('EmbedService', () => {
         it('should skip invite links', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'Join here: https://catfla.re/invite/abc',
                 embeds: [],
-            } as unknown as IServerMessage;
+            } as any;
 
             await service.processServerMessage(message);
 
@@ -221,11 +227,12 @@ describe('EmbedService', () => {
         it('should skip Klipy links', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'Check out this GIF: https://klipy.com/gifs/so-cute-cat-5--kAIU192Mj',
                 embeds: [],
-            } as unknown as IServerMessage;
+            } as any;
 
             await service.processServerMessage(message);
 
@@ -236,11 +243,12 @@ describe('EmbedService', () => {
         it('should handle trailing slash differences during comparison', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'https://example.com/',
                 embeds: [{ type: 'link', url: 'https://example.com' }],
-            } as unknown as IServerMessage;
+            } as any;
 
             await service.processServerMessage(message);
 
@@ -250,11 +258,12 @@ describe('EmbedService', () => {
         it('should limit total embeds to 5', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'https://1.com https://2.com https://3.com https://4.com https://5.com https://6.com',
                 embeds: [],
-            } as unknown as IServerMessage;
+            } as any;
 
             mockScraperService.scrape.mockResolvedValue(mockFetchResult);
 
@@ -262,7 +271,7 @@ describe('EmbedService', () => {
 
             expect(mockScraperService.scrape).toHaveBeenCalledTimes(5);
             expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
-                message._id,
+                message.snowflakeId,
                 expect.objectContaining({
                     embeds: expect.arrayContaining([
                         expect.anything(),
@@ -282,12 +291,13 @@ describe('EmbedService', () => {
         it('should skip embed scraping completely if noEmbeds is true', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'Check this out: https://example.com',
                 embeds: [],
                 noEmbeds: true,
-            } as unknown as IServerMessage;
+            } as any;
 
             await service.processServerMessage(message);
 
@@ -298,11 +308,12 @@ describe('EmbedService', () => {
         it('should not scrape URLs wrapped in angle brackets', async () => {
             const message = {
                 _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
                 serverId: new Types.ObjectId(),
                 channelId: new Types.ObjectId(),
                 text: 'Hidden <https://example.com> visible https://visible.example',
                 embeds: [],
-            } as unknown as IServerMessage;
+            } as any;
 
             mockScraperService.scrape.mockResolvedValue({
                 ...mockFetchResult,

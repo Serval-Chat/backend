@@ -1,5 +1,4 @@
 import { injectable, inject, postConstruct } from 'inversify';
-import mongoose from 'mongoose';
 import {
     WsController,
     Event,
@@ -66,10 +65,10 @@ import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { generateSnowflakeId, isValidSnowflakeId } from '@/utils/snowflake';
 import type { IWsUser } from '@/ws/types';
 import type { WebSocket } from 'ws';
 import logger from '@/utils/logger';
-import { getDocumentIdString } from '@/utils/mongooseId';
 import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { notifyUser } from '@/services/PushService';
@@ -130,9 +129,7 @@ export class ServerController {
             } else if (parts.length === 1) {
                 const channelId = parts[0] as string;
                 try {
-                    const channel = await this.channelRepo.findById(
-                        new mongoose.Types.ObjectId(channelId),
-                    );
+                    const channel = await this.channelRepo.findById(channelId);
                     if (channel) {
                         await this._internalLeaveVoice(
                             userId,
@@ -198,22 +195,18 @@ export class ServerController {
         );
     }
 
-    private toObjectId(value: string, label: string): mongoose.Types.ObjectId {
-        if (!mongoose.Types.ObjectId.isValid(value)) {
-            throw new Error(`BAD_REQUEST: Invalid ${label}`);
-        }
-        return new mongoose.Types.ObjectId(value);
-    }
-
     private async requireServerMember(
         serverId: string,
         userId: string,
     ): Promise<{
-        serverOid: mongoose.Types.ObjectId;
-        userOid: mongoose.Types.ObjectId;
+        serverOid: string;
+        userOid: string;
     }> {
-        const serverOid = this.toObjectId(serverId, 'serverId');
-        const userOid = this.toObjectId(userId, 'userId');
+        if (!isValidSnowflakeId(serverId)) {
+            throw new Error('BAD_REQUEST: Invalid serverId');
+        }
+        const serverOid = serverId;
+        const userOid = userId;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverOid,
@@ -232,16 +225,19 @@ export class ServerController {
         userId: string,
         permission: PermissionKey = 'viewChannels',
     ): Promise<{
-        serverOid: mongoose.Types.ObjectId;
-        userOid: mongoose.Types.ObjectId;
-        channelOid: mongoose.Types.ObjectId;
+        serverOid: string;
+        userOid: string;
+        channelOid: string;
         channel: IChannel;
     }> {
         const { serverOid, userOid } = await this.requireServerMember(
             serverId,
             userId,
         );
-        const channelOid = this.toObjectId(channelId, 'channelId');
+        if (!isValidSnowflakeId(channelId)) {
+            throw new Error('BAD_REQUEST: Invalid channelId');
+        }
+        const channelOid = channelId;
         const channel = await this.channelRepo.findByIdAndServer(
             channelOid,
             serverOid,
@@ -324,8 +320,8 @@ export class ServerController {
         const { serverId } = payload;
         const userId = authenticatedUser.userId;
 
-        const serverOid = new mongoose.Types.ObjectId(serverId);
-        const userOid = new mongoose.Types.ObjectId(userId);
+        const serverOid = serverId;
+        const userOid = userId;
 
         const [member, server] = await Promise.all([
             this.serverMemberRepo.findByServerAndUser(serverOid, userOid),
@@ -372,11 +368,11 @@ export class ServerController {
                             channelId !== ''
                         ) {
                             const canView =
-                                mongoose.Types.ObjectId.isValid(channelId) &&
+                                isValidSnowflakeId(channelId) &&
                                 (await this.permissionService.hasChannelPermission(
                                     serverOid,
                                     userOid,
-                                    new mongoose.Types.ObjectId(channelId),
+                                    channelId,
                                     'viewChannels',
                                 ));
                             if (canView) {
@@ -661,16 +657,14 @@ export class ServerController {
         await assertWsNotMuted(this.muteRepo, userId, 'send messages');
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
+            serverId,
+            userId,
         );
         if (!member) {
             throw new Error('FORBIDDEN: Not a member of this server');
         }
 
-        const channel = await this.channelRepo.findById(
-            new mongoose.Types.ObjectId(channelId),
-        );
+        const channel = await this.channelRepo.findById(channelId);
         if (channel?.type === 'link') {
             throw new Error(
                 'FORBIDDEN: Cannot send messages to a link channel',
@@ -678,9 +672,9 @@ export class ServerController {
         }
 
         const canSend = await this.permissionService.hasChannelPermission(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
-            new mongoose.Types.ObjectId(channelId),
+            serverId,
+            userId,
+            channelId,
             'sendMessages',
         );
         if (canSend === false) {
@@ -691,17 +685,17 @@ export class ServerController {
 
         if (channel !== null && (channel.slowMode ?? 0) > 0) {
             const hasBypass = await this.permissionService.hasChannelPermission(
-                new mongoose.Types.ObjectId(serverId),
-                new mongoose.Types.ObjectId(userId),
-                new mongoose.Types.ObjectId(channelId),
+                serverId,
+                userId,
+                channelId,
                 'bypassSlowmode',
             );
 
             if (!hasBypass) {
                 const lastMessage =
                     await this.serverMessageRepo.findLastByChannelAndUser(
-                        new mongoose.Types.ObjectId(channelId),
-                        new mongoose.Types.ObjectId(userId),
+                        channelId,
+                        userId,
                     );
 
                 if (lastMessage) {
@@ -731,8 +725,8 @@ export class ServerController {
 
         if (mentionedEveryone) {
             const canPingEveryone = await this.permissionService.hasPermission(
-                new mongoose.Types.ObjectId(serverId),
-                new mongoose.Types.ObjectId(userId),
+                serverId,
+                userId,
                 'pingRolesAndEveryone',
             );
             if (!canPingEveryone) {
@@ -742,8 +736,8 @@ export class ServerController {
 
         if (mentionedRoleIds.length > 0) {
             const canPingRoles = await this.permissionService.hasPermission(
-                new mongoose.Types.ObjectId(serverId),
-                new mongoose.Types.ObjectId(userId),
+                serverId,
+                userId,
                 'pingRolesAndEveryone',
             );
             if (!canPingRoles) {
@@ -755,25 +749,17 @@ export class ServerController {
             async (session) => {
                 const msg = await this.serverMessageRepo.create(
                     {
-                        serverId: new mongoose.Types.ObjectId(serverId),
-                        channelId: new mongoose.Types.ObjectId(channelId),
-                        senderId: new mongoose.Types.ObjectId(userId),
+                        serverId: serverId,
+                        channelId: channelId,
+                        senderId: userId,
                         text: text ?? '',
                         attachments,
                         noEmbeds,
                         ...(replyToId !== undefined && replyToId !== ''
-                            ? {
-                                  replyToId: new mongoose.Types.ObjectId(
-                                      replyToId,
-                                  ),
-                              }
+                            ? { replyToId }
                             : {}),
                         ...(stickerId !== undefined && stickerId !== ''
-                            ? {
-                                  stickerId: new mongoose.Types.ObjectId(
-                                      stickerId,
-                                  ),
-                              }
+                            ? { stickerId }
                             : {}),
                         poll:
                             poll !== undefined
@@ -786,7 +772,7 @@ export class ServerController {
                                               : undefined,
                                       options: poll.options.map((opt) => ({
                                           ...opt,
-                                          id: new mongoose.Types.ObjectId().toString(),
+                                          id: generateSnowflakeId(),
                                           votes: [],
                                       })),
                                   }
@@ -800,14 +786,14 @@ export class ServerController {
                 );
 
                 await this.channelRepo.updateLastMessageAt(
-                    new mongoose.Types.ObjectId(channelId),
+                    channelId,
                     undefined,
                     session,
                 );
                 await this.serverChannelReadRepo.upsert(
-                    new mongoose.Types.ObjectId(serverId),
-                    new mongoose.Types.ObjectId(channelId),
-                    new mongoose.Types.ObjectId(userId),
+                    serverId,
+                    channelId,
+                    userId,
                     session,
                 );
 
@@ -823,8 +809,8 @@ export class ServerController {
         );
 
         const broadcastPayload: IMessageServerEvent['payload'] = {
-            messageId: getDocumentIdString(created),
-            id: getDocumentIdString(created),
+            messageId: created.snowflakeId,
+            id: created.snowflakeId,
             serverId,
             channelId,
             senderId: userId,
@@ -911,9 +897,7 @@ export class ServerController {
         );
 
         // notify all server members with view permission.
-        const members = await this.serverMemberRepo.findByServerId(
-            new mongoose.Types.ObjectId(serverId),
-        );
+        const members = await this.serverMemberRepo.findByServerId(serverId);
         const serverUnreadEvent: IServerUnreadUpdatedEvent = {
             type: 'server_unread_updated',
             payload: { serverId, hasUnread: true },
@@ -924,9 +908,9 @@ export class ServerController {
             try {
                 const hasView =
                     await this.permissionService.hasChannelPermission(
-                        new mongoose.Types.ObjectId(serverId),
-                        new mongoose.Types.ObjectId(targetUserId),
-                        new mongoose.Types.ObjectId(channelId),
+                        serverId,
+                        targetUserId,
+                        channelId,
                         'viewChannels',
                     );
                 if (hasView) {
@@ -967,8 +951,8 @@ export class ServerController {
         }
 
         return {
-            messageId: getDocumentIdString(created),
-            id: getDocumentIdString(created),
+            messageId: created.snowflakeId,
+            id: created.snowflakeId,
             serverId,
             channelId,
             senderId: userId,
@@ -1014,9 +998,7 @@ export class ServerController {
 
         await assertWsNotMuted(this.muteRepo, userId, 'edit messages');
 
-        const message = await this.serverMessageRepo.findById(
-            new mongoose.Types.ObjectId(messageId),
-        );
+        const message = await this.serverMessageRepo.findById(messageId);
 
         if (message === null) {
             throw new Error('NOT_FOUND: Message not found');
@@ -1026,14 +1008,11 @@ export class ServerController {
             throw new Error('FORBIDDEN: Can only edit your own messages');
         }
 
-        const updated = await this.serverMessageRepo.update(
-            new mongoose.Types.ObjectId(messageId),
-            {
-                text,
-                editedAt: new Date(),
-                isEdited: true,
-            },
-        );
+        const updated = await this.serverMessageRepo.update(messageId, {
+            text,
+            editedAt: new Date(),
+            isEdited: true,
+        });
         if (!updated) {
             throw new Error('INTERNAL_ERROR: Failed to update message');
         }
@@ -1111,9 +1090,7 @@ export class ServerController {
         const { serverId, messageId } = payload;
         const userId = authenticatedUser.userId;
 
-        const message = await this.serverMessageRepo.findById(
-            new mongoose.Types.ObjectId(messageId),
-        );
+        const message = await this.serverMessageRepo.findById(messageId);
 
         if (message === null) {
             throw new Error('NOT_FOUND: Message not found');
@@ -1121,15 +1098,15 @@ export class ServerController {
 
         const isAuthor = message.senderId.toString() === userId;
         const canManage = await this.permissionService.hasChannelPermission(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
+            serverId,
+            userId,
             message.channelId,
             'manageMessages',
         );
         const canDeleteOthers =
             await this.permissionService.hasChannelPermission(
-                new mongoose.Types.ObjectId(serverId),
-                new mongoose.Types.ObjectId(userId),
+                serverId,
+                userId,
                 message.channelId,
                 'deleteMessagesOfOthers',
             );
@@ -1138,9 +1115,7 @@ export class ServerController {
             throw new Error('FORBIDDEN: No permission to delete this message');
         }
 
-        await this.serverMessageRepo.delete(
-            new mongoose.Types.ObjectId(messageId),
-        );
+        await this.serverMessageRepo.delete(messageId);
 
         logger.info(
             `[ServerController] Server message ${messageId} deleted by ${userId}`,
@@ -1203,8 +1178,8 @@ export class ServerController {
         const userId = authenticatedUser.userId;
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
+            serverId,
+            userId,
         );
         if (!member) {
             throw new Error('FORBIDDEN: Not a member of this server');
@@ -1214,9 +1189,9 @@ export class ServerController {
         const userReadKey = `channel_read_ts:${userId}:${channelId}`;
 
         const updatedRead = await this.serverChannelReadRepo.upsert(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(channelId),
-            new mongoose.Types.ObjectId(userId),
+            serverId,
+            channelId,
+            userId,
         );
 
         await redis.setex(userReadKey, 3600 * 24 * 7, Date.now().toString());
@@ -1239,19 +1214,15 @@ export class ServerController {
         });
 
         // notify whether server still has unread channels for this user.
-        const channels = await this.channelRepo.findByServerIds([
-            new mongoose.Types.ObjectId(serverId),
-        ]);
-        const reads = await this.serverChannelReadRepo.findByUserId(
-            new mongoose.Types.ObjectId(userId),
-        );
+        const channels = await this.channelRepo.findByServerIds([serverId]);
+        const reads = await this.serverChannelReadRepo.findByUserId(userId);
         const readMap = new Map(
-            reads.map((r) => [r.channelId.toString(), r.lastReadAt as Date]),
+            reads.map((r) => [r.channelId.toString(), r.lastReadAt]),
         );
         const hasUnread = channels.some((ch) => {
             const lastMessageAt = ch.lastMessageAt;
             if (lastMessageAt === undefined) return false;
-            const lastReadAt = readMap.get(getDocumentIdString(ch));
+            const lastReadAt = readMap.get(ch.snowflakeId);
             return (
                 lastReadAt === undefined ||
                 new Date(lastMessageAt) > new Date(lastReadAt)
@@ -1260,7 +1231,7 @@ export class ServerController {
         this.wsServer.broadcastToUser(userId, {
             type: 'server_unread_updated',
             payload: { serverId, hasUnread },
-        } as IServerUnreadUpdatedEvent);
+        });
 
         return { success: true };
     }
@@ -1286,9 +1257,9 @@ export class ServerController {
         await assertWsNotMuted(this.muteRepo, userId, 'send typing indicators');
 
         const canSend = await this.permissionService.hasChannelPermission(
-            new mongoose.Types.ObjectId(serverId),
-            new mongoose.Types.ObjectId(userId),
-            new mongoose.Types.ObjectId(channelId),
+            serverId,
+            userId,
+            channelId,
             'sendMessages',
         );
         if (canSend !== true) {
@@ -1332,7 +1303,7 @@ export class ServerController {
         let match;
         while ((match = userMentionRegex.exec(text)) !== null) {
             if (match[1] !== undefined) {
-                if (mongoose.Types.ObjectId.isValid(match[1])) {
+                if (isValidSnowflakeId(match[1])) {
                     userIds.push(match[1]);
                     if (userIds.length >= MAX_USER_MENTIONS) {
                         break;
@@ -1345,7 +1316,7 @@ export class ServerController {
         const roleMentionRegex = /<roleid:'([^']+)'>/g;
         while ((match = roleMentionRegex.exec(text)) !== null) {
             if (match[1] !== undefined) {
-                if (mongoose.Types.ObjectId.isValid(match[1])) {
+                if (isValidSnowflakeId(match[1])) {
                     roleIds.push(match[1]);
                     if (roleIds.length >= MAX_ROLE_MENTIONS) {
                         break;
@@ -1388,9 +1359,8 @@ export class ServerController {
 
         // Resolve role members
         if (mentionedRoleIds.length > 0) {
-            const allMembers = await this.serverMemberRepo.findByServerId(
-                new mongoose.Types.ObjectId(serverId),
-            );
+            const allMembers =
+                await this.serverMemberRepo.findByServerId(serverId);
             for (const roleId of mentionedRoleIds) {
                 const membersWithRole = allMembers.filter((m) =>
                     m.roles.some((r) => r.toString() === roleId),
@@ -1405,9 +1375,8 @@ export class ServerController {
 
         // Resolve @everyone members
         if (mentionedEveryone) {
-            const allMembers = await this.serverMemberRepo.findByServerId(
-                new mongoose.Types.ObjectId(serverId),
-            );
+            const allMembers =
+                await this.serverMemberRepo.findByServerId(serverId);
             allMembers.forEach((m) => {
                 if (m.userId.toString() !== senderId) {
                     allMentionedUserIds.add(m.userId.toString());
@@ -1415,32 +1384,28 @@ export class ServerController {
             });
         }
 
-        const channel = await this.channelRepo.findById(
-            new mongoose.Types.ObjectId(channelId),
-        );
+        const channel = await this.channelRepo.findById(channelId);
         const channelName = channel ? channel.name : 'Unknown';
 
         // Send ping notifications to mentioned users
         for (const mentionedUserId of allMentionedUserIds) {
-            const mentionedUser = await this.userRepo.findById(
-                new mongoose.Types.ObjectId(mentionedUserId),
-            );
+            const mentionedUser = await this.userRepo.findById(mentionedUserId);
             if (!mentionedUser || mentionedUser.username === undefined)
                 continue;
 
             // Check if mentioned user is a member
             const mentionedMember =
                 await this.serverMemberRepo.findByServerAndUser(
-                    new mongoose.Types.ObjectId(serverId),
-                    new mongoose.Types.ObjectId(mentionedUserId),
+                    serverId,
+                    mentionedUserId,
                 );
             if (!mentionedMember) continue;
 
             const canViewChannel =
                 await this.permissionService.hasChannelPermission(
-                    new mongoose.Types.ObjectId(serverId),
-                    new mongoose.Types.ObjectId(mentionedUserId),
-                    new mongoose.Types.ObjectId(channelId),
+                    serverId,
+                    mentionedUserId,
+                    channelId,
                     'viewChannels',
                 );
             if (canViewChannel !== true) continue;
@@ -1461,10 +1426,7 @@ export class ServerController {
                 },
             };
 
-            await this.pingService.addPing(
-                new mongoose.Types.ObjectId(mentionedUserId),
-                pingData,
-            );
+            await this.pingService.addPing(mentionedUserId, pingData);
 
             notifyUser(mentionedUserId, 'mention', {
                 type: 'mention',

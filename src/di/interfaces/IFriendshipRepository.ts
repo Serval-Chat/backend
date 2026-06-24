@@ -9,8 +9,8 @@ export interface IFriendship {
     user?: string;
     /** @deprecated Use friendId instead */
     friend?: string;
-    userId: Types.ObjectId;
-    friendId: Types.ObjectId;
+    userId: string;
+    friendId: string;
     createdAt?: Date;
     isPinned?: boolean;
 }
@@ -20,12 +20,13 @@ export interface IFriendship {
 // Represents a friend request between two users
 export interface IFriendRequest {
     _id: Types.ObjectId;
+    snowflakeId: string;
     /** @deprecated Use fromId instead */
     from?: string;
     /** @deprecated Use toId instead */
     to?: string;
-    fromId: Types.ObjectId;
-    toId: Types.ObjectId;
+    fromId: string;
+    toId: string;
     status: 'pending' | 'accepted' | 'rejected';
     createdAt?: Date;
 }
@@ -35,74 +36,63 @@ export interface IFriendRequest {
 // Encapsulates friendship and friend request operations
 export interface IFriendshipRepository {
     // Check if two users are friends
-    areFriends(user1: Types.ObjectId, user2: Types.ObjectId): Promise<boolean>;
+    areFriends(user1: string, user2: string): Promise<boolean>;
 
     // Get all friendships for a user
-    findByUserId(userId: Types.ObjectId): Promise<IFriendship[]>;
+    findByUserId(userId: string): Promise<IFriendship[]>;
 
     // Create a new friendship
-    create(
-        userId: Types.ObjectId,
-        friendId: Types.ObjectId,
-    ): Promise<IFriendship>;
+    create(userId: string, friendId: string): Promise<IFriendship>;
 
     // Remove friendship
-    remove(userId: Types.ObjectId, friendId: Types.ObjectId): Promise<boolean>;
+    remove(userId: string, friendId: string): Promise<boolean>;
 
     // Set pinned state for a single direction of a friendship (private to userId)
     setPinned(
-        userId: Types.ObjectId,
-        friendId: Types.ObjectId,
+        userId: string,
+        friendId: string,
         isPinned: boolean,
     ): Promise<IFriendship | null>;
 
     // Create friend request
-    createRequest(
-        fromId: Types.ObjectId,
-        toId: Types.ObjectId,
-    ): Promise<IFriendRequest>;
+    createRequest(fromId: string, toId: string): Promise<IFriendRequest>;
 
     // Accept friend request
-    acceptRequest(requestId: Types.ObjectId): Promise<IFriendRequest | null>;
+    acceptRequest(requestId: string): Promise<IFriendRequest | null>;
 
     // Reject friend request
-    rejectRequest(requestId: Types.ObjectId): Promise<boolean>;
+    rejectRequest(requestId: string): Promise<boolean>;
 
     // Find friend request by ID
-    findRequestById(requestId: Types.ObjectId): Promise<IFriendRequest | null>;
+    findRequestById(requestId: string): Promise<IFriendRequest | null>;
 
     // Find existing friend request between two users (pending only)
     findRequestBetweenUsers(
-        fromId: Types.ObjectId,
-        toId: Types.ObjectId,
+        fromId: string,
+        toId: string,
     ): Promise<IFriendRequest | null>;
 
     // Find any existing friend request between two users (any status)
     findExistingRequest(
-        fromId: Types.ObjectId,
-        toId: Types.ObjectId,
+        fromId: string,
+        toId: string,
     ): Promise<IFriendRequest | null>;
 
     // Get pending requests for a user (incoming)
-    findPendingRequestsFor(userId: Types.ObjectId): Promise<IFriendRequest[]>;
+    findPendingRequestsFor(userId: string): Promise<IFriendRequest[]>;
 
     // Get pending requests from a user (outgoing)
-    findPendingRequestsFrom(userId: Types.ObjectId): Promise<IFriendRequest[]>;
+    findPendingRequestsFrom(userId: string): Promise<IFriendRequest[]>;
 
     // Find friendships by user ID
-    findAllByUserId(userId: Types.ObjectId): Promise<IFriendship[]>;
+    findAllByUserId(userId: string): Promise<IFriendship[]>;
 
     // Delete all friendships for a user (for hard delete)
-    deleteAllForUser(userId: Types.ObjectId): Promise<{ deletedCount: number }>;
+    deleteAllForUser(userId: string): Promise<{ deletedCount: number }>;
 
     // Delete all friend requests for a user (for hard delete)
-    deleteAllRequestsForUser(
-        userId: Types.ObjectId,
-    ): Promise<{ deletedCount: number }>;
+    deleteAllRequestsForUser(userId: string): Promise<{ deletedCount: number }>;
 
     // remove any existing friend request between two users.
-    removeRequestBetweenUsers(
-        user1: Types.ObjectId,
-        user2: Types.ObjectId,
-    ): Promise<boolean>;
+    removeRequestBetweenUsers(user1: string, user2: string): Promise<boolean>;
 }

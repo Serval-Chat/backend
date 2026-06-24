@@ -1,15 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Types } from 'mongoose';
 import { UserMessageController } from '../UserMessageController';
 import type { JWTPayload } from '@/utils/jwt';
 import type { Request } from 'express';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
-import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
-import type { IDmUnreadRepository } from '@/di/interfaces/IDmUnreadRepository';
-import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import type { WsServer } from '@/ws/server';
-import type { EmbedService } from '@/services/EmbedService';
 
 describe('UserMessageController', () => {
     const meId = new Types.ObjectId();
@@ -49,17 +42,17 @@ describe('UserMessageController', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         controller = new UserMessageController(
-            mockUserRepo as unknown as IUserRepository,
-            mockFriendshipRepo as unknown as IFriendshipRepository,
-            mockMessageRepo as unknown as IMessageRepository,
-            mockDmUnreadRepo as unknown as IDmUnreadRepository,
-            mockReactionRepo as unknown as IReactionRepository,
-            mockLogger as unknown as ILogger,
-            mockWsServer as unknown as WsServer,
+            mockUserRepo as any,
+            mockFriendshipRepo as any,
+            mockMessageRepo as any,
+            mockDmUnreadRepo as any,
+            mockReactionRepo as any,
+            mockLogger as any,
+            mockWsServer as any,
             {
                 processServerMessage: jest.fn().mockResolvedValue(undefined),
                 processUserMessage: jest.fn().mockResolvedValue(undefined),
-            } as unknown as EmbedService,
+            } as any,
             {
                 removeDmMessage: jest.fn().mockResolvedValue(undefined),
             } as never,
@@ -69,7 +62,7 @@ describe('UserMessageController', () => {
     describe('getUnreadCounts', () => {
         const req = {
             user: { id: meIdStr } as JWTPayload,
-        } as unknown as Request;
+        } as Request;
 
         it('returns unread counts for friends', async () => {
             mockDmUnreadRepo.findByUser.mockResolvedValue([
@@ -96,7 +89,10 @@ describe('UserMessageController', () => {
             );
 
             expect(result.counts).toEqual({});
-            expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(meId, peerId);
+            expect(mockDmUnreadRepo.delete).toHaveBeenCalledWith(
+                meIdStr,
+                peerId,
+            );
             expect(mockLogger.warn).toHaveBeenCalled();
         });
 

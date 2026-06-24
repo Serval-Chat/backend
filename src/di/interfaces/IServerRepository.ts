@@ -47,7 +47,7 @@ export interface IServer {
 // Server creation DTO
 export interface CreateServerDTO {
     name: string;
-    ownerId: RepositoryId;
+    ownerId: string;
     icon?: string;
     description?: string;
     tags?: string[];
@@ -70,7 +70,7 @@ export interface IServerRepository {
     findByIds(ids: RepositoryId[]): Promise<IServer[]>;
 
     // Find servers by owner ID
-    findByOwnerId(ownerId: RepositoryId): Promise<IServer[]>;
+    findByOwnerId(ownerId: string): Promise<IServer[]>;
 
     // Create a new server
     create(data: CreateServerDTO): Promise<IServer>;

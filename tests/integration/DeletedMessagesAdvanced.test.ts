@@ -43,18 +43,18 @@ describe('Deleted Message Visibility Advanced Integration', () => {
         await Message.deleteMany({});
         await AuditLog.deleteMany({});
 
-        testServer = await createTestServer(serverOwner._id.toString());
-        testChannel = await createTestChannel(testServer._id.toString());
+        testServer = await createTestServer(serverOwner.snowflakeId);
+        testChannel = await createTestChannel(testServer.snowflakeId);
 
         const adminRole = await Role.create({
-            serverId: testServer._id,
+            serverId: testServer.snowflakeId,
             name: 'Admin',
             position: 2,
             permissions: { administrator: true }
         });
 
         const auditRole = await Role.create({
-            serverId: testServer._id,
+            serverId: testServer.snowflakeId,
             name: 'Auditor',
             position: 1,
             permissions: {
@@ -65,18 +65,18 @@ describe('Deleted Message Visibility Advanced Integration', () => {
         });
 
         await ServerMember.create({
-            serverId: testServer._id,
-            userId: adminUser._id,
-            roles: [adminRole._id]
+            serverId: testServer.snowflakeId,
+            userId: adminUser.snowflakeId,
+            roles: [adminRole.snowflakeId]
         });
         await ServerMember.create({
-            serverId: testServer._id,
-            userId: auditUser._id,
-            roles: [auditRole._id]
+            serverId: testServer.snowflakeId,
+            userId: auditUser.snowflakeId,
+            roles: [auditRole.snowflakeId]
         });
         await ServerMember.create({
-            serverId: testServer._id,
-            userId: regularUser._id,
+            serverId: testServer.snowflakeId,
+            userId: regularUser.snowflakeId,
             roles: []
         });
     });
@@ -90,20 +90,20 @@ describe('Deleted Message Visibility Advanced Integration', () => {
 
         beforeEach(async () => {
             const sendRes = await request(app)
-                .post(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
+                .post(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages`)
                 .set('Authorization', `Bearer ${regularUserToken}`)
                 .send({ text: 'Sensitive message' });
 
             deletedMessageId = sendRes.body.id;
 
             await request(app)
-                .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}`)
+                .delete(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${deletedMessageId}`)
                 .set('Authorization', `Bearer ${regularUserToken}`);
         });
 
         it('should hide deleted message from regular users in single message retrieval', async () => {
             const res = await request(app)
-                .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}`)
+                .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${deletedMessageId}`)
                 .set('Authorization', `Bearer ${regularUserToken}`);
 
             expect(res.status).toBe(404);
@@ -111,7 +111,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
 
         it('should allow user with seeDeletedMessages to retrieve single deleted message', async () => {
             const res = await request(app)
-                .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}`)
+                .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${deletedMessageId}`)
                 .set('Authorization', `Bearer ${auditToken}`);
 
             expect(res.status).toBe(200);
@@ -120,7 +120,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
 
         it('should allow server owner to retrieve single deleted message', async () => {
             const res = await request(app)
-                .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}`)
+                .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${deletedMessageId}`)
                 .set('Authorization', `Bearer ${serverOwnerToken}`);
 
             expect(res.status).toBe(200);
@@ -129,7 +129,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
 
         it('should allow administrator to retrieve single deleted message', async () => {
             const res = await request(app)
-                .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}`)
+                .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${deletedMessageId}`)
                 .set('Authorization', `Bearer ${adminToken}`);
 
             expect(res.status).toBe(200);
@@ -138,10 +138,10 @@ describe('Deleted Message Visibility Advanced Integration', () => {
 
         it('should hide soft-deleted pinned messages from regular users', async () => {
 
-            await ServerMessage.updateOne({ _id: deletedMessageId }, { $set: { isPinned: true } });
+            await ServerMessage.updateOne({ snowflakeId: deletedMessageId }, { $set: { isPinned: true } });
 
             const res = await request(app)
-                .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/pins`)
+                .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/pins`)
                 .set('Authorization', `Bearer ${regularUserToken}`);
 
             expect(res.status).toBe(200);
@@ -149,10 +149,10 @@ describe('Deleted Message Visibility Advanced Integration', () => {
         });
 
         it('should show soft-deleted pinned messages to audit users', async () => {
-            await ServerMessage.updateOne({ _id: deletedMessageId }, { $set: { isPinned: true } });
+            await ServerMessage.updateOne({ snowflakeId: deletedMessageId }, { $set: { isPinned: true } });
 
             const res = await request(app)
-                .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/pins`)
+                .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/pins`)
                 .set('Authorization', `Bearer ${auditToken}`);
 
             expect(res.status).toBe(200);
@@ -164,18 +164,18 @@ describe('Deleted Message Visibility Advanced Integration', () => {
         it('should show deleted message text in audit logs to users with manageServer permission', async () => {
             const text = 'Audit this message';
             const sendRes = await request(app)
-                .post(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
+                .post(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages`)
                 .set('Authorization', `Bearer ${regularUserToken}`)
                 .send({ text });
 
             const messageId = sendRes.body.id;
 
             await request(app)
-                .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${messageId}`)
+                .delete(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${messageId}`)
                 .set('Authorization', `Bearer ${regularUserToken}`);
 
             const auditRes = await request(app)
-                .get(`/api/v1/servers/${testServer._id}/audit-log`)
+                .get(`/api/v1/servers/${testServer.snowflakeId}/audit-log`)
                 .set('Authorization', `Bearer ${auditToken}`);
 
             expect(auditRes.status).toBe(200);
@@ -190,20 +190,20 @@ describe('Deleted Message Visibility Advanced Integration', () => {
 
         beforeEach(async () => {
             const sendRes = await request(app)
-                .post(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
+                .post(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages`)
                 .set('Authorization', `Bearer ${regularUserToken}`)
                 .send({ text: 'Fixed text' });
 
             deletedMessageId = sendRes.body.id;
 
             await request(app)
-                .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}`)
+                .delete(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${deletedMessageId}`)
                 .set('Authorization', `Bearer ${regularUserToken}`);
         });
 
         it('should prevent editing a deleted message', async () => {
             const res = await request(app)
-                .patch(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}`)
+                .patch(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${deletedMessageId}`)
                 .set('Authorization', `Bearer ${regularUserToken}`)
                 .send({ text: 'New text' });
 
@@ -212,7 +212,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
 
         it('should prevent pinning a deleted message', async () => {
             const res = await request(app)
-                .post(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}/pin`)
+                .post(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${deletedMessageId}/pin`)
                 .set('Authorization', `Bearer ${serverOwnerToken}`);
 
             expect(res.status).toBe(400);
@@ -220,7 +220,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
 
         it('should return 404 when trying to react to a deleted message', async () => {
             const res = await request(app)
-                .post(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${deletedMessageId}/reactions`)
+                .post(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${deletedMessageId}/reactions`)
                 .set('Authorization', `Bearer ${regularUserToken}`)
                 .send({ emoji: '👍', emojiType: 'unicode' });
 
@@ -240,11 +240,11 @@ describe('Deleted Message Visibility Advanced Integration', () => {
             });
 
             const dmMsg = await Message.create({
-                senderId: regularUser._id,
-                receiverId: otherUser._id,
+                senderId: regularUser.snowflakeId,
+                receiverId: otherUser.snowflakeId,
                 text: 'Private message'
             });
-            const dmId = dmMsg._id.toString();
+            const dmId = dmMsg.snowflakeId;
 
             const deleteRes = await request(app)
                 .delete(`/api/v1/messages/${dmId}`)
@@ -253,13 +253,13 @@ describe('Deleted Message Visibility Advanced Integration', () => {
             expect(deleteRes.status).toBe(200);
 
             const getRes = await request(app)
-                .get(`/api/v1/messages/${otherUser._id}/${dmId}`)
+                .get(`/api/v1/messages/${otherUser.snowflakeId}/${dmId}`)
                 .set('Authorization', `Bearer ${otherToken}`);
 
             expect(getRes.status).toBe(404);
 
             // Verify it's gone from DB
-            const dbMsg = await Message.findById(dmId);
+            const dbMsg = await Message.findOne({ snowflakeId: dmId });
             expect(dbMsg).toBeNull();
         });
     });

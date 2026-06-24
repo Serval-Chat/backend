@@ -1,4 +1,3 @@
-import type { Types } from 'mongoose';
 import type { IBlockProfile } from '@/models/BlockProfile';
 import type { IUserBlock } from '@/models/UserBlock';
 
@@ -16,41 +15,29 @@ export interface BlockedByWithFlags {
 
 export interface IBlockRepository {
     createProfile(
-        ownerId: Types.ObjectId,
+        ownerId: string,
         name: string,
         flags: number,
     ): Promise<IBlockProfile>;
-    findProfilesByOwner(ownerId: Types.ObjectId): Promise<IBlockProfile[]>;
-    findProfileById(profileId: Types.ObjectId): Promise<IBlockProfile | null>;
+    findProfilesByOwner(ownerId: string): Promise<IBlockProfile[]>;
+    findProfileById(profileId: string): Promise<IBlockProfile | null>;
     updateProfile(
-        profileId: Types.ObjectId,
-        ownerId: Types.ObjectId,
+        profileId: string,
+        ownerId: string,
         updates: { name?: string; flags?: number },
     ): Promise<IBlockProfile | null>;
-    deleteProfile(
-        profileId: Types.ObjectId,
-        ownerId: Types.ObjectId,
-    ): Promise<boolean>;
-    countProfilesByOwner(ownerId: Types.ObjectId): Promise<number>;
+    deleteProfile(profileId: string, ownerId: string): Promise<boolean>;
+    countProfilesByOwner(ownerId: string): Promise<number>;
 
     upsertBlock(
-        blockerId: Types.ObjectId,
-        targetId: Types.ObjectId,
-        profileId: Types.ObjectId,
+        blockerId: string,
+        targetId: string,
+        profileId: string,
     ): Promise<IUserBlock>;
-    deleteBlock(
-        blockerId: Types.ObjectId,
-        targetId: Types.ObjectId,
-    ): Promise<boolean>;
-    findBlocksByBlocker(blockerId: Types.ObjectId): Promise<BlockWithFlags[]>;
-    findBlocksByTarget(targetId: Types.ObjectId): Promise<BlockedByWithFlags[]>;
-    findBlock(
-        blockerId: Types.ObjectId,
-        targetId: Types.ObjectId,
-    ): Promise<IUserBlock | null>;
+    deleteBlock(blockerId: string, targetId: string): Promise<boolean>;
+    findBlocksByBlocker(blockerId: string): Promise<BlockWithFlags[]>;
+    findBlocksByTarget(targetId: string): Promise<BlockedByWithFlags[]>;
+    findBlock(blockerId: string, targetId: string): Promise<IUserBlock | null>;
 
-    getActiveBlockFlags(
-        blockerId: Types.ObjectId,
-        targetId: Types.ObjectId,
-    ): Promise<number>;
+    getActiveBlockFlags(blockerId: string, targetId: string): Promise<number>;
 }

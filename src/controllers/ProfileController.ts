@@ -14,7 +14,6 @@ import {
     Inject,
     HttpCode,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiTags,
@@ -40,6 +39,7 @@ import {
 } from './dto/profile.extra.response.dto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { Request, Response } from 'express';
+import type { AuthenticatedRequest } from '@/middleware/auth';
 import {
     UserProfileResponseDTO,
     UserLookupResponseDTO,
@@ -64,7 +64,7 @@ import {
 } from './dto/profile.request.dto';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
-import { JWTPayload, hasPermission } from '@/utils/jwt';
+import { hasPermission } from '@/utils/jwt';
 import { mapUser } from '@/utils/user';
 import {
     resolveSerializedCustomStatus,
@@ -84,7 +84,6 @@ import { BlockFlags } from '@/privacy/blockFlags';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { NoBot } from '@/modules/auth/bot.decorator';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 import { Badge } from '@/models/Badge';
 import { Bot } from '@/models/Bot';
@@ -112,10 +111,6 @@ import {
 } from '@/utils/imageProcessing';
 import { assertHttpNotMuted } from '@/utils/mute';
 
-interface RequestWithUser extends Request {
-    user: JWTPayload;
-}
-
 @ApiTags('Profile')
 @Controller('api/v1/profile')
 export class ProfileController {
@@ -142,14 +137,14 @@ export class ProfileController {
 
     private mapConnection(connection: IUserConnection) {
         return {
-            id: connection._id.toString(),
+            id: connection.snowflakeId,
             type: connection.type,
             value: connection.value,
             status: connection.status,
         };
     }
 
-    private async getVerifiedConnections(userId: Types.ObjectId) {
+    private async getVerifiedConnections(userId: string) {
         const connections = await UserConnection.find({
             userId,
             status: 'verified',
@@ -158,13 +153,13 @@ export class ProfileController {
             .exec();
 
         return connections.map((connection) => ({
-            id: connection._id.toString(),
+            id: connection.snowflakeId,
             type: connection.type,
             value: connection.value,
         }));
     }
 
-    private async getOwnConnections(userId: Types.ObjectId) {
+    private async getOwnConnections(userId: string) {
         const connections = await UserConnection.find({ userId })
             .sort({ status: 1, verifiedAt: 1, createdAt: 1 })
             .exec();
@@ -193,13 +188,12 @@ export class ProfileController {
     }
 
     private async broadcastProfileConnections(userId: string): Promise<void> {
-        const userOid = new Types.ObjectId(userId);
-        const connections = await this.getVerifiedConnections(userOid);
+        const connections = await this.getVerifiedConnections(userId);
         const payload = { userId, connections };
 
         const serverIds =
-            await this.serverMemberRepo.findServerIdsByUserId(userOid);
-        const friendships = await this.friendshipRepo.findAllByUserId(userOid);
+            await this.serverMemberRepo.findServerIdsByUserId(userId);
+        const friendships = await this.friendshipRepo.findAllByUserId(userId);
 
         serverIds.forEach((serverId) => {
             this.wsServer.broadcastToServer(serverId.toString(), {
@@ -299,23 +293,17 @@ export class ProfileController {
 
         mapped.serverSettings = user.serverSettings;
         mapped.connections =
-            options.viewerId === getDocumentIdString(user)
-                ? await this.getOwnConnections(
-                      getDocumentId(user) as Types.ObjectId,
-                  )
-                : await this.getVerifiedConnections(
-                      getDocumentId(user) as Types.ObjectId,
-                  );
+            options.viewerId === user.snowflakeId
+                ? await this.getOwnConnections(user.snowflakeId)
+                : await this.getVerifiedConnections(user.snowflakeId);
 
         if (
             options.includeActiveMute === true &&
-            options.viewerId === getDocumentIdString(user)
+            options.viewerId === user.snowflakeId
         ) {
-            await this.muteRepo.checkExpired(
-                getDocumentId(user) as Types.ObjectId,
-            );
+            await this.muteRepo.checkExpired(user.snowflakeId);
             const activeMute = await this.muteRepo.findActiveByUserId(
-                getDocumentId(user) as Types.ObjectId,
+                user.snowflakeId,
             );
             (mapped as UserProfileResponseDTO).activeMute =
                 activeMute !== null
@@ -330,11 +318,11 @@ export class ProfileController {
         if (
             options.viewerId !== undefined &&
             options.viewerId !== '' &&
-            options.viewerId !== getDocumentIdString(user)
+            options.viewerId !== user.snowflakeId
         ) {
             const blockFlags = await this.blockRepo.getActiveBlockFlags(
-                getDocumentId(user) as Types.ObjectId,
-                new Types.ObjectId(options.viewerId),
+                user.snowflakeId,
+                options.viewerId,
             );
 
             const profile = mapped as UserProfileResponseDTO;
@@ -352,7 +340,7 @@ export class ProfileController {
             }
         }
 
-        return mapped as unknown as UserProfileResponseDTO;
+        return mapped;
     }
 
     @Get('me')
@@ -362,10 +350,10 @@ export class ProfileController {
     @ApiResponse({ status: 200, type: UserProfileResponseDTO })
     @ApiResponse({ status: 404, description: 'User not found' })
     public async getMyProfile(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<UserProfileResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const user = await this.userRepo.findById(new Types.ObjectId(userId));
+        const userId = req.user.id;
+        const user = await this.userRepo.findById(userId);
         if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -384,16 +372,15 @@ export class ProfileController {
     @ApiOperation({ summary: 'Create a pending website connection' })
     @ApiResponse({ status: 201, type: CreateWebsiteConnectionResponseDTO })
     public async createWebsiteConnection(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: CreateWebsiteConnectionRequestDTO,
     ): Promise<CreateWebsiteConnectionResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
+        const userId = req.user.id;
         await assertHttpNotMuted(
             this.muteRepo,
             userId,
             'change profile connections',
         );
-        const userOid = new Types.ObjectId(userId);
         let website: ReturnType<typeof normalizeWebsite>;
         try {
             website = normalizeWebsite(body.website);
@@ -405,7 +392,7 @@ export class ProfileController {
             type: WEBSITE_CONNECTION_TYPE,
             normalizedValue: website.normalizedValue,
             status: 'verified',
-            userId: { $ne: userOid },
+            userId: { $ne: userId },
         })
             .lean()
             .exec();
@@ -414,7 +401,7 @@ export class ProfileController {
         }
 
         const alreadyVerified = await UserConnection.findOne({
-            userId: userOid,
+            userId: userId,
             type: WEBSITE_CONNECTION_TYPE,
             normalizedValue: website.normalizedValue,
             status: 'verified',
@@ -431,13 +418,13 @@ export class ProfileController {
 
         const connection = await UserConnection.findOneAndUpdate(
             {
-                userId: userOid,
+                userId: userId,
                 type: WEBSITE_CONNECTION_TYPE,
                 normalizedValue: website.normalizedValue,
             },
             {
                 $set: {
-                    userId: userOid,
+                    userId: userId,
                     type: WEBSITE_CONNECTION_TYPE,
                     value: website.value,
                     normalizedValue: website.normalizedValue,
@@ -453,7 +440,7 @@ export class ProfileController {
 
         return {
             message: 'Please add this TXT to the DNS records of your website.',
-            connectionId: connection.id.toString(),
+            connectionId: connection.snowflakeId,
             recordType: 'TXT',
             recordName: website.verificationRecordName,
             recordValue: `${WEBSITE_VERIFICATION_PREFIX}${token}`,
@@ -475,21 +462,21 @@ export class ProfileController {
         description: 'Website verified',
     })
     public async verifyWebsiteConnection(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Param() params: ConnectionParamDTO,
     ): Promise<{
         message: string;
         connection: { id: string; type: 'Website'; value: string };
     }> {
-        const userId = (req as unknown as RequestWithUser).user.id;
+        const userId = req.user.id;
         await assertHttpNotMuted(
             this.muteRepo,
             userId,
             'change profile connections',
         );
         const connection = await UserConnection.findOne({
-            id: new Types.ObjectId(params.connectionId),
-            userId: new Types.ObjectId(userId),
+            snowflakeId: params.connectionId,
+            userId: userId,
             type: WEBSITE_CONNECTION_TYPE,
         }).exec();
 
@@ -501,7 +488,7 @@ export class ProfileController {
             return {
                 message: 'Website is already verified',
                 connection: {
-                    id: connection._id.toString(),
+                    id: connection.snowflakeId,
                     type: connection.type,
                     value: connection.value,
                 },
@@ -554,7 +541,7 @@ export class ProfileController {
         return {
             message: 'Website verified successfully',
             connection: {
-                id: connection._id.toString(),
+                id: connection.snowflakeId,
                 type: connection.type,
                 value: connection.value,
             },
@@ -571,18 +558,18 @@ export class ProfileController {
         description: 'Connection removed',
     })
     public async removeConnection(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Param() params: ConnectionParamDTO,
     ): Promise<{ message: string }> {
-        const userId = (req as unknown as RequestWithUser).user.id;
+        const userId = req.user.id;
         await assertHttpNotMuted(
             this.muteRepo,
             userId,
             'change profile connections',
         );
         const deleted = await UserConnection.findOneAndDelete({
-            id: new Types.ObjectId(params.connectionId),
-            userId: new Types.ObjectId(userId),
+            snowflakeId: params.connectionId,
+            userId: userId,
         }).exec();
 
         if (deleted === null) {
@@ -606,11 +593,11 @@ export class ProfileController {
     @ApiResponse({ status: 404, description: 'User not found' })
     public async getUserProfileResponseDTO(
         @Param('userId') userId: string,
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<UserProfileResponseDTO> {
-        const viewer = (req as unknown as RequestWithUser).user;
+        const viewer = req.user;
         const viewerId = viewer.id;
-        const user = await this.userRepo.findById(new Types.ObjectId(userId));
+        const user = await this.userRepo.findById(userId);
         if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -625,12 +612,10 @@ export class ProfileController {
             }
 
             const botServerIds =
-                await this.serverMemberRepo.findServerIdsByUserId(
-                    new Types.ObjectId(viewerId),
-                );
+                await this.serverMemberRepo.findServerIdsByUserId(viewerId);
             const userServerIds =
                 await this.serverMemberRepo.findServerIdsByUserId(
-                    getDocumentId(user) as Types.ObjectId,
+                    user.snowflakeId,
                 );
 
             const hasSharedServer = botServerIds.some((botSid) =>
@@ -661,9 +646,9 @@ export class ProfileController {
     public async updateUserBadges(
         @Param('id') id: string,
         @Body() request: AssignBadgesRequestDTO,
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<BadgeOperationResponseDTO> {
-        const adminUser = (req as unknown as RequestWithUser).user;
+        const adminUser = req.user;
         try {
             if (hasPermission(adminUser, 'manageUsers') !== true) {
                 throw new ApiError(
@@ -672,21 +657,18 @@ export class ProfileController {
                 );
             }
 
-            const user = await this.userRepo.findById(new Types.ObjectId(id));
+            const user = await this.userRepo.findById(id);
             if (user === null) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
 
             if (request.badgeIds.length === 0) {
-                await this.userRepo.update(
-                    getDocumentId(user) as Types.ObjectId,
-                    { badges: [] },
-                );
+                await this.userRepo.update(user.snowflakeId, { badges: [] });
 
-                this.wsServer.broadcastToUser(getDocumentIdString(user), {
+                this.wsServer.broadcastToUser(user.snowflakeId, {
                     type: 'user_updated',
                     payload: {
-                        userId: getDocumentIdString(user),
+                        userId: user.snowflakeId,
                         badges: [],
                     },
                 });
@@ -715,22 +697,22 @@ export class ProfileController {
                 );
             }
 
-            await this.userRepo.update(getDocumentId(user) as Types.ObjectId, {
+            await this.userRepo.update(user.snowflakeId, {
                 badges: validBadgeIds,
             });
 
-            this.wsServer.broadcastToUser(getDocumentIdString(user), {
+            this.wsServer.broadcastToUser(user.snowflakeId, {
                 type: 'user_updated',
                 payload: {
-                    userId: getDocumentIdString(user),
+                    userId: user.snowflakeId,
                     badges: validBadgeIds,
                 },
             });
 
             this.logger.info(
-                `User ${adminUser.id} updated badges for user ${getDocumentIdString(user)}`,
+                `User ${adminUser.id} updated badges for user ${user.snowflakeId}`,
                 {
-                    targetUserId: getDocumentId(user) as Types.ObjectId,
+                    targetUserId: user.snowflakeId,
                     badgeCount: validBadgeIds.length,
                     adminUserId: adminUser.id,
                 },
@@ -784,10 +766,10 @@ export class ProfileController {
     @ApiResponse({ status: 400, description: 'Invalid file or dimensions' })
     public async uploadProfilePicture(
         @UploadedFile() profilePicture: Express.Multer.File | undefined,
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<UpdateProfilePictureResponseDTO> {
         try {
-            const userPayload = (req as unknown as RequestWithUser).user;
+            const userPayload = req.user;
             const userId = userPayload.id;
             await assertHttpNotMuted(
                 this.muteRepo,
@@ -809,9 +791,7 @@ export class ProfileController {
                 );
             }
 
-            const user = await this.userRepo.findById(
-                new Types.ObjectId(userId),
-            );
+            const user = await this.userRepo.findById(userId);
             if (user === null) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
@@ -893,10 +873,7 @@ export class ProfileController {
                 await processAndSaveImage(
                     uploadedPath,
                     targetPath,
-                    ImagePresets.profilePicture(
-                        format as 'webp' | 'gif',
-                        isAnimated,
-                    ),
+                    ImagePresets.profilePicture(format, isAnimated),
                 );
 
                 // Delete temp upload
@@ -914,21 +891,15 @@ export class ProfileController {
                 throw new ApiError(500, 'Failed to process profile picture');
             }
 
-            await this.userRepo.updateProfilePicture(
-                new Types.ObjectId(userId),
-                filename,
-            );
+            await this.userRepo.updateProfilePicture(userId, filename);
 
             const profilePictureUrl = `/api/v1/profile/picture/${filename}`;
 
             try {
                 const serverIds =
-                    await this.serverMemberRepo.findServerIdsByUserId(
-                        new Types.ObjectId(userId),
-                    );
-                const friendships = await this.friendshipRepo.findAllByUserId(
-                    new Types.ObjectId(userId),
-                );
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                const friendships =
+                    await this.friendshipRepo.findAllByUserId(userId);
 
                 const updatePayload = {
                     userId,
@@ -1006,10 +977,10 @@ export class ProfileController {
     @ApiResponse({ status: 400, description: 'Invalid file or dimensions' })
     public async uploadBanner(
         @UploadedFile() banner: Express.Multer.File | undefined,
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<UpdateBannerResponseDTO> {
         try {
-            const userPayload = (req as unknown as RequestWithUser).user;
+            const userPayload = req.user;
             const username = userPayload.username;
             const userId = userPayload.id;
             await assertHttpNotMuted(
@@ -1032,9 +1003,7 @@ export class ProfileController {
                 );
             }
 
-            const user = await this.userRepo.findById(
-                new Types.ObjectId(userId),
-            );
+            const user = await this.userRepo.findById(userId);
             if (user === null) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
             }
@@ -1112,10 +1081,7 @@ export class ProfileController {
                 await processAndSaveImage(
                     uploadedPath,
                     targetPath,
-                    ImagePresets.profileBanner(
-                        format as 'webp' | 'gif',
-                        isAnimated,
-                    ),
+                    ImagePresets.profileBanner(format, isAnimated),
                 );
 
                 // Delete temp upload
@@ -1130,21 +1096,15 @@ export class ProfileController {
                 throw new ApiError(500, 'Failed to process banner');
             }
 
-            await this.userRepo.updateBanner(
-                new Types.ObjectId(userId),
-                filename,
-            );
+            await this.userRepo.updateBanner(userId, filename);
 
             const bannerUrl = `/api/v1/profile/banner/${filename}`;
 
             try {
                 const serverIds =
-                    await this.serverMemberRepo.findServerIdsByUserId(
-                        new Types.ObjectId(userId),
-                    );
-                const friendships = await this.friendshipRepo.findAllByUserId(
-                    new Types.ObjectId(userId),
-                );
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                const friendships =
+                    await this.friendshipRepo.findAllByUserId(userId);
 
                 const updatePayload = {
                     username,
@@ -1235,23 +1195,22 @@ export class ProfileController {
     @ApiOperation({ summary: 'Update bio' })
     @ApiOkResponse({ type: UpdateBioResponseDTO, description: 'Bio updated' })
     public async updateBio(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: UpdateBioRequestDTO,
     ): Promise<{ message: string; bio: string }> {
-        const userId = (req as unknown as RequestWithUser).user.id;
+        const userId = req.user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your bio');
         const { bio } = body;
 
-        await this.userRepo.update(new Types.ObjectId(userId), {
+        await this.userRepo.update(userId, {
             bio: bio !== '' ? bio : '',
         });
 
-        const userOid = new Types.ObjectId(userId);
         try {
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userOid);
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userOid);
+                await this.friendshipRepo.findAllByUserId(userId);
 
             const payload = {
                 userId,
@@ -1303,23 +1262,22 @@ export class ProfileController {
         description: 'Pronouns updated',
     })
     public async updatePronouns(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: UpdatePronounsRequestDTO,
     ): Promise<{ message: string; pronouns: string }> {
-        const userId = (req as unknown as RequestWithUser).user.id;
+        const userId = req.user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your pronouns');
         const { pronouns } = body;
 
-        await this.userRepo.update(new Types.ObjectId(userId), {
+        await this.userRepo.update(userId, {
             pronouns: pronouns !== '' ? pronouns : '',
         });
 
-        const userOid = new Types.ObjectId(userId);
         try {
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userOid);
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userOid);
+                await this.friendshipRepo.findAllByUserId(userId);
 
             const payload = {
                 userId,
@@ -1372,10 +1330,10 @@ export class ProfileController {
     })
     @ApiResponse({ status: 400, description: 'Invalid display name' })
     public async updateDisplayName(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: UpdateDisplayNameRequestDTO,
     ): Promise<{ message: string; displayName: string | null }> {
-        const userPayload = (req as unknown as RequestWithUser).user;
+        const userPayload = req.user;
         const userId = userPayload.id;
         const username = userPayload.username;
         await assertHttpNotMuted(
@@ -1385,19 +1343,15 @@ export class ProfileController {
         );
         const { displayName } = body;
 
-        await this.userRepo.updateDisplayName(
-            new Types.ObjectId(userId),
-            displayName || null,
-        );
+        await this.userRepo.updateDisplayName(userId, displayName || null);
 
-        const userOid = new Types.ObjectId(userId);
-        const updatedUser = await this.userRepo.findById(userOid);
+        const updatedUser = await this.userRepo.findById(userId);
 
         try {
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userOid);
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userOid);
+                await this.friendshipRepo.findAllByUserId(userId);
 
             const payload = {
                 username,
@@ -1453,17 +1407,16 @@ export class ProfileController {
     })
     @ApiResponse({ status: 400, description: 'Invalid status' })
     public async updateCustomStatus(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: UpdateStatusRequestDTO,
     ): Promise<{ customStatus: SerializedCustomStatus | null }> {
-        const userPayload = (req as unknown as RequestWithUser).user;
+        const userPayload = req.user;
         const userId = userPayload.id;
         const username = userPayload.username;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your status');
         const { text, emoji, expiresAt, expiresInMinutes, clear } = body;
-        const userOid = new Types.ObjectId(userId);
 
-        const user = await this.userRepo.findById(userOid);
+        const user = await this.userRepo.findById(userId);
         if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -1473,14 +1426,14 @@ export class ProfileController {
             ((text === undefined || String(text).trim().length === 0) &&
                 (emoji === undefined || String(emoji).trim().length === 0))
         ) {
-            await this.userRepo.updateCustomStatus(userOid, null);
+            await this.userRepo.updateCustomStatus(userId, null);
 
             try {
                 // Broadcast status clear to friends and server members
                 const serverIds =
-                    await this.serverMemberRepo.findServerIdsByUserId(userOid);
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
                 const friendships =
-                    await this.friendshipRepo.findAllByUserId(userOid);
+                    await this.friendshipRepo.findAllByUserId(userId);
 
                 const payload = { username, status: null };
 
@@ -1549,9 +1502,9 @@ export class ProfileController {
             newStatus.emoji = emoji;
         }
 
-        await this.userRepo.updateCustomStatus(userOid, newStatus);
+        await this.userRepo.updateCustomStatus(userId, newStatus);
 
-        const updatedUser = await this.userRepo.findById(userOid);
+        const updatedUser = await this.userRepo.findById(userId);
         const serialized =
             updatedUser !== null
                 ? resolveSerializedCustomStatus(updatedUser.customStatus)
@@ -1560,9 +1513,9 @@ export class ProfileController {
         try {
             // Broadcast status update to friends and server members
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userOid);
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userOid);
+                await this.friendshipRepo.findAllByUserId(userId);
 
             const payload = { username, status: serialized };
 
@@ -1601,27 +1554,26 @@ export class ProfileController {
         description: 'Status cleared',
     })
     public async clearCustomStatus(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<{ customStatus: null }> {
-        const userPayload = (req as unknown as RequestWithUser).user;
+        const userPayload = req.user;
         const userId = userPayload.id;
         const username = userPayload.username;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your status');
-        const userOid = new Types.ObjectId(userId);
 
-        const user = await this.userRepo.findById(userOid);
+        const user = await this.userRepo.findById(userId);
         if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        await this.userRepo.updateCustomStatus(userOid, null);
+        await this.userRepo.updateCustomStatus(userId, null);
 
         try {
             // Broadcast status clear to friends and server members
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userOid);
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userOid);
+                await this.friendshipRepo.findAllByUserId(userId);
 
             const payload = { username, status: null };
 
@@ -1714,7 +1666,7 @@ export class ProfileController {
         description: 'Style updated',
     })
     public async updateUsernameStyle(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: UpdateStyleRequestDTO,
     ): Promise<{
         message: string;
@@ -1730,32 +1682,29 @@ export class ProfileController {
             intensity: number;
         };
     }> {
-        const userPayload = (req as unknown as RequestWithUser).user;
+        const userPayload = req.user;
         const userId = userPayload.id;
         await assertHttpNotMuted(
             this.muteRepo,
             userId,
             'change your profile style',
         );
-        const userOid = new Types.ObjectId(userId);
 
         const { usernameFont, usernameGradient, usernameGlow } = body;
 
-        await this.userRepo.updateUsernameStyle(userOid, {
+        await this.userRepo.updateUsernameStyle(userId, {
             usernameFont,
             usernameGradient,
             usernameGlow,
         });
 
-        const updatedUser = await this.userRepo.findById(userOid);
+        const updatedUser = await this.userRepo.findById(userId);
 
         try {
-            const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
-                new Types.ObjectId(userId),
-            );
-            const friendships = await this.friendshipRepo.findAllByUserId(
-                new Types.ObjectId(userId),
-            );
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userId);
 
             const payload = {
                 userId,
@@ -1816,7 +1765,7 @@ export class ProfileController {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        return { id: getDocumentIdString(user) };
+        return { id: user.snowflakeId };
     }
 
     @Post('bulk')
@@ -1826,11 +1775,10 @@ export class ProfileController {
     @ApiResponse({ status: 200, type: [UserProfileResponseDTO] })
     public async bulkLookupUsers(
         @Body() body: { ids: string[] },
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<UserProfileResponseDTO[]> {
-        const viewerId = (req as unknown as RequestWithUser).user.id;
-        const objectIds = body.ids.map((id) => new Types.ObjectId(id));
-        const users = await this.userRepo.findByIds(objectIds);
+        const viewerId = req.user.id;
+        const users = await this.userRepo.findByIds(body.ids);
 
         const profiles = await Promise.all(
             users.map((user) => this.mapToProfile(user, { viewerId })),
@@ -1850,13 +1798,12 @@ export class ProfileController {
     })
     @ApiResponse({ status: 409, description: 'Username taken' })
     public async changeUsername(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: ChangeUsernameRequestDTO,
     ): Promise<{ message: string; username: string }> {
-        const userPayload = (req as unknown as RequestWithUser).user;
+        const userPayload = req.user;
         const userId = userPayload.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your username');
-        const userOid = new Types.ObjectId(userId);
         const { newUsername } = body;
 
         const existingUser = await this.userRepo.findByUsername(newUsername);
@@ -1864,22 +1811,22 @@ export class ProfileController {
             throw new ApiError(409, ErrorMessages.PROFILE.USERNAME_TAKEN);
         }
 
-        const user = await this.userRepo.findById(userOid);
+        const user = await this.userRepo.findById(userId);
         if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const oldUsername = user.username ?? '';
 
-        await this.userRepo.updateUsername(userOid, newUsername);
+        await this.userRepo.updateUsername(userId, newUsername);
 
         // Emit socket event
         try {
-            const updatedUser = await this.userRepo.findById(userOid);
+            const updatedUser = await this.userRepo.findById(userId);
             const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userOid);
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
-                await this.friendshipRepo.findAllByUserId(userOid);
+                await this.friendshipRepo.findAllByUserId(userId);
 
             const payload = {
                 userId,
@@ -1941,10 +1888,10 @@ export class ProfileController {
         description: 'Language updated',
     })
     public async updateLanguage(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: UpdateLanguageRequestDTO,
     ): Promise<{ message: string; language: string }> {
-        const username = (req as unknown as RequestWithUser).user.username;
+        const username = req.user.username;
         const { language } = body;
 
         if (language === '') {
@@ -1956,10 +1903,7 @@ export class ProfileController {
             throw new ApiError(404, 'User not found');
         }
 
-        await this.userRepo.updateLanguage(
-            getDocumentId(user) as Types.ObjectId,
-            language,
-        );
+        await this.userRepo.updateLanguage(user.snowflakeId, language);
 
         return {
             message: 'Language preference updated successfully',

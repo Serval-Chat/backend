@@ -120,6 +120,7 @@ describe('ProfileController mute restrictions', () => {
         const targetUserId = new Types.ObjectId();
         userRepo.findById.mockResolvedValue({
             _id: targetUserId,
+            snowflakeId: targetUserId.toHexString(),
             username: 'target',
             displayName: 'Target User',
             createdAt: new Date(),

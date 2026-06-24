@@ -1,30 +1,29 @@
-import type { Types } from 'mongoose';
 import type { IAdminNote } from '@/models/AdminNote';
 
 export interface IAdminNoteRepository {
     create(data: {
-        targetId: Types.ObjectId;
+        targetId: string;
         targetType: 'User' | 'Server';
-        adminId: Types.ObjectId;
+        adminId: string;
         content: string;
     }): Promise<IAdminNote>;
 
-    findById(id: Types.ObjectId): Promise<IAdminNote | null>;
+    findById(id: string): Promise<IAdminNote | null>;
 
     findByTarget(
-        targetId: Types.ObjectId,
+        targetId: string,
         targetType: 'User' | 'Server',
     ): Promise<IAdminNote[]>;
 
     update(
-        id: Types.ObjectId,
-        adminId: Types.ObjectId,
+        id: string,
+        adminId: string,
         content: string,
     ): Promise<IAdminNote | null>;
 
     softDelete(data: {
-        id: Types.ObjectId;
-        deletedBy: Types.ObjectId;
+        id: string;
+        deletedBy: string;
         deleteReason: string;
     }): Promise<IAdminNote | null>;
 }

@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { Types } from 'mongoose';
+import { generateSnowflakeId } from '@/utils/snowflake';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 
 jest.mock('@/models/Bot', () => ({
@@ -24,8 +24,8 @@ const wsServer = {
 };
 
 const req = {
-    user: { id: new Types.ObjectId().toHexString(), isBot: true },
-} as unknown as AuthenticatedRequest;
+    user: { id: generateSnowflakeId(), isBot: true },
+} as AuthenticatedRequest;
 
 describe('ApplicationController', () => {
     let controller: ApplicationController;
@@ -50,13 +50,13 @@ describe('ApplicationController', () => {
     });
 
     it('setMyCommands lowercases names and overwrites existing commands', async () => {
-        const botId = new Types.ObjectId();
+        const botId = generateSnowflakeId();
         (Bot.findOne as jest.Mock).mockReturnValue({
             lean: jest
                 .fn()
-                .mockResolvedValue({ _id: botId, userId: req.user.id }),
+                .mockResolvedValue({ snowflakeId: botId, userId: req.user.id }),
         });
-        slashCommandRepo.create.mockResolvedValue({ _id: 'cmd-1' });
+        slashCommandRepo.create.mockResolvedValue({ snowflakeId: 'cmd-1' });
 
         await controller.setMyCommands(req, {
             commands: [{ name: 'PING', description: 'Ping command' }],
@@ -69,15 +69,15 @@ describe('ApplicationController', () => {
     });
 
     it('broadcasts command updates to servers the bot is in', async () => {
-        const botId = new Types.ObjectId();
-        const botUserId = new Types.ObjectId();
-        const serverId = new Types.ObjectId();
+        const botId = generateSnowflakeId();
+        const botUserId = generateSnowflakeId();
+        const serverId = generateSnowflakeId();
         (Bot.findOne as jest.Mock).mockReturnValue({
             lean: jest
                 .fn()
-                .mockResolvedValue({ _id: botId, userId: botUserId }),
+                .mockResolvedValue({ snowflakeId: botId, userId: botUserId }),
         });
-        slashCommandRepo.create.mockResolvedValue({ _id: 'cmd-1' });
+        slashCommandRepo.create.mockResolvedValue({ snowflakeId: 'cmd-1' });
         serverMemberRepo.findServerIdsByUserId.mockResolvedValue([serverId]);
 
         await controller.setMyCommands(req, {
@@ -90,7 +90,7 @@ describe('ApplicationController', () => {
                 type: 'commands_updated',
                 payload: {
                     serverId: serverId.toString(),
-                    botId: botId.toString(),
+                    botId,
                 },
             },
         );

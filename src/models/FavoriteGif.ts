@@ -1,9 +1,11 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import type { Document, Types } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type { Document } from 'mongoose';
 import { Schema } from 'mongoose';
 
 export interface IFavoriteGif extends Document {
-    userId: Types.ObjectId;
+    snowflakeId: string;
+    userId: string;
     klipyId: string;
     slug?: string;
     url: string;
@@ -16,8 +18,7 @@ export interface IFavoriteGif extends Document {
 const schema = new Schema<IFavoriteGif>(
     {
         userId: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
             index: true,
         },
@@ -33,6 +34,8 @@ const schema = new Schema<IFavoriteGif>(
 );
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 schema.index({ userId: 1, klipyId: 1 }, { unique: true });
 
 export const FavoriteGif = {

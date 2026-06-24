@@ -1,4 +1,5 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import { Schema, model } from 'mongoose';
 import type { Document, Types } from 'mongoose';
 
@@ -67,11 +68,12 @@ export const DEFAULT_BOT_PERMISSIONS: BotPermissions = {
 };
 
 export interface IBot extends Document {
+    snowflakeId: string;
     _id: Types.ObjectId;
     clientId: string;
     botTokenHash: string;
-    userId: Types.ObjectId;
-    ownerId: Types.ObjectId;
+    userId: string;
+    ownerId: string;
     botPermissions: BotPermissions;
     createdAt: Date;
     updatedAt: Date;
@@ -86,8 +88,8 @@ const schema = new Schema<IBot>(
             select: false,
             index: true,
         },
-        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-        ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        userId: { type: String, required: true },
+        ownerId: { type: String, required: true },
         botPermissions: {
             readMessages: { type: Boolean, default: false },
             sendMessages: { type: Boolean, default: false },
@@ -126,5 +128,14 @@ const schema = new Schema<IBot>(
 );
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
+
+schema.virtual('userIdUser', {
+    ref: 'User',
+    localField: 'userId',
+    foreignField: 'snowflakeId',
+    justOne: true,
+});
 
 export const Bot = model<IBot>('Bot', schema);

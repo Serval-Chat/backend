@@ -47,10 +47,7 @@ export const createMetricsMiddleware = (logger?: ILogger) => {
             }
 
             // Call original end function
-            return originalEnd.apply(
-                this,
-                args as Parameters<Response['end']>,
-            ) as Response;
+            return originalEnd.apply(this, args as Parameters<Response['end']>);
         } as Response['end'];
 
         next();

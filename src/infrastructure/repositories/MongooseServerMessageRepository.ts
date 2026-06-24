@@ -11,9 +11,10 @@ import type { IPoll } from '@/models/Message';
 import { type QueryFilter, Types, ClientSession } from 'mongoose';
 import type { ReactionData } from '@/di/interfaces/IReactionRepository';
 import type { IMessageAttachment } from '@/models/Attachment';
+import { isValidSnowflakeId } from '@/utils/snowflake';
 
-type PopulatedServerMessageDoc = Omit<IServerMessage, 'repliedToMessageId'> & {
-    repliedToMessageId?: Types.ObjectId | PopulatedServerMessageDoc;
+type PopulatedServerMessageDoc = IServerMessage & {
+    repliedToMessage?: PopulatedServerMessageDoc;
 };
 
 // Mongoose Server Message repository
@@ -24,19 +25,14 @@ export class MongooseServerMessageRepository
     implements IServerMessageRepository
 {
     private transformMessage(msg: PopulatedServerMessageDoc): IServerMessage {
-        const transformed = { ...msg } as unknown as IServerMessage;
+        const transformed = { ...msg } as IServerMessage;
+        delete (transformed as Partial<PopulatedServerMessageDoc>)
+            .repliedToMessage;
 
-        if (msg.repliedToMessageId) {
-            if (msg.repliedToMessageId instanceof Types.ObjectId) {
-                transformed.repliedToMessageId = msg.repliedToMessageId;
-            } else if (typeof msg.repliedToMessageId === 'object') {
-                // It's a populated document
-                const populated =
-                    msg.repliedToMessageId as PopulatedServerMessageDoc;
-                transformed.repliedToMessageId = populated._id;
-                transformed.referenced_message =
-                    this.transformMessage(populated);
-            }
+        if (msg.repliedToMessage) {
+            transformed.referenced_message = this.transformMessage(
+                msg.repliedToMessage,
+            );
         }
         return transformed;
     }
@@ -54,7 +50,7 @@ export class MongooseServerMessageRepository
                     m.referenced_message === undefined &&
                     m.replyToId !== undefined,
             )
-            .map((m) => m.replyToId?.toString() ?? '')
+            .map((m) => m.replyToId ?? '')
             .filter((id) => id !== '');
 
         // Skip legacy replyToId lookup if all messages are modern (populated via repliedToMessageId)
@@ -62,9 +58,9 @@ export class MongooseServerMessageRepository
 
         // Legacy replyToId references are only populated one level deep; nested replies within legacy messages will not have referenced_message set.
         const replyDocs = (await ServerMessage.find({
-            _id: { $in: replyToIds },
-        }).lean()) as unknown as PopulatedServerMessageDoc[];
-        const replyMap = new Map(replyDocs.map((d) => [d._id.toString(), d]));
+            snowflakeId: { $in: replyToIds },
+        }).lean()) as PopulatedServerMessageDoc[];
+        const replyMap = new Map(replyDocs.map((d) => [d.snowflakeId, d]));
 
         return transformed.map((m) => {
             if (
@@ -92,8 +88,8 @@ export class MongooseServerMessageRepository
             isWebhook?: boolean;
             webhookUsername?: string;
             webhookAvatarUrl?: string;
-            replyToId?: string | Types.ObjectId;
-            repliedToMessageId?: Types.ObjectId;
+            replyToId?: string;
+            repliedToMessageId?: string;
             embeds?: IEmbed[];
             attachments?: IMessageAttachment[];
             interaction?: {
@@ -101,7 +97,7 @@ export class MongooseServerMessageRepository
                 options: { name: string; value: InteractionValue }[];
                 user: { id: string; username: string };
             };
-            stickerId?: string | Types.ObjectId;
+            stickerId?: string;
             poll?: IPoll;
             noEmbeds?: boolean;
         },
@@ -109,53 +105,42 @@ export class MongooseServerMessageRepository
     ): Promise<IServerMessage> {
         const createData = {
             ...data,
-            serverId: new Types.ObjectId(data.serverId),
-            channelId: new Types.ObjectId(data.channelId),
-            senderId: new Types.ObjectId(data.senderId),
-            replyToId:
-                data.replyToId !== undefined && data.replyToId !== ''
-                    ? new Types.ObjectId(data.replyToId)
-                    : undefined,
-            stickerId:
-                data.stickerId !== undefined && data.stickerId !== ''
-                    ? new Types.ObjectId(data.stickerId)
-                    : undefined,
+            serverId: data.serverId.toString(),
+            channelId: data.channelId.toString(),
+            senderId: data.senderId.toString(),
         };
         const message = new ServerMessage(createData);
         const savedMessage = await message.save({ session });
         return this.transformMessage(
             savedMessage.toObject({
                 transform: false,
-            }) as unknown as PopulatedServerMessageDoc,
+            }),
         );
     }
 
-    public async delete(id: Types.ObjectId): Promise<boolean> {
+    public async delete(id: string): Promise<boolean> {
         const result = await ServerMessage.updateOne(
-            { _id: id },
+            { snowflakeId: id },
             { $set: { deletedAt: new Date() } },
         );
         return result.modifiedCount > 0;
     }
 
-    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: string): Promise<number> {
         const result = await ServerMessage.deleteMany({ serverId });
         return result.deletedCount;
     }
 
-    public async deleteByChannelId(channelId: Types.ObjectId): Promise<number> {
+    public async deleteByChannelId(channelId: string): Promise<number> {
         const result = await ServerMessage.deleteMany({ channelId });
         return result.deletedCount;
     }
 
-    public async bulkDelete(
-        channelId: Types.ObjectId,
-        ids: Types.ObjectId[],
-    ): Promise<number> {
+    public async bulkDelete(channelId: string, ids: string[]): Promise<number> {
         const result = await ServerMessage.updateMany(
             {
-                channelId: new Types.ObjectId(channelId.toString()),
-                _id: { $in: ids },
+                channelId: channelId,
+                snowflakeId: { $in: ids },
             },
             { $set: { deletedAt: new Date() } },
         );
@@ -163,34 +148,36 @@ export class MongooseServerMessageRepository
     }
 
     public async findById(
-        id: Types.ObjectId,
+        id: string,
         includeDeleted?: boolean,
     ): Promise<IServerMessage | null> {
-        const filter: QueryFilter<IServerMessage> = { _id: id };
+        const filter: QueryFilter<IServerMessage> = { snowflakeId: id };
         if (includeDeleted !== true) {
             filter.deletedAt = { $exists: false };
         }
 
         const message = (await ServerMessage.findOne(filter)
             .populate({
-                path: 'repliedToMessageId',
-                populate: { path: 'repliedToMessageId' },
+                path: 'repliedToMessage',
+                populate: { path: 'repliedToMessage' },
             })
-            .lean()) as unknown as PopulatedServerMessageDoc | null;
+            .lean()) as PopulatedServerMessageDoc | null;
         if (!message) return null;
 
         // Fetch reactions for this message
-        const reactions = await this.getReactionsForMessages([message._id]);
+        const reactions = await this.getReactionsForMessages([
+            message.snowflakeId,
+        ]);
         const msg = {
             ...message,
-            reactions: reactions[message._id.toString()] || [],
-        } as unknown as PopulatedServerMessageDoc;
+            reactions: reactions[message.snowflakeId] || [],
+        } as PopulatedServerMessageDoc;
         return this.transformMessage(msg);
     }
 
     // Find messages in a channel with pagination
     public async findByChannelId(
-        channelId: Types.ObjectId,
+        channelId: string,
         limit = 50,
         before?: string,
         around?: string,
@@ -201,7 +188,7 @@ export class MongooseServerMessageRepository
 
         if (around !== undefined && around !== '') {
             const targetFilter: QueryFilter<IServerMessage> = {
-                _id: new Types.ObjectId(around),
+                snowflakeId: around,
             };
             if (includeDeleted !== true) {
                 targetFilter.deletedAt = { $exists: false };
@@ -215,7 +202,7 @@ export class MongooseServerMessageRepository
             const targetDate = targetMessage.createdAt;
 
             const commonFilter: QueryFilter<IServerMessage> = {
-                channelId: new Types.ObjectId(channelId.toString()),
+                channelId: channelId,
             };
             if (includeDeleted !== true) {
                 commonFilter.deletedAt = { $exists: false };
@@ -228,10 +215,10 @@ export class MongooseServerMessageRepository
                 .sort({ createdAt: -1 })
                 .limit(Math.floor(limit / 2))
                 .populate({
-                    path: 'repliedToMessageId',
-                    populate: { path: 'repliedToMessageId' },
+                    path: 'repliedToMessage',
+                    populate: { path: 'repliedToMessage' },
                 })
-                .lean()) as unknown as PopulatedServerMessageDoc[];
+                .lean()) as PopulatedServerMessageDoc[];
 
             const afterMessages = (await ServerMessage.find({
                 ...commonFilter,
@@ -240,10 +227,10 @@ export class MongooseServerMessageRepository
                 .sort({ createdAt: 1 })
                 .limit(Math.ceil(limit / 2))
                 .populate({
-                    path: 'repliedToMessageId',
-                    populate: { path: 'repliedToMessageId' },
+                    path: 'repliedToMessage',
+                    populate: { path: 'repliedToMessage' },
                 })
-                .lean()) as unknown as PopulatedServerMessageDoc[];
+                .lean()) as PopulatedServerMessageDoc[];
 
             // Sort chronologically
             messages = [...beforeMessages, ...afterMessages].sort(
@@ -251,23 +238,21 @@ export class MongooseServerMessageRepository
             );
         } else {
             const query: QueryFilter<IServerMessage> = {
-                channelId: new Types.ObjectId(channelId.toString()),
+                channelId: channelId,
             };
             if (includeDeleted !== true) {
                 query.deletedAt = { $exists: false };
             }
 
             if (before !== undefined && before !== '') {
-                const isValidObjectId = /^[a-f\d]{24}$/i.test(before);
-                if (isValidObjectId) {
-                    query._id = { $lt: new Types.ObjectId(before) };
+                if (isValidSnowflakeId(before)) {
+                    query.snowflakeId = { $lt: before };
                 } else {
                     query.createdAt = { $lt: new Date(before) };
                 }
             } else if (after !== undefined && after !== '') {
-                const isValidObjectId = /^[a-f\d]{24}$/i.test(after);
-                if (isValidObjectId) {
-                    query._id = { $gt: new Types.ObjectId(after) };
+                if (isValidSnowflakeId(after)) {
+                    query.snowflakeId = { $gt: after };
                 } else {
                     query.createdAt = { $gt: new Date(after) };
                 }
@@ -279,10 +264,10 @@ export class MongooseServerMessageRepository
                 })
                 .limit(limit)
                 .populate({
-                    path: 'repliedToMessageId',
-                    populate: { path: 'repliedToMessageId' },
+                    path: 'repliedToMessage',
+                    populate: { path: 'repliedToMessage' },
                 })
-                .lean()) as unknown as PopulatedServerMessageDoc[];
+                .lean()) as PopulatedServerMessageDoc[];
 
             messages = docs;
             if (after === undefined || after === '') {
@@ -296,25 +281,29 @@ export class MongooseServerMessageRepository
     }
 
     public async update(
-        id: Types.ObjectId,
+        id: string,
         data: Partial<IServerMessage>,
     ): Promise<IServerMessage | null> {
-        const updated = (await ServerMessage.findByIdAndUpdate(id, data, {
-            new: true,
-        })
+        const updated = (await ServerMessage.findOneAndUpdate(
+            { snowflakeId: id },
+            data,
+            { new: true },
+        )
             .populate({
-                path: 'repliedToMessageId',
-                populate: { path: 'repliedToMessageId' },
+                path: 'repliedToMessage',
+                populate: { path: 'repliedToMessage' },
             })
-            .lean()) as unknown as PopulatedServerMessageDoc | null;
+            .lean()) as PopulatedServerMessageDoc | null;
         if (!updated) return null;
 
         // Fetch reactions
-        const reactions = await this.getReactionsForMessages([updated._id]);
+        const reactions = await this.getReactionsForMessages([
+            updated.snowflakeId,
+        ]);
         const msg = {
             ...updated,
-            reactions: reactions[updated._id.toString()] || [],
-        } as unknown as PopulatedServerMessageDoc;
+            reactions: reactions[updated.snowflakeId] || [],
+        } as PopulatedServerMessageDoc;
         return this.transformMessage(msg);
     }
 
@@ -322,7 +311,7 @@ export class MongooseServerMessageRepository
     //
     // Groups reactions by emoji type and collects user IDs
     private async getReactionsForMessages(
-        messageIds: (string | Types.ObjectId)[],
+        messageIds: string[],
     ): Promise<Record<string, ReactionData[]>> {
         const reactions = await Reaction.aggregate([
             {
@@ -374,7 +363,7 @@ export class MongooseServerMessageRepository
     }
 
     public async countByChannelId(
-        channelId: Types.ObjectId,
+        channelId: string,
         includeDeleted?: boolean,
     ): Promise<number> {
         const filter: QueryFilter<IServerMessage> = { channelId };
@@ -384,22 +373,22 @@ export class MongooseServerMessageRepository
         return await ServerMessage.countDocuments(filter);
     }
 
-    public async countByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async countByServerId(serverId: string): Promise<number> {
         return await ServerMessage.countDocuments({ serverId });
     }
 
     public findCursorByChannelId(
-        channelId: Types.ObjectId,
+        channelId: string,
     ): AsyncIterable<IServerMessage> {
         return ServerMessage.find({ channelId })
             .sort({ createdAt: 1 })
             .lean()
-            .cursor() as unknown as AsyncIterable<IServerMessage>;
+            .cursor();
     }
 
     public async findLastByChannelAndUser(
-        channelId: Types.ObjectId,
-        userId: Types.ObjectId,
+        channelId: string,
+        userId: string,
         includeDeleted?: boolean,
     ): Promise<IServerMessage | null> {
         const filter: QueryFilter<IServerMessage> = {
@@ -412,16 +401,14 @@ export class MongooseServerMessageRepository
         const doc = await ServerMessage.findOne(filter)
             .sort({ createdAt: -1 })
             .lean();
-        return doc
-            ? this.transformMessage(doc as unknown as PopulatedServerMessageDoc)
-            : null;
+        return doc ? this.transformMessage(doc) : null;
     }
     public async findPinnedByChannelId(
-        channelId: Types.ObjectId,
+        channelId: string,
         includeDeleted?: boolean,
     ): Promise<IServerMessage[]> {
         const filter: QueryFilter<IServerMessage> = {
-            channelId: new Types.ObjectId(channelId.toString()),
+            channelId: channelId,
             $or: [{ isPinned: true }, { isSticky: true }],
         };
         if (includeDeleted !== true) {
@@ -430,10 +417,10 @@ export class MongooseServerMessageRepository
         const messages = (await ServerMessage.find(filter)
             .sort({ createdAt: -1 })
             .populate({
-                path: 'repliedToMessageId',
-                populate: { path: 'repliedToMessageId' },
+                path: 'repliedToMessage',
+                populate: { path: 'repliedToMessage' },
             })
-            .lean()) as unknown as PopulatedServerMessageDoc[];
+            .lean()) as PopulatedServerMessageDoc[];
         if (messages.length === 0) return [];
         return await this.transformMessages(messages);
     }

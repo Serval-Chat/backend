@@ -4,7 +4,6 @@ import {
     Post,
     Query,
     Body,
-    Req,
     UseGuards,
     Inject,
 } from '@nestjs/common';
@@ -18,8 +17,6 @@ import {
 import { TYPES } from '@/di/types';
 import { KlipyService } from '@/services/KlipyService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import type { Request as ExpressRequest } from 'express';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ToggleFavoriteGifRequestDTO } from '@/controllers/dto/klipy.request.dto';
 import {

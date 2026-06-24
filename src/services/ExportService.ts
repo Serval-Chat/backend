@@ -1,6 +1,5 @@
 import { injectable, inject } from 'inversify';
 import { OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
-import { Types } from 'mongoose';
 import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
@@ -17,6 +16,7 @@ import { WsServer } from '@/ws/server';
 import { randomBytes } from 'crypto';
 import { type IExportJob, ExportJob } from '@/models/ExportJob';
 import { SERVER_URL } from '@/config/env';
+import { SYSTEM_SENDER_ID } from '@/utils/snowflake';
 
 @injectable()
 export class ExportService implements OnModuleInit, OnModuleDestroy {
@@ -96,7 +96,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         if (this.cleanupInterval) clearInterval(this.cleanupInterval);
     }
 
-    public async getExportState(channelId: Types.ObjectId) {
+    public async getExportState(channelId: string) {
         const channel = await this.channelRepo.findById(channelId);
         if (!channel) return 'unknown';
 
@@ -124,9 +124,9 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
     }
 
     public async requestExport(
-        serverId: Types.ObjectId,
-        channelId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        channelId: string,
+        userId: string,
     ) {
         const state = await this.getExportState(channelId);
         if (typeof state === 'object' && state.state !== 'available') {
@@ -160,7 +160,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
                 await this.runExport(job);
             } catch (err) {
                 this.logger.error(
-                    `[ExportService] Failed to process job ${job._id}`,
+                    `[ExportService] Failed to process job ${job.snowflakeId}`,
                     err,
                 );
                 await this.handleJobFailure(
@@ -172,7 +172,9 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
     }
 
     private async runExport(job: IExportJob) {
-        await this.exportJobRepo.update(job._id, { status: 'in_progress' });
+        await this.exportJobRepo.update(job.snowflakeId, {
+            status: 'in_progress',
+        });
 
         const channel = await this.channelRepo.findById(job.channelId);
         if (!channel) {
@@ -181,7 +183,10 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         }
 
         const fileName = `channel-${job.channelId.toString()}.json`;
-        const filePath = path.join(this.EXPORT_DIR, `${job._id}-${fileName}`);
+        const filePath = path.join(
+            this.EXPORT_DIR,
+            `${job.snowflakeId}-${fileName}`,
+        );
 
         const writeStream = createWriteStream(filePath);
         try {
@@ -222,7 +227,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         const token = randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + 48 * 3600 * 1000);
 
-        await this.exportJobRepo.update(job._id, {
+        await this.exportJobRepo.update(job.snowflakeId, {
             status: 'completed',
             filePath,
             downloadToken: token,
@@ -236,7 +241,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
     private async handleJobFailure(job: IExportJob, error: string) {
         const attempts = job.attempts + 1;
         if (attempts >= job.maxAttempts) {
-            await this.exportJobRepo.update(job._id, {
+            await this.exportJobRepo.update(job.snowflakeId, {
                 status: 'failed',
                 attempts,
                 error,
@@ -252,7 +257,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
                 Date.now() + delayInMinutes * 60 * 1000,
             );
 
-            await this.exportJobRepo.update(job._id, {
+            await this.exportJobRepo.update(job.snowflakeId, {
                 status: 'queued',
                 attempts,
                 error,
@@ -283,22 +288,22 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
             );
         }
 
-        await this.pingService.addPing(user._id, {
+        await this.pingService.addPing(user.snowflakeId, {
             type: 'export_status',
             sender: 'System',
-            senderId: new Types.ObjectId().toString(),
+            senderId: SYSTEM_SENDER_ID,
             serverId: job.serverId.toString(),
             channelId: job.channelId.toString(),
             message: {
-                id: job._id.toString(),
+                id: job.snowflakeId,
                 text: `Message export for **${server.name}** / \`#${channel.name}\` is complete! Please open your mail inbox to download the file. Note: the file will be deleted in 48 hours.`,
                 type: 'success',
             },
         });
 
-        this.wsServer.broadcastToUser(user._id.toString(), {
+        this.wsServer.broadcastToUser(user.snowflakeId, {
             type: 'export_completed',
-            payload: { channelId: job.channelId, jobId: job._id },
+            payload: { channelId: job.channelId, jobId: job.snowflakeId },
         });
     }
 
@@ -321,14 +326,14 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
             );
         }
 
-        await this.pingService.addPing(user._id, {
+        await this.pingService.addPing(user.snowflakeId, {
             type: 'export_status',
             sender: 'System',
-            senderId: new Types.ObjectId().toString(),
+            senderId: SYSTEM_SENDER_ID,
             serverId: job.serverId.toString(),
             channelId: job.channelId.toString(),
             message: {
-                id: job._id.toString(),
+                id: job.snowflakeId,
                 text: `We've failed to export messages for \`#${channel.name}\` on **${server.name}** after multiple attempts. Please try again from channel settings.`,
                 type: 'failure',
             },
@@ -336,7 +341,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
     }
 
     public async handleChannelDeletion(
-        channelId: Types.ObjectId,
+        channelId: string,
         channelNameAtDeletion: string,
         serverNameAtDeletion: string,
     ) {
@@ -345,7 +350,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
             status: { $in: ['queued', 'in_progress'] },
         });
         for (const job of jobs) {
-            await this.exportJobRepo.update(job._id, {
+            await this.exportJobRepo.update(job.snowflakeId, {
                 status: 'cancelled',
                 error: 'Channel deleted',
             });
@@ -364,12 +369,12 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
                     );
                 }
 
-                await this.pingService.addPing(user._id, {
+                await this.pingService.addPing(user.snowflakeId, {
                     type: 'export_status',
                     sender: 'System',
-                    senderId: new Types.ObjectId().toString(),
+                    senderId: SYSTEM_SENDER_ID,
                     message: {
-                        id: job._id.toString(),
+                        id: job.snowflakeId,
                         text: `Your message export for \`#${channelNameAtDeletion}\` on **${serverNameAtDeletion}** was cancelled because the channel was deleted before the export could complete.`,
                         type: 'cancelled',
                     },
@@ -399,7 +404,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
                         ),
                     );
             }
-            await this.exportJobRepo.delete(job._id);
+            await this.exportJobRepo.delete(job.snowflakeId);
         }
     }
 }

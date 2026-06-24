@@ -8,7 +8,6 @@ import {
     UseGuards,
     Inject,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import {
     IWarningRepository,
@@ -23,16 +22,10 @@ import {
     ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { Request } from 'express';
+import type { AuthenticatedRequest } from '@/middleware/auth';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { UserWarningResponseDTO } from './dto/warning.response.dto';
-import { JWTPayload } from '@/utils/jwt';
-import { getDocumentIdString } from '@/utils/mongooseId';
-
-interface RequestWithUser extends Request {
-    user: JWTPayload;
-}
 
 @ApiTags('Warnings')
 @ApiBearerAuth()
@@ -49,7 +42,7 @@ export class UserWarningController {
     // Hides the specific issuer identity for privacy, labeling all warnings as issued by 'System'
     private sanitizeWarning(warning: IWarning): UserWarningResponseDTO {
         return {
-            id: getDocumentIdString(warning),
+            id: warning.snowflakeId,
             userId: warning.userId.toString(),
             message: warning.message,
             issuedBy: { username: 'System' },
@@ -64,14 +57,13 @@ export class UserWarningController {
     @ApiQuery({ name: 'acknowledged', required: false, type: Boolean })
     @ApiResponse({ status: 200, type: [UserWarningResponseDTO] })
     public async getMyWarnings(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Query('acknowledged') acknowledged?: boolean,
     ): Promise<UserWarningResponseDTO[]> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
+        const userId = req.user.id;
         try {
             const warnings = await this.warningRepo.findByUserId(
-                userOid,
+                userId,
                 acknowledged,
             );
             return warnings.map((w) => this.sanitizeWarning(w));
@@ -89,22 +81,20 @@ export class UserWarningController {
     @ApiResponse({ status: 404, description: 'Warning Not Found' })
     public async acknowledgeWarning(
         @Param('id') id: string,
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<UserWarningResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
+        const userId = req.user.id;
 
         if (!id) {
             throw new ApiError(400, 'Warning ID is required');
         }
 
-        const warningOid = new Types.ObjectId(id);
-        const warning = await this.warningRepo.findById(warningOid);
+        const warning = await this.warningRepo.findById(id);
         if (warning === null) {
             throw new ApiError(404, ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
         }
 
-        if (!warning.userId.equals(userOid)) {
+        if (warning.userId !== userId) {
             throw new ApiError(403, ErrorMessages.AUTH.FORBIDDEN);
         }
 
@@ -112,7 +102,7 @@ export class UserWarningController {
             return this.sanitizeWarning(warning);
         }
 
-        const updatedWarning = await this.warningRepo.acknowledge(warningOid);
+        const updatedWarning = await this.warningRepo.acknowledge(id);
         if (updatedWarning === null) {
             throw new ApiError(404, ErrorMessages.SYSTEM.WARNING_NOT_FOUND);
         }

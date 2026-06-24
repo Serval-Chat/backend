@@ -8,7 +8,6 @@ import {
     UseInterceptors,
     UploadedFile,
     Body,
-    Req,
     Inject,
     NotFoundException,
     ForbiddenException,
@@ -16,7 +15,6 @@ import {
     InternalServerErrorException,
     HttpCode,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiTags,
@@ -32,20 +30,17 @@ import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
 import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import { getDocumentId } from '@/utils/mongooseId';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 
-import type { Request as ExpressRequest } from 'express';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { IEmoji } from '@/di/interfaces/IEmojiRepository';
 import path from 'path';
 import fs from 'fs';
-import mongoose from 'mongoose';
+import { generateSnowflakeId } from '@/utils/snowflake';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -108,17 +103,15 @@ export class ServerEmojiController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<IEmoji[]> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        return await this.emojiRepo.findByServerIdWithCreator(serverOid);
+        return await this.emojiRepo.findByServerIdWithCreator(serverId);
     }
 
     @Post()
@@ -162,10 +155,8 @@ export class ServerEmojiController {
     ): Promise<IEmoji> {
         const { name } = body;
         await assertHttpNotMuted(this.muteRepo, userId, 'upload emojis');
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null || String(server.ownerId) !== userId) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -174,8 +165,8 @@ export class ServerEmojiController {
         if (
             !isOwner &&
             !(await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
+                serverId,
+                userId,
                 'manageServer',
             ))
         ) {
@@ -185,14 +176,14 @@ export class ServerEmojiController {
         }
 
         const existingEmoji = await this.emojiRepo.findByServerAndName(
-            serverOid,
+            serverId,
             name,
         );
         if (existingEmoji !== null) {
             throw new ConflictException(ErrorMessages.EMOJI.NAME_EXISTS);
         }
 
-        const emojiId = new mongoose.Types.ObjectId();
+        const emojiId = generateSnowflakeId();
         const input = emoji.path || emoji.buffer;
 
         try {
@@ -220,12 +211,12 @@ export class ServerEmojiController {
             const newEmoji = await this.emojiRepo.create({
                 name,
                 imageUrl,
-                serverId: serverOid,
-                createdBy: userOid,
+                serverId: serverId,
+                createdBy: userId,
             });
 
             const populatedEmoji = await this.emojiRepo.findByIdWithCreator(
-                getDocumentId(newEmoji) as Types.ObjectId,
+                newEmoji.snowflakeId,
             );
 
             if (populatedEmoji === null) {
@@ -240,10 +231,10 @@ export class ServerEmojiController {
             });
 
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'emoji_create',
-                targetId: getDocumentId(newEmoji) as Types.ObjectId,
+                targetId: newEmoji.snowflakeId,
                 targetType: 'server',
                 metadata: { emojiName: name },
             });
@@ -268,19 +259,16 @@ export class ServerEmojiController {
         @Param('emojiId') emojiId: string,
         @CurrentUser('id') userId: string,
     ): Promise<IEmoji> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const emojiOid = new Types.ObjectId(emojiId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const emoji = await this.emojiRepo.findById(emojiOid);
-        if (emoji === null || !emoji.serverId.equals(serverOid)) {
+        const emoji = await this.emojiRepo.findById(emojiId);
+        if (emoji === null || emoji.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
         }
 
@@ -302,11 +290,8 @@ export class ServerEmojiController {
         @CurrentUser('id') userId: string,
     ): Promise<void> {
         await assertHttpNotMuted(this.muteRepo, userId, 'delete emojis');
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const emojiOid = new Types.ObjectId(emojiId);
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -315,8 +300,8 @@ export class ServerEmojiController {
             throw new ForbiddenException(ErrorMessages.SERVER.ONLY_OWNER);
         }
 
-        const emoji = await this.emojiRepo.findById(emojiOid);
-        if (emoji === null || !emoji.serverId.equals(serverOid)) {
+        const emoji = await this.emojiRepo.findById(emojiId);
+        if (emoji === null || emoji.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.EMOJI.NOT_FOUND);
         }
 
@@ -327,7 +312,7 @@ export class ServerEmojiController {
             fs.unlinkSync(filePath);
         }
 
-        await this.emojiRepo.delete(emojiOid);
+        await this.emojiRepo.delete(emojiId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'emoji_updated',
@@ -335,10 +320,10 @@ export class ServerEmojiController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'emoji_delete',
-            targetId: emojiOid,
+            targetId: emojiId,
             targetType: 'server',
             metadata: { emojiName: emoji.name },
         });

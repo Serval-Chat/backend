@@ -1,8 +1,10 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import { Schema, model, type Document, type Types } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import { Schema, model, type Document } from 'mongoose';
 
 export interface ITotpUsedCode extends Document {
-    userId: Types.ObjectId;
+    snowflakeId: string;
+    userId: string;
     code: string;
     expiresAt: Date;
     createdAt: Date;
@@ -10,8 +12,7 @@ export interface ITotpUsedCode extends Document {
 
 const schema = new Schema<ITotpUsedCode>({
     userId: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
+        type: String,
         required: true,
         index: true,
     },
@@ -21,6 +22,8 @@ const schema = new Schema<ITotpUsedCode>({
 });
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 schema.index({ userId: 1, code: 1 }, { unique: true });
 schema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 

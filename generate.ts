@@ -21,4 +21,4 @@ async function bootstrap() {
     console.log('Done');
     process.exit(0);
 }
-bootstrap();
+void bootstrap();

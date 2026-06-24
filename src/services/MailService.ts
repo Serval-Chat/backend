@@ -160,7 +160,7 @@ export class MailService implements IMailService, OnModuleInit {
                 `[MailService] Password reset email sent to ${maskedTo}`,
             );
         } catch (error: unknown) {
-            const mailgunError = error as unknown;
+            const mailgunError = error;
             this.logger.error(
                 `[MailService] Failed to send password reset email to ${maskedTo}`,
                 {

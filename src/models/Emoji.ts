@@ -1,4 +1,5 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -6,11 +7,12 @@ import { Schema, model } from 'mongoose';
 //
 // Represents a custom emoji uploaded to a server
 export interface IEmoji extends Document {
+    snowflakeId: string;
     _id: Types.ObjectId;
     name: string;
     imageUrl: string;
-    serverId: Types.ObjectId;
-    createdBy: Types.ObjectId;
+    serverId: string;
+    createdBy: string;
     createdAt: Date;
 }
 
@@ -27,13 +29,11 @@ const schema = new Schema<IEmoji>(
             required: true,
         },
         serverId: {
-            type: Schema.Types.ObjectId,
-            ref: 'Server',
+            type: String,
             required: true,
         },
         createdBy: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
         },
         createdAt: {
@@ -48,6 +48,8 @@ const schema = new Schema<IEmoji>(
 );
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 
 // Compound index for unique emoji names per server
 schema.index({ serverId: 1, name: 1 }, { unique: true });

@@ -1,13 +1,13 @@
-import type { Types, ClientSession } from 'mongoose';
+import type { ClientSession } from 'mongoose';
 
 // DM Unread interface
 //
 // Tracks the number of unread direct messages for a user from a specific peer
 export interface IDmUnread {
     // The recipient of the messages (the user who has unreads)
-    user: Types.ObjectId;
+    user: string;
     // The sender of the messages (the peer who sent them)
-    peer: Types.ObjectId;
+    peer: string;
     count: number;
     createdAt?: Date;
     updatedAt?: Date;
@@ -18,28 +18,28 @@ export interface IDmUnread {
 // Manages unread message counters for direct messages
 export interface IDmUnreadRepository {
     // Find all unread counters for a specific user
-    findByUser(userId: Types.ObjectId): Promise<IDmUnread[]>;
+    findByUser(userId: string): Promise<IDmUnread[]>;
 
     // Find the unread counter for a specific user-peer pair
     findByUserAndPeer(
-        userId: Types.ObjectId,
-        peerId: Types.ObjectId,
+        userId: string,
+        peerId: string,
     ): Promise<IDmUnread | null>;
 
     // Increment the unread count for a user from a peer
     // Returns the new count after increment
     increment(
-        userId: Types.ObjectId,
-        peerId: Types.ObjectId,
+        userId: string,
+        peerId: string,
         session?: ClientSession,
     ): Promise<number>;
 
     // Reset the unread count for a user from a peer to zero
-    reset(userId: Types.ObjectId, peerId: Types.ObjectId): Promise<void>;
+    reset(userId: string, peerId: string): Promise<void>;
 
     // Delete the unread count record for a user from a peer
-    delete(userId: Types.ObjectId, peerId: Types.ObjectId): Promise<void>;
+    delete(userId: string, peerId: string): Promise<void>;
 
     // Delete all unread count records for a specific user
-    deleteByUser(userId: Types.ObjectId): Promise<void>;
+    deleteByUser(userId: string): Promise<void>;
 }

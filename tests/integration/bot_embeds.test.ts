@@ -42,7 +42,7 @@ describe('Bot embed messaging', () => {
         });
         ownerToken = jwt.sign(
             {
-                id: owner._id.toString(),
+                id: owner.snowflakeId,
                 login: owner.login,
                 username: owner.username,
                 tokenVersion: owner.tokenVersion,
@@ -60,7 +60,7 @@ describe('Bot embed messaging', () => {
         });
         botToken = jwt.sign(
             {
-                id: botUser._id.toString(),
+                id: botUser.snowflakeId,
                 login: botUser.login,
                 username: botUser.username,
                 tokenVersion: botUser.tokenVersion,
@@ -71,11 +71,11 @@ describe('Bot embed messaging', () => {
             { expiresIn: '1h' },
         );
 
-        serverDoc = await createTestServer(owner._id.toString());
-        channelDoc = await createTestChannel(serverDoc._id.toString());
+        serverDoc = await createTestServer(owner.snowflakeId);
+        channelDoc = await createTestChannel(serverDoc.snowflakeId);
         await ServerMember.create({
-            serverId: serverDoc._id,
-            userId: botUser._id,
+            serverId: serverDoc.snowflakeId,
+            userId: botUser.snowflakeId,
             roles: [],
         });
     });
@@ -83,7 +83,7 @@ describe('Bot embed messaging', () => {
     it('rejects embeds for non-bot users', async () => {
         const res = await request(app)
             .post(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/messages`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages`,
             )
             .set('Authorization', `Bearer ${ownerToken}`)
             .send({
@@ -106,7 +106,7 @@ describe('Bot embed messaging', () => {
         ];
         const sendRes = await request(app)
             .post(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/messages`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages`,
             )
             .set('Authorization', `Bearer ${botToken}`)
             .send({ embeds });
@@ -115,7 +115,9 @@ describe('Bot embed messaging', () => {
         expect(sendRes.body.text).toBe('');
         expect(sendRes.body.embeds).toEqual(embeds);
 
-        const saved = await ServerMessage.findById(sendRes.body.id).lean();
+        const saved = await ServerMessage.findOne({
+            snowflakeId: sendRes.body.id,
+        }).lean();
         expect(saved?.embeds).toEqual(embeds);
     });
 });

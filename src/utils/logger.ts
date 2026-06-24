@@ -14,7 +14,7 @@ const logFormat = printf(({ level, message, timestamp, stack }) => {
 // At development level, debug and error logs are logged
 // Max size of log file is 20MB, and it is rotated daily
 const logger = createLogger({
-    level: (PROJECT_LEVEL as string) === 'production' ? 'info' : 'debug',
+    level: PROJECT_LEVEL === 'production' ? 'info' : 'debug',
     format: combine(
         timestamp(),
         errors({ stack: true }), // Log error stack too

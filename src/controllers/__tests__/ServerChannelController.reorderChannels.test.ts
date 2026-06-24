@@ -1,21 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Types } from 'mongoose';
 import type { Request } from 'express';
 import type { JWTPayload } from '@/utils/jwt';
 import { ServerChannelController } from '../ServerChannelController';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
-import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import type { WsServer } from '@/ws/server';
-import type { ExportService } from '@/services/ExportService';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
-import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
-import type { IRedisService } from '@/di/interfaces/IRedisService';
 
 const mockChannelRepo = {
     findByServerId: jest.fn(),
@@ -46,20 +33,20 @@ const mockServerAuditLogService = {
 
 function buildController(): ServerChannelController {
     return new ServerChannelController(
-        mockChannelRepo as unknown as IChannelRepository,
-        {} as unknown as IServerMemberRepository,
-        {} as unknown as IServerChannelReadRepository,
-        {} as unknown as ICategoryRepository,
-        {} as unknown as IServerMessageRepository,
-        mockPermissionService as unknown as PermissionService,
-        { error: jest.fn(), warn: jest.fn() } as unknown as ILogger,
-        mockWsServer as unknown as WsServer,
-        {} as unknown as ExportService,
-        {} as unknown as IServerRepository,
-        {} as unknown as IAuditLogRepository,
-        mockServerAuditLogService as unknown as IServerAuditLogService,
-        {} as unknown as IRoleRepository,
-        {} as unknown as IRedisService,
+        mockChannelRepo as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        mockPermissionService as any,
+        { error: jest.fn(), warn: jest.fn() } as any,
+        mockWsServer as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        mockServerAuditLogService,
+        {} as any,
+        {} as any,
     );
 }
 
@@ -69,7 +56,7 @@ describe('ServerChannelController - reorderChannels WS visibility', () => {
     const hiddenChannelId = new Types.ObjectId();
     const req = {
         user: { id: userId.toHexString() } as JWTPayload,
-    } as unknown as Request;
+    } as Request;
 
     beforeEach(() => {
         jest.clearAllMocks();

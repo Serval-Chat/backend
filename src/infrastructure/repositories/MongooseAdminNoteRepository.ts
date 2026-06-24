@@ -1,47 +1,74 @@
 import { injectable } from 'inversify';
-import type { Types } from 'mongoose';
 import { AdminNote, type IAdminNote } from '@/models/AdminNote';
+import { User } from '@/models/User';
 import type { IAdminNoteRepository } from '@/di/interfaces/IAdminNoteRepository';
+
+const USER_REF_SELECT = 'snowflakeId username displayName profilePicture';
 
 @injectable()
 export class MongooseAdminNoteRepository implements IAdminNoteRepository {
+    // history[] subdocuments and string editorIds prevent a normal populate(),
+    // so editorIds are batch-resolved directly.
+    private async attachEditorRefs(notes: IAdminNote[]): Promise<IAdminNote[]> {
+        const editorIds = [
+            ...new Set(notes.flatMap((n) => n.history.map((h) => h.editorId))),
+        ];
+        if (editorIds.length === 0) return notes;
+
+        const users = await User.find({ snowflakeId: { $in: editorIds } })
+            .select(USER_REF_SELECT)
+            .lean();
+        const userBySnowflakeId = new Map(users.map((u) => [u.snowflakeId, u]));
+
+        for (const note of notes) {
+            note.history = note.history.map((h) => ({
+                ...h,
+                editorIdUser: userBySnowflakeId.get(h.editorId),
+            }));
+        }
+
+        return notes;
+    }
+
     public async create(data: {
-        targetId: Types.ObjectId;
+        targetId: string;
         targetType: 'User' | 'Server';
-        adminId: Types.ObjectId;
+        adminId: string;
         content: string;
     }): Promise<IAdminNote> {
         const note = new AdminNote(data);
         return await note.save();
     }
 
-    public async findById(id: Types.ObjectId): Promise<IAdminNote | null> {
-        return await AdminNote.findById(id)
-            .populate('adminId', 'username displayName profilePicture')
-            .populate('deletedBy', 'username displayName profilePicture')
-            .populate('history.editorId', 'username displayName profilePicture')
+    public async findById(id: string): Promise<IAdminNote | null> {
+        const note = await AdminNote.findOne({ snowflakeId: id })
+            .populate('adminIdUser', USER_REF_SELECT)
+            .populate('deletedByUser', USER_REF_SELECT)
             .exec();
+        if (note === null) return null;
+        const [resolved] = await this.attachEditorRefs([note]);
+        return resolved ?? note;
     }
 
     public async findByTarget(
-        targetId: Types.ObjectId,
+        targetId: string,
         targetType: 'User' | 'Server',
     ): Promise<IAdminNote[]> {
-        return await AdminNote.find({ targetId, targetType })
+        const notes = await AdminNote.find({ targetId, targetType })
             .sort({ createdAt: -1 })
-            .populate('adminId', 'username displayName profilePicture')
-            .populate('deletedBy', 'username displayName profilePicture')
-            .populate('history.editorId', 'username displayName profilePicture')
+            .populate('adminIdUser', USER_REF_SELECT)
+            .populate('deletedByUser', USER_REF_SELECT)
             .exec();
+        return await this.attachEditorRefs(notes);
     }
 
     public async update(
-        id: Types.ObjectId,
-        adminId: Types.ObjectId,
+        id: string,
+        adminId: string,
         content: string,
     ): Promise<IAdminNote | null> {
         const currentNote = await AdminNote.findOne({
-            _id: id,
+            snowflakeId: id,
             deletedAt: { $exists: false },
         });
 
@@ -56,27 +83,25 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
         currentNote.content = content;
         currentNote.adminId = adminId;
 
-        return await currentNote.save().then((doc) =>
-            doc.populate([
-                {
-                    path: 'adminId',
-                    select: 'username displayName profilePicture',
-                },
-                {
-                    path: 'history.editorId',
-                    select: 'username displayName profilePicture',
-                },
-            ]),
-        );
+        const saved = await currentNote
+            .save()
+            .then((doc) =>
+                doc.populate([
+                    { path: 'adminIdUser', select: USER_REF_SELECT },
+                ]),
+            );
+
+        const [resolved] = await this.attachEditorRefs([saved]);
+        return resolved ?? saved;
     }
 
     public async softDelete(data: {
-        id: Types.ObjectId;
-        deletedBy: Types.ObjectId;
+        id: string;
+        deletedBy: string;
         deleteReason: string;
     }): Promise<IAdminNote | null> {
-        return await AdminNote.findByIdAndUpdate(
-            data.id,
+        const note = await AdminNote.findOneAndUpdate(
+            { snowflakeId: data.id },
             {
                 deletedAt: new Date(),
                 deletedBy: data.deletedBy,
@@ -84,9 +109,11 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
             },
             { new: true },
         )
-            .populate('adminId', 'username displayName profilePicture')
-            .populate('deletedBy', 'username displayName profilePicture')
-            .populate('history.editorId', 'username displayName profilePicture')
+            .populate('adminIdUser', USER_REF_SELECT)
+            .populate('deletedByUser', USER_REF_SELECT)
             .exec();
+        if (note === null) return null;
+        const [resolved] = await this.attachEditorRefs([note]);
+        return resolved ?? note;
     }
 }

@@ -37,12 +37,12 @@ describe('AdminController', () => {
         };
         mockAuditLogRepo = {
             create: jest.fn(),
-        } as unknown as Record<string, jest.Mock>;
+        };
         mockFriendshipRepo = {} as Record<string, jest.Mock>;
         mockWsServer = {
             getUserSockets: jest.fn().mockReturnValue([]),
             broadcastToServer: jest.fn(),
-        } as unknown as Record<string, jest.Mock>;
+        };
         mockLogger = {
             info: jest.fn(),
             error: jest.fn(),
@@ -52,21 +52,21 @@ describe('AdminController', () => {
         mockBanRepo = {
             createOrUpdateWithHistory: jest.fn(),
             deactivateAllForUser: jest.fn(),
-        } as unknown as Record<string, jest.Mock>;
+        };
         mockServerRepo = {
             findById: jest.fn(),
             update: jest.fn(),
             findByIds: jest.fn(),
             delete: jest.fn(),
             create: jest.fn(),
-        } as unknown as Record<string, jest.Mock>;
+        };
         mockMessageRepo = {} as Record<string, jest.Mock>;
         mockServerMessageRepo = {} as Record<string, jest.Mock>;
         mockWarningRepo = {} as Record<string, jest.Mock>;
         mockServerMemberRepo = {
             countByServerId: jest.fn(),
             findAllByUserId: jest.fn().mockResolvedValue([]),
-        } as unknown as Record<string, jest.Mock>;
+        };
         mockChannelRepo = {
             findByServerId: jest.fn()
         };
@@ -119,7 +119,7 @@ describe('AdminController', () => {
 
         const mockReq = createMockRequest({
             user: { id: new Types.ObjectId().toString() }
-        }) as unknown as AuthenticatedRequest;
+        }) as AuthenticatedRequest;
 
         const result = await controller.resetUserProfile(userId, { fields: [ProfileFieldDTO.BANNER] }, mockReq);
 
@@ -138,8 +138,8 @@ describe('AdminController', () => {
             _id: new Types.ObjectId(),
             targetId: new Types.ObjectId(userId),
             targetType: 'User',
-            adminId: {
-                _id: new Types.ObjectId(adminId),
+            adminId,
+            adminIdUser: {
                 username: 'admin_user',
                 displayName: 'Admin User',
                 profilePicture: 'admin_pic.webp'
@@ -182,12 +182,12 @@ describe('AdminController', () => {
 
             const mockReq = createMockRequest({
                 user: { id: new Types.ObjectId().toString() }
-            }) as unknown as AuthenticatedRequest;
+            }) as AuthenticatedRequest;
 
             const result = await controller.verifyServer(serverId, mockReq);
 
-            expect(mockServerRepo.findById).toHaveBeenCalledWith(new Types.ObjectId(serverId), true);
-            expect(mockServerRepo.update).toHaveBeenCalledWith(new Types.ObjectId(serverId), { 
+            expect(mockServerRepo.findById).toHaveBeenCalledWith(serverId, true);
+            expect(mockServerRepo.update).toHaveBeenCalledWith(serverId, { 
                 verified: true,
                 verificationOverride: 'verified',
                 verificationRequested: false
@@ -213,12 +213,12 @@ describe('AdminController', () => {
 
             const mockReq = createMockRequest({
                 user: { id: new Types.ObjectId().toString() }
-            }) as unknown as AuthenticatedRequest;
+            }) as AuthenticatedRequest;
 
             const result = await controller.unverifyServer(serverId, mockReq);
 
-            expect(mockServerRepo.findById).toHaveBeenCalledWith(new Types.ObjectId(serverId), true);
-            expect(mockServerRepo.update).toHaveBeenCalledWith(new Types.ObjectId(serverId), {
+            expect(mockServerRepo.findById).toHaveBeenCalledWith(serverId, true);
+            expect(mockServerRepo.update).toHaveBeenCalledWith(serverId, {
                 verified: false,
                 verificationOverride: 'unverified',
             });
@@ -256,46 +256,46 @@ describe('AdminController', () => {
         });
 
         it('should allow Super Admin to ban Admin', async () => {
-            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
-                if (id.equals(superAdminUser._id)) return superAdminUser;
-                if (id.equals(adminUser._id)) return adminUser;
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: string) => {
+                if (id === superAdminUser.snowflakeId) return superAdminUser;
+                if (id === adminUser.snowflakeId) return adminUser;
                 return null;
             });
 
             (mockBanRepo.createOrUpdateWithHistory as jest.Mock).mockResolvedValue({
                 _id: new Types.ObjectId(),
-                userId: adminUser._id,
+                userId: adminUser.snowflakeId,
                 reason: 'ban test',
                 active: true,
             });
 
             const mockReq = createMockRequest({
-                user: { id: superAdminUser._id.toString() },
-            }) as unknown as AuthenticatedRequest;
+                user: { id: superAdminUser.snowflakeId },
+            }) as AuthenticatedRequest;
 
             const result = await controller.banUser(
-                adminUser._id.toString(),
+                adminUser.snowflakeId,
                 { reason: 'ban test', duration: 60 },
                 mockReq,
             );
 
-            expect(result.userId).toBe(adminUser._id.toString());
+            expect(result.userId).toBe(adminUser.snowflakeId);
         });
 
         it('should prevent Admin from banning another Admin', async () => {
-            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
-                if (id.equals(adminUser._id)) return adminUser;
-                if (id.equals(adminUser2._id)) return adminUser2;
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: string) => {
+                if (id === adminUser.snowflakeId) return adminUser;
+                if (id === adminUser2.snowflakeId) return adminUser2;
                 return null;
             });
 
             const mockReq = createMockRequest({
-                user: { id: adminUser._id.toString() },
-            }) as unknown as AuthenticatedRequest;
+                user: { id: adminUser.snowflakeId },
+            }) as AuthenticatedRequest;
 
             await expect(
                 controller.banUser(
-                    adminUser2._id.toString(),
+                    adminUser2.snowflakeId,
                     { reason: 'fail ban', duration: 60 },
                     mockReq,
                 ),
@@ -303,19 +303,19 @@ describe('AdminController', () => {
         });
 
         it('should prevent Admin from banning Super Admin', async () => {
-            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
-                if (id.equals(adminUser._id)) return adminUser;
-                if (id.equals(superAdminUser._id)) return superAdminUser;
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: string) => {
+                if (id === adminUser.snowflakeId) return adminUser;
+                if (id === superAdminUser.snowflakeId) return superAdminUser;
                 return null;
             });
 
             const mockReq = createMockRequest({
-                user: { id: adminUser._id.toString() },
-            }) as unknown as AuthenticatedRequest;
+                user: { id: adminUser.snowflakeId },
+            }) as AuthenticatedRequest;
 
             await expect(
                 controller.banUser(
-                    superAdminUser._id.toString(),
+                    superAdminUser.snowflakeId,
                     { reason: 'fail ban', duration: 60 },
                     mockReq,
                 ),
@@ -323,46 +323,46 @@ describe('AdminController', () => {
         });
 
         it('should allow Admin to ban Moderator', async () => {
-            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
-                if (id.equals(adminUser._id)) return adminUser;
-                if (id.equals(moderatorUser._id)) return moderatorUser;
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: string) => {
+                if (id === adminUser.snowflakeId) return adminUser;
+                if (id === moderatorUser.snowflakeId) return moderatorUser;
                 return null;
             });
 
             (mockBanRepo.createOrUpdateWithHistory as jest.Mock).mockResolvedValue({
                 _id: new Types.ObjectId(),
-                userId: moderatorUser._id,
+                userId: moderatorUser.snowflakeId,
                 reason: 'ban mod',
                 active: true,
             });
 
             const mockReq = createMockRequest({
-                user: { id: adminUser._id.toString() },
-            }) as unknown as AuthenticatedRequest;
+                user: { id: adminUser.snowflakeId },
+            }) as AuthenticatedRequest;
 
             const result = await controller.banUser(
-                moderatorUser._id.toString(),
+                moderatorUser.snowflakeId,
                 { reason: 'ban mod', duration: 60 },
                 mockReq,
             );
 
-            expect(result.userId).toBe(moderatorUser._id.toString());
+            expect(result.userId).toBe(moderatorUser.snowflakeId);
         });
 
         it('should prevent Admin from promoting target to a rank equal or higher than their own', async () => {
-            mockUserRepo.findById = jest.fn().mockImplementation(async (id: Types.ObjectId) => {
-                if (id.equals(adminUser._id)) return adminUser;
-                if (id.equals(moderatorUser._id)) return moderatorUser;
+            mockUserRepo.findById = jest.fn().mockImplementation(async (id: string) => {
+                if (id === adminUser.snowflakeId) return adminUser;
+                if (id === moderatorUser.snowflakeId) return moderatorUser;
                 return null;
             });
 
             const mockReq = createMockRequest({
-                user: { id: adminUser._id.toString() },
-            }) as unknown as AuthenticatedRequest;
+                user: { id: adminUser.snowflakeId },
+            }) as AuthenticatedRequest;
 
             await expect(
                 controller.updateUserPermissions(
-                    moderatorUser._id.toString(),
+                    moderatorUser.snowflakeId,
                     {
                         permissions: { adminAccess: true, banUsers: true, warnUsers: true } as any,
                     },

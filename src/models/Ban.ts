@@ -1,5 +1,6 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import type { Types, Document, Model } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type { Document, Model } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
 // Ban History Entry interface
@@ -7,7 +8,7 @@ import { Schema, model } from 'mongoose';
 // Tracks a single ban event for a user's history
 export interface IBanHistoryEntry {
     reason: string;
-    issuedBy: Types.ObjectId;
+    issuedBy: string;
     timestamp: Date;
     expirationTimestamp: Date;
     endedAt?: Date;
@@ -17,8 +18,9 @@ export interface IBanHistoryEntry {
 //
 // Represents an active or past ban for a user
 export interface IBan extends Document {
-    userId: Types.ObjectId;
-    issuedBy: Types.ObjectId;
+    snowflakeId: string;
+    userId: string;
+    issuedBy: string;
     reason: string;
     timestamp: Date;
     expirationTimestamp: Date;
@@ -27,12 +29,12 @@ export interface IBan extends Document {
 }
 
 export interface IBanModel extends Model<IBan> {
-    checkExpired(userId: Types.ObjectId | string): Promise<boolean>;
+    checkExpired(userId: string): Promise<boolean>;
 }
 
 const schema = new Schema<IBan>({
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    issuedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: String, required: true },
+    issuedBy: { type: String, required: true },
     reason: { type: String, required: true },
     timestamp: { type: Date, default: Date.now },
     expirationTimestamp: { type: Date, required: true },
@@ -43,8 +45,7 @@ const schema = new Schema<IBan>({
                 {
                     reason: { type: String, required: true },
                     issuedBy: {
-                        type: Schema.Types.ObjectId,
-                        ref: 'User',
+                        type: String,
                         required: true,
                     },
                     timestamp: { type: Date, required: true },
@@ -60,10 +61,12 @@ const schema = new Schema<IBan>({
 
 schema.plugin(mongooseIdPlugin);
 
+schema.plugin(snowflakeIdPlugin);
+
 // Check and deactivate expired bans for a user
 //
 // @returns true if any ban state was changed (expired), false otherwise
-schema.statics.checkExpired = async function (userId: Types.ObjectId | string) {
+schema.statics.checkExpired = async function (userId: string) {
     const now = new Date();
     // Find active bans that have expired
     const expiredBans = await this.find({

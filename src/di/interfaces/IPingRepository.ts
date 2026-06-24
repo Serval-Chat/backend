@@ -9,13 +9,14 @@ import type {
 // Represents a notification (mention) for a user
 export interface IPing {
     _id: Types.ObjectId;
-    userId: Types.ObjectId;
+    snowflakeId: string;
+    userId: string;
     type: 'mention' | 'export_status';
     sender: string;
-    senderId: Types.ObjectId;
-    serverId?: Types.ObjectId;
-    channelId?: Types.ObjectId;
-    messageId: Types.ObjectId;
+    senderId: string;
+    serverId?: string;
+    channelId?: string;
+    messageId: string;
     message: PingMentionMessageDTO | PingExportMessageDTO;
     timestamp: Date;
     createdAt?: Date;
@@ -26,53 +27,44 @@ export interface IPing {
 // Encapsulates all ping-related database operations
 export interface IPingRepository {
     // Find ping by ID
-    findById(id: Types.ObjectId): Promise<IPing | null>;
+    findById(id: string): Promise<IPing | null>;
 
     // Find all pings for a user (with optional age filter)
-    findByUserId(userId: Types.ObjectId, maxAge?: number): Promise<IPing[]>;
+    findByUserId(userId: string, maxAge?: number): Promise<IPing[]>;
 
     // Create a new ping
     create(data: {
-        userId: Types.ObjectId;
+        userId: string;
         type: 'mention' | 'export_status';
         sender: string;
-        senderId: Types.ObjectId;
-        serverId?: Types.ObjectId;
-        channelId?: Types.ObjectId;
-        messageId: Types.ObjectId;
+        senderId: string;
+        serverId?: string;
+        channelId?: string;
+        messageId: string;
         message: PingMentionMessageDTO | PingExportMessageDTO;
         timestamp?: Date;
     }): Promise<IPing>;
 
     // Check if a ping already exists (for deduplication)
     exists(
-        userId: Types.ObjectId,
-        senderId: Types.ObjectId,
-        messageId: Types.ObjectId,
+        userId: string,
+        senderId: string,
+        messageId: string,
     ): Promise<boolean>;
 
     // Delete a specific ping by ID
-    delete(id: Types.ObjectId): Promise<boolean>;
+    delete(id: string): Promise<boolean>;
 
     // Delete all pings for a specific channel
-    deleteByChannelId(
-        userId: Types.ObjectId,
-        channelId: Types.ObjectId,
-    ): Promise<number>;
+    deleteByChannelId(userId: string, channelId: string): Promise<number>;
 
-    deleteByServerId(
-        userId: Types.ObjectId,
-        serverId: Types.ObjectId,
-    ): Promise<number>;
+    deleteByServerId(userId: string, serverId: string): Promise<number>;
 
     // Delete all pings for a user
-    deleteByUserId(userId: Types.ObjectId): Promise<number>;
+    deleteByUserId(userId: string): Promise<number>;
 
     // Delete all pings between two users
-    deleteBetweenUsers(
-        user1: Types.ObjectId,
-        user2: Types.ObjectId,
-    ): Promise<number>;
+    deleteBetweenUsers(user1: string, user2: string): Promise<number>;
 
     // Delete old pings (older than specified age)
     deleteOldPings(maxAge: number): Promise<number>;

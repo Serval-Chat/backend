@@ -10,7 +10,6 @@ import {
     HttpCode,
     HttpStatus,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { AuthService } from '@/services/AuthService';
@@ -36,12 +35,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { ILogger } from '@/di/interfaces/ILogger';
-import type { JWTPayload } from '@/utils/jwt';
-
-interface RequestWithUser extends Request {
-    user: JWTPayload;
-}
-
+import type { AuthenticatedRequest } from '@/middleware/auth';
 import {
     LoginResponseDTO,
     RegisterResponseDTO,
@@ -68,7 +62,6 @@ import {
 } from './dto/auth.request.dto';
 
 import { NoBot } from '@/modules/auth/bot.decorator';
-import { getDocumentIdString } from '@/utils/mongooseId';
 
 class Mutex {
     private mutex = Promise.resolve();
@@ -134,7 +127,7 @@ export class AuthController {
 
         if (user.totpEnabled === true) {
             const temp_token = generateTwoFactorTempToken({
-                id: getDocumentIdString(user),
+                id: user.snowflakeId,
                 login: login,
                 username: user.username as string,
                 tokenVersion: user.tokenVersion ?? 0,
@@ -149,7 +142,7 @@ export class AuthController {
         }
 
         const token = generateJWT({
-            id: getDocumentIdString(user),
+            id: user.snowflakeId,
             login: login,
             username: user.username as string,
             tokenVersion: user.tokenVersion ?? 0,
@@ -169,9 +162,9 @@ export class AuthController {
     @NoBot()
     @ApiResponse({ status: 200, type: TotpSetupResponseDTO })
     public async setupTwoFactor(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<TotpSetupResponseDTO> {
-        const user = (req as unknown as RequestWithUser).user;
+        const user = req.user;
         return await this.authService.setupTotp(user.id, user.username);
     }
 
@@ -180,18 +173,17 @@ export class AuthController {
     @ApiSecurity('jwt')
     @ApiResponse({ status: 200, type: TotpSetupConfirmResponseDTO })
     public async confirmTwoFactorSetup(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: TotpSetupConfirmRequestDTO,
     ): Promise<TotpSetupConfirmResponseDTO> {
-        const user = (req as unknown as RequestWithUser).user;
+        const user = req.user;
         const result = await this.authService.confirmTotpSetup(
             user.id,
             body.code,
         );
-        const userOid = new Types.ObjectId(user.id);
-        await this.userRepo.incrementTokenVersion(userOid);
+        await this.userRepo.incrementTokenVersion(user.id);
 
-        const updatedUser = await this.userRepo.findById(userOid);
+        const updatedUser = await this.userRepo.findById(user.id);
         if (updatedUser === null || updatedUser.deletedAt !== undefined) {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_TOKEN);
         }
@@ -199,7 +191,7 @@ export class AuthController {
         return {
             ...result,
             token: generateJWT({
-                id: getDocumentIdString(updatedUser),
+                id: updatedUser.snowflakeId,
                 login: updatedUser.login ?? user.login,
                 username: updatedUser.username ?? user.username,
                 tokenVersion: updatedUser.tokenVersion ?? 0,
@@ -235,14 +227,12 @@ export class AuthController {
             requireEnabled: true,
         });
 
-        const user = await this.userRepo.findById(
-            new Types.ObjectId(payload.id),
-        );
+        const user = await this.userRepo.findById(payload.id);
         if (user === null || user.deletedAt !== undefined) {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_TEMP_TOKEN);
         }
         const token = generateJWT({
-            id: getDocumentIdString(user),
+            id: user.snowflakeId,
             login: user.login ?? payload.login,
             username: user.username ?? payload.username,
             tokenVersion: user.tokenVersion ?? 0,
@@ -262,13 +252,13 @@ export class AuthController {
     @NoBot()
     @ApiResponse({ status: 200, type: TotpSetupConfirmResponseDTO })
     public async regenerateBackupCodes(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: TotpSensitiveActionRequestDTO,
     ): Promise<TotpSetupConfirmResponseDTO> {
         if (body.code === undefined || body.code === '') {
             throw new ApiError(400, ErrorMessages.AUTH.INVALID_TOTP_CODE);
         }
-        const user = (req as unknown as RequestWithUser).user;
+        const user = req.user;
         return await this.authService.regenerateBackupCodes(user.id, body.code);
     }
 
@@ -278,20 +268,19 @@ export class AuthController {
     @ApiSecurity('jwt')
     @ApiOkResponse({ type: Disable2FAResponseDTO })
     public async disableTwoFactor(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: TotpSensitiveActionRequestDTO,
     ): Promise<{ message: string; token: string }> {
-        const user = (req as unknown as RequestWithUser).user;
+        const user = req.user;
         await this.authService.disableTwoFactor(
             user.id,
             body.code,
             body.backupCode,
         );
 
-        const userOid = new Types.ObjectId(user.id);
-        await this.userRepo.incrementTokenVersion(userOid);
+        await this.userRepo.incrementTokenVersion(user.id);
 
-        const updatedUser = await this.userRepo.findById(userOid);
+        const updatedUser = await this.userRepo.findById(user.id);
         if (updatedUser === null || updatedUser.deletedAt !== undefined) {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_TOKEN);
         }
@@ -299,7 +288,7 @@ export class AuthController {
         return {
             message: 'Two-factor authentication disabled successfully',
             token: generateJWT({
-                id: getDocumentIdString(updatedUser),
+                id: updatedUser.snowflakeId,
                 login: updatedUser.login ?? user.login,
                 username: updatedUser.username ?? user.username,
                 tokenVersion: updatedUser.tokenVersion ?? 0,
@@ -407,7 +396,7 @@ export class AuthController {
                 throw new ApiError(500, 'User just created but not found');
 
             const token = generateJWT({
-                id: getDocumentIdString(newUser),
+                id: newUser.snowflakeId,
                 login: newUser.login ?? '',
                 username: newUser.username ?? '',
                 tokenVersion: newUser.tokenVersion ?? 0,
@@ -430,11 +419,10 @@ export class AuthController {
     @ApiResponse({ status: 409, description: 'Login already taken' })
     @NoBot()
     public async changeLogin(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: ChangeLoginRequestDTO,
     ): Promise<ChangeLoginResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
+        const userId = req.user.id;
         const { newLogin, password } = body;
 
         if (newLogin.includes('+')) {
@@ -443,7 +431,7 @@ export class AuthController {
 
         const normalizedNewLogin = normalizeEmail(newLogin);
 
-        const user = await this.userRepo.findById(userOid);
+        const user = await this.userRepo.findById(userId);
         if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
@@ -454,7 +442,7 @@ export class AuthController {
         }
 
         const passwordValid = await this.userRepo.comparePassword(
-            userOid,
+            userId,
             password,
         );
         if (passwordValid !== true) {
@@ -467,9 +455,9 @@ export class AuthController {
             throw new ApiError(409, ErrorMessages.AUTH.LOGIN_TAKEN);
         }
 
-        await this.userRepo.updateLogin(userOid, normalizedNewLogin);
+        await this.userRepo.updateLogin(userId, normalizedNewLogin);
 
-        const updatedUser = await this.userRepo.findById(userOid);
+        const updatedUser = await this.userRepo.findById(userId);
         if (updatedUser === null) {
             throw new ApiError(
                 500,
@@ -478,7 +466,7 @@ export class AuthController {
         }
 
         const token = generateJWT({
-            id: getDocumentIdString(updatedUser),
+            id: updatedUser.snowflakeId,
             login: updatedUser.login ?? '',
             username: updatedUser.username ?? '',
             tokenVersion: updatedUser.tokenVersion ?? 0,
@@ -501,24 +489,23 @@ export class AuthController {
     @ApiResponse({ status: 401, description: 'Invalid current password' })
     @NoBot()
     public async changePassword(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
         @Body() body: ChangePasswordRequestDTO,
     ): Promise<ChangePasswordResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
+        const userId = req.user.id;
         const { currentPassword, newPassword } = body;
 
         if (newPassword === currentPassword) {
             throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_SAME);
         }
 
-        const user = await this.userRepo.findById(userOid);
+        const user = await this.userRepo.findById(userId);
         if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const passwordValid = await this.userRepo.comparePassword(
-            userOid,
+            userId,
             currentPassword,
         );
         if (passwordValid !== true) {
@@ -528,16 +515,16 @@ export class AuthController {
             );
         }
 
-        await this.userRepo.updatePassword(userOid, newPassword);
-        await this.userRepo.incrementTokenVersion(userOid);
+        await this.userRepo.updatePassword(userId, newPassword);
+        await this.userRepo.incrementTokenVersion(userId);
 
-        const updatedUser = await this.userRepo.findById(userOid);
+        const updatedUser = await this.userRepo.findById(userId);
         if (updatedUser === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         const token = generateJWT({
-            id: getDocumentIdString(updatedUser),
+            id: updatedUser.snowflakeId,
             login: updatedUser.login ?? '',
             username: updatedUser.username ?? '',
             tokenVersion: updatedUser.tokenVersion ?? 0,

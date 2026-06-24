@@ -9,9 +9,7 @@ import type { BotPermissions } from '../models/Bot';
 
 describe('botPermissions utility', () => {
     const makePermissions = (value: boolean): BotPermissions =>
-        Object.fromEntries(
-            BOT_PERMISSION_KEYS.map((key) => [key, value]),
-        ) as BotPermissions;
+        Object.fromEntries(BOT_PERMISSION_KEYS.map((key) => [key, value]));
 
     const allOn = makePermissions(true);
 

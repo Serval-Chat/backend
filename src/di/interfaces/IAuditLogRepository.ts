@@ -9,12 +9,22 @@ export interface IAuditLogChange {
 // Audit Log interface
 //
 // Represents a permanent, immutable record of actions
+interface IAuditLogUserRef {
+    _id: Types.ObjectId;
+    username?: string;
+    displayName?: string | null;
+    profilePicture?: string;
+}
+
 export interface IAuditLog {
     _id: Types.ObjectId;
-    serverId?: Types.ObjectId;
-    actorId: Types.ObjectId;
+    snowflakeId: string;
+    serverId?: string;
+    actorId: string;
+    // populated via .populate('actorIdUser'), present when actorId is a user.
+    actorIdUser?: IAuditLogUserRef;
     actionType: string;
-    targetId?: Types.ObjectId;
+    targetId?: string;
     targetType?:
         | 'user'
         | 'channel'
@@ -22,7 +32,9 @@ export interface IAuditLog {
         | 'role'
         | 'message'
         | 'server';
-    targetUserId?: Types.ObjectId;
+    targetUserId?: string;
+    // populated via .populate('targetUserIdUser'), present when targetUserId is a user.
+    targetUserIdUser?: IAuditLogUserRef;
     changes?: IAuditLogChange[];
     reason?: string;
     metadata?: Record<string, unknown>;
@@ -36,10 +48,10 @@ export interface IAuditLog {
 export interface IAuditLogRepository {
     // Create a new audit log entry
     create(data: {
-        serverId?: Types.ObjectId;
-        actorId: Types.ObjectId;
+        serverId?: string;
+        actorId: string;
         actionType: string;
-        targetId?: Types.ObjectId;
+        targetId?: string;
         targetType?:
             | 'user'
             | 'channel'
@@ -47,7 +59,7 @@ export interface IAuditLogRepository {
             | 'role'
             | 'message'
             | 'server';
-        targetUserId?: Types.ObjectId;
+        targetUserId?: string;
         changes?: IAuditLogChange[];
         reason?: string;
         metadata?: Record<string, unknown>;
@@ -56,28 +68,28 @@ export interface IAuditLogRepository {
 
     // Find audit logs with pagination and filtering
     find(options: {
-        serverId?: Types.ObjectId | null;
+        serverId?: string | null;
         limit?: number;
         offset?: number;
-        cursor?: string; // ObjectId string for cursor-based pagination
-        actorId?: Types.ObjectId;
+        cursor?: string; // snowflakeId string for cursor-based pagination
+        actorId?: string;
         actionType?: string;
-        targetId?: Types.ObjectId;
-        targetUserId?: Types.ObjectId;
+        targetId?: string;
+        targetUserId?: string;
         startDate?: Date;
         endDate?: Date;
         reason?: string; // substring search
     }): Promise<IAuditLog[]>;
 
     // Find audit log by ID
-    findById(id: Types.ObjectId): Promise<IAuditLog | null>;
+    findById(id: string): Promise<IAuditLog | null>;
 
     // Count audit logs matching criteria
     count(options: {
-        serverId?: Types.ObjectId | null;
-        actorId?: Types.ObjectId;
+        serverId?: string | null;
+        actorId?: string;
         actionType?: string;
-        targetUserId?: Types.ObjectId;
+        targetUserId?: string;
         startDate?: Date;
         endDate?: Date;
     }): Promise<number>;

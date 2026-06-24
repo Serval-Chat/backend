@@ -3,13 +3,11 @@ import {
     Get,
     Post,
     Body,
-    Req,
     UseGuards,
     Inject,
     NotFoundException,
     Patch,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -25,9 +23,7 @@ import {
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { UpdateSettingsRequestDTO } from './dto/settings.request.dto';
@@ -101,8 +97,7 @@ export class SettingsController {
     public async getSettings(
         @CurrentUser('id') userId: string,
     ): Promise<UserSettings> {
-        const userOid = new Types.ObjectId(userId);
-        const user = await this.userRepo.findById(userOid);
+        const user = await this.userRepo.findById(userId);
 
         if (user === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
@@ -147,17 +142,15 @@ export class SettingsController {
         @CurrentUser('id') userId: string,
         @Body() body: UpdateSettingsRequestDTO,
     ): Promise<{ message: string; settings: UserSettings }> {
-        const userOid = new Types.ObjectId(userId);
-
-        const user = await this.userRepo.findById(userOid);
+        const user = await this.userRepo.findById(userId);
         if (user === null) {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
         // Perform a partial settings update
-        await this.userRepo.updateSettings(userOid, body);
+        await this.userRepo.updateSettings(userId, body);
 
-        const updatedUser = await this.userRepo.findById(userOid);
+        const updatedUser = await this.userRepo.findById(userId);
         const updatedSettings = updatedUser?.settings || {};
 
         try {
@@ -198,9 +191,7 @@ export class SettingsController {
             )[];
         };
     }> {
-        const userOid = new Types.ObjectId(userId);
-
-        await this.userRepo.update(userOid, {
+        await this.userRepo.update(userId, {
             serverSettings: { order: body.order },
         });
 

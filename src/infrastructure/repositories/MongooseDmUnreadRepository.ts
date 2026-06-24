@@ -1,5 +1,4 @@
 import { injectable } from 'inversify';
-import { Types } from 'mongoose';
 import type { ClientSession } from 'mongoose';
 import {
     IDmUnreadRepository,
@@ -13,14 +12,14 @@ import { DmUnread } from '@/models/DmUnread';
 @injectable()
 export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     // Find all unread counts for a specific user
-    public async findByUser(userId: Types.ObjectId): Promise<IDmUnread[]> {
+    public async findByUser(userId: string): Promise<IDmUnread[]> {
         return await DmUnread.find({ user: userId }).lean();
     }
 
     // Find unread count for a user from a specific peer
     public async findByUserAndPeer(
-        userId: Types.ObjectId,
-        peerId: Types.ObjectId,
+        userId: string,
+        peerId: string,
     ): Promise<IDmUnread | null> {
         return await DmUnread.findOne({ user: userId, peer: peerId }).lean();
     }
@@ -30,8 +29,8 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     // Uses upsert to create the record if it doesn't exist
     // Returns the new count after increment (atomic operation)
     public async increment(
-        userId: Types.ObjectId,
-        peerId: Types.ObjectId,
+        userId: string,
+        peerId: string,
         session?: ClientSession,
     ): Promise<number> {
         const result = await DmUnread.findOneAndUpdate(
@@ -43,10 +42,7 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     }
 
     // Reset the unread count for a user from a peer to zero
-    public async reset(
-        userId: Types.ObjectId,
-        peerId: Types.ObjectId,
-    ): Promise<void> {
+    public async reset(userId: string, peerId: string): Promise<void> {
         await DmUnread.findOneAndUpdate(
             { user: userId, peer: peerId },
             { $set: { count: 0 } },
@@ -55,15 +51,12 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
     }
 
     // Delete the unread count record for a user from a peer
-    public async delete(
-        userId: Types.ObjectId,
-        peerId: Types.ObjectId,
-    ): Promise<void> {
+    public async delete(userId: string, peerId: string): Promise<void> {
         await DmUnread.deleteOne({ user: userId, peer: peerId });
     }
 
     // Delete all unread count records for a specific user
-    public async deleteByUser(userId: Types.ObjectId): Promise<void> {
+    public async deleteByUser(userId: string): Promise<void> {
         await DmUnread.deleteMany({ user: userId });
     }
 }

@@ -32,7 +32,6 @@ import {
     UpdatePreferencesDto,
     MigrateVapidDto,
 } from './dto/push.request.dto';
-import { Types } from 'mongoose';
 import { VAPID_PUB } from '@/config/env';
 
 @Controller('api/v1/push')
@@ -133,7 +132,7 @@ export class PushController {
     @ApiOperation({ summary: 'Get notification preferences' })
     @ApiOkResponse({ type: PushPreferencesResponseDTO })
     public async getPreferences(@CurrentUser('id') userId: string) {
-        const user = await User.findById(new Types.ObjectId(userId))
+        const user = await User.findOne({ snowflakeId: userId })
             .select('notificationPreferences')
             .lean();
         return (
@@ -157,9 +156,12 @@ export class PushController {
             updateObj[`notificationPreferences.${k}`] = v;
         }
 
-        await User.findByIdAndUpdate(new Types.ObjectId(userId), {
-            $set: updateObj,
-        });
+        await User.findOneAndUpdate(
+            { snowflakeId: userId },
+            {
+                $set: updateObj,
+            },
+        );
         return { success: true };
     }
 

@@ -1,33 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Types } from 'mongoose';
 import type { Request } from 'express';
 import type { JWTPayload } from '@/utils/jwt';
 import { ServerChannelController } from '../ServerChannelController';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
-import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import type { WsServer } from '@/ws/server';
-import type { ExportService } from '@/services/ExportService';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
-import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
-import type { IRedisService } from '@/di/interfaces/IRedisService';
+import { generateSnowflakeId } from '@/utils/snowflake';
 
 function makeChannel(
     overrides: {
-        _id?: Types.ObjectId;
+        snowflakeId?: string;
         type?: 'text' | 'voice' | 'link';
-        categoryId?: Types.ObjectId | null;
+        categoryId?: string | null;
         slowMode?: number;
     } = {},
 ) {
     return {
-        _id: overrides._id ?? new Types.ObjectId(),
-        serverId: new Types.ObjectId(),
+        _id: new Types.ObjectId(),
+        snowflakeId: overrides.snowflakeId ?? generateSnowflakeId(),
+        serverId: new Types.ObjectId().toString(),
         type: overrides.type ?? 'text',
         name: 'general',
         categoryId: overrides.categoryId ?? null,
@@ -37,10 +26,8 @@ function makeChannel(
     };
 }
 
-function makePermMap(
-    entries: [Types.ObjectId, boolean][],
-): Map<string, boolean> {
-    return new Map(entries.map(([id, v]) => [id.toString(), v]));
+function makePermMap(entries: [string, boolean][]): Map<string, boolean> {
+    return new Map(entries);
 }
 
 const mockChannelRepo = { findByServerId: jest.fn() };
@@ -64,20 +51,20 @@ const mockRedisService = {};
 
 function buildController(): ServerChannelController {
     return new ServerChannelController(
-        mockChannelRepo as unknown as IChannelRepository,
-        mockServerMemberRepo as unknown as IServerMemberRepository,
-        mockServerChannelReadRepo as unknown as IServerChannelReadRepository,
-        mockCategoryRepo as unknown as ICategoryRepository,
-        mockServerMessageRepo as unknown as IServerMessageRepository,
-        mockPermissionService as unknown as PermissionService,
-        mockLogger as unknown as ILogger,
-        mockWsServer as unknown as WsServer,
-        mockExportService as unknown as ExportService,
-        mockServerRepo as unknown as IServerRepository,
-        mockAuditLogRepo as unknown as IAuditLogRepository,
-        mockServerAuditLogService as unknown as IServerAuditLogService,
-        mockRoleRepo as unknown as IRoleRepository,
-        mockRedisService as unknown as IRedisService,
+        mockChannelRepo as any,
+        mockServerMemberRepo as any,
+        mockServerChannelReadRepo as any,
+        mockCategoryRepo as any,
+        mockServerMessageRepo as any,
+        mockPermissionService as any,
+        mockLogger as any,
+        mockWsServer as any,
+        mockExportService as any,
+        mockServerRepo as any,
+        mockAuditLogRepo as any,
+        mockServerAuditLogService as any,
+        mockRoleRepo as any,
+        mockRedisService as any,
     );
 }
 
@@ -85,7 +72,7 @@ const userId = new Types.ObjectId();
 const serverId = new Types.ObjectId();
 const req = {
     user: { id: userId.toHexString() } as JWTPayload,
-} as unknown as Request;
+} as Request;
 
 describe('ServerChannelController - getChannels visibility', () => {
     let controller: ServerChannelController;
@@ -118,8 +105,8 @@ describe('ServerChannelController - getChannels visibility', () => {
     });
 
     it('shows a channel when viewChannels=true and no parent category', async () => {
-        const chId = new Types.ObjectId();
-        const ch = makeChannel({ _id: chId, categoryId: null });
+        const chId = generateSnowflakeId();
+        const ch = makeChannel({ snowflakeId: chId, categoryId: null });
 
         mockServerMemberRepo.findByServerAndUser.mockResolvedValue({ userId });
         mockChannelRepo.findByServerId.mockResolvedValue([ch]);
@@ -136,12 +123,12 @@ describe('ServerChannelController - getChannels visibility', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0]?.id).toBe(chId.toString());
+        expect(result[0]?.id).toBe(chId);
     });
 
     it('hides a channel when viewChannels=false', async () => {
-        const chId = new Types.ObjectId();
-        const ch = makeChannel({ _id: chId, categoryId: null });
+        const chId = generateSnowflakeId();
+        const ch = makeChannel({ snowflakeId: chId, categoryId: null });
 
         mockServerMemberRepo.findByServerAndUser.mockResolvedValue({ userId });
         mockChannelRepo.findByServerId.mockResolvedValue([ch]);
@@ -161,9 +148,9 @@ describe('ServerChannelController - getChannels visibility', () => {
     });
 
     it('shows a channel when viewChannels=true and its parent category has viewCategories=true', async () => {
-        const catId = new Types.ObjectId();
-        const chId = new Types.ObjectId();
-        const ch = makeChannel({ _id: chId, categoryId: catId });
+        const catId = generateSnowflakeId();
+        const chId = generateSnowflakeId();
+        const ch = makeChannel({ snowflakeId: chId, categoryId: catId });
 
         mockServerMemberRepo.findByServerAndUser.mockResolvedValue({ userId });
         mockChannelRepo.findByServerId.mockResolvedValue([ch]);
@@ -180,13 +167,13 @@ describe('ServerChannelController - getChannels visibility', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0]?.id).toBe(chId.toString());
+        expect(result[0]?.id).toBe(chId);
     });
 
     it('hides a channel when viewChannels=true but its parent category has viewCategories=false', async () => {
-        const catId = new Types.ObjectId();
-        const chId = new Types.ObjectId();
-        const ch = makeChannel({ _id: chId, categoryId: catId });
+        const catId = generateSnowflakeId();
+        const chId = generateSnowflakeId();
+        const ch = makeChannel({ snowflakeId: chId, categoryId: catId });
 
         mockServerMemberRepo.findByServerAndUser.mockResolvedValue({ userId });
         mockChannelRepo.findByServerId.mockResolvedValue([ch]);
@@ -206,9 +193,9 @@ describe('ServerChannelController - getChannels visibility', () => {
     });
 
     it("includes each channel's parent category ID in the hasCategoryPermissions call", async () => {
-        const catId = new Types.ObjectId();
-        const chId = new Types.ObjectId();
-        const ch = makeChannel({ _id: chId, categoryId: catId });
+        const catId = generateSnowflakeId();
+        const chId = generateSnowflakeId();
+        const ch = makeChannel({ snowflakeId: chId, categoryId: catId });
 
         mockServerMemberRepo.findByServerAndUser.mockResolvedValue({ userId });
         mockChannelRepo.findByServerId.mockResolvedValue([ch]);
@@ -225,10 +212,8 @@ describe('ServerChannelController - getChannels visibility', () => {
         );
 
         const [, , categoryIds] = mockPermissionService.hasCategoryPermissions
-            .mock.calls[0] as [unknown, unknown, Types.ObjectId[]];
-        expect(categoryIds.map((id) => id.toString())).toContain(
-            catId.toString(),
-        );
+            .mock.calls[0] as [unknown, unknown, string[]];
+        expect(categoryIds).toContain(catId);
     });
 
     it('does not include channels with no categoryId in the hasCategoryPermissions call', async () => {
@@ -249,12 +234,12 @@ describe('ServerChannelController - getChannels visibility', () => {
         );
 
         const [, , categoryIds] = mockPermissionService.hasCategoryPermissions
-            .mock.calls[0] as [unknown, unknown, Types.ObjectId[]];
+            .mock.calls[0] as [unknown, unknown, string[]];
         expect(categoryIds).toHaveLength(0);
     });
 
     it('deduplicates category IDs passed to hasCategoryPermissions', async () => {
-        const catId = new Types.ObjectId();
+        const catId = generateSnowflakeId();
         const ch1 = makeChannel({ categoryId: catId });
         const ch2 = makeChannel({ categoryId: catId });
 
@@ -273,14 +258,13 @@ describe('ServerChannelController - getChannels visibility', () => {
         );
 
         const [, , categoryIds] = mockPermissionService.hasCategoryPermissions
-            .mock.calls[0] as [unknown, unknown, Types.ObjectId[]];
-        const strs = categoryIds.map((id) => id.toString());
-        expect(strs).toHaveLength(new Set(strs).size);
-        expect(strs).toHaveLength(1);
+            .mock.calls[0] as [unknown, unknown, string[]];
+        expect(categoryIds).toHaveLength(new Set(categoryIds).size);
+        expect(categoryIds).toHaveLength(1);
     });
 
     it('runs both permission queries in parallel (each called exactly once)', async () => {
-        const catId = new Types.ObjectId();
+        const catId = generateSnowflakeId();
         const ch = makeChannel({ categoryId: catId });
 
         mockServerMemberRepo.findByServerAndUser.mockResolvedValue({ userId });

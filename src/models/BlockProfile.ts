@@ -1,10 +1,12 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
 export interface IBlockProfile extends Document {
+    snowflakeId: string;
     _id: Types.ObjectId;
-    ownerId: Types.ObjectId;
+    ownerId: string;
     name: string;
     flags: number;
     createdAt: Date;
@@ -14,8 +16,7 @@ export interface IBlockProfile extends Document {
 const blockProfileSchema = new Schema<IBlockProfile>(
     {
         ownerId: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
             index: true,
         },
@@ -35,6 +36,8 @@ const blockProfileSchema = new Schema<IBlockProfile>(
 );
 
 blockProfileSchema.plugin(mongooseIdPlugin);
+
+blockProfileSchema.plugin(snowflakeIdPlugin);
 
 // user can't have duplicate profile names
 blockProfileSchema.index({ ownerId: 1, name: 1 }, { unique: true });

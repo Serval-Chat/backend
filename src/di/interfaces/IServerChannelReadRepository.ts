@@ -6,9 +6,9 @@ import type { Types, ClientSession } from 'mongoose';
 // Used to calculate unread message indicators
 export interface IServerChannelRead {
     _id: Types.ObjectId;
-    serverId: Types.ObjectId;
-    channelId: Types.ObjectId;
-    userId: Types.ObjectId;
+    serverId: string;
+    channelId: string;
+    userId: string;
     // Timestamp of the last time the user viewed the channel
     lastReadAt: Date;
 }
@@ -19,18 +19,18 @@ export interface IServerChannelRead {
 export interface IServerChannelReadRepository {
     // Find all read records for a user in a server
     findByServerAndUser(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        userId: string,
     ): Promise<IServerChannelRead[]>;
 
     // Find all read records for a user across all servers/channels
-    findByUserId(userId: Types.ObjectId): Promise<IServerChannelRead[]>;
+    findByUserId(userId: string): Promise<IServerChannelRead[]>;
 
     // Upsert (create or update) a read record
     upsert(
-        serverId: Types.ObjectId,
-        channelId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        channelId: string,
+        userId: string,
         session?: ClientSession,
     ): Promise<IServerChannelRead>;
 }

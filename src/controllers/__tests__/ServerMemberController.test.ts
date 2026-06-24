@@ -1,21 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { Types } from 'mongoose';
 import { ServerMemberController } from '../ServerMemberController';
 import type { Request } from 'express';
 import type { JWTPayload } from '@/utils/jwt';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
-import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import type { WsServer } from '@/ws/server';
-import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
-import type { PingService } from '@/services/PingService';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
 import { IsHumanGuard } from '@/modules/auth/bot.guard';
 
 jest.mock('@/models/Bot', () => ({
@@ -114,19 +102,19 @@ describe('ServerMemberController', () => {
             lean: jest.fn().mockResolvedValue(null),
         });
         controller = new ServerMemberController(
-            mockServerMemberRepo as unknown as IServerMemberRepository,
-            mockServerRepo as unknown as IServerRepository,
-            mockUserRepo as unknown as IUserRepository,
-            mockRoleRepo as unknown as IRoleRepository,
-            mockServerBanRepo as unknown as IServerBanRepository,
-            mockPermissionService as unknown as PermissionService,
-            mockLogger as unknown as ILogger,
-            mockWsServer as unknown as WsServer,
-            mockServerAuditLogService as unknown as IServerAuditLogService,
-            mockBlockRepo as unknown as IBlockRepository,
-            mockPingService as unknown as PingService,
-            mockChannelRepo as unknown as IChannelRepository,
-            mockCategoryRepo as unknown as ICategoryRepository,
+            mockServerMemberRepo as any,
+            mockServerRepo as any,
+            mockUserRepo as any,
+            mockRoleRepo as any,
+            mockServerBanRepo as any,
+            mockPermissionService as any,
+            mockLogger as any,
+            mockWsServer as any,
+            mockServerAuditLogService,
+            mockBlockRepo as any,
+            mockPingService as any,
+            mockChannelRepo as any,
+            mockCategoryRepo as any,
         );
     });
 
@@ -154,7 +142,7 @@ describe('ServerMemberController', () => {
     describe('onboarding member state', () => {
         const req = {
             user: { id: meIdStr } as JWTPayload,
-        } as unknown as Request;
+        } as Request;
 
         it('broadcasts rules acceptance only to the current user', async () => {
             const updatedMember = {
@@ -177,8 +165,8 @@ describe('ServerMemberController', () => {
             );
 
             expect(mockServerMemberRepo.update).toHaveBeenCalledWith(
-                serverId,
-                meId,
+                serverIdStr,
+                meIdStr,
                 { rulesAcceptedAt: expect.any(Date) },
             );
             expect(mockWsServer.broadcastToUser).toHaveBeenCalledWith(meIdStr, {
@@ -195,13 +183,15 @@ describe('ServerMemberController', () => {
 
         it('validates and broadcasts channel preferences only to the current user', async () => {
             const channelId = new Types.ObjectId();
+            const channelIdStr = channelId.toHexString();
             const categoryId = new Types.ObjectId();
+            const categoryIdStr = categoryId.toHexString();
             const updatedMember = {
                 userId: meId,
                 serverId,
                 roles: [],
-                hiddenChannelIds: [channelId],
-                hiddenCategoryIds: [categoryId],
+                hiddenChannelIds: [channelIdStr],
+                hiddenCategoryIds: [categoryIdStr],
             };
 
             mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
@@ -210,10 +200,10 @@ describe('ServerMemberController', () => {
                 roles: [],
             });
             mockChannelRepo.findByServerId.mockResolvedValueOnce([
-                { _id: channelId, serverId },
+                { _id: channelId, snowflakeId: channelIdStr, serverId },
             ]);
             mockCategoryRepo.findByServerId.mockResolvedValueOnce([
-                { _id: categoryId, serverId },
+                { _id: categoryId, snowflakeId: categoryIdStr, serverId },
             ]);
             mockServerMemberRepo.update.mockResolvedValueOnce(updatedMember);
 
@@ -221,17 +211,17 @@ describe('ServerMemberController', () => {
                 serverIdStr,
                 req.user?.id as string,
                 {
-                    hiddenChannelIds: [channelId.toHexString()],
-                    hiddenCategoryIds: [categoryId.toHexString()],
+                    hiddenChannelIds: [channelIdStr],
+                    hiddenCategoryIds: [categoryIdStr],
                 },
             );
 
             expect(mockServerMemberRepo.update).toHaveBeenCalledWith(
-                serverId,
-                meId,
+                serverIdStr,
+                meIdStr,
                 {
-                    hiddenChannelIds: [channelId],
-                    hiddenCategoryIds: [categoryId],
+                    hiddenChannelIds: [channelIdStr],
+                    hiddenCategoryIds: [categoryIdStr],
                 },
             );
             expect(mockWsServer.broadcastToUser).toHaveBeenCalledWith(meIdStr, {
@@ -294,8 +284,8 @@ describe('ServerMemberController', () => {
             );
 
             expect(mockServerMemberRepo.update).toHaveBeenCalledWith(
-                serverId,
-                meId,
+                serverIdStr,
+                meIdStr,
                 {
                     onboardingRequired: false,
                     onboardingCompletedAt: expect.any(Date),
@@ -317,7 +307,7 @@ describe('ServerMemberController', () => {
     describe('leaveServer', () => {
         const req = {
             user: { id: meIdStr } as JWTPayload,
-        } as unknown as Request;
+        } as Request;
 
         it('clears server pings when leaving', async () => {
             mockServerRepo.findById.mockResolvedValue({
@@ -328,12 +318,12 @@ describe('ServerMemberController', () => {
             await controller.leaveServer(serverIdStr, req.user?.id as string);
 
             expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
-                serverId,
-                meId,
+                serverIdStr,
+                meIdStr,
             );
             expect(mockPingService.clearServerPings).toHaveBeenCalledWith(
-                meId,
-                serverId,
+                meIdStr,
+                serverIdStr,
             );
         });
     });
@@ -341,7 +331,7 @@ describe('ServerMemberController', () => {
     describe('updateSelfRoles', () => {
         const req = {
             user: { id: meIdStr } as JWTPayload,
-        } as unknown as Request;
+        } as Request;
 
         it('rejects roles outside the server allowlist', async () => {
             const allowedRoleId = new Types.ObjectId();
@@ -376,8 +366,8 @@ describe('ServerMemberController', () => {
         });
 
         it('preserves roles outside the allowlist when saving self roles', async () => {
-            const selfRoleId = new Types.ObjectId();
-            const keptRoleId = new Types.ObjectId();
+            const selfRoleId = new Types.ObjectId().toHexString();
+            const keptRoleId = new Types.ObjectId().toHexString();
             const updatedMember = {
                 userId: meId,
                 serverId,
@@ -385,8 +375,8 @@ describe('ServerMemberController', () => {
                 onboardingRequired: true,
                 rulesAcceptedAt: new Date(),
                 onboardingCompletedAt: new Date(),
-                hiddenChannelIds: [new Types.ObjectId()],
-                hiddenCategoryIds: [new Types.ObjectId()],
+                hiddenChannelIds: [new Types.ObjectId().toHexString()],
+                hiddenCategoryIds: [new Types.ObjectId().toHexString()],
             };
 
             mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
@@ -405,13 +395,15 @@ describe('ServerMemberController', () => {
             });
             mockRoleRepo.findByServerId.mockResolvedValueOnce([
                 {
-                    _id: selfRoleId,
+                    _id: new Types.ObjectId(),
+                    snowflakeId: selfRoleId,
                     serverId,
                     name: 'News',
                     managed: false,
                 },
                 {
-                    _id: keptRoleId,
+                    _id: new Types.ObjectId(),
+                    snowflakeId: keptRoleId,
                     serverId,
                     name: 'Moderator',
                     managed: false,
@@ -425,13 +417,13 @@ describe('ServerMemberController', () => {
                 serverIdStr,
                 req.user?.id as string,
                 {
-                    roleIds: [selfRoleId.toHexString()],
+                    roleIds: [selfRoleId],
                 },
             );
 
             expect(mockServerMemberRepo.updateRoles).toHaveBeenCalledWith(
-                serverId,
-                meId,
+                serverIdStr,
+                meIdStr,
                 expect.arrayContaining([keptRoleId, selfRoleId]),
             );
             expect(mockWsServer.broadcastToServer).toHaveBeenCalledWith(
@@ -456,7 +448,7 @@ describe('ServerMemberController', () => {
     describe('kickMember', () => {
         const req = {
             user: { id: meIdStr } as JWTPayload,
-        } as unknown as Request;
+        } as Request;
         const targetId = new Types.ObjectId();
         const targetIdStr = targetId.toHexString();
 
@@ -486,12 +478,12 @@ describe('ServerMemberController', () => {
             );
 
             expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
-                serverId,
-                targetId,
+                serverIdStr,
+                targetIdStr,
             );
             expect(mockPingService.clearServerPings).toHaveBeenCalledWith(
-                targetId,
-                serverId,
+                targetIdStr,
+                serverIdStr,
             );
         });
     });
@@ -499,7 +491,7 @@ describe('ServerMemberController', () => {
     describe('banMember', () => {
         const req = {
             user: { id: meIdStr } as JWTPayload,
-        } as unknown as Request;
+        } as Request;
         const targetId = new Types.ObjectId();
         const targetIdStr = targetId.toHexString();
 
@@ -522,12 +514,12 @@ describe('ServerMemberController', () => {
             });
 
             expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
-                serverId,
-                targetId,
+                serverIdStr,
+                targetIdStr,
             );
             expect(mockPingService.clearServerPings).toHaveBeenCalledWith(
-                targetId,
-                serverId,
+                targetIdStr,
+                serverIdStr,
             );
         });
     });
@@ -535,7 +527,7 @@ describe('ServerMemberController', () => {
     describe('removeMemberRole', () => {
         const req = {
             user: { id: meIdStr } as JWTPayload,
-        } as unknown as Request;
+        } as Request;
         const targetId = new Types.ObjectId();
         const targetIdStr = targetId.toHexString();
         const roleId = new Types.ObjectId();
@@ -594,7 +586,7 @@ describe('ServerMemberController', () => {
             });
             mockRoleRepo.findById.mockResolvedValueOnce({
                 _id: roleId,
-                serverId: serverId,
+                serverId: serverIdStr,
                 name: '@everyone',
             });
 
@@ -615,7 +607,7 @@ describe('ServerMemberController', () => {
             });
             mockRoleRepo.findById.mockResolvedValueOnce({
                 _id: roleId,
-                serverId: serverId,
+                serverId: serverIdStr,
                 name: 'Managed Bot Role',
                 managed: true,
             });
@@ -637,7 +629,7 @@ describe('ServerMemberController', () => {
             });
             mockRoleRepo.findById.mockResolvedValueOnce({
                 _id: roleId,
-                serverId: serverId,
+                serverId: serverIdStr,
                 name: 'Mod Role',
                 position: 10,
             });
@@ -670,7 +662,7 @@ describe('ServerMemberController', () => {
             });
             mockRoleRepo.findById.mockResolvedValueOnce({
                 _id: roleId,
-                serverId: serverId,
+                serverId: serverIdStr,
                 name: 'Mod Role',
                 position: 10,
             });
@@ -703,7 +695,7 @@ describe('ServerMemberController', () => {
             });
             mockRoleRepo.findById.mockResolvedValueOnce({
                 _id: roleId,
-                serverId: serverId,
+                serverId: serverIdStr,
                 name: 'Mod Role',
                 position: 10,
             });
@@ -727,9 +719,9 @@ describe('ServerMemberController', () => {
             );
 
             expect(mockServerMemberRepo.removeRole).toHaveBeenCalledWith(
-                serverId,
-                targetId,
-                roleId,
+                serverIdStr,
+                targetIdStr,
+                roleIdStr,
             );
             expect(result).toEqual(mockUpdatedMember);
         });
@@ -741,7 +733,7 @@ describe('ServerMemberController', () => {
             });
             mockRoleRepo.findById.mockResolvedValueOnce({
                 _id: roleId,
-                serverId: serverId,
+                serverId: serverIdStr,
                 name: 'Mod Role',
                 position: 10,
             });
@@ -771,9 +763,9 @@ describe('ServerMemberController', () => {
             );
 
             expect(mockServerMemberRepo.removeRole).toHaveBeenCalledWith(
-                serverId,
-                targetId,
-                roleId,
+                serverIdStr,
+                targetIdStr,
+                roleIdStr,
             );
             expect(result).toEqual(mockUpdatedMember);
         });

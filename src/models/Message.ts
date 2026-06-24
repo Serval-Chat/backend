@@ -1,4 +1,5 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 import type { IEmbed, IEmbedButton } from './Embed';
@@ -11,7 +12,7 @@ export interface IPollOption {
     emoji?: string;
     emojiType?: 'unicode' | 'custom';
     emojiId?: string;
-    votes: Types.ObjectId[]; // Array of User IDs
+    votes: string[];
 }
 
 // Poll interface
@@ -26,13 +27,14 @@ export interface IPoll {
 //
 // Represents a private message between two users
 export interface IMessage extends Document {
-    senderId: Types.ObjectId;
-    receiverId: Types.ObjectId;
+    snowflakeId: string;
+    senderId: string;
+    receiverId: string;
     text: string;
     createdAt: Date;
-    replyToId?: Types.ObjectId;
-    repliedToMessageId?: Types.ObjectId;
-    stickerId?: Types.ObjectId;
+    replyToId?: string;
+    repliedToMessageId?: string;
+    stickerId?: string;
     editedAt?: Date;
     isEdited?: boolean;
     senderDeleted?: boolean;
@@ -49,17 +51,16 @@ export interface IMessage extends Document {
 // Hard deletion fields preserved for backward compatibility
 
 const messageSchema = new Schema<IMessage>({
-    senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    receiverId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    senderId: { type: String, required: true },
+    receiverId: { type: String, required: true },
     text: { type: String, required: false, default: '' },
     createdAt: { type: Date, default: Date.now },
     replyToId: { type: String, required: false },
     repliedToMessageId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Message',
+        type: String,
         required: false,
     },
-    stickerId: { type: Schema.Types.ObjectId, ref: 'Sticker', required: false },
+    stickerId: { type: String, required: false },
     editedAt: { type: Date, required: false },
     isEdited: { type: Boolean, default: false },
     senderDeleted: { type: Boolean, default: false },
@@ -77,7 +78,7 @@ const messageSchema = new Schema<IMessage>({
                         emoji: { type: String, required: false },
                         emojiType: { type: String, required: false },
                         emojiId: { type: String, required: false },
-                        votes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+                        votes: [{ type: String }],
                     },
                 ],
                 multiSelect: { type: Boolean, default: false },
@@ -95,7 +96,15 @@ const messageSchema = new Schema<IMessage>({
 
 messageSchema.plugin(mongooseIdPlugin);
 
-// Indexing for performance
+messageSchema.plugin(snowflakeIdPlugin);
+
+messageSchema.virtual('repliedToMessage', {
+    ref: 'Message',
+    localField: 'repliedToMessageId',
+    foreignField: 'snowflakeId',
+    justOne: true,
+});
+
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
 messageSchema.index({ receiverId: 1, senderId: 1, createdAt: -1 });
 messageSchema.index({ createdAt: -1 });

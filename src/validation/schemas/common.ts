@@ -2,7 +2,6 @@ import { applyDecorators } from '@nestjs/common';
 import { z } from 'zod';
 import {
     IsString,
-    IsMongoId,
     Matches,
     MinLength,
     MaxLength,
@@ -19,21 +18,40 @@ import { isPermissionKey } from '@/permissions/types';
 import type { ValidationOptions } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
+import { isValidSnowflakeId } from '@/utils/snowflake';
 
 // --- ID Validations ---
 
-export function IsObjectId(validationOptions?: ValidationOptions) {
-    return applyDecorators(IsMongoId(validationOptions));
+export function IsSnowflakeId(validationOptions?: ValidationOptions) {
+    return function (target: object, propertyKey: string | symbol) {
+        registerDecorator({
+            name: 'isSnowflakeId',
+            target: target.constructor,
+            propertyName: propertyKey.toString(),
+            options: {
+                ...validationOptions,
+                message: `${propertyKey.toString()} must be a valid snowflake id`,
+            },
+            validator: {
+                validate(value: unknown) {
+                    return isValidSnowflakeId(value);
+                },
+            },
+        });
+    };
 }
 
 // Semantic Aliases
-export const IsUserId = IsObjectId;
-export const IsServerId = IsObjectId;
-export const IsChannelId = IsObjectId;
-export const IsMessageId = IsObjectId;
-export const IsRoleId = IsObjectId;
-export const IsCategoryId = IsObjectId;
-export const IsEmojiId = IsObjectId;
+export const IsUserId = IsSnowflakeId;
+export const IsServerId = IsSnowflakeId;
+export const IsChannelId = IsSnowflakeId;
+export const IsMessageId = IsSnowflakeId;
+export const IsRoleId = IsSnowflakeId;
+export const IsCategoryId = IsSnowflakeId;
+export const IsStickerId = IsSnowflakeId;
+export const IsConnectionId = IsSnowflakeId;
+export const IsBlockProfileId = IsSnowflakeId;
+export const IsEmojiId = IsSnowflakeId;
 
 // --- User Validations ---
 

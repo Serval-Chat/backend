@@ -1,5 +1,4 @@
 import { injectable } from 'inversify';
-import { Types } from 'mongoose';
 import {
     IStickerRepository,
     ISticker,
@@ -8,11 +7,11 @@ import { Sticker } from '@/models/Sticker';
 
 @injectable()
 export class MongooseStickerRepository implements IStickerRepository {
-    public async findById(id: Types.ObjectId): Promise<ISticker | null> {
-        return await Sticker.findById(id).lean();
+    public async findById(id: string): Promise<ISticker | null> {
+        return await Sticker.findOne({ snowflakeId: id }).lean();
     }
 
-    public async findByServerId(serverId: Types.ObjectId): Promise<ISticker[]> {
+    public async findByServerId(serverId: string): Promise<ISticker[]> {
         return await Sticker.find({ serverId }).lean();
     }
 
@@ -20,47 +19,42 @@ export class MongooseStickerRepository implements IStickerRepository {
         name: string;
         imageUrl: string;
         isAnimated: boolean;
-        serverId: Types.ObjectId;
-        createdBy: Types.ObjectId;
+        serverId: string;
+        createdBy: string;
     }): Promise<ISticker> {
         const sticker = new Sticker(data);
         return await sticker.save();
     }
 
-    public async delete(id: Types.ObjectId): Promise<boolean> {
-        const result = await Sticker.deleteOne({ _id: id });
+    public async delete(id: string): Promise<boolean> {
+        const result = await Sticker.deleteOne({ snowflakeId: id });
         return result.deletedCount > 0;
     }
 
+    // createdBy is a plain snowflakeId string, StickerResponseDTO types it
+    // as string, so populating it would be wasted work.
     public async findByServerIdWithCreator(
-        serverId: Types.ObjectId,
+        serverId: string,
     ): Promise<ISticker[]> {
-        return await Sticker.find({ serverId })
-            .populate('createdBy', 'username')
-            .sort({ createdAt: 1 })
-            .lean();
+        return await Sticker.find({ serverId }).sort({ createdAt: 1 }).lean();
     }
 
-    public async findByIdWithCreator(
-        id: Types.ObjectId,
-    ): Promise<ISticker | null> {
-        return await Sticker.findById(id)
-            .populate('createdBy', 'username')
-            .lean();
+    public async findByIdWithCreator(id: string): Promise<ISticker | null> {
+        return await Sticker.findOne({ snowflakeId: id }).lean();
     }
 
     public async findByServerAndName(
-        serverId: Types.ObjectId,
+        serverId: string,
         name: string,
     ): Promise<ISticker | null> {
         return await Sticker.findOne({ serverId, name }).lean();
     }
 
-    public async findByServerIds(
-        serverIds: Types.ObjectId[],
-    ): Promise<ISticker[]> {
+    public async findByServerIds(serverIds: string[]): Promise<ISticker[]> {
         return await Sticker.find({ serverId: { $in: serverIds } })
-            .select('_id name imageUrl isAnimated serverId createdBy createdAt')
+            .select(
+                '_id snowflakeId name imageUrl isAnimated serverId createdBy createdAt',
+            )
             .sort({ name: 1 })
             .lean();
     }

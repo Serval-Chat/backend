@@ -4,6 +4,7 @@
  * Defines the available granular permissions for admin users.
  */
 export interface AdminPermissions {
+    [key: string]: boolean;
     adminAccess: boolean; // Super admin access (bypasses other checks)
     viewUsers: boolean; // Can view user lists and details
     manageUsers: boolean; // Can edit user profiles and soft delete

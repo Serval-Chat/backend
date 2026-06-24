@@ -4,6 +4,7 @@ import { Client } from '@elastic/elasticsearch';
 
 import { connectDB } from '@/config/db';
 import { ELASTICSEARCH_URL } from '@/config/env';
+import { SYSTEM_SENDER_ID } from '@/utils/snowflake';
 import {
     CHANNEL_MESSAGES_INDEX,
     CHANNEL_INDEX_MAPPINGS,
@@ -21,7 +22,7 @@ interface RawDmMessage {
     createdAt?: Date;
     senderDeleted?: boolean;
     receiverDeleted?: boolean;
-    stickerId?: Types.ObjectId;
+    stickerId?: string;
     embeds?: unknown[];
     attachments?: unknown[];
 }
@@ -39,7 +40,7 @@ interface RawChannelMessage {
     isWebhook?: boolean;
     webhookUsername?: string;
     webhookAvatarUrl?: string;
-    stickerId?: Types.ObjectId;
+    stickerId?: string;
     embeds?: unknown[];
     attachments?: unknown[];
 }
@@ -153,7 +154,10 @@ async function bulkIndexChannel(
                 is_sticky: doc.isSticky ?? false,
                 is_webhook:
                     (doc.isWebhook ?? false) ||
-                    doc.senderId.toString() === '000000000000000000000000',
+                    // ObjectId-shaped sentinel predating the snowflake migration, kept
+                    // so re-running this backfill on old data still classifies webhook messages.
+                    doc.senderId.toString() === '000000000000000000000000' ||
+                    doc.senderId.toString() === SYSTEM_SENDER_ID,
                 is_bot: botIds.has(doc.senderId.toString()),
                 has_file:
                     Array.isArray(doc.attachments) &&

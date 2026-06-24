@@ -1,4 +1,3 @@
-import type { Types } from 'mongoose';
 import {
     getPermissionDefault,
     isPermissionKey,
@@ -16,44 +15,44 @@ export {
 export type Permissions = Partial<Record<PermissionKey, boolean>>;
 
 export interface ServerRole {
-    id: Types.ObjectId;
-    serverId: Types.ObjectId;
+    id: string;
+    serverId: string;
     name: string;
     position: number;
     permissions: Permissions;
 }
 
 export interface RoleOverride {
-    roleId: Types.ObjectId;
+    roleId: string;
     permissions: Permissions;
 }
 
 export interface Channel {
-    id: Types.ObjectId;
-    serverId: Types.ObjectId;
-    categoryId?: Types.ObjectId | null;
+    id: string;
+    serverId: string;
+    categoryId?: string | null;
     overrides?: Map<string, Permissions>;
 }
 
 export interface Category {
-    id: Types.ObjectId;
-    serverId: Types.ObjectId;
+    id: string;
+    serverId: string;
     overrides?: Map<string, Permissions>;
 }
 
 export interface ServerMember {
-    id: Types.ObjectId;
-    serverId: Types.ObjectId;
-    userId: Types.ObjectId;
-    roleIds: Types.ObjectId[];
+    id: string;
+    serverId: string;
+    userId: string;
+    roleIds: string[];
     communicationDisabledUntil?: Date | null;
 }
 
 export interface ServerData {
-    serverId: Types.ObjectId;
-    ownerId: Types.ObjectId;
+    serverId: string;
+    ownerId: string;
     roles: ServerRole[];
-    everyoneRoleId?: Types.ObjectId;
+    everyoneRoleId?: string;
     channels: Channel[];
     categories: Category[];
     members: ServerMember[];

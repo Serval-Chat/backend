@@ -119,7 +119,7 @@ export async function setup() {
         srv.listen(0, () => resolve());
     });
 
-    return { app: app as Express, server: server as Server, io, uri };
+    return { app: app as Express, server: server, io, uri };
 }
 
 export async function teardown() {

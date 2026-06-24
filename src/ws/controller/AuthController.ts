@@ -1,6 +1,5 @@
 import { injectable, inject } from 'inversify';
 import crypto from 'crypto';
-import mongoose from 'mongoose';
 import { WsController, Event, Validate } from '@/ws/decorators';
 import type {
     IWsAuthenticateEvent,
@@ -16,8 +15,7 @@ import type { JWTPayload } from '@/utils/jwt';
 import { z } from 'zod';
 import type { IWsUser } from '@/ws/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
-import { getDocumentIdString } from '@/utils/mongooseId';
-import { Bot } from '@/models/Bot';
+import { resolveBotAuthPayload } from '@/utils/botAuth';
 
 const AuthenticateSchema = z.object({
     token: z.string().min(1, 'Token is required'),
@@ -68,43 +66,17 @@ export class AuthController {
                 .createHash('sha256')
                 .update(token)
                 .digest('hex');
-            const bot = await Bot.findOne({ botTokenHash: tokenHash })
-                .select('+botTokenHash')
-                .populate('userId', 'username tokenVersion deletedAt isBot')
-                .lean();
+            const botPayload = await resolveBotAuthPayload(tokenHash);
 
-            if (!bot)
+            if (botPayload === null)
                 throw new Error(
                     'AUTHENTICATION_FAILED: Invalid or expired token',
                 );
 
-            const botUser = bot.userId as unknown as {
-                _id: mongoose.Types.ObjectId;
-                username: string;
-                tokenVersion: number;
-                deletedAt?: Date;
-                isBot: boolean;
-            };
-
-            if (botUser.deletedAt !== undefined) {
-                throw new Error(
-                    'AUTHENTICATION_FAILED: Account deleted or not found',
-                );
-            }
-
-            decoded = {
-                type: 'access',
-                id: botUser._id.toString(),
-                login: `bot.${bot.clientId}`,
-                username: botUser.username,
-                tokenVersion: botUser.tokenVersion,
-                isBot: true,
-            };
+            decoded = botPayload;
         }
 
-        const user = await this.userRepo.findById(
-            new mongoose.Types.ObjectId(decoded.id),
-        );
+        const user = await this.userRepo.findById(decoded.id);
 
         if (!user) {
             throw new Error(
@@ -122,11 +94,7 @@ export class AuthController {
             throw new Error('AUTHENTICATION_FAILED: Token expired');
         }
 
-        if (
-            await this.userRepo.isBanned(
-                new mongoose.Types.ObjectId(decoded.id),
-            )
-        ) {
+        if (await this.userRepo.isBanned(decoded.id)) {
             throw new Error('AUTHENTICATION_FAILED: Account banned');
         }
 
@@ -142,7 +110,7 @@ export class AuthController {
 
         if (wsUser.isBot === true) {
             const memberships = await this.serverMemberRepo.findByUserId(
-                new mongoose.Types.ObjectId(decoded.id),
+                decoded.id,
             );
             for (const membership of memberships) {
                 this.wsServer.subscribeToServer(
@@ -154,7 +122,7 @@ export class AuthController {
 
         return {
             user: {
-                id: getDocumentIdString(user),
+                id: user.snowflakeId,
                 username: user.username ?? '',
                 displayName: user.displayName ?? null,
                 profilePicture: user.profilePicture ?? null,

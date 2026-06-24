@@ -5,11 +5,12 @@ import type { Types } from 'mongoose';
 // Represents a formal warning issued to a user by an administrator
 export interface IWarning {
     _id: Types.ObjectId;
-    userId: Types.ObjectId;
+    snowflakeId: string;
+    userId: string;
     message: string;
     // The administrator who issued the warning
     // Can be an ID or a hydrated object with username
-    issuedBy: Types.ObjectId | { username: string };
+    issuedBy: string;
     acknowledged: boolean;
     acknowledgedAt?: Date;
     timestamp: Date;
@@ -20,29 +21,26 @@ export interface IWarning {
 // Manages user warnings and acknowledgements
 export interface IWarningRepository {
     // Find all warnings for a specific user
-    findByUserId(
-        userId: Types.ObjectId,
-        acknowledged?: boolean,
-    ): Promise<IWarning[]>;
+    findByUserId(userId: string, acknowledged?: boolean): Promise<IWarning[]>;
 
     // Find a warning by its ID
-    findById(id: Types.ObjectId): Promise<IWarning | null>;
+    findById(id: string): Promise<IWarning | null>;
 
     // Mark a warning as acknowledged by the user
-    acknowledge(id: Types.ObjectId): Promise<IWarning | null>;
+    acknowledge(id: string): Promise<IWarning | null>;
 
     // Count warnings for a user
-    countByUserId(userId: Types.ObjectId): Promise<number>;
+    countByUserId(userId: string): Promise<number>;
 
     // Create a new warning
     create(data: {
-        userId: Types.ObjectId;
+        userId: string;
         message: string;
-        issuedBy: Types.ObjectId;
+        issuedBy: string;
     }): Promise<IWarning>;
 
     // Delete all warnings for a user (for hard delete)
-    deleteAllForUser(userId: Types.ObjectId): Promise<{ deletedCount: number }>;
+    deleteAllForUser(userId: string): Promise<{ deletedCount: number }>;
 
     // Find all warnings with pagination
     findAll(options: { limit?: number; offset?: number }): Promise<IWarning[]>;

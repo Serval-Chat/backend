@@ -5,6 +5,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { generateSnowflakeId } from '@/utils/snowflake';
 
 jest.mock('@/models/Bot', () => ({
     BOT_PERMISSION_KEYS: [
@@ -84,7 +85,7 @@ jest.mock('@/models/User', () => ({
 }));
 
 jest.mock('@/models/Server', () => ({
-    Server: { findById: jest.fn() },
+    Server: { findById: jest.fn(), findOne: jest.fn() },
     ServerMember: {
         findOne: jest.fn(),
         create: jest.fn(),
@@ -111,7 +112,7 @@ function makeChain(value: unknown) {
 
 const OWNER_ID = new Types.ObjectId().toHexString();
 const BOT_USER_ID = new Types.ObjectId().toHexString();
-const SERVER_ID = new Types.ObjectId().toHexString();
+const SERVER_ID = generateSnowflakeId();
 
 const mockWsServer = { broadcastToServer: jest.fn() };
 const mockSlashCommandRepo = {
@@ -176,8 +177,9 @@ describe('getPublicInfo', () => {
             makeChain({
                 clientId: '0123456789abcdef0123456789abcdef',
                 botPermissions: { readMessages: true, sendMessages: false },
-                userId: {
-                    _id: botUserOid,
+                userId: botUserOid.toHexString(),
+                userIdUser: {
+                    snowflakeId: botUserOid.toHexString(),
                     username: 'mybot',
                     displayName: 'My Bot',
                     bio: 'A bot',
@@ -250,7 +252,7 @@ describe('authorizeToServer', () => {
                 botPermissions: { joinServers: true },
             }),
         );
-        (Server.findById as jest.Mock).mockReturnValue(makeChain(null));
+        (Server.findOne as jest.Mock).mockReturnValue(makeChain(null));
 
         await expect(
             controller.authorizeToServer(
@@ -272,9 +274,9 @@ describe('authorizeToServer', () => {
                 botPermissions: { joinServers: true },
             }),
         );
-        (Server.findById as jest.Mock).mockReturnValue(
+        (Server.findOne as jest.Mock).mockReturnValue(
             makeChain({
-                _id: new Types.ObjectId(SERVER_ID),
+                _id: new Types.ObjectId(),
                 name: 'Test Server',
                 ownerId: new Types.ObjectId(otherOwnerId),
                 deletedAt: undefined,
@@ -299,9 +301,9 @@ describe('authorizeToServer', () => {
                 botPermissions: { joinServers: true },
             }),
         );
-        (Server.findById as jest.Mock).mockReturnValue(
+        (Server.findOne as jest.Mock).mockReturnValue(
             makeChain({
-                _id: new Types.ObjectId(SERVER_ID),
+                _id: new Types.ObjectId(),
                 name: 'Test Server',
                 ownerId: new Types.ObjectId(OWNER_ID),
                 deletedAt: undefined,
@@ -328,9 +330,9 @@ describe('authorizeToServer', () => {
                 botPermissions: { joinServers: true },
             }),
         );
-        (Server.findById as jest.Mock).mockReturnValue(
+        (Server.findOne as jest.Mock).mockReturnValue(
             makeChain({
-                _id: new Types.ObjectId(SERVER_ID),
+                _id: new Types.ObjectId(),
                 name: 'Test Server',
                 ownerId: new Types.ObjectId(OWNER_ID),
                 deletedAt: undefined,
@@ -358,9 +360,9 @@ describe('authorizeToServer', () => {
                 botPermissions: { joinServers: true },
             }),
         );
-        (Server.findById as jest.Mock).mockReturnValue(
+        (Server.findOne as jest.Mock).mockReturnValue(
             makeChain({
-                _id: new Types.ObjectId(SERVER_ID),
+                _id: new Types.ObjectId(),
                 name: 'Test Server',
                 ownerId: new Types.ObjectId(OWNER_ID),
                 deletedAt: undefined,
@@ -370,7 +372,7 @@ describe('authorizeToServer', () => {
         (ServerMember.findOne as jest.Mock).mockReturnValue(makeChain(null));
         (ServerBan.findOne as jest.Mock).mockReturnValue(makeChain(null));
         (Role.findOne as jest.Mock).mockReturnValue(makeChain(null));
-        (User.findById as jest.Mock).mockReturnValue({
+        (User.findOne as jest.Mock).mockReturnValue({
             lean: () => ({ username: 'testbot' }),
         });
         mockRoleRepo.findMaxPositionByServerId.mockResolvedValue({
@@ -397,8 +399,8 @@ describe('authorizeToServer', () => {
         });
         expect(ServerMember.create).toHaveBeenCalledWith(
             expect.objectContaining({
-                serverId: expect.any(Types.ObjectId),
-                userId: expect.any(Types.ObjectId),
+                serverId: expect.any(String),
+                userId: expect.any(String),
             }),
         );
         expect(mockWsServer.broadcastToServer).toHaveBeenCalledWith(

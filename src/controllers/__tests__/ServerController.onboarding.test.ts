@@ -12,7 +12,7 @@ describe('ServerController onboarding settings', () => {
     const userIdStr = userId.toHexString();
     const req = {
         user: { id: userIdStr },
-    } as unknown as Request;
+    } as Request;
 
     const mockServerRepo = {
         findById: jest.fn(),
@@ -85,7 +85,7 @@ describe('ServerController onboarding settings', () => {
             mockPingService as never,
             mockLogger as never,
             mockAuditLogRepo as never,
-            mockServerAuditLogService as never,
+            mockServerAuditLogService,
             mockRedisService as never,
             mockDiscoveryService as never,
         );
@@ -140,13 +140,15 @@ describe('ServerController onboarding settings', () => {
         mockServerRepo.findById.mockResolvedValue(existingServer);
         mockRoleRepo.findByServerId.mockResolvedValue([
             {
-                _id: everyoneId,
+                _id: new Types.ObjectId(),
+                snowflakeId: everyoneId.toHexString(),
                 serverId,
                 name: '@everyone',
                 managed: false,
             },
             {
-                _id: managedId,
+                _id: new Types.ObjectId(),
+                snowflakeId: managedId.toHexString(),
                 serverId,
                 name: 'Bot',
                 managed: true,
@@ -229,7 +231,8 @@ describe('ServerController onboarding settings', () => {
         mockServerRepo.findById.mockResolvedValueOnce(existingServer);
         mockRoleRepo.findByServerId.mockResolvedValueOnce([
             {
-                _id: roleId,
+                _id: new Types.ObjectId(),
+                snowflakeId: roleId.toHexString(),
                 serverId,
                 name: 'News',
                 managed: false,
@@ -243,7 +246,8 @@ describe('ServerController onboarding settings', () => {
         });
         mockChannelRepo.findByServerId.mockResolvedValueOnce([
             {
-                _id: welcomeChannelId,
+                _id: new Types.ObjectId(),
+                snowflakeId: welcomeChannelId.toHexString(),
                 serverId,
                 type: 'text',
                 name: 'announcements',
@@ -267,7 +271,7 @@ describe('ServerController onboarding settings', () => {
         );
 
         expect(result).toEqual(updatedOnboarding);
-        expect(mockServerRepo.update).toHaveBeenCalledWith(serverId, {
+        expect(mockServerRepo.update).toHaveBeenCalledWith(serverIdStr, {
             onboarding: updatedOnboarding,
         });
         expect(mockWsServer.broadcastToServer).toHaveBeenCalledWith(

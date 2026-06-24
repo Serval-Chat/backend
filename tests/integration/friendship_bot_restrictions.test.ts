@@ -51,8 +51,8 @@ describe('Friendship bot restrictions', () => {
         expect(JSON.stringify(res.body)).toContain('Cannot add bots as friends');
 
         const requestDoc = await FriendRequest.findOne({
-            fromId: human._id,
-            toId: botUser._id,
+            fromId: human.snowflakeId,
+            toId: botUser.snowflakeId,
         });
         expect(requestDoc).toBeNull();
     });
@@ -67,8 +67,8 @@ describe('Friendship bot restrictions', () => {
         expect(res.body.message).toBe('friend request sent');
 
         const requestDoc = await FriendRequest.findOne({
-            fromId: human._id,
-            toId: otherHuman._id,
+            fromId: human.snowflakeId,
+            toId: otherHuman.snowflakeId,
         });
         expect(requestDoc).toBeTruthy();
     });

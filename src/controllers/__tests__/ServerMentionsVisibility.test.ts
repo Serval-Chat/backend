@@ -1,19 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ServerController } from '@/ws/controller/ServerController';
 import { Types } from 'mongoose';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
-import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { PingService } from '@/services/PingService';
-import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
-import type { TransactionManager } from '@/infrastructure/TransactionManager';
-import type { IRedisService } from '@/di/interfaces/IRedisService';
-import type { EmbedService } from '@/services/EmbedService';
 
 jest.mock('@/services/PushService', () => ({
     notifyUser: jest.fn().mockResolvedValue(undefined),
@@ -40,19 +27,6 @@ type HandleMentions = (
     mentionedEveryone: boolean,
     message: any,
 ) => Promise<void>;
-
-type ServerControllerTestInternals = {
-    handleMentions: (
-        serverId: string,
-        channelId: string,
-        senderId: string,
-        senderUsername: string,
-        mentionedUserIds: string[],
-        mentionedRoleIds: string[],
-        mentionedEveryone: boolean,
-        message: any,
-    ) => Promise<void>;
-};
 
 describe('Server WS mention visibility', () => {
     let controller: ServerController;
@@ -95,12 +69,12 @@ describe('Server WS mention visibility', () => {
         };
         serverMemberRepo = {
             findByServerAndUser: jest.fn().mockResolvedValue({
-                userId: new Types.ObjectId(VISIBLE_USER_ID),
+                userId: VISIBLE_USER_ID,
                 roles: [],
             }),
             findByServerId: jest.fn().mockResolvedValue([
                 {
-                    userId: new Types.ObjectId(VISIBLE_USER_ID),
+                    userId: VISIBLE_USER_ID,
                     roles: [new Types.ObjectId(ROLE_ID)],
                 },
                 {
@@ -138,24 +112,22 @@ describe('Server WS mention visibility', () => {
         };
 
         controller = new ServerController(
-            { findById: jest.fn() } as unknown as IServerRepository,
-            userRepo as unknown as IUserRepository,
-            {} as unknown as IServerMessageRepository,
-            serverMemberRepo as unknown as IServerMemberRepository,
-            channelRepo as unknown as IChannelRepository,
-            {} as unknown as IServerChannelReadRepository,
-            {} as unknown as IRoleRepository,
-            permissionService as unknown as PermissionService,
-            pingService as unknown as PingService,
-            {} as unknown as IMuteRepository,
-            { runInTransaction: jest.fn() } as unknown as TransactionManager,
-            { getClient: jest.fn() } as unknown as IRedisService,
-            {} as unknown as EmbedService,
+            { findById: jest.fn() } as any,
+            userRepo as any,
+            {} as any,
+            serverMemberRepo as any,
+            channelRepo as any,
+            {} as any,
+            {} as any,
+            permissionService as any,
+            pingService as any,
+            {} as any,
+            { runInTransaction: jest.fn() },
+            { getClient: jest.fn() } as any,
+            {} as any,
         );
         (controller as any).wsServer = wsServer;
-        handleMentions = (
-            controller as unknown as ServerControllerTestInternals
-        ).handleMentions.bind(controller);
+        handleMentions = (controller as any).handleMentions.bind(controller);
     });
 
     it('does not store or emit a direct mention ping when the mentioned user cannot view the channel', async () => {
@@ -187,7 +159,7 @@ describe('Server WS mention visibility', () => {
         );
 
         expect(pingService.addPing).toHaveBeenCalledWith(
-            new Types.ObjectId(VISIBLE_USER_ID),
+            VISIBLE_USER_ID,
             expect.objectContaining({
                 type: 'mention',
                 sender: 'sender',
@@ -215,7 +187,7 @@ describe('Server WS mention visibility', () => {
 
         expect(pingService.addPing).toHaveBeenCalledTimes(1);
         expect(pingService.addPing).toHaveBeenCalledWith(
-            new Types.ObjectId(VISIBLE_USER_ID),
+            VISIBLE_USER_ID,
             expect.any(Object),
         );
         expect(wsServer.broadcastToUser).toHaveBeenCalledTimes(1);
@@ -239,7 +211,7 @@ describe('Server WS mention visibility', () => {
 
         expect(pingService.addPing).toHaveBeenCalledTimes(1);
         expect(pingService.addPing).toHaveBeenCalledWith(
-            new Types.ObjectId(VISIBLE_USER_ID),
+            VISIBLE_USER_ID,
             expect.any(Object),
         );
         expect(wsServer.broadcastToUser).toHaveBeenCalledTimes(1);

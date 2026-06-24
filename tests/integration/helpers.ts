@@ -22,7 +22,7 @@ export async function createTestUser(overrides: Record<string, unknown> = {}) {
 export function generateAuthToken(user: IUser) {
     return jwt.sign(
         {
-            id: user._id,
+            id: user.snowflakeId,
             username: user.username,
             tokenVersion: user.tokenVersion,
             isBot: user.isBot
@@ -64,7 +64,7 @@ export async function createTestServer(ownerId: string, overrides: Record<string
     });
 
     await Role.create({
-        serverId: server._id,
+        serverId: server.snowflakeId,
         name: '@everyone',
         position: 0,
         permissions: {
@@ -85,7 +85,7 @@ export async function createTestServer(ownerId: string, overrides: Record<string
     });
 
     await ServerMember.create({
-        serverId: server._id,
+        serverId: server.snowflakeId,
         userId: ownerId,
         roles: []
     });

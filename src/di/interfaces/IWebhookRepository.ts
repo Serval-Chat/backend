@@ -5,13 +5,14 @@ import type { Types } from 'mongoose';
 // Represents an automated message sender for a specific channel
 export interface IWebhook {
     _id: Types.ObjectId;
-    serverId: Types.ObjectId;
-    channelId: Types.ObjectId;
+    snowflakeId: string;
+    serverId: string;
+    channelId: string;
     name: string;
     // Secret token used to authenticate and send messages using the webhook
     token: string;
     avatarUrl?: string;
-    createdBy: Types.ObjectId;
+    createdBy: string;
     createdAt?: Date;
 }
 
@@ -20,33 +21,30 @@ export interface IWebhook {
 // Encapsulates webhook operations
 export interface IWebhookRepository {
     // Find webhook by ID
-    findById(id: Types.ObjectId): Promise<IWebhook | null>;
+    findById(id: string): Promise<IWebhook | null>;
 
     // Find webhook by token
     findByToken(token: string): Promise<IWebhook | null>;
 
     // Find all webhooks for a server
-    findByServerId(serverId: Types.ObjectId): Promise<IWebhook[]>;
+    findByServerId(serverId: string): Promise<IWebhook[]>;
 
     // Find all webhooks for a channel
-    findByChannelId(channelId: Types.ObjectId): Promise<IWebhook[]>;
+    findByChannelId(channelId: string): Promise<IWebhook[]>;
 
     // Create a new webhook
     create(data: {
-        serverId: Types.ObjectId;
-        channelId: Types.ObjectId;
+        serverId: string;
+        channelId: string;
         name: string;
         token: string;
         avatarUrl?: string;
-        createdBy: Types.ObjectId;
+        createdBy: string;
     }): Promise<IWebhook>;
 
     // Update webhook
-    update(
-        id: Types.ObjectId,
-        data: Partial<IWebhook>,
-    ): Promise<IWebhook | null>;
+    update(id: string, data: Partial<IWebhook>): Promise<IWebhook | null>;
 
     // Delete webhook by ID
-    delete(id: Types.ObjectId): Promise<boolean>;
+    delete(id: string): Promise<boolean>;
 }

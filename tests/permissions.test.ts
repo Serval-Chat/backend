@@ -3,13 +3,13 @@ import { PermissionResolver } from '../src/permissions/PermissionResolver';
 import type { ServerData } from '../src/permissions/types';
 
 describe('PermissionResolver - seeDeletedMessages', () => {
-    const ownerId = new Types.ObjectId();
-    const modId = new Types.ObjectId();
-    const userId = new Types.ObjectId();
-    const serverId = new Types.ObjectId();
-    const everyoneRoleId = new Types.ObjectId();
-    const modRoleId = new Types.ObjectId();
-    const channelId = new Types.ObjectId();
+    const ownerId = new Types.ObjectId().toString();
+    const modId = new Types.ObjectId().toString();
+    const userId = new Types.ObjectId().toString();
+    const serverId = new Types.ObjectId().toString();
+    const everyoneRoleId = new Types.ObjectId().toString();
+    const modRoleId = new Types.ObjectId().toString();
+    const channelId = new Types.ObjectId().toString();
 
     const mockData: ServerData = {
         serverId,
@@ -47,13 +47,13 @@ describe('PermissionResolver - seeDeletedMessages', () => {
         categories: [],
         members: [
             {
-                id: new Types.ObjectId(),
+                id: new Types.ObjectId().toString(),
                 serverId,
                 userId: modId,
                 roleIds: [modRoleId],
             },
             {
-                id: new Types.ObjectId(),
+                id: new Types.ObjectId().toString(),
                 serverId,
                 userId,
                 roleIds: [],
@@ -97,12 +97,12 @@ describe('PermissionResolver - seeDeletedMessages', () => {
 });
 
 describe('PermissionResolver - sendMessages visibility gates', () => {
-    const ownerId = new Types.ObjectId();
-    const userId = new Types.ObjectId();
-    const serverId = new Types.ObjectId();
-    const everyoneRoleId = new Types.ObjectId();
-    const categoryId = new Types.ObjectId();
-    const channelId = new Types.ObjectId();
+    const ownerId = new Types.ObjectId().toString();
+    const userId = new Types.ObjectId().toString();
+    const serverId = new Types.ObjectId().toString();
+    const everyoneRoleId = new Types.ObjectId().toString();
+    const categoryId = new Types.ObjectId().toString();
+    const channelId = new Types.ObjectId().toString();
 
     const baseData: ServerData = {
         serverId,
@@ -138,7 +138,7 @@ describe('PermissionResolver - sendMessages visibility gates', () => {
         ],
         members: [
             {
-                id: new Types.ObjectId(),
+                id: new Types.ObjectId().toString(),
                 serverId,
                 userId,
                 roleIds: [],

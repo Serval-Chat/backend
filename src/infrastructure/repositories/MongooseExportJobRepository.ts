@@ -1,22 +1,21 @@
-import type { Types } from 'mongoose';
 import { ExportJob, type IExportJob } from '@/models/ExportJob';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
 import { injectable } from 'inversify';
 
 @injectable()
 export class MongooseExportJobRepository implements IExportJobRepository {
-    public async findById(id: Types.ObjectId): Promise<IExportJob | null> {
-        return await ExportJob.findById(id);
+    public async findById(id: string): Promise<IExportJob | null> {
+        return await ExportJob.findOne({ snowflakeId: id });
     }
 
     public async findByChannelId(
-        channelId: Types.ObjectId,
+        channelId: string,
     ): Promise<IExportJob | null> {
         return await ExportJob.findOne({ channelId });
     }
 
     public async findLatestByChannel(
-        channelId: Types.ObjectId,
+        channelId: string,
     ): Promise<IExportJob | null> {
         return await ExportJob.findOne({ channelId }).sort({ createdAt: -1 });
     }
@@ -47,18 +46,20 @@ export class MongooseExportJobRepository implements IExportJobRepository {
     }
 
     public async update(
-        id: Types.ObjectId,
+        id: string,
         data: Partial<IExportJob>,
     ): Promise<IExportJob | null> {
-        return await ExportJob.findByIdAndUpdate(id, data, { new: true });
+        return await ExportJob.findOneAndUpdate({ snowflakeId: id }, data, {
+            new: true,
+        });
     }
 
-    public async delete(id: Types.ObjectId): Promise<boolean> {
-        const result = await ExportJob.deleteOne({ _id: id });
+    public async delete(id: string): Promise<boolean> {
+        const result = await ExportJob.deleteOne({ snowflakeId: id });
         return result.deletedCount > 0;
     }
 
-    public async deleteByChannelId(channelId: Types.ObjectId): Promise<number> {
+    public async deleteByChannelId(channelId: string): Promise<number> {
         const result = await ExportJob.deleteMany({ channelId });
         return result.deletedCount;
     }

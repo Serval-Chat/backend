@@ -1,12 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-    IsString,
-    IsInt,
-    Min,
-    Max,
-    IsOptional,
-    IsMongoId,
-} from 'class-validator';
+import { IsString, IsInt, Min, Max, IsOptional } from 'class-validator';
+import { IsBlockProfileId } from '@/validation/schemas/common';
 
 export class CreateBlockProfileRequestDTO {
     @ApiProperty({
@@ -53,8 +47,8 @@ export class UpdateBlockProfileRequestDTO {
 export class UpsertBlockRelationshipRequestDTO {
     @ApiProperty({
         description: 'ID of the block profile to apply',
-        example: '60d0fe4f5311236168a109ca',
+        example: '0327554478565752832',
     })
-    @IsMongoId()
+    @IsBlockProfileId()
     public profileId!: string;
 }

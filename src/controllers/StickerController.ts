@@ -1,5 +1,4 @@
 import { Controller, Get, Param, Req, UseGuards, Inject } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import { IStickerRepository } from '@/di/interfaces/IStickerRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -10,16 +9,10 @@ import {
     ApiOperation,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { Request } from 'express';
+import type { AuthenticatedRequest } from '@/middleware/auth';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
-import { JWTPayload } from '@/utils/jwt';
 import { StickerResponseDTO } from './dto/sticker.response.dto';
-import { getDocumentIdString } from '@/utils/mongooseId';
-
-interface RequestWithUser extends Request {
-    user: JWTPayload;
-}
 
 @ApiTags('Stickers')
 @Controller('api/v1/stickers')
@@ -37,18 +30,15 @@ export class StickerController {
     @ApiOperation({ summary: 'Get all stickers accessible to the user' })
     @ApiResponse({ status: 200, type: [StickerResponseDTO] })
     public async getAllStickers(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<StickerResponseDTO[]> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
-
-        const memberships =
-            await this.serverMemberRepo.findAllByUserId(userOid);
+        const userId = req.user.id;
+        const memberships = await this.serverMemberRepo.findAllByUserId(userId);
         const serverIds = memberships.map((m) => m.serverId);
 
         const stickers = await this.stickerRepo.findByServerIds(serverIds);
         return stickers.map((s) => ({
-            id: getDocumentIdString(s),
+            id: s.snowflakeId,
             name: s.name,
             imageUrl: s.imageUrl,
             isAnimated: s.isAnimated,
@@ -65,14 +55,13 @@ export class StickerController {
     public async getStickerById(
         @Param('stickerId') stickerId: string,
     ): Promise<StickerResponseDTO> {
-        const stickerOid = new Types.ObjectId(stickerId);
-        const sticker = await this.stickerRepo.findById(stickerOid);
+        const sticker = await this.stickerRepo.findById(stickerId);
         if (sticker === null) {
             throw new ApiError(404, ErrorMessages.STICKER.NOT_FOUND);
         }
 
         return {
-            id: getDocumentIdString(sticker),
+            id: sticker.snowflakeId,
             name: sticker.name,
             imageUrl: sticker.imageUrl,
             isAnimated: sticker.isAnimated,

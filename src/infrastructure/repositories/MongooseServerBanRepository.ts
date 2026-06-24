@@ -15,31 +15,29 @@ import { ServerBan } from '@/models/Server';
 @injectable()
 export class MongooseServerBanRepository implements IServerBanRepository {
     public async findByServerAndUser(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        userId: string,
     ): Promise<IServerBan | null> {
         return await ServerBan.findOne({ serverId, userId }).lean();
     }
 
-    public async findByServerId(
-        serverId: Types.ObjectId,
-    ): Promise<IServerBan[]> {
+    public async findByServerId(serverId: string): Promise<IServerBan[]> {
         return await ServerBan.find({ serverId }).lean();
     }
 
     public async findByServerIdWithUserInfo(
-        serverId: Types.ObjectId,
+        serverId: string,
     ): Promise<(IServerBan & { user: MappedUser | null })[]> {
         const bans = await ServerBan.find({ serverId }).lean();
         const userIds = bans.map((b) => b.userId);
-        const users = await User.find({ _id: { $in: userIds } })
+        const users = await User.find({ snowflakeId: { $in: userIds } })
             .select(
                 '-tokenVersion -permissions -password -settings -language -login -deletedReason',
             )
             .lean();
 
         return bans.map((b) => {
-            const user = users.find((u) => u._id.equals(b.userId));
+            const user = users.find((u) => u.snowflakeId === b.userId);
             if (!user) return { ...b, user: null };
 
             const safeUser: Record<string, unknown> = { ...user };
@@ -64,17 +62,14 @@ export class MongooseServerBanRepository implements IServerBanRepository {
         return result.deletedCount > 0;
     }
 
-    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: string): Promise<number> {
         const result = await ServerBan.deleteMany({ serverId });
         return result.deletedCount;
     }
 
     // Unban user from server
     // Removes the ban record for the specified user and server
-    public async unban(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
-    ): Promise<boolean> {
+    public async unban(serverId: string, userId: string): Promise<boolean> {
         const result = await ServerBan.deleteOne({ serverId, userId });
         return result.deletedCount > 0;
     }

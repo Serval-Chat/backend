@@ -2,35 +2,36 @@ import type { Types } from 'mongoose';
 
 export interface ISticker {
     _id: Types.ObjectId;
+    snowflakeId: string;
     name: string;
     imageUrl: string;
     isAnimated: boolean;
-    serverId: Types.ObjectId;
-    createdBy: Types.ObjectId;
+    serverId: string;
+    createdBy: string;
     createdAt?: Date;
 }
 
 export interface IStickerRepository {
-    findById(id: Types.ObjectId): Promise<ISticker | null>;
+    findById(id: string): Promise<ISticker | null>;
 
-    findByServerId(serverId: Types.ObjectId): Promise<ISticker[]>;
+    findByServerId(serverId: string): Promise<ISticker[]>;
     create(data: {
         name: string;
         imageUrl: string;
         isAnimated: boolean;
-        serverId: Types.ObjectId;
-        createdBy: Types.ObjectId;
+        serverId: string;
+        createdBy: string;
     }): Promise<ISticker>;
 
-    delete(id: Types.ObjectId): Promise<boolean>;
+    delete(id: string): Promise<boolean>;
 
-    findByServerIdWithCreator(serverId: Types.ObjectId): Promise<ISticker[]>;
+    findByServerIdWithCreator(serverId: string): Promise<ISticker[]>;
 
-    findByIdWithCreator(id: Types.ObjectId): Promise<ISticker | null>;
+    findByIdWithCreator(id: string): Promise<ISticker | null>;
 
     findByServerAndName(
-        serverId: Types.ObjectId,
+        serverId: string,
         name: string,
     ): Promise<ISticker | null>;
-    findByServerIds(serverIds: Types.ObjectId[]): Promise<ISticker[]>;
+    findByServerIds(serverIds: string[]): Promise<ISticker[]>;
 }

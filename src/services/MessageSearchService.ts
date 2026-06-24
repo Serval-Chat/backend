@@ -3,6 +3,7 @@ import type { QueryDslQueryContainer } from '@elastic/elasticsearch/lib/api/type
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { injectable, inject } from 'inversify';
 import { ELASTICSEARCH_URL } from '@/config/env';
+import { SYSTEM_SENDER_ID } from '@/utils/snowflake';
 import { TYPES } from '@/di/types';
 import type { IMessage } from '@/di/interfaces/IMessageRepository';
 import type { IServerMessage } from '@/di/interfaces/IServerMessageRepository';
@@ -167,9 +168,9 @@ export class MessageSearchService
             const text = msg.text;
             await this.client.index({
                 index: DM_MESSAGES_INDEX,
-                id: msg._id.toString(),
+                id: msg.snowflakeId,
                 document: {
-                    id: msg._id.toString(),
+                    id: msg.snowflakeId,
                     senderId: msg.senderId.toString(),
                     receiverId: msg.receiverId.toString(),
                     text,
@@ -206,9 +207,9 @@ export class MessageSearchService
             const text = msg.text;
             await this.client.index({
                 index: CHANNEL_MESSAGES_INDEX,
-                id: msg._id.toString(),
+                id: msg.snowflakeId,
                 document: {
-                    id: msg._id.toString(),
+                    id: msg.snowflakeId,
                     senderId: msg.senderId.toString(),
                     channelId: msg.channelId.toString(),
                     serverId: msg.serverId.toString(),
@@ -219,7 +220,7 @@ export class MessageSearchService
                     is_sticky: msg.isSticky ?? false,
                     is_webhook:
                         (msg.isWebhook ?? false) ||
-                        msg.senderId.toString() === '000000000000000000000000',
+                        msg.senderId.toString() === SYSTEM_SENDER_ID,
                     is_bot: senderIsBot,
                     has_file: (msg.attachments?.length ?? 0) > 0,
                     has_embed: (msg.embeds?.length ?? 0) > 0,

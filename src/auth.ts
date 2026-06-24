@@ -3,7 +3,6 @@ import * as jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '@/config/env';
 import { User } from '@/models/User';
 import { Ban } from '@/models/Ban';
-import { Types } from 'mongoose';
 import type { JWTPayload } from '@/utils/jwt';
 
 // Handles authentication and authorization for routes
@@ -31,7 +30,9 @@ export async function expressAuthentication(
         try {
             const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
-            const user = await User.findById(decoded.id).lean();
+            const user = await User.findOne({
+                snowflakeId: decoded.id,
+            }).lean();
 
             if (user === null) {
                 return Promise.reject(new Error('Invalid token'));
@@ -48,17 +49,10 @@ export async function expressAuthentication(
                 return Promise.reject(new Error('Token expired'));
             }
 
-            let userObjectId: Types.ObjectId;
-            try {
-                userObjectId = new Types.ObjectId(decoded.id);
-            } catch {
-                return Promise.reject(new Error('Invalid token payload'));
-            }
-
             // Side effect: Automatically clears expired bans before checking for active ones
-            await Ban.checkExpired(userObjectId);
+            await Ban.checkExpired(decoded.id);
             const activeBan = await Ban.findOne({
-                userId: userObjectId,
+                userId: decoded.id,
                 active: true,
             });
             if (activeBan !== null) {
@@ -83,9 +77,8 @@ export async function expressAuthentication(
 
                 const hasAllScopes = scopes.every(
                     (scope) =>
-                        (userPermissions as unknown as Record<string, boolean>)[
-                            scope
-                        ] === true,
+                        (userPermissions as Record<string, boolean>)[scope] ===
+                        true,
                 );
                 if (!hasAllScopes) {
                     return Promise.reject({
@@ -97,11 +90,7 @@ export async function expressAuthentication(
 
             return Promise.resolve(decoded);
         } catch (err) {
-            if (
-                err !== null &&
-                typeof err === 'object' &&
-                'status' in (err as object)
-            ) {
+            if (err !== null && typeof err === 'object' && 'status' in err) {
                 return Promise.reject(err);
             }
             return Promise.reject(new Error('Invalid token'));

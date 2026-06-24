@@ -1,4 +1,4 @@
-import { Types, type QueryFilter } from 'mongoose';
+import { type QueryFilter } from 'mongoose';
 import {
     IWarningRepository,
     IWarning,
@@ -12,7 +12,7 @@ export class MongooseWarningRepository implements IWarningRepository {
     public constructor() {}
 
     public async findByUserId(
-        userId: Types.ObjectId,
+        userId: string,
         acknowledged?: boolean,
     ): Promise<IWarning[]> {
         const filter: QueryFilter<unknown> = {
@@ -22,41 +22,38 @@ export class MongooseWarningRepository implements IWarningRepository {
             filter.acknowledged = acknowledged;
         }
 
-        return (await this.warningModel
+        return await this.warningModel
             .find(filter)
             .sort({ timestamp: -1 })
-            .populate('issuedBy', 'username')
-            .lean()) as unknown as IWarning[];
+            .lean();
     }
 
-    public async findById(id: Types.ObjectId): Promise<IWarning | null> {
-        return (await this.warningModel
-            .findById(id)
-            .lean()) as unknown as IWarning | null;
+    public async findById(id: string): Promise<IWarning | null> {
+        return await this.warningModel.findOne({ snowflakeId: id }).lean();
     }
 
     // Mark a warning as acknowledged by the user */
-    public async acknowledge(id: Types.ObjectId): Promise<IWarning | null> {
-        return (await this.warningModel
-            .findByIdAndUpdate(
-                id,
+    public async acknowledge(id: string): Promise<IWarning | null> {
+        return await this.warningModel
+            .findOneAndUpdate(
+                { snowflakeId: id },
                 {
                     acknowledged: true,
                     acknowledgedAt: new Date(),
                 },
                 { new: true },
             )
-            .lean()) as unknown as IWarning | null;
+            .lean();
     }
 
-    public async countByUserId(userId: Types.ObjectId): Promise<number> {
+    public async countByUserId(userId: string): Promise<number> {
         return await this.warningModel.countDocuments({ userId });
     }
 
     public async create(data: {
-        userId: Types.ObjectId;
+        userId: string;
         message: string;
-        issuedBy: Types.ObjectId;
+        issuedBy: string;
     }): Promise<IWarning> {
         const warning = new this.warningModel({
             userId: data.userId,
@@ -66,27 +63,27 @@ export class MongooseWarningRepository implements IWarningRepository {
             timestamp: new Date(),
         });
 
-        return (await warning.save()) as unknown as IWarning;
+        return await warning.save();
     }
 
     public async deleteAllForUser(
-        userId: Types.ObjectId,
+        userId: string,
     ): Promise<{ deletedCount: number }> {
         const result = await this.warningModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }
 
+    // userId/issuedBy are plain snowflakeId strings, the admin UI displays
+    // them as-is, so populating to User documents would be wasted work.
     public async findAll(options: {
         limit?: number;
         offset?: number;
     }): Promise<IWarning[]> {
-        return (await this.warningModel
+        return await this.warningModel
             .find({})
             .sort({ timestamp: -1 })
             .limit(options.limit ?? 50)
             .skip(options.offset ?? 0)
-            .populate('userId', 'username')
-            .populate('issuedBy', 'username')
-            .lean()) as unknown as IWarning[];
+            .lean();
     }
 }

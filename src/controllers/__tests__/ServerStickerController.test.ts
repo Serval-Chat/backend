@@ -1,13 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ServerStickerController } from '../ServerStickerController';
 import { Types } from 'mongoose';
-import type { IStickerRepository } from '@/di/interfaces/IStickerRepository';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { WsServer } from '@/ws/server';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
+import { generateSnowflakeId } from '@/utils/snowflake';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,6 +17,7 @@ jest.mock('@/config/env', () => ({
     PUBLIC_FOLDER_PATH: 'public',
     USE_HTTPS: 'off',
     SERVER_URL: 'http://localhost:3000',
+    SNOWFLAKE_WORKER_ID: 0,
 }));
 
 jest.mock('fs');
@@ -59,37 +54,37 @@ describe('ServerStickerController', () => {
         delete: jest.fn(),
         findByIdWithCreator: jest.fn(),
         findByServerIdWithCreator: jest.fn(),
-    } as unknown as IStickerRepository;
+    } as any;
 
     const mockServerRepo = {
         findById: jest.fn(),
-    } as unknown as IServerRepository;
+    } as any;
 
     const mockServerMemberRepo = {
         findByServerAndUser: jest.fn(),
-    } as unknown as IServerMemberRepository;
+    } as any;
 
     const mockPermissionService = {
         hasPermission: jest.fn(),
-    } as unknown as PermissionService;
+    } as any;
 
     const mockWsServer = {
         broadcastToServer: jest.fn(),
-    } as unknown as WsServer;
+    } as any;
 
     const mockLogger = {
         error: jest.fn(),
         info: jest.fn(),
         warn: jest.fn(),
-    } as unknown as ILogger;
+    } as any;
 
     const mockServerAuditLogService = {
         createAndBroadcast: jest.fn(),
-    } as unknown as IServerAuditLogService;
+    } as any;
     const mockMuteRepo = {
         checkExpired: jest.fn().mockResolvedValue(undefined),
         findActiveByUserId: jest.fn().mockResolvedValue(null),
-    } as unknown as IMuteRepository;
+    } as any;
 
     beforeEach(() => {
         controller = new ServerStickerController(
@@ -110,13 +105,13 @@ describe('ServerStickerController', () => {
         (fs.existsSync as jest.Mock).mockReturnValue(true);
     });
 
-    const SERVER_ID = new Types.ObjectId().toHexString();
-    const USER_ID = new Types.ObjectId().toHexString();
-    const STICKER_ID = new Types.ObjectId().toHexString();
+    const SERVER_ID = generateSnowflakeId();
+    const USER_ID = generateSnowflakeId();
+    const STICKER_ID = generateSnowflakeId();
 
     describe('getServerStickers', () => {
         it('should return stickers for a server member', async () => {
-            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            const req = { user: { id: USER_ID } } as ExpressRequest;
             (
                 mockServerMemberRepo.findByServerAndUser as jest.Mock
             ).mockResolvedValue({});
@@ -125,11 +120,12 @@ describe('ServerStickerController', () => {
             ).mockResolvedValue([
                 {
                     _id: new Types.ObjectId(),
+                    snowflakeId: STICKER_ID,
                     name: 'test',
                     imageUrl: 'url',
                     isAnimated: false,
-                    serverId: new Types.ObjectId(SERVER_ID),
-                    createdBy: new Types.ObjectId(USER_ID),
+                    serverId: SERVER_ID,
+                    createdBy: USER_ID,
                     createdAt: new Date(),
                 },
             ]);
@@ -144,7 +140,7 @@ describe('ServerStickerController', () => {
         });
 
         it('should throw Forbidden if not a member', async () => {
-            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            const req = { user: { id: USER_ID } } as ExpressRequest;
             (
                 mockServerMemberRepo.findByServerAndUser as jest.Mock
             ).mockResolvedValue(null);
@@ -160,13 +156,13 @@ describe('ServerStickerController', () => {
             path: 'temp/path',
             buffer: Buffer.from(''),
             size: 1024,
-        } as unknown as Express.Multer.File;
+        } as Express.Multer.File;
 
         it('should upload sticker if user has permission', async () => {
-            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            const req = { user: { id: USER_ID } } as ExpressRequest;
             (mockServerRepo.findById as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(SERVER_ID),
-                ownerId: new Types.ObjectId(),
+                _id: SERVER_ID,
+                ownerId: generateSnowflakeId(),
             });
             (
                 mockPermissionService.hasPermission as jest.Mock
@@ -175,23 +171,25 @@ describe('ServerStickerController', () => {
                 mockStickerRepo.findByServerAndName as jest.Mock
             ).mockResolvedValue(null);
             (mockStickerRepo.create as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(STICKER_ID),
+                _id: new Types.ObjectId(),
+                snowflakeId: STICKER_ID,
                 name: 'test_sticker',
                 imageUrl: '/uploads/stickers/test.png',
                 isAnimated: false,
-                serverId: new Types.ObjectId(SERVER_ID),
-                createdBy: new Types.ObjectId(USER_ID),
+                serverId: SERVER_ID,
+                createdBy: USER_ID,
                 createdAt: new Date(),
             });
             (
                 mockStickerRepo.findByIdWithCreator as jest.Mock
             ).mockResolvedValue({
-                _id: new Types.ObjectId(STICKER_ID),
+                _id: new Types.ObjectId(),
+                snowflakeId: STICKER_ID,
                 name: 'test_sticker',
                 imageUrl: '/uploads/stickers/test.png',
                 isAnimated: false,
-                serverId: new Types.ObjectId(SERVER_ID),
-                createdBy: new Types.ObjectId(USER_ID),
+                serverId: SERVER_ID,
+                createdBy: USER_ID,
                 createdAt: new Date(),
             });
 
@@ -210,10 +208,10 @@ describe('ServerStickerController', () => {
         });
 
         it('should throw Forbidden if no permission', async () => {
-            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            const req = { user: { id: USER_ID } } as ExpressRequest;
             (mockServerRepo.findById as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(SERVER_ID),
-                ownerId: new Types.ObjectId(),
+                _id: SERVER_ID,
+                ownerId: generateSnowflakeId(),
             });
             (
                 mockPermissionService.hasPermission as jest.Mock
@@ -232,10 +230,10 @@ describe('ServerStickerController', () => {
         });
 
         it('should throw Forbidden before upload work when user is muted', async () => {
-            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            const req = { user: { id: USER_ID } } as ExpressRequest;
             (mockMuteRepo.findActiveByUserId as jest.Mock).mockResolvedValue({
                 _id: new Types.ObjectId(),
-                userId: new Types.ObjectId(USER_ID),
+                userId: USER_ID,
             });
 
             await expect(
@@ -256,14 +254,14 @@ describe('ServerStickerController', () => {
 
     describe('deleteSticker', () => {
         it('should delete sticker if user is owner', async () => {
-            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            const req = { user: { id: USER_ID } } as ExpressRequest;
             (mockServerRepo.findById as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(SERVER_ID),
-                ownerId: new Types.ObjectId(USER_ID),
+                _id: SERVER_ID,
+                ownerId: USER_ID,
             });
             (mockStickerRepo.findById as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(STICKER_ID),
-                serverId: new Types.ObjectId(SERVER_ID),
+                _id: STICKER_ID,
+                serverId: SERVER_ID,
                 name: 'test',
                 imageUrl: 'test.png',
                 isAnimated: false,
@@ -275,24 +273,22 @@ describe('ServerStickerController', () => {
                 req.user?.id as string,
             );
 
-            expect(mockStickerRepo.delete).toHaveBeenCalledWith(
-                expect.any(Types.ObjectId),
-            );
+            expect(mockStickerRepo.delete).toHaveBeenCalledWith(STICKER_ID);
             expect(mockWsServer.broadcastToServer).toHaveBeenCalled();
         });
 
         it('should delete sticker if user has manageStickers permission', async () => {
-            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            const req = { user: { id: USER_ID } } as ExpressRequest;
             (mockServerRepo.findById as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(SERVER_ID),
-                ownerId: new Types.ObjectId(),
+                _id: SERVER_ID,
+                ownerId: generateSnowflakeId(),
             });
             (
                 mockPermissionService.hasPermission as jest.Mock
             ).mockResolvedValue(true);
             (mockStickerRepo.findById as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(STICKER_ID),
-                serverId: new Types.ObjectId(SERVER_ID),
+                _id: STICKER_ID,
+                serverId: SERVER_ID,
                 name: 'test',
                 imageUrl: 'test.png',
                 isAnimated: false,
@@ -308,10 +304,10 @@ describe('ServerStickerController', () => {
         });
 
         it('should throw Forbidden if no permission to delete', async () => {
-            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            const req = { user: { id: USER_ID } } as ExpressRequest;
             (mockServerRepo.findById as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(SERVER_ID),
-                ownerId: new Types.ObjectId(),
+                _id: SERVER_ID,
+                ownerId: generateSnowflakeId(),
             });
             (
                 mockPermissionService.hasPermission as jest.Mock
@@ -327,10 +323,10 @@ describe('ServerStickerController', () => {
         });
 
         it('should throw NotFound if sticker does not exist', async () => {
-            const req = { user: { id: USER_ID } } as unknown as ExpressRequest;
+            const req = { user: { id: USER_ID } } as ExpressRequest;
             (mockServerRepo.findById as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(SERVER_ID),
-                ownerId: new Types.ObjectId(USER_ID),
+                _id: SERVER_ID,
+                ownerId: USER_ID,
             });
             (mockStickerRepo.findById as jest.Mock).mockResolvedValue(null);
 

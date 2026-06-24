@@ -38,12 +38,12 @@ describe('Timeout Enforcement Integration', () => {
         ownerToken = generateAuthToken(owner);
         targetToken = generateAuthToken(targetUser);
 
-        serverObj = await createTestServer(owner._id.toString());
-        channelObj = await createTestChannel(serverObj._id.toString());
+        serverObj = await createTestServer(owner.snowflakeId);
+        channelObj = await createTestChannel(serverObj.snowflakeId);
 
         await ServerMember.create({
-            serverId: serverObj._id,
-            userId: targetUser._id,
+            serverId: serverObj.snowflakeId,
+            userId: targetUser.snowflakeId,
             roles: []
         });
     });
@@ -51,7 +51,7 @@ describe('Timeout Enforcement Integration', () => {
     const timeoutUser = async (durationMinutes: number) => {
         const until = new Date(Date.now() + durationMinutes * 60 * 1000);
         await ServerMember.updateOne(
-            { serverId: serverObj._id, userId: targetUser._id },
+            { serverId: serverObj.snowflakeId, userId: targetUser.snowflakeId },
             { $set: { communicationDisabledUntil: until } }
         );
     };
@@ -60,7 +60,7 @@ describe('Timeout Enforcement Integration', () => {
         await timeoutUser(10);
 
         const response = await request(app)
-            .post(`/api/v1/servers/${serverObj._id}/channels/${channelObj._id}/messages`)
+            .post(`/api/v1/servers/${serverObj.snowflakeId}/channels/${channelObj.snowflakeId}/messages`)
             .set('Authorization', `Bearer ${targetToken}`)
             .send({ content: 'Hello' });
 
@@ -69,11 +69,11 @@ describe('Timeout Enforcement Integration', () => {
     });
 
     it('should prevent timed-out user from adding reactions', async () => {
-        const message = await createTestMessage(serverObj._id.toString(), channelObj._id.toString(), owner._id.toString());
+        const message = await createTestMessage(serverObj.snowflakeId, channelObj.snowflakeId, owner.snowflakeId);
         await timeoutUser(10);
 
         const response = await request(app)
-            .post(`/api/v1/servers/${serverObj._id}/channels/${channelObj._id}/messages/${message._id}/reactions`)
+            .post(`/api/v1/servers/${serverObj.snowflakeId}/channels/${channelObj.snowflakeId}/messages/${message.snowflakeId}/reactions`)
             .set('Authorization', `Bearer ${targetToken}`)
             .send({ emoji: '👍', emojiType: 'unicode' });
 
@@ -81,11 +81,11 @@ describe('Timeout Enforcement Integration', () => {
     });
 
     it('should prevent timed-out user from editing their own messages', async () => {
-        const message = await createTestMessage(serverObj._id.toString(), channelObj._id.toString(), targetUser._id.toString());
+        const message = await createTestMessage(serverObj.snowflakeId, channelObj.snowflakeId, targetUser.snowflakeId);
         await timeoutUser(10);
 
         const response = await request(app)
-            .patch(`/api/v1/servers/${serverObj._id}/channels/${channelObj._id}/messages/${message._id}`)
+            .patch(`/api/v1/servers/${serverObj.snowflakeId}/channels/${channelObj.snowflakeId}/messages/${message.snowflakeId}`)
             .set('Authorization', `Bearer ${targetToken}`)
             .send({ content: 'Edited message' });
 
@@ -94,11 +94,11 @@ describe('Timeout Enforcement Integration', () => {
     });
 
     it('should prevent timed-out user from deleting their own messages', async () => {
-        const message = await createTestMessage(serverObj._id.toString(), channelObj._id.toString(), targetUser._id.toString());
+        const message = await createTestMessage(serverObj.snowflakeId, channelObj.snowflakeId, targetUser.snowflakeId);
         await timeoutUser(10);
 
         const response = await request(app)
-            .delete(`/api/v1/servers/${serverObj._id}/channels/${channelObj._id}/messages/${message._id}`)
+            .delete(`/api/v1/servers/${serverObj.snowflakeId}/channels/${channelObj.snowflakeId}/messages/${message.snowflakeId}`)
             .set('Authorization', `Bearer ${targetToken}`);
 
         expect(response.status).toBe(403);
@@ -108,12 +108,12 @@ describe('Timeout Enforcement Integration', () => {
     it('should allow owner to send messages even if timed out (owner immunity)', async () => {
         const until = new Date(Date.now() + 10 * 60 * 1000);
         await ServerMember.updateOne(
-            { serverId: serverObj._id, userId: owner._id },
+            { serverId: serverObj.snowflakeId, userId: owner.snowflakeId },
             { $set: { communicationDisabledUntil: until } }
         );
 
         const response = await request(app)
-            .post(`/api/v1/servers/${serverObj._id}/channels/${channelObj._id}/messages`)
+            .post(`/api/v1/servers/${serverObj.snowflakeId}/channels/${channelObj.snowflakeId}/messages`)
             .set('Authorization', `Bearer ${ownerToken}`)
             .send({ content: 'Owner says hi' });
 
@@ -123,12 +123,12 @@ describe('Timeout Enforcement Integration', () => {
     it('should allow user to send messages after timeout expires', async () => {
         const until = new Date(Date.now() - 1000);
         await ServerMember.updateOne(
-            { serverId: serverObj._id, userId: targetUser._id },
+            { serverId: serverObj.snowflakeId, userId: targetUser.snowflakeId },
             { $set: { communicationDisabledUntil: until } }
         );
 
         const response = await request(app)
-            .post(`/api/v1/servers/${serverObj._id}/channels/${channelObj._id}/messages`)
+            .post(`/api/v1/servers/${serverObj.snowflakeId}/channels/${channelObj.snowflakeId}/messages`)
             .set('Authorization', `Bearer ${targetToken}`)
             .send({ content: 'I am back' });
 

@@ -4,7 +4,6 @@ import request from 'supertest';
 import { WebSocket } from 'ws';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { Types } from 'mongoose';
 import type { RawData } from 'ws';
 
 import { JWT_SECRET } from '../../src/config/env';
@@ -46,7 +45,7 @@ const WS_EVENT_TIMEOUT_MS = 5000;
 const WS_NO_EVENT_WINDOW_MS = 600;
 
 function makeAccessToken(user: {
-    _id: Types.ObjectId;
+    snowflakeId: string;
     login: string;
     username: string;
     tokenVersion?: number;
@@ -54,7 +53,7 @@ function makeAccessToken(user: {
 }) {
     return jwt.sign(
         {
-            id: user._id.toString(),
+            id: user.snowflakeId,
             login: user.login,
             username: user.username,
             tokenVersion: user.tokenVersion ?? 0,
@@ -184,10 +183,10 @@ describe('WS bot implicit event delivery', () => {
         const human = await createTestUser({ username: 'human_ws_msg', login: 'human_ws_msg' });
         const botUser = await createTestUser({ username: 'bot_ws_msg', login: 'bot_ws_msg', isBot: true });
 
-        const serverDoc = await createTestServer(owner._id.toString());
-        const channelDoc = await createTestChannel(serverDoc._id.toString());
-        await ServerMember.create({ serverId: serverDoc._id, userId: human._id, roles: [] });
-        await ServerMember.create({ serverId: serverDoc._id, userId: botUser._id, roles: [] });
+        const serverDoc = await createTestServer(owner.snowflakeId);
+        const channelDoc = await createTestChannel(serverDoc.snowflakeId);
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: human.snowflakeId, roles: [] });
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: botUser.snowflakeId, roles: [] });
 
         const botSocket = await openAuthenticatedSocket(
             wsUrl,
@@ -198,7 +197,7 @@ describe('WS bot implicit event delivery', () => {
         const humanToken = makeAccessToken(human);
         const httpRes = await request(app)
             .post(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/messages`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages`,
             )
             .set('Authorization', `Bearer ${humanToken}`)
             .send({ text: 'hello from api' });
@@ -219,21 +218,21 @@ describe('WS bot implicit event delivery', () => {
             isBot: true,
         });
 
-        const serverDoc = await createTestServer(owner._id.toString());
-        const channelDoc = await createTestChannel(serverDoc._id.toString());
-        await ServerMember.create({ serverId: serverDoc._id, userId: human._id, roles: [] });
-        await ServerMember.create({ serverId: serverDoc._id, userId: botUser._id, roles: [] });
+        const serverDoc = await createTestServer(owner.snowflakeId);
+        const channelDoc = await createTestChannel(serverDoc.snowflakeId);
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: human.snowflakeId, roles: [] });
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: botUser.snowflakeId, roles: [] });
 
         const botDoc = await Bot.create({
             clientId: `cid_${Date.now()}`,
             botTokenHash: crypto.createHash('sha256').update('secret').digest('hex'),
-            ownerId: owner._id,
-            userId: botUser._id,
+            ownerId: owner.snowflakeId,
+            userId: botUser.snowflakeId,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS, joinServers: true },
         });
 
         await SlashCommand.create({
-            botId: botDoc._id,
+            botId: botDoc.snowflakeId,
             name: 'ping',
             description: 'Ping command',
             options: [],
@@ -250,15 +249,15 @@ describe('WS bot implicit event delivery', () => {
             .send({
                 command: 'ping',
                 options: [],
-                serverId: serverDoc._id.toString(),
-                channelId: channelDoc._id.toString(),
+                serverId: serverDoc.snowflakeId,
+                channelId: channelDoc.snowflakeId,
             });
 
         expect(interactionRes.status).toBe(200);
         const interactionEvent = await interactionEventPromise;
         expect(interactionEvent.event.payload.command).toBe('ping');
-        expect(interactionEvent.event.payload.serverId).toBe(serverDoc._id.toString());
-        expect(interactionEvent.event.payload.channelId).toBe(channelDoc._id.toString());
+        expect(interactionEvent.event.payload.serverId).toBe(serverDoc.snowflakeId);
+        expect(interactionEvent.event.payload.channelId).toBe(channelDoc.snowflakeId);
 
         botSocket.close();
     });
@@ -271,10 +270,10 @@ describe('WS bot implicit event delivery', () => {
         const ownerToken = makeAccessToken(owner);
         const humanToken = makeAccessToken(human);
 
-        const serverDoc = await createTestServer(owner._id.toString());
-        const channelDoc = await createTestChannel(serverDoc._id.toString());
-        await ServerMember.create({ serverId: serverDoc._id, userId: human._id, roles: [] });
-        await ServerMember.create({ serverId: serverDoc._id, userId: botUser._id, roles: [] });
+        const serverDoc = await createTestServer(owner.snowflakeId);
+        const channelDoc = await createTestChannel(serverDoc.snowflakeId);
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: human.snowflakeId, roles: [] });
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: botUser.snowflakeId, roles: [] });
 
         const botSocket = await openAuthenticatedSocket(
             wsUrl,
@@ -283,7 +282,7 @@ describe('WS bot implicit event delivery', () => {
 
         const webhookCreateRes = await request(app)
             .post(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/webhooks`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/webhooks`,
             )
             .set('Authorization', `Bearer ${ownerToken}`)
             .send({ name: 'alerts-webhook' });
@@ -302,7 +301,7 @@ describe('WS bot implicit event delivery', () => {
 
         const sendMessageRes = await request(app)
             .post(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/messages`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages`,
             )
             .set('Authorization', `Bearer ${humanToken}`)
             .send({ text: 'react to this' });
@@ -312,26 +311,26 @@ describe('WS bot implicit event delivery', () => {
         const reactionAddedPromise = waitForWsEvent(botSocket, 'reaction_added');
         const addReactionRes = await request(app)
             .post(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/messages/${messageId}/reactions`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages/${messageId}/reactions`,
             )
             .set('Authorization', `Bearer ${humanToken}`)
             .send({ emoji: '🔥', emojiType: 'unicode' });
         expect(addReactionRes.status).toBe(201);
         const reactionAdded = await reactionAddedPromise;
         expect(reactionAdded.event.payload.messageId).toBe(messageId);
-        expect(reactionAdded.event.payload.channelId).toBe(channelDoc._id.toString());
+        expect(reactionAdded.event.payload.channelId).toBe(channelDoc.snowflakeId);
 
         const reactionRemovedPromise = waitForWsEvent(botSocket, 'reaction_removed');
         const removeReactionRes = await request(app)
             .delete(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/messages/${messageId}/reactions`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages/${messageId}/reactions`,
             )
             .set('Authorization', `Bearer ${humanToken}`)
             .send({ emoji: '🔥', scope: 'me' });
         expect(removeReactionRes.status).toBe(200);
         const reactionRemoved = await reactionRemovedPromise;
         expect(reactionRemoved.event.payload.messageId).toBe(messageId);
-        expect(reactionRemoved.event.payload.channelId).toBe(channelDoc._id.toString());
+        expect(reactionRemoved.event.payload.channelId).toBe(channelDoc.snowflakeId);
 
         botSocket.close();
     });
@@ -344,17 +343,17 @@ describe('WS bot implicit event delivery', () => {
         const humanToken = makeAccessToken(human);
         const ownerToken = makeAccessToken(owner);
 
-        const serverDoc = await createTestServer(owner._id.toString());
-        const channelDoc = await createTestChannel(serverDoc._id.toString());
-        await ServerMember.create({ serverId: serverDoc._id, userId: human._id, roles: [] });
+        const serverDoc = await createTestServer(owner.snowflakeId);
+        const channelDoc = await createTestChannel(serverDoc.snowflakeId);
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: human.snowflakeId, roles: [] });
         const botMember = await ServerMember.create({
-            serverId: serverDoc._id,
-            userId: botUser._id,
+            serverId: serverDoc.snowflakeId,
+            userId: botUser.snowflakeId,
             roles: [],
         });
 
         const denyRole = await Role.create({
-            serverId: serverDoc._id,
+            serverId: serverDoc.snowflakeId,
             name: 'deny-view-bot',
             position: 10,
             permissions: {
@@ -379,14 +378,14 @@ describe('WS bot implicit event delivery', () => {
             },
             managed: false,
         });
-        botMember.roles = [denyRole._id];
+        botMember.roles = [denyRole.snowflakeId];
         await botMember.save();
 
         const botSocket = await openAuthenticatedSocket(wsUrl, makeAccessToken(botUser));
 
         const sendRes = await request(app)
             .post(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/messages`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages`,
             )
             .set('Authorization', `Bearer ${humanToken}`)
             .send({ text: 'hidden from bot' });
@@ -396,7 +395,7 @@ describe('WS bot implicit event delivery', () => {
 
         const webhookCreateRes = await request(app)
             .post(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/webhooks`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/webhooks`,
             )
             .set('Authorization', `Bearer ${ownerToken}`)
             .send({ name: 'deny-hook' });
@@ -411,14 +410,14 @@ describe('WS bot implicit event delivery', () => {
         await waitForNoWsEvent(botSocket, 'message_server');
 
         const publicMessage = await ServerMessage.findOne({
-            channelId: channelDoc._id,
+            channelId: channelDoc.snowflakeId,
             text: 'hidden from bot',
         }).lean();
         expect(publicMessage).toBeTruthy();
 
         const addReactionRes = await request(app)
             .post(
-                `/api/v1/servers/${serverDoc._id.toString()}/channels/${channelDoc._id.toString()}/messages/${publicMessage?._id.toString()}/reactions`,
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages/${publicMessage?.snowflakeId}/reactions`,
             )
             .set('Authorization', `Bearer ${humanToken}`)
             .send({ emoji: '👀', emojiType: 'unicode' });

@@ -1,5 +1,6 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import type { Types, Document, Model } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type { Document, Model } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
 // Mute History Entry interface
@@ -7,7 +8,7 @@ import { Schema, model } from 'mongoose';
 // Tracks a single mute event for a user's history
 export interface IMuteHistoryEntry {
     reason: string;
-    issuedBy: Types.ObjectId;
+    issuedBy: string;
     timestamp: Date;
     expirationTimestamp?: Date;
     endedAt?: Date;
@@ -17,8 +18,9 @@ export interface IMuteHistoryEntry {
 //
 // Represents an active or past mute for a user
 export interface IMute extends Document {
-    userId: Types.ObjectId;
-    issuedBy: Types.ObjectId;
+    snowflakeId: string;
+    userId: string;
+    issuedBy: string;
     reason: string;
     timestamp: Date;
     expirationTimestamp?: Date;
@@ -27,12 +29,12 @@ export interface IMute extends Document {
 }
 
 export interface IMuteModel extends Model<IMute> {
-    checkExpired(userId: Types.ObjectId | string): Promise<boolean>;
+    checkExpired(userId: string): Promise<boolean>;
 }
 
 const schema = new Schema<IMute>({
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    issuedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: String, required: true },
+    issuedBy: { type: String, required: true },
     reason: { type: String, required: true },
     timestamp: { type: Date, default: Date.now },
     expirationTimestamp: { type: Date },
@@ -43,8 +45,7 @@ const schema = new Schema<IMute>({
                 {
                     reason: { type: String, required: true },
                     issuedBy: {
-                        type: Schema.Types.ObjectId,
-                        ref: 'User',
+                        type: String,
                         required: true,
                     },
                     timestamp: { type: Date, required: true },
@@ -60,10 +61,12 @@ const schema = new Schema<IMute>({
 
 schema.plugin(mongooseIdPlugin);
 
+schema.plugin(snowflakeIdPlugin);
+
 // Check and deactivate expired mutes for a user
 //
 // @returns true if any mute state was changed (expired), false otherwise
-schema.statics.checkExpired = async function (userId: Types.ObjectId | string) {
+schema.statics.checkExpired = async function (userId: string) {
     const now = new Date();
 
     const expiredMutes = await this.find({

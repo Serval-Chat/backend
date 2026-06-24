@@ -1,8 +1,10 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import mongoose, { Schema, type Document } from 'mongoose';
 import { type PushSubscription as WebPushSubscription } from 'web-push';
 
 export interface IPushSubscription extends Document {
+    snowflakeId: string;
     userId: string;
     type: 'webpush' | 'fcm';
     endpointData?: WebPushSubscription;
@@ -25,6 +27,8 @@ const PushSubscriptionSchema = new Schema<IPushSubscription>({
 });
 
 PushSubscriptionSchema.plugin(mongooseIdPlugin);
+
+PushSubscriptionSchema.plugin(snowflakeIdPlugin);
 PushSubscriptionSchema.index(
     { userId: 1, 'endpointData.endpoint': 1 },
     {

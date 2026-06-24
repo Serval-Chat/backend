@@ -7,7 +7,6 @@ import {
     UseGuards,
     Inject,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import { PingService } from '@/services/PingService';
 import { ILogger } from '@/di/interfaces/ILogger';
@@ -18,19 +17,13 @@ import {
     ApiOperation,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { Request } from 'express';
-import { JWTPayload } from '@/utils/jwt';
+import type { AuthenticatedRequest } from '@/middleware/auth';
 import { ApiError } from '@/utils/ApiError';
 import {
     GetPingsResponseDTO,
     DeletePingResponseDTO,
     ClearChannelPingsResponseDTO,
 } from './dto/ping.response.dto';
-
-interface RequestWithUser extends Request {
-    user: JWTPayload;
-}
-
 import { NoBot } from '@/modules/auth/bot.decorator';
 
 @ApiTags('Pings')
@@ -49,11 +42,12 @@ export class UserPingController {
     @Get()
     @ApiOperation({ summary: 'Get all pings for the current user' })
     @ApiResponse({ status: 200, type: GetPingsResponseDTO })
-    public async getPings(@Req() req: Request): Promise<GetPingsResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
+    public async getPings(
+        @Req() req: AuthenticatedRequest,
+    ): Promise<GetPingsResponseDTO> {
+        const userId = req.user.id;
         try {
-            const pings = await this.pingService.getPingsForUser(userOid);
+            const pings = await this.pingService.getPingsForUser(userId);
             return { pings };
         } catch (error) {
             this.logger.error('Failed to get pings:', error);
@@ -67,18 +61,16 @@ export class UserPingController {
     @ApiResponse({ status: 400, description: 'Ping ID is required' })
     public async deletePing(
         @Param('id') id: string,
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<DeletePingResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
+        const userId = req.user.id;
 
         if (id === '') {
             throw new ApiError(400, 'Ping ID is required');
         }
 
-        const pingOid = new Types.ObjectId(id);
         try {
-            const removed = await this.pingService.removePing(userOid, pingOid);
+            const removed = await this.pingService.removePing(userId, id);
             return { success: removed };
         } catch (error) {
             this.logger.error('Error deleting ping:', error);
@@ -92,20 +84,18 @@ export class UserPingController {
     @ApiResponse({ status: 400, description: 'Channel ID is required' })
     public async clearChannelPings(
         @Param('channelId') channelId: string,
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<ClearChannelPingsResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
+        const userId = req.user.id;
 
         if (channelId === '') {
             throw new ApiError(400, 'Channel ID is required');
         }
 
-        const channelOid = new Types.ObjectId(channelId);
         try {
             const clearedCount = await this.pingService.clearChannelPings(
-                userOid,
-                channelOid,
+                userId,
+                channelId,
             );
             return { success: true, clearedCount };
         } catch (error) {
@@ -118,13 +108,12 @@ export class UserPingController {
     @ApiOperation({ summary: 'Clear all pings for the current user' })
     @ApiResponse({ status: 200, type: DeletePingResponseDTO })
     public async clearAllPings(
-        @Req() req: Request,
+        @Req() req: AuthenticatedRequest,
     ): Promise<DeletePingResponseDTO> {
-        const userId = (req as unknown as RequestWithUser).user.id;
-        const userOid = new Types.ObjectId(userId);
+        const userId = req.user.id;
 
         try {
-            await this.pingService.clearAllPings(userOid);
+            await this.pingService.clearAllPings(userId);
             return { success: true };
         } catch (error) {
             this.logger.error('Failed to clear pings:', error);

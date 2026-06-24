@@ -3,12 +3,12 @@ import { PermissionResolver } from '../src/permissions/PermissionResolver';
 import type { ServerData } from '../src/permissions/types';
 
 describe('Permission Leak Test', () => {
-    const serverId = new Types.ObjectId();
-    const ownerId = new Types.ObjectId();
-    const everyoneRoleId = new Types.ObjectId();
-    const managerRoleId = new Types.ObjectId();
-    const managerUserId = new Types.ObjectId();
-    const channelId = new Types.ObjectId();
+    const serverId = new Types.ObjectId().toString();
+    const ownerId = new Types.ObjectId().toString();
+    const everyoneRoleId = new Types.ObjectId().toString();
+    const managerRoleId = new Types.ObjectId().toString();
+    const managerUserId = new Types.ObjectId().toString();
+    const channelId = new Types.ObjectId().toString();
 
     const mockData: ServerData = {
         serverId,
@@ -47,7 +47,7 @@ describe('Permission Leak Test', () => {
         categories: [],
         members: [
             {
-                id: new Types.ObjectId(),
+                id: new Types.ObjectId().toString(),
                 serverId,
                 userId: managerUserId,
                 roleIds: [managerRoleId],

@@ -1,5 +1,4 @@
 import { injectable, inject, postConstruct } from 'inversify';
-import mongoose from 'mongoose';
 import { WsController, Event, NeedAuth, Validate } from '@/ws/decorators';
 import type { WebSocket } from 'ws';
 import { SetStatusSchema } from '@/validation/schemas/ws/messages.schema';
@@ -22,7 +21,6 @@ import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
 import { assertWsNotMuted } from '@/utils/mute';
 import logger from '@/utils/logger';
-import { getDocumentIdString } from '@/utils/mongooseId';
 
 /**
  * Controller for handling presence and status events.
@@ -99,7 +97,7 @@ export class PresenceController {
         };
 
         await this.userRepo.updateCustomStatus(
-            new mongoose.Types.ObjectId(userId),
+            userId,
             newStatus.text !== '' ? newStatus : null,
         );
 
@@ -142,12 +140,8 @@ export class PresenceController {
         const userId = authenticatedUser.userId;
 
         const [friendships, serverIds] = await Promise.all([
-            this.friendshipRepo.findByUserId(
-                new mongoose.Types.ObjectId(userId),
-            ),
-            this.serverMemberRepo.findServerIdsByUserId(
-                new mongoose.Types.ObjectId(userId),
-            ),
+            this.friendshipRepo.findByUserId(userId),
+            this.serverMemberRepo.findServerIdsByUserId(userId),
         ]);
 
         const friendIds = friendships.map((f) =>
@@ -163,20 +157,14 @@ export class PresenceController {
 
         const relevantUserIds = new Set<string>([
             ...friendIds,
-            ...serverMemberIds.map((id: mongoose.Types.ObjectId) =>
-                id.toString(),
-            ),
+            ...serverMemberIds,
         ]);
         relevantUserIds.delete(userId);
 
         // fetch blocks to filter the presence sync list.
         const [blocksByA, blocksAgainstA] = await Promise.all([
-            this.blockRepo.findBlocksByBlocker(
-                new mongoose.Types.ObjectId(userId),
-            ),
-            this.blockRepo.findBlocksByTarget(
-                new mongoose.Types.ObjectId(userId),
-            ),
+            this.blockRepo.findBlocksByBlocker(userId),
+            this.blockRepo.findBlocksByTarget(userId),
         ]);
 
         const peopleADoesntWantToSee = new Set(
@@ -207,15 +195,11 @@ export class PresenceController {
             .map((r) => r.id);
         const onlineUsers =
             onlineRelevantIds.length > 0
-                ? await this.userRepo.findByIds(
-                      onlineRelevantIds.map(
-                          (id) => new mongoose.Types.ObjectId(id),
-                      ),
-                  )
+                ? await this.userRepo.findByIds(onlineRelevantIds)
                 : [];
 
         const online = onlineUsers.map((u) => ({
-            userId: getDocumentIdString(u),
+            userId: u.snowflakeId,
             username: u.username ?? '',
             status: u.customStatus
                 ? {
@@ -250,9 +234,7 @@ export class PresenceController {
         userId: string,
         username: string,
     ): Promise<void> {
-        const user = await this.userRepo.findById(
-            new mongoose.Types.ObjectId(userId),
-        );
+        const user = await this.userRepo.findById(userId);
         const status = user?.customStatus
             ? {
                   text: user.customStatus.text,
@@ -306,9 +288,7 @@ export class PresenceController {
         event: AnyResponseWsEvent,
         excludeWs?: WebSocket,
     ): Promise<void> {
-        const friendships = await this.friendshipRepo.findByUserId(
-            new mongoose.Types.ObjectId(userId),
-        );
+        const friendships = await this.friendshipRepo.findByUserId(userId);
         const friendIds = friendships.map((f) =>
             f.userId.toString() === userId
                 ? f.friendId.toString()
@@ -324,17 +304,12 @@ export class PresenceController {
         const onlineFriendIds = onlineFriendStatusResults
             .filter((r) => r.isOnline)
             .map((r) => r.id);
-        const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
-            new mongoose.Types.ObjectId(userId),
-        );
+        const serverIds =
+            await this.serverMemberRepo.findServerIdsByUserId(userId);
 
         const [blocksByA, blocksAgainstA] = await Promise.all([
-            this.blockRepo.findBlocksByBlocker(
-                new mongoose.Types.ObjectId(userId),
-            ),
-            this.blockRepo.findBlocksByTarget(
-                new mongoose.Types.ObjectId(userId),
-            ),
+            this.blockRepo.findBlocksByBlocker(userId),
+            this.blockRepo.findBlocksByTarget(userId),
         ]);
 
         const hideFromUserIds = [
@@ -352,7 +327,7 @@ export class PresenceController {
 
         this.wsServer.broadcastToPresenceAudience(
             filteredFriendIds,
-            serverIds.map((id: mongoose.Types.ObjectId) => id.toString()),
+            serverIds,
             event,
             excludeWs,
             hideFromUserIds,

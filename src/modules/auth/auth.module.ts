@@ -8,7 +8,6 @@ import {
     Inject,
 } from '@nestjs/common';
 import crypto from 'crypto';
-import mongoose from 'mongoose';
 import { Reflector } from '@nestjs/core';
 import { TYPES } from '@/di/types';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -18,7 +17,7 @@ import * as jwt from 'jsonwebtoken';
 import { JWTPayload } from '@/utils/jwt';
 import { PERMISSIONS_KEY } from './permissions.decorator';
 import { IUser } from '@/models/User';
-import { Bot } from '@/models/Bot';
+import { resolveBotAuthPayload } from '@/utils/botAuth';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -62,9 +61,7 @@ export class JwtAuthGuard implements CanActivate {
 
         try {
             if (decoded !== null) {
-                const user = await this.userRepo.findById(
-                    new mongoose.Types.ObjectId(decoded.id),
-                );
+                const user = await this.userRepo.findById(decoded.id);
 
                 if (!user || user.deletedAt) {
                     throw new UnauthorizedException('Invalid token');
@@ -77,11 +74,9 @@ export class JwtAuthGuard implements CanActivate {
                     throw new UnauthorizedException('Token expired');
                 }
 
-                await this.banRepo.checkExpired(
-                    new mongoose.Types.ObjectId(decoded.id),
-                );
+                await this.banRepo.checkExpired(decoded.id);
                 const activeBan = await this.banRepo.findActiveByUserId(
-                    new mongoose.Types.ObjectId(decoded.id),
+                    decoded.id,
                 );
                 if (activeBan) {
                     throw new ForbiddenException({
@@ -104,12 +99,8 @@ export class JwtAuthGuard implements CanActivate {
                         );
                     const hasAll = requiredPermissions.every(
                         (p) =>
-                            (
-                                userPermissions as unknown as Record<
-                                    string,
-                                    boolean
-                                >
-                            )[p] === true,
+                            (userPermissions as Record<string, boolean>)[p] ===
+                            true,
                     );
                     if (!hasAll)
                         throw new ForbiddenException(
@@ -125,32 +116,10 @@ export class JwtAuthGuard implements CanActivate {
                 .createHash('sha256')
                 .update(token)
                 .digest('hex');
-            const bot = await Bot.findOne({ botTokenHash: tokenHash })
-                .select('+botTokenHash')
-                .populate('userId', 'username tokenVersion deletedAt isBot')
-                .lean();
+            const botPayload = await resolveBotAuthPayload(tokenHash);
 
-            if (!bot) throw new UnauthorizedException('Invalid token');
-
-            const botUser = bot.userId as unknown as {
-                _id: mongoose.Types.ObjectId;
-                username: string;
-                tokenVersion: number;
-                deletedAt?: Date;
-                isBot: boolean;
-            };
-
-            if (botUser.deletedAt !== undefined)
+            if (botPayload === null)
                 throw new UnauthorizedException('Invalid token');
-
-            const botPayload: JWTPayload = {
-                type: 'access',
-                id: botUser._id.toString(),
-                login: `bot.${bot.clientId}`,
-                username: botUser.username,
-                tokenVersion: botUser.tokenVersion,
-                isBot: true,
-            };
 
             if (request.user === undefined) request.user = botPayload;
             return true;

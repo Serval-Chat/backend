@@ -1,6 +1,6 @@
 import { Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import axios from 'axios';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
@@ -153,22 +153,16 @@ export class KlipyService {
                 klipyId,
                 slug: data.slug,
                 url:
-                    (data.file.hd?.gif?.url as string | undefined) ??
-                    (data.file.md?.gif?.url as string | undefined) ??
-                    (data.file.sm?.gif?.url as string | undefined) ??
+                    data.file.hd?.gif?.url ??
+                    data.file.md?.gif?.url ??
+                    data.file.sm?.gif?.url ??
                     '',
                 previewUrl:
-                    (data.file.sm?.gif?.url as string | undefined) ??
-                    (data.file.xs?.gif?.url as string | undefined) ??
-                    '',
+                    data.file.sm?.gif?.url ?? data.file.xs?.gif?.url ?? '',
                 width:
-                    (data.file.hd?.gif?.width as number | undefined) ??
-                    (data.file.md?.gif?.width as number | undefined) ??
-                    0,
+                    data.file.hd?.gif?.width ?? data.file.md?.gif?.width ?? 0,
                 height:
-                    (data.file.hd?.gif?.height as number | undefined) ??
-                    (data.file.md?.gif?.height as number | undefined) ??
-                    0,
+                    data.file.hd?.gif?.height ?? data.file.md?.gif?.height ?? 0,
                 contentType,
                 expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
             };
@@ -201,16 +195,13 @@ export class KlipyService {
     public async getFavorites(
         userId: string,
     ): Promise<FavoriteGifResponseDTO[]> {
-        return this.favoriteGifModel
-            .find({ userId: new Types.ObjectId(userId) })
-            .lean();
+        return this.favoriteGifModel.find({ userId }).lean();
     }
 
     public async toggleFavorite(
         userId: string,
         gifData: ToggleFavoriteGifRequestDTO,
     ): Promise<ToggleFavoriteResponseDTO> {
-        const userOid = new Types.ObjectId(userId);
         const {
             klipyId,
             url,
@@ -221,7 +212,7 @@ export class KlipyService {
         } = gifData;
 
         const existing = await this.favoriteGifModel.findOne({
-            userId: userOid,
+            userId,
             klipyId,
         });
 
@@ -231,7 +222,7 @@ export class KlipyService {
         } else {
             try {
                 await this.favoriteGifModel.create({
-                    userId: userOid,
+                    userId,
                     klipyId,
                     slug: gifData.slug,
                     url,
@@ -249,7 +240,7 @@ export class KlipyService {
                     error.code === 11000
                 ) {
                     await this.favoriteGifModel.deleteOne({
-                        userId: userOid,
+                        userId,
                         klipyId,
                     });
                     return { favorited: false };

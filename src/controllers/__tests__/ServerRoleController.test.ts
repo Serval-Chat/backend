@@ -1,19 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ServerRoleController } from '../ServerRoleController';
 import { Types } from 'mongoose';
 import type { Request } from 'express';
-import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import type { WsServer } from '@/ws/server';
-import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
-import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import type { ImageDeliveryService } from '@/services/ImageDeliveryService';
-import type {
-    UpdateRoleRequestDTO,
-    ReorderRolesRequestDTO,
-} from '../dto/server-role.request.dto';
 
 describe('ServerRoleController', () => {
     let controller: ServerRoleController;
@@ -26,17 +14,17 @@ describe('ServerRoleController', () => {
         create: jest.fn(),
         findById: jest.fn(),
         delete: jest.fn(),
-    } as unknown as IRoleRepository;
+    } as any;
 
     const mockServerMemberRepo = {
         findByServerAndUser: jest.fn(),
-    } as unknown as IServerMemberRepository;
+    } as any;
 
     const mockServerRepo = {
         findById: jest
             .fn()
             .mockResolvedValue({ ownerId: new Types.ObjectId() }),
-    } as unknown as IServerRepository;
+    } as any;
 
     const mockPermissionService = {
         hasPermission: jest.fn().mockResolvedValue(true),
@@ -56,23 +44,23 @@ describe('ServerRoleController', () => {
         }),
         invalidateCache: jest.fn(),
         getHighestRolePosition: jest.fn().mockResolvedValue(100),
-    } as unknown as PermissionService;
+    } as any;
 
     const mockLogger = {
         error: jest.fn(),
-    } as unknown as ILogger;
+    } as any;
 
     const mockWsServer = {
         broadcastToServer: jest.fn(),
-    } as unknown as WsServer;
+    } as any;
 
-    const mockAuditLogRepo = {} as unknown as IAuditLogRepository;
+    const mockAuditLogRepo = {} as any;
 
     const mockServerAuditLogService = {
         createAndBroadcast: jest.fn(),
-    } as unknown as IServerAuditLogService;
+    } as any;
 
-    const mockImageDeliveryService = {} as unknown as ImageDeliveryService;
+    const mockImageDeliveryService = {} as any;
 
     beforeEach(() => {
         controller = new ServerRoleController(
@@ -97,7 +85,7 @@ describe('ServerRoleController', () => {
 
             const existingRole = {
                 _id: ROLE_ID,
-                serverId: SERVER_ID,
+                serverId: SERVER_ID.toHexString(),
                 name: 'Test Role',
                 glowEnabled: true,
             };
@@ -112,7 +100,7 @@ describe('ServerRoleController', () => {
 
             const req = {
                 user: { id: USER_ID.toHexString() },
-            } as unknown as Request;
+            } as Request;
 
             const body = {
                 glowEnabled: false,
@@ -122,11 +110,11 @@ describe('ServerRoleController', () => {
                 SERVER_ID.toHexString(),
                 ROLE_ID.toHexString(),
                 req.user?.id as string,
-                body as unknown as UpdateRoleRequestDTO,
+                body,
             );
 
             expect(mockRoleRepo.update).toHaveBeenCalledWith(
-                ROLE_ID,
+                ROLE_ID.toHexString(),
                 expect.objectContaining({ glowEnabled: false }),
             );
             expect(result.glowEnabled).toBe(false);
@@ -140,12 +128,14 @@ describe('ServerRoleController', () => {
             const EVERYONE_ROLE_ID = new Types.ObjectId().toHexString();
 
             (mockRoleRepo.findEveryoneRole as jest.Mock).mockResolvedValue({
-                _id: new Types.ObjectId(EVERYONE_ROLE_ID),
+                _id: new Types.ObjectId(),
+                snowflakeId: EVERYONE_ROLE_ID,
                 name: '@everyone',
             });
             (mockRoleRepo.findByServerId as jest.Mock).mockResolvedValue([
                 {
-                    _id: new Types.ObjectId(EVERYONE_ROLE_ID),
+                    _id: new Types.ObjectId(),
+                    snowflakeId: EVERYONE_ROLE_ID,
                     name: '@everyone',
                     position: 0,
                 },
@@ -153,7 +143,7 @@ describe('ServerRoleController', () => {
 
             const req = {
                 user: { id: USER_ID },
-            } as unknown as Request;
+            } as Request;
 
             const body = {
                 rolePositions: [{ roleId: EVERYONE_ROLE_ID, position: 1 }],
@@ -162,7 +152,7 @@ describe('ServerRoleController', () => {
             await controller.reorderRoles(
                 SERVER_ID,
                 req.user?.id as string,
-                body as unknown as ReorderRolesRequestDTO,
+                body,
             );
 
             expect(mockWsServer.broadcastToServer).not.toHaveBeenCalled();
@@ -184,7 +174,7 @@ describe('ServerRoleController', () => {
             USER_ID = new Types.ObjectId();
             req = {
                 user: { id: USER_ID.toHexString() },
-            } as unknown as Request;
+            } as Request;
         });
 
         it('should throw ForbiddenException if user lacks manageRoles permission', async () => {
@@ -207,7 +197,7 @@ describe('ServerRoleController', () => {
             ).mockResolvedValueOnce(true);
             (mockRoleRepo.findById as jest.Mock).mockResolvedValueOnce({
                 _id: ROLE_ID,
-                serverId: SERVER_ID,
+                serverId: SERVER_ID.toHexString(),
                 name: '@everyone',
                 position: 0,
             });
@@ -230,7 +220,7 @@ describe('ServerRoleController', () => {
             ).mockResolvedValueOnce(true);
             (mockRoleRepo.findById as jest.Mock).mockResolvedValueOnce({
                 _id: ROLE_ID,
-                serverId: SERVER_ID,
+                serverId: SERVER_ID.toHexString(),
                 name: '@everyone',
                 position: 0,
             });
@@ -256,7 +246,7 @@ describe('ServerRoleController', () => {
             ).mockResolvedValueOnce(true);
             (mockRoleRepo.findById as jest.Mock).mockResolvedValueOnce({
                 _id: ROLE_ID,
-                serverId: SERVER_ID,
+                serverId: SERVER_ID.toHexString(),
                 name: 'Mod Role',
                 position: 10,
             });
@@ -284,7 +274,7 @@ describe('ServerRoleController', () => {
             ).mockResolvedValueOnce(true);
             const role = {
                 _id: ROLE_ID,
-                serverId: SERVER_ID,
+                serverId: SERVER_ID.toHexString(),
                 name: 'Mod Role',
                 position: 10,
             };
@@ -300,7 +290,9 @@ describe('ServerRoleController', () => {
             );
 
             expect(result).toEqual({ message: 'Role deleted' });
-            expect(mockRoleRepo.delete).toHaveBeenCalledWith(ROLE_ID);
+            expect(mockRoleRepo.delete).toHaveBeenCalledWith(
+                ROLE_ID.toHexString(),
+            );
         });
 
         it('should delete a non-@everyone role if user has manageRoles permission and higher role position', async () => {
@@ -309,7 +301,7 @@ describe('ServerRoleController', () => {
             ).mockResolvedValueOnce(true);
             const role = {
                 _id: ROLE_ID,
-                serverId: SERVER_ID,
+                serverId: SERVER_ID.toHexString(),
                 name: 'Mod Role',
                 position: 10,
             };
@@ -328,7 +320,9 @@ describe('ServerRoleController', () => {
             );
 
             expect(result).toEqual({ message: 'Role deleted' });
-            expect(mockRoleRepo.delete).toHaveBeenCalledWith(ROLE_ID);
+            expect(mockRoleRepo.delete).toHaveBeenCalledWith(
+                ROLE_ID.toHexString(),
+            );
         });
     });
 });

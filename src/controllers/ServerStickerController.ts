@@ -8,7 +8,6 @@ import {
     UseInterceptors,
     UploadedFile,
     Body,
-    Req,
     Inject,
     NotFoundException,
     ForbiddenException,
@@ -17,7 +16,6 @@ import {
     HttpCode,
     HttpException,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiTags,
@@ -32,18 +30,15 @@ import { WsServer } from '@/ws/server';
 import type { IStickerRepository } from '@/di/interfaces/IStickerRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 
-import type { Request as ExpressRequest } from 'express';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import path from 'path';
 import fs from 'fs';
-import mongoose from 'mongoose';
+import { generateSnowflakeId } from '@/utils/snowflake';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
@@ -103,20 +98,18 @@ export class ServerStickerController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<StickerResponseDTO[]> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const stickers =
-            await this.stickerRepo.findByServerIdWithCreator(serverOid);
+            await this.stickerRepo.findByServerIdWithCreator(serverId);
         return stickers.map((s) => ({
-            id: getDocumentIdString(s),
+            id: s.snowflakeId,
             name: s.name,
             imageUrl: s.imageUrl,
             isAnimated: s.isAnimated,
@@ -168,10 +161,8 @@ export class ServerStickerController {
     ): Promise<StickerResponseDTO> {
         const { name } = body;
         await assertHttpNotMuted(this.muteRepo, userId, 'upload stickers');
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -180,8 +171,8 @@ export class ServerStickerController {
         if (
             !isOwner &&
             !(await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
+                serverId,
+                userId,
                 'manageStickers',
             ))
         ) {
@@ -191,14 +182,14 @@ export class ServerStickerController {
         }
 
         const existingSticker = await this.stickerRepo.findByServerAndName(
-            serverOid,
+            serverId,
             name,
         );
         if (existingSticker !== null) {
             throw new ConflictException(ErrorMessages.STICKER.NAME_EXISTS);
         }
 
-        const stickerId = new mongoose.Types.ObjectId();
+        const stickerId = generateSnowflakeId();
 
         try {
             const isAnimated = await isAnimatedImage(
@@ -227,12 +218,12 @@ export class ServerStickerController {
                 name,
                 imageUrl,
                 isAnimated,
-                serverId: serverOid,
-                createdBy: userOid,
+                serverId: serverId,
+                createdBy: userId,
             });
 
             const populatedSticker = await this.stickerRepo.findByIdWithCreator(
-                getDocumentId(newSticker) as Types.ObjectId,
+                newSticker.snowflakeId,
             );
 
             if (populatedSticker === null) {
@@ -247,16 +238,16 @@ export class ServerStickerController {
             });
 
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'sticker_create',
-                targetId: getDocumentId(newSticker) as Types.ObjectId,
+                targetId: newSticker.snowflakeId,
                 targetType: 'server',
                 metadata: { stickerName: name },
             });
 
             return {
-                id: getDocumentIdString(populatedSticker),
+                id: populatedSticker.snowflakeId,
                 name: populatedSticker.name,
                 imageUrl: populatedSticker.imageUrl,
                 isAnimated: populatedSticker.isAnimated,
@@ -288,24 +279,21 @@ export class ServerStickerController {
         @Param('stickerId') stickerId: string,
         @CurrentUser('id') userId: string,
     ): Promise<StickerResponseDTO> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const stickerOid = new Types.ObjectId(stickerId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const sticker = await this.stickerRepo.findById(stickerOid);
-        if (sticker === null || !sticker.serverId.equals(serverOid)) {
+        const sticker = await this.stickerRepo.findById(stickerId);
+        if (sticker === null || sticker.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.STICKER.NOT_FOUND);
         }
 
         return {
-            id: getDocumentIdString(sticker),
+            id: sticker.snowflakeId,
             name: sticker.name,
             imageUrl: sticker.imageUrl,
             isAnimated: sticker.isAnimated,
@@ -330,11 +318,8 @@ export class ServerStickerController {
         @CurrentUser('id') userId: string,
     ): Promise<void> {
         await assertHttpNotMuted(this.muteRepo, userId, 'delete stickers');
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const stickerOid = new Types.ObjectId(stickerId);
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -343,8 +328,8 @@ export class ServerStickerController {
         if (
             !isOwner &&
             !(await this.permissionService.hasPermission(
-                serverOid,
-                userOid,
+                serverId,
+                userId,
                 'manageStickers',
             ))
         ) {
@@ -353,8 +338,8 @@ export class ServerStickerController {
             );
         }
 
-        const sticker = await this.stickerRepo.findById(stickerOid);
-        if (sticker === null || !sticker.serverId.equals(serverOid)) {
+        const sticker = await this.stickerRepo.findById(stickerId);
+        if (sticker === null || sticker.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.STICKER.NOT_FOUND);
         }
 
@@ -363,7 +348,7 @@ export class ServerStickerController {
             fs.unlinkSync(filePath);
         }
 
-        await this.stickerRepo.delete(stickerOid);
+        await this.stickerRepo.delete(stickerId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'sticker_updated',
@@ -371,10 +356,10 @@ export class ServerStickerController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'sticker_delete',
-            targetId: stickerOid,
+            targetId: stickerId,
             targetType: 'server',
             metadata: { stickerName: sticker.name },
         });

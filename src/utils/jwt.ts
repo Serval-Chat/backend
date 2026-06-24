@@ -39,7 +39,7 @@ export const generateTwoFactorTempToken = (payload: {
             ...payload,
             type: '2fa_temp',
             scope: 'auth:2fa:verify',
-        } as JWTPayload,
+        },
         JWT_SECRET,
         { expiresIn: '5m' },
     );

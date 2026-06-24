@@ -1,11 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ExecutionContext } from '@nestjs/common';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Types } from 'mongoose';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { AdminInviteController } from '../AdminInviteController';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IBanRepository } from '@/di/interfaces/IBanRepository';
 import * as jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '@/config/env';
 
@@ -24,8 +23,8 @@ describe('AdminInviteController Security', () => {
         jest.clearAllMocks();
         reflector = new Reflector();
         guard = new JwtAuthGuard(
-            mockUserRepo as unknown as IUserRepository,
-            mockBanRepo as unknown as IBanRepository,
+            mockUserRepo as any,
+            mockBanRepo as any,
             reflector,
         );
     });
@@ -40,18 +39,12 @@ describe('AdminInviteController Security', () => {
             user: undefined,
         };
         return {
-            getHandler: () =>
-                (
-                    AdminInviteController.prototype as unknown as Record<
-                        string,
-                        unknown
-                    >
-                )[method],
+            getHandler: () => (AdminInviteController.prototype as any)[method],
             getClass: () => AdminInviteController,
             switchToHttp: () => ({
                 getRequest: () => req,
             }),
-        } as unknown as ExecutionContext;
+        } as ExecutionContext;
     };
 
     it('denies access to createInvite if user lacks manageInvites permission', async () => {

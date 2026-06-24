@@ -14,7 +14,6 @@ import {
     MinLength,
     ArrayMaxSize,
     IsIn,
-    IsMongoId,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import {
@@ -25,6 +24,7 @@ import {
     IsIsoDate,
     IsEmoji,
     IsFilename,
+    IsConnectionId,
 } from '@/validation/schemas/common';
 import { VALID_USERNAME_FONTS } from '@/validation/schemas/profile';
 import { sanitizeDisplayName } from '@/utils/textSanitize';
@@ -179,6 +179,6 @@ export class CreateWebsiteConnectionRequestDTO {
 
 export class ConnectionParamDTO {
     @ApiProperty()
-    @IsMongoId()
+    @IsConnectionId()
     public connectionId!: string;
 }

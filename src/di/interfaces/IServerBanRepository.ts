@@ -6,19 +6,19 @@ import type { MappedUser } from '@/utils/user';
 // Represents a user who has been banned from a specific server
 export interface IServerBan {
     _id: Types.ObjectId;
-    serverId: Types.ObjectId;
-    userId: Types.ObjectId;
+    serverId: string;
+    userId: string;
     // The administrator who issued the ban
-    bannedBy: Types.ObjectId;
+    bannedBy: string;
     reason?: string;
     createdAt: Date;
 }
 
 // Server Ban creation DTO
 export interface CreateServerBanDTO {
-    serverId: Types.ObjectId;
-    userId: Types.ObjectId;
-    bannedBy: Types.ObjectId;
+    serverId: string;
+    userId: string;
+    bannedBy: string;
     reason?: string;
 }
 
@@ -28,16 +28,16 @@ export interface CreateServerBanDTO {
 export interface IServerBanRepository {
     // Find ban by server and user
     findByServerAndUser(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        userId: string,
     ): Promise<IServerBan | null>;
 
     // Find all bans for a server
-    findByServerId(serverId: Types.ObjectId): Promise<IServerBan[]>;
+    findByServerId(serverId: string): Promise<IServerBan[]>;
 
     // Find all bans for a server with user info populated
     findByServerIdWithUserInfo(
-        serverId: Types.ObjectId,
+        serverId: string,
     ): Promise<(IServerBan & { user: MappedUser | null })[]>;
 
     // Create a new server ban
@@ -47,8 +47,8 @@ export interface IServerBanRepository {
     delete(id: Types.ObjectId): Promise<boolean>;
 
     // Delete all bans for a server (bulk delete)
-    deleteByServerId(serverId: Types.ObjectId): Promise<number>;
+    deleteByServerId(serverId: string): Promise<number>;
 
     // Unban user from server
-    unban(serverId: Types.ObjectId, userId: Types.ObjectId): Promise<boolean>;
+    unban(serverId: string, userId: string): Promise<boolean>;
 }

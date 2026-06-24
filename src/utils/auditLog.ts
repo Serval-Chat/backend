@@ -1,50 +1,11 @@
-import { Types } from 'mongoose';
 import type { IAuditLog } from '@/di/interfaces/IAuditLogRepository';
-import { getDocumentIdString } from '@/utils/mongooseId';
 
 /**
  * Shape the audit log entry for the frontend (shared between API and WebSocket)
  */
 export function mapAuditLogEntry(entry: IAuditLog) {
-    const actor = entry.actorId as unknown as
-        | {
-              _id: Types.ObjectId;
-              username?: string;
-              displayName?: string | null;
-              profilePicture?: string;
-          }
-        | Types.ObjectId;
-
-    const actorObj =
-        actor instanceof Types.ObjectId
-            ? null
-            : (actor as {
-                  _id: Types.ObjectId;
-                  username?: string;
-                  displayName?: string | null;
-                  profilePicture?: string;
-              });
-
-    const targetUser = entry.targetUserId as unknown as
-        | {
-              _id: Types.ObjectId;
-              username?: string;
-              displayName?: string | null;
-              profilePicture?: string;
-          }
-        | Types.ObjectId
-        | null
-        | undefined;
-
-    const targetUserObj =
-        targetUser === null || targetUser instanceof Types.ObjectId
-            ? null
-            : (targetUser as {
-                  _id: Types.ObjectId;
-                  username?: string;
-                  displayName?: string | null;
-                  profilePicture?: string;
-              });
+    const actorObj = entry.actorIdUser ?? null;
+    const targetUserObj = entry.targetUserIdUser ?? null;
 
     const metadata = entry.metadata ?? {};
     const metadataObj =
@@ -60,15 +21,11 @@ export function mapAuditLogEntry(entry: IAuditLog) {
         (m['code'] as string | undefined);
 
     return {
-        id: getDocumentIdString(entry),
+        id: entry.snowflakeId,
         action: entry.actionType,
-        moderatorId: actorObj
-            ? getDocumentIdString(actorObj)
-            : entry.actorId.toString(),
+        moderatorId: entry.actorId,
         moderator: {
-            id: actorObj
-                ? getDocumentIdString(actorObj)
-                : entry.actorId.toString(),
+            id: entry.actorId,
             username: actorObj?.username ?? 'Unknown',
             avatarUrl: actorObj?.profilePicture,
         },
@@ -76,7 +33,7 @@ export function mapAuditLogEntry(entry: IAuditLog) {
         targetType: entry.targetType,
         target: targetUserObj
             ? {
-                  id: getDocumentIdString(targetUserObj),
+                  id: entry.targetUserId,
                   username: targetUserObj.username,
                   name: targetUserObj.displayName ?? targetUserObj.username,
                   avatarUrl: targetUserObj.profilePicture,

@@ -5,7 +5,6 @@ import {
     ValidateNested,
     IsArray,
     MaxLength,
-    IsMongoId,
     IsDefined,
     IsBoolean,
     IsInt,
@@ -14,6 +13,7 @@ import {
 import { Type } from 'class-transformer';
 import { InteractionValue } from '@/types/interactions';
 import type { IEmbed, IEmbedButton } from '@/models/Embed';
+import { IsServerId, IsChannelId } from '@/validation/schemas/common';
 export class InteractionOptionDTO {
     @ApiProperty()
     @IsString()
@@ -44,21 +44,21 @@ export class CreateInteractionRequestDTO {
     public options?: InteractionOptionDTO[];
 
     @ApiProperty()
-    @IsMongoId()
+    @IsServerId()
     public serverId!: string;
 
     @ApiProperty()
-    @IsMongoId()
+    @IsChannelId()
     public channelId!: string;
 }
 
 export class CreateComponentInteractionRequestDTO {
     @ApiProperty()
-    @IsMongoId()
+    @IsServerId()
     public serverId!: string;
 
     @ApiProperty()
-    @IsMongoId()
+    @IsChannelId()
     public channelId!: string;
 
     @ApiProperty()
@@ -90,13 +90,13 @@ export class BotInteractionRespondDTO {
     @ApiProperty({
         description: 'ID of the server where the interaction occurred',
     })
-    @IsMongoId()
+    @IsServerId()
     public serverId!: string;
 
     @ApiProperty({
         description: 'ID of the channel where the interaction occurred',
     })
-    @IsMongoId()
+    @IsChannelId()
     public channelId!: string;
 
     @ApiProperty({

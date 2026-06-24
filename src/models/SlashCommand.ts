@@ -1,4 +1,5 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import { Schema, model } from 'mongoose';
 import type { Document, Types } from 'mongoose';
 import type { SlashCommandOptionType } from '@/types/interactions';
@@ -11,8 +12,9 @@ export interface ISlashCommandOption {
 }
 
 export interface ISlashCommand extends Document {
+    snowflakeId: string;
     _id: Types.ObjectId;
-    botId: Types.ObjectId;
+    botId: string;
     name: string;
     description: string;
     options?: ISlashCommandOption[];
@@ -33,7 +35,7 @@ const optionSchema = new Schema<ISlashCommandOption>(
 
 const schema = new Schema<ISlashCommand>(
     {
-        botId: { type: Schema.Types.ObjectId, ref: 'Bot', required: true },
+        botId: { type: String, required: true },
         name: { type: String, required: true },
         description: { type: String, required: true },
         options: { type: [optionSchema], default: [] },
@@ -47,6 +49,8 @@ const schema = new Schema<ISlashCommand>(
 );
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 schema.index({ botId: 1, name: 1 }, { unique: true });
 
 export const SlashCommand = model<ISlashCommand>('SlashCommand', schema);

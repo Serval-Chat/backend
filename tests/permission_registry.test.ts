@@ -20,7 +20,7 @@ describe('Permission registry', () => {
     it('defines every permission on the role schema with the registry default', () => {
         for (const key of PERMISSION_KEYS) {
             const path = Role.schema.path(`permissions.${key}`);
-            const schemaPath = path as unknown as { defaultValue?: unknown };
+            const schemaPath = path as { defaultValue?: unknown };
 
             expect(path).toBeDefined();
             expect(schemaPath.defaultValue).toBe(getPermissionDefault(key));

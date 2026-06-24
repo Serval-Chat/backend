@@ -10,15 +10,16 @@ import type { IMessageAttachment } from '@/models/Attachment';
 // Represents a message sent within a server channel
 export interface IServerMessage {
     _id: Types.ObjectId;
-    serverId: Types.ObjectId;
-    channelId: Types.ObjectId;
-    senderId: Types.ObjectId;
+    snowflakeId: string;
+    serverId: string;
+    channelId: string;
+    senderId: string;
     text: string;
     createdAt: Date;
-    replyToId?: Types.ObjectId;
-    repliedToMessageId?: Types.ObjectId;
+    replyToId?: string;
+    repliedToMessageId?: string;
     referenced_message?: IServerMessage;
-    stickerId?: Types.ObjectId;
+    stickerId?: string;
     editedAt?: Date;
     isEdited?: boolean;
     isPinned?: boolean;
@@ -53,12 +54,12 @@ export interface IServerMessageRepository {
             isWebhook?: boolean;
             webhookUsername?: string;
             webhookAvatarUrl?: string;
-            replyToId?: string | Types.ObjectId;
-            repliedToMessageId?: Types.ObjectId;
+            replyToId?: string;
+            repliedToMessageId?: string;
             embeds?: IEmbed[];
             components?: IEmbedButton[];
             attachments?: IMessageAttachment[];
-            stickerId?: string | Types.ObjectId;
+            stickerId?: string;
             interaction?: {
                 command: string;
                 options: { name: string; value: InteractionValue }[];
@@ -70,29 +71,26 @@ export interface IServerMessageRepository {
         session?: ClientSession,
     ): Promise<IServerMessage>;
 
-    delete(id: Types.ObjectId): Promise<boolean>;
+    delete(id: string): Promise<boolean>;
 
-    deleteByServerId(serverId: Types.ObjectId): Promise<number>;
+    deleteByServerId(serverId: string): Promise<number>;
 
-    deleteByChannelId(channelId: Types.ObjectId): Promise<number>;
+    deleteByChannelId(channelId: string): Promise<number>;
 
-    bulkDelete(
-        channelId: Types.ObjectId,
-        ids: Types.ObjectId[],
-    ): Promise<number>;
+    bulkDelete(channelId: string, ids: string[]): Promise<number>;
 
     findById(
-        id: Types.ObjectId,
+        id: string,
         includeDeleted?: boolean,
     ): Promise<IServerMessage | null>;
 
     update(
-        id: Types.ObjectId,
+        id: string,
         data: Partial<IServerMessage>,
     ): Promise<IServerMessage | null>;
 
     findByChannelId(
-        channelId: Types.ObjectId,
+        channelId: string,
         limit?: number,
         before?: string,
         around?: string,
@@ -100,24 +98,22 @@ export interface IServerMessageRepository {
         includeDeleted?: boolean,
     ): Promise<IServerMessage[]>;
 
-    findCursorByChannelId(
-        channelId: Types.ObjectId,
-    ): AsyncIterable<IServerMessage>;
+    findCursorByChannelId(channelId: string): AsyncIterable<IServerMessage>;
 
     countByChannelId(
-        channelId: Types.ObjectId,
+        channelId: string,
         includeDeleted?: boolean,
     ): Promise<number>;
 
-    countByServerId(serverId: Types.ObjectId): Promise<number>;
+    countByServerId(serverId: string): Promise<number>;
 
     findLastByChannelAndUser(
-        channelId: Types.ObjectId,
-        userId: Types.ObjectId,
+        channelId: string,
+        userId: string,
         includeDeleted?: boolean,
     ): Promise<IServerMessage | null>;
     findPinnedByChannelId(
-        channelId: Types.ObjectId,
+        channelId: string,
         includeDeleted?: boolean,
     ): Promise<IServerMessage[]>;
 

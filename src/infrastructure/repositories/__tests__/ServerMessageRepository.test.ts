@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Types } from 'mongoose';
 import { MongooseServerMessageRepository } from '../MongooseServerMessageRepository';
 import { ServerMessage } from '@/models/Server';
-import type { IServerMessage } from '@/di/interfaces/IServerMessageRepository';
 
 jest.mock('@/models/Server', () => ({
     ServerMessage: {
@@ -62,7 +62,9 @@ describe('MongooseServerMessageRepository', () => {
                 .fn()
                 .mockReturnValue(mockQuery);
 
-            const result = await repository.findById(mockDbMessage._id);
+            const result = await repository.findById(
+                mockDbMessage._id.toString(),
+            );
 
             expect(result).not.toBeNull();
             expect(result?.interaction).toBeDefined();
@@ -83,7 +85,7 @@ describe('MongooseServerMessageRepository', () => {
                 interaction: mockInteraction,
                 repliedToMessageId: new Types.ObjectId(),
                 createdAt: new Date(),
-            } as unknown as IServerMessage;
+            } as any;
 
             const result = repository['transformMessage'](mockDoc);
 

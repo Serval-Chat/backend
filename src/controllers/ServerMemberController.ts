@@ -13,7 +13,6 @@ import {
     ForbiddenException,
     BadRequestException,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -72,7 +71,6 @@ import {
     ChannelPreferencesRequestDTO,
     SelfRolesRequestDTO,
 } from './dto/server.request.dto';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Members')
@@ -109,12 +107,12 @@ export class ServerMemberController {
     ) {}
 
     private async requireMember(
-        serverOid: Types.ObjectId,
-        userOid: Types.ObjectId,
+        serverOid: string,
+        userId: string,
     ): Promise<IServerMember> {
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverOid,
-            userOid,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
@@ -186,10 +184,8 @@ export class ServerMemberController {
         onboarding: ReturnType<ServerMemberController['getOnboardingConfig']>;
         member: IServerMember;
     }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const member = await this.requireMember(serverOid, userOid);
-        const server = await this.serverRepo.findById(serverOid);
+        const member = await this.requireMember(serverId, userId);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -211,11 +207,9 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<IServerMember> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        await this.requireMember(serverOid, userOid);
+        await this.requireMember(serverId, userId);
 
-        const member = await this.serverMemberRepo.update(serverOid, userOid, {
+        const member = await this.serverMemberRepo.update(serverId, userId, {
             rulesAcceptedAt: new Date(),
         });
         if (member === null) {
@@ -237,10 +231,8 @@ export class ServerMemberController {
         @CurrentUser('id') userId: string,
         @Body() body: SelfRolesRequestDTO,
     ): Promise<IServerMember> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const member = await this.requireMember(serverOid, userOid);
-        const server = await this.serverRepo.findById(serverOid);
+        const member = await this.requireMember(serverId, userId);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
@@ -258,8 +250,8 @@ export class ServerMemberController {
             }
         }
 
-        const roles = await this.roleRepo.findByServerId(serverOid);
-        const roleMap = new Map(roles.map((r) => [getDocumentIdString(r), r]));
+        const roles = await this.roleRepo.findByServerId(serverId);
+        const roleMap = new Map(roles.map((r) => [r.snowflakeId, r]));
         for (const roleId of requestedIds) {
             const role = roleMap.get(roleId);
             if (
@@ -273,23 +265,23 @@ export class ServerMemberController {
             }
         }
 
-        const preservedRoleIds = member.roles
-            .map((id) => id.toString())
-            .filter((roleId) => !allowedIds.has(roleId));
-        const nextRoleIds = [...new Set([...preservedRoleIds, ...requestedIds])]
-            .filter((roleId) => roleMap.has(roleId))
-            .map((roleId) => new Types.ObjectId(roleId));
+        const preservedRoleIds = member.roles.filter(
+            (roleId) => !allowedIds.has(roleId),
+        );
+        const nextRoleIds = [
+            ...new Set([...preservedRoleIds, ...requestedIds]),
+        ].filter((roleId) => roleMap.has(roleId));
 
         const updatedMember = await this.serverMemberRepo.updateRoles(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             nextRoleIds,
         );
         if (updatedMember === null) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
         this.broadcastPublicMemberUpdateToServer(
             serverId,
             userId,
@@ -311,19 +303,15 @@ export class ServerMemberController {
         @CurrentUser('id') userId: string,
         @Body() body: ChannelPreferencesRequestDTO,
     ): Promise<IServerMember> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        await this.requireMember(serverOid, userOid);
+        await this.requireMember(serverId, userId);
 
         if (!this.channelRepo || !this.categoryRepo) {
             throw new Error('Required repositories are not initialized');
         }
-        const channels = await this.channelRepo.findByServerId(serverOid);
-        const categories = await this.categoryRepo.findByServerId(serverOid);
-        const channelIds = new Set(channels.map((c) => getDocumentIdString(c)));
-        const categoryIds = new Set(
-            categories.map((c) => getDocumentIdString(c)),
-        );
+        const channels = await this.channelRepo.findByServerId(serverId);
+        const categories = await this.categoryRepo.findByServerId(serverId);
+        const channelIds = new Set(channels.map((c) => c.snowflakeId));
+        const categoryIds = new Set(categories.map((c) => c.snowflakeId));
         const hiddenChannelIds = [...new Set(body.hiddenChannelIds)].map(
             (channelId) => {
                 if (!channelIds.has(channelId)) {
@@ -331,7 +319,7 @@ export class ServerMemberController {
                         'Hidden channel is not in server',
                     );
                 }
-                return new Types.ObjectId(channelId);
+                return channelId;
             },
         );
         const hiddenCategoryIds = [...new Set(body.hiddenCategoryIds)].map(
@@ -341,11 +329,11 @@ export class ServerMemberController {
                         'Hidden category is not in server',
                     );
                 }
-                return new Types.ObjectId(categoryId);
+                return categoryId;
             },
         );
 
-        const member = await this.serverMemberRepo.update(serverOid, userOid, {
+        const member = await this.serverMemberRepo.update(serverId, userId, {
             hiddenChannelIds,
             hiddenCategoryIds,
         });
@@ -368,12 +356,10 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<IServerMember> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        await this.requireMember(serverOid, userOid);
+        await this.requireMember(serverId, userId);
 
         const now = new Date();
-        const member = await this.serverMemberRepo.update(serverOid, userOid, {
+        const member = await this.serverMemberRepo.update(serverId, userId, {
             onboardingRequired: false,
             onboardingCompletedAt: now,
         });
@@ -398,22 +384,20 @@ export class ServerMemberController {
     ): Promise<
         (IServerMember & { user: MappedUser | null; online: boolean })[]
     > {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const members =
-            await this.serverMemberRepo.findByServerIdWithUserInfo(serverOid);
+            await this.serverMemberRepo.findByServerIdWithUserInfo(serverId);
 
         const [blocksByA, blocksAgainstA] = await Promise.all([
-            this.blockRepo.findBlocksByBlocker(userOid),
-            this.blockRepo.findBlocksByTarget(userOid),
+            this.blockRepo.findBlocksByBlocker(userId),
+            this.blockRepo.findBlocksByTarget(userId),
         ]);
 
         const hideEntirelySet = new Set(
@@ -469,21 +453,19 @@ export class ServerMemberController {
     ): Promise<
         (IServerMember & { user: MappedUser | null; online: boolean })[]
     > {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const members = await this.serverMemberRepo.searchMembers(serverOid, q);
+        const members = await this.serverMemberRepo.searchMembers(serverId, q);
 
         const [blocksByA, blocksAgainstA] = await Promise.all([
-            this.blockRepo.findBlocksByBlocker(userOid),
-            this.blockRepo.findBlocksByTarget(userOid),
+            this.blockRepo.findBlocksByBlocker(userId),
+            this.blockRepo.findBlocksByTarget(userId),
         ]);
 
         const hideEntirelySet = new Set(
@@ -538,26 +520,23 @@ export class ServerMemberController {
         @Param('userId') userId: string,
         @CurrentUser('id') currentUserId: string,
     ): Promise<IServerMember & { user: MappedUser | null }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const currentOid = new Types.ObjectId(currentUserId);
-        const targetOid = new Types.ObjectId(userId);
         const currentMember = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            currentOid,
+            serverId,
+            currentUserId,
         );
         if (currentMember === null) {
             throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            targetOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        const user = await this.userRepo.findById(targetOid);
+        const user = await this.userRepo.findById(userId);
         return { ...member, user: user ? mapUser(user as IUser) : null };
     }
 
@@ -575,21 +554,19 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server && String(server.ownerId) === userId) {
             throw new ForbiddenException(
                 ErrorMessages.SERVER.OWNER_CANNOT_LEAVE,
             );
         }
 
-        await this.serverMemberRepo.remove(serverOid, userOid);
-        await this.cleanupManagedRole(serverOid, userOid);
-        this.permissionService.invalidateCache(serverOid);
+        await this.serverMemberRepo.remove(serverId, userId);
+        await this.cleanupManagedRole(serverId, userId);
+        this.permissionService.invalidateCache(serverId);
 
         try {
-            await this.pingService.clearServerPings(userOid, serverOid);
+            await this.pingService.clearServerPings(userId, serverId);
         } catch (err) {
             this.logger.error('Failed to clear pings after leave:', err);
         }
@@ -600,12 +577,12 @@ export class ServerMemberController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'user_leave',
-            targetId: userOid,
+            targetId: userId,
             targetType: 'user',
-            targetUserId: userOid,
+            targetUserId: userId,
         });
 
         return { message: 'Left server' };
@@ -628,25 +605,22 @@ export class ServerMemberController {
         @CurrentUser('id') currentUserId: string,
         @Body() _body: KickMemberRequestDTO,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const currentOid = new Types.ObjectId(currentUserId);
-        const targetOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            currentOid,
+            serverId,
+            currentUserId,
             'kickMembers',
             new ForbiddenException(ErrorMessages.MEMBER.NO_PERMISSION_KICK),
         );
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            targetOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server && String(server.ownerId) === userId) {
             throw new ForbiddenException(
                 ErrorMessages.MEMBER.CANNOT_KICK_OWNER,
@@ -655,13 +629,13 @@ export class ServerMemberController {
 
         const currentUserHighest =
             await this.permissionService.getHighestRolePosition(
-                serverOid,
-                currentOid,
+                serverId,
+                currentUserId,
             );
         const targetHighest =
             await this.permissionService.getHighestRolePosition(
-                serverOid,
-                targetOid,
+                serverId,
+                userId,
             );
 
         if (currentUserHighest <= targetHighest) {
@@ -670,12 +644,12 @@ export class ServerMemberController {
             );
         }
 
-        await this.serverMemberRepo.remove(serverOid, targetOid);
-        await this.cleanupManagedRole(serverOid, targetOid);
-        this.permissionService.invalidateCache(serverOid);
+        await this.serverMemberRepo.remove(serverId, userId);
+        await this.cleanupManagedRole(serverId, userId);
+        this.permissionService.invalidateCache(serverId);
 
         try {
-            await this.pingService.clearServerPings(targetOid, serverOid);
+            await this.pingService.clearServerPings(userId, serverId);
         } catch (err) {
             this.logger.error('Failed to clear pings after kick:', err);
         }
@@ -686,12 +660,12 @@ export class ServerMemberController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: currentOid,
+            serverId: serverId,
+            actorId: currentUserId,
             actionType: 'user_kick',
-            targetId: targetOid,
+            targetId: userId,
             targetType: 'user',
-            targetUserId: targetOid,
+            targetUserId: userId,
             reason: _body.reason,
         });
 
@@ -713,32 +687,29 @@ export class ServerMemberController {
         @CurrentUser('id') currentUserId: string,
         @Body() body: BanMemberRequestDTO,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const currentOid = new Types.ObjectId(currentUserId);
         const { userId, reason } = body;
-        const targetOid = new Types.ObjectId(userId);
 
         await this.permissionService.requirePermission(
-            serverOid,
-            currentOid,
+            serverId,
+            currentUserId,
             'banMembers',
             new ForbiddenException(ErrorMessages.MEMBER.NO_PERMISSION_BAN),
         );
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server && String(server.ownerId) === userId) {
             throw new ForbiddenException(ErrorMessages.MEMBER.CANNOT_BAN_OWNER);
         }
 
         const currentUserHighest =
             await this.permissionService.getHighestRolePosition(
-                serverOid,
-                currentOid,
+                serverId,
+                currentUserId,
             );
         const targetHighest =
             await this.permissionService.getHighestRolePosition(
-                serverOid,
-                targetOid,
+                serverId,
+                userId,
             );
 
         if (currentUserHighest <= targetHighest) {
@@ -748,21 +719,21 @@ export class ServerMemberController {
         }
 
         await this.serverBanRepo.create({
-            serverId: serverOid,
-            userId: targetOid,
+            serverId: serverId,
+            userId: userId,
             reason:
                 reason !== undefined && reason !== ''
                     ? reason
                     : 'No reason provided',
-            bannedBy: currentOid,
+            bannedBy: currentUserId,
         });
 
-        await this.serverMemberRepo.remove(serverOid, targetOid);
-        await this.cleanupManagedRole(serverOid, targetOid);
-        this.permissionService.invalidateCache(serverOid);
+        await this.serverMemberRepo.remove(serverId, userId);
+        await this.cleanupManagedRole(serverId, userId);
+        this.permissionService.invalidateCache(serverId);
 
         try {
-            await this.pingService.clearServerPings(targetOid, serverOid);
+            await this.pingService.clearServerPings(userId, serverId);
         } catch (err) {
             this.logger.error('Failed to clear pings after ban:', err);
         }
@@ -777,12 +748,12 @@ export class ServerMemberController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: currentOid,
+            serverId: serverId,
+            actorId: currentUserId,
             actionType: 'user_ban',
-            targetId: targetOid,
+            targetId: userId,
             targetType: 'user',
-            targetUserId: targetOid,
+            targetUserId: userId,
             reason: reason,
         });
 
@@ -805,34 +776,31 @@ export class ServerMemberController {
         @CurrentUser('id') currentUserId: string,
         @Body() body: TimeoutMemberRequestDTO,
     ): Promise<{ message: string; communicationDisabledUntil: string | null }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const currentOid = new Types.ObjectId(currentUserId);
-        const targetOid = new Types.ObjectId(userId);
         const { duration, reason } = body;
 
         await this.permissionService.requirePermission(
-            serverOid,
-            currentOid,
+            serverId,
+            currentUserId,
             'moderateMembers',
             new ForbiddenException(
                 'You do not have permission to timeout members',
             ),
         );
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server !== null && String(server.ownerId) === userId) {
             throw new ForbiddenException('You cannot timeout the server owner');
         }
 
         const currentUserHighest =
             await this.permissionService.getHighestRolePosition(
-                serverOid,
-                currentOid,
+                serverId,
+                currentUserId,
             );
         const targetHighest =
             await this.permissionService.getHighestRolePosition(
-                serverOid,
-                targetOid,
+                serverId,
+                userId,
             );
 
         if (currentUserHighest <= targetHighest) {
@@ -847,8 +815,8 @@ export class ServerMemberController {
                 : null;
 
         const updatedMember = await this.serverMemberRepo.setTimeout(
-            serverOid,
-            targetOid,
+            serverId,
+            userId,
             until,
         );
 
@@ -863,12 +831,12 @@ export class ServerMemberController {
         );
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: currentOid,
+            serverId: serverId,
+            actorId: currentUserId,
             actionType: until ? 'user_timeout' : 'user_timeout_remove',
-            targetId: targetOid,
+            targetId: userId,
             targetType: 'user',
-            targetUserId: targetOid,
+            targetUserId: userId,
             reason:
                 reason !== undefined && reason !== ''
                     ? reason
@@ -900,17 +868,14 @@ export class ServerMemberController {
         @Param('userId') userId: string,
         @CurrentUser('id') currentUserId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const currentOid = new Types.ObjectId(currentUserId);
-        const targetOid = new Types.ObjectId(userId);
         await this.permissionService.requirePermission(
-            serverOid,
-            currentOid,
+            serverId,
+            currentUserId,
             'banMembers',
             new ForbiddenException(ErrorMessages.MEMBER.NO_PERMISSION_UNBAN),
         );
 
-        await this.serverBanRepo.unban(serverOid, targetOid);
+        await this.serverBanRepo.unban(serverId, userId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_unbanned',
@@ -918,12 +883,12 @@ export class ServerMemberController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: currentOid,
+            serverId: serverId,
+            actorId: currentUserId,
             actionType: 'user_unban',
-            targetId: targetOid,
+            targetId: userId,
             targetType: 'user',
-            targetUserId: targetOid,
+            targetUserId: userId,
         });
 
         return { message: 'Member unbanned' };
@@ -943,18 +908,16 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') currentUserId: string,
     ): Promise<IServerBan[]> {
-        const serverOid = new Types.ObjectId(serverId);
-        const currentOid = new Types.ObjectId(currentUserId);
         await this.permissionService.requirePermission(
-            serverOid,
-            currentOid,
+            serverId,
+            currentUserId,
             'banMembers',
             new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_VIEW_BANS,
             ),
         );
 
-        return await this.serverBanRepo.findByServerIdWithUserInfo(serverOid);
+        return await this.serverBanRepo.findByServerIdWithUserInfo(serverId);
     }
 
     @Post('members/:userId/roles/:roleId')
@@ -971,13 +934,9 @@ export class ServerMemberController {
         @Param('roleId') roleId: string,
         @CurrentUser('id') currentUserId: string,
     ): Promise<IServerMember> {
-        const serverOid = new Types.ObjectId(serverId);
-        const currentOid = new Types.ObjectId(currentUserId);
-        const targetOid = new Types.ObjectId(userId);
-        const roleOid = new Types.ObjectId(roleId);
         await this.permissionService.requirePermission(
-            serverOid,
-            currentOid,
+            serverId,
+            currentUserId,
             'manageRoles',
             new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -985,32 +944,32 @@ export class ServerMemberController {
         );
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            targetOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        const role = await this.roleRepo.findById(roleOid);
-        if (role === null || role.serverId.equals(serverOid) === false) {
+        const role = await this.roleRepo.findById(roleId);
+        if (role === null || role.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         const isOwner =
             server !== null && String(server.ownerId) === currentUserId;
 
         if (isOwner !== true) {
             const currentUserHighest =
                 await this.permissionService.getHighestRolePosition(
-                    serverOid,
-                    currentOid,
+                    serverId,
+                    currentUserId,
                 );
             const targetHighest =
                 await this.permissionService.getHighestRolePosition(
-                    serverOid,
-                    targetOid,
+                    serverId,
+                    userId,
                 );
 
             if (currentUserHighest <= targetHighest) {
@@ -1026,17 +985,17 @@ export class ServerMemberController {
             }
         }
 
-        if (member.roles.some((r) => r.equals(roleOid))) {
+        if (member.roles.some((r) => r === roleId)) {
             return member;
         }
 
         const updatedMember = await this.serverMemberRepo.addRole(
-            serverOid,
-            targetOid,
-            roleOid,
+            serverId,
+            userId,
+            roleId,
         );
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.broadcastPublicMemberUpdateToServer(
             serverId,
@@ -1045,12 +1004,12 @@ export class ServerMemberController {
         );
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: currentOid,
+            serverId: serverId,
+            actorId: currentUserId,
             actionType: 'role_given',
-            targetId: roleOid,
+            targetId: roleId,
             targetType: 'role',
-            targetUserId: targetOid,
+            targetUserId: userId,
             metadata: { roleName: role.name },
         });
 
@@ -1074,13 +1033,9 @@ export class ServerMemberController {
         @Param('roleId') roleId: string,
         @CurrentUser('id') currentUserId: string,
     ): Promise<IServerMember> {
-        const serverOid = new Types.ObjectId(serverId);
-        const currentOid = new Types.ObjectId(currentUserId);
-        const targetOid = new Types.ObjectId(userId);
-        const roleOid = new Types.ObjectId(roleId);
         await this.permissionService.requirePermission(
-            serverOid,
-            currentOid,
+            serverId,
+            currentUserId,
             'manageRoles',
             new ForbiddenException(
                 ErrorMessages.MEMBER.NO_PERMISSION_MANAGE_ROLES,
@@ -1088,15 +1043,15 @@ export class ServerMemberController {
         );
 
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            targetOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        const role = await this.roleRepo.findById(roleOid);
-        if (role === null || role.serverId.equals(serverOid) === false) {
+        const role = await this.roleRepo.findById(roleId);
+        if (role === null || role.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
         if (role.name === '@everyone') {
@@ -1110,20 +1065,20 @@ export class ServerMemberController {
             );
         }
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         const isOwner =
             server !== null && String(server.ownerId) === currentUserId;
 
         if (isOwner !== true) {
             const currentUserHighest =
                 await this.permissionService.getHighestRolePosition(
-                    serverOid,
-                    currentOid,
+                    serverId,
+                    currentUserId,
                 );
             const targetHighest =
                 await this.permissionService.getHighestRolePosition(
-                    serverOid,
-                    targetOid,
+                    serverId,
+                    userId,
                 );
 
             if (currentUserHighest <= targetHighest) {
@@ -1140,12 +1095,12 @@ export class ServerMemberController {
         }
 
         const updatedMember = await this.serverMemberRepo.removeRole(
-            serverOid,
-            targetOid,
-            roleOid,
+            serverId,
+            userId,
+            roleId,
         );
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.broadcastPublicMemberUpdateToServer(
             serverId,
@@ -1154,12 +1109,12 @@ export class ServerMemberController {
         );
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: currentOid,
+            serverId: serverId,
+            actorId: currentUserId,
             actionType: 'role_removed',
-            targetId: roleOid,
+            targetId: roleId,
             targetType: 'role',
-            targetUserId: targetOid,
+            targetUserId: userId,
             metadata: { roleName: role.name },
         });
 
@@ -1182,12 +1137,9 @@ export class ServerMemberController {
         @CurrentUser('id') userId: string,
         @Body() body: TransferOwnershipRequestDTO,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
         const { newOwnerId } = body;
-        const newOwnerOid = new Types.ObjectId(newOwnerId);
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (!server) {
             throw new NotFoundException('Server not found');
         }
@@ -1199,16 +1151,16 @@ export class ServerMemberController {
         }
 
         const newOwnerMember = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            newOwnerOid,
+            serverId,
+            newOwnerId,
         );
         if (!newOwnerMember) {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
 
-        await this.serverRepo.update(serverOid, { ownerId: newOwnerId });
+        await this.serverRepo.update(serverId, { ownerId: newOwnerId });
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'ownership_transferred',
@@ -1220,39 +1172,34 @@ export class ServerMemberController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'owner_changed',
-            targetId: serverOid,
+            targetId: serverId,
             targetType: 'server',
-            targetUserId: newOwnerOid,
+            targetUserId: newOwnerId,
         });
 
         return { message: 'Ownership transferred' };
     }
 
-    private async cleanupManagedRole(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
-    ) {
+    private async cleanupManagedRole(serverId: string, userId: string) {
         try {
             const bot = await Bot.findOne({ userId }).lean();
             if (bot) {
                 const managedRole = await Role.findOne({
                     serverId,
                     managed: true,
-                    managedBotId: getDocumentId(bot) as Types.ObjectId,
+                    managedBotId: bot.snowflakeId,
                 }).lean();
 
                 if (managedRole) {
-                    await this.roleRepo.delete(
-                        getDocumentId(managedRole) as Types.ObjectId,
-                    );
-                    this.wsServer.broadcastToServer(serverId.toString(), {
+                    await this.roleRepo.delete(managedRole.snowflakeId);
+                    this.wsServer.broadcastToServer(serverId, {
                         type: 'role_deleted',
                         payload: {
-                            serverId: serverId.toString(),
-                            roleId: getDocumentIdString(managedRole),
+                            serverId,
+                            roleId: managedRole.snowflakeId,
                         },
                     });
                 }

@@ -1,4 +1,4 @@
-import { type QueryFilter, Types, ClientSession } from 'mongoose';
+import { type QueryFilter, ClientSession } from 'mongoose';
 import {
     IMessageRepository,
     IMessage,
@@ -6,13 +6,10 @@ import {
 import { Message, type IPoll } from '@/models/Message';
 import { injectable } from 'inversify';
 import type { IMessageAttachment } from '@/models/Attachment';
+import { isValidSnowflakeId } from '@/utils/snowflake';
 
-type PopulatedMessageDoc = Omit<
-    IMessage,
-    'repliedToMessageId' | 'replyToId'
-> & {
-    repliedToMessageId?: Types.ObjectId | PopulatedMessageDoc;
-    replyToId?: Types.ObjectId;
+type PopulatedMessageDoc = IMessage & {
+    repliedToMessage?: PopulatedMessageDoc;
 };
 
 // Mongoose Message repository
@@ -22,20 +19,13 @@ export class MongooseMessageRepository implements IMessageRepository {
     public constructor() {}
 
     private transformMessage(msg: PopulatedMessageDoc): IMessage {
-        const transformed = { ...msg } as unknown as IMessage;
+        const transformed = { ...msg } as IMessage;
+        delete (transformed as Partial<PopulatedMessageDoc>).repliedToMessage;
 
-        if (
-            msg.repliedToMessageId &&
-            typeof msg.repliedToMessageId === 'object' &&
-            !(msg.repliedToMessageId instanceof Types.ObjectId)
-        ) {
-            const populated = msg.repliedToMessageId as PopulatedMessageDoc;
-            transformed.referenced_message = this.transformMessage(populated);
-            transformed.repliedToMessageId = populated._id;
-        } else {
-            transformed.repliedToMessageId = msg.repliedToMessageId as
-                | Types.ObjectId
-                | undefined;
+        if (msg.repliedToMessage) {
+            transformed.referenced_message = this.transformMessage(
+                msg.repliedToMessage,
+            );
         }
 
         return transformed;
@@ -52,23 +42,23 @@ export class MongooseMessageRepository implements IMessageRepository {
                     m.referenced_message === undefined &&
                     m.replyToId !== undefined,
             )
-            .map((m) => m.replyToId as Types.ObjectId);
+            .map((m) => m.replyToId as string);
 
         // Skip legacy replyToId lookup if all messages are modern (populated via repliedToMessageId)
         if (replyToIds.length === 0) return transformed;
 
         // Legacy replyToId references are only populated one level deep; nested replies within legacy messages will not have referenced_message set.
         const replyDocs = (await this.messageModel
-            .find({ _id: { $in: replyToIds } })
-            .lean()) as unknown as PopulatedMessageDoc[];
-        const replyMap = new Map(replyDocs.map((d) => [d._id.toString(), d]));
+            .find({ snowflakeId: { $in: replyToIds } })
+            .lean()) as PopulatedMessageDoc[];
+        const replyMap = new Map(replyDocs.map((d) => [d.snowflakeId, d]));
 
         return transformed.map((m) => {
             if (
                 m.referenced_message === undefined &&
                 m.replyToId !== undefined
             ) {
-                const ref = replyMap.get(m.replyToId.toString());
+                const ref = replyMap.get(m.replyToId);
                 if (ref) {
                     return {
                         ...m,
@@ -80,21 +70,21 @@ export class MongooseMessageRepository implements IMessageRepository {
         });
     }
 
-    public async findById(id: Types.ObjectId): Promise<IMessage | null> {
+    public async findById(id: string): Promise<IMessage | null> {
         const msg = (await this.messageModel
-            .findById(id)
+            .findOne({ snowflakeId: id })
             .populate({
-                path: 'repliedToMessageId',
-                populate: { path: 'repliedToMessageId' },
+                path: 'repliedToMessage',
+                populate: { path: 'repliedToMessage' },
             })
-            .lean()) as unknown as PopulatedMessageDoc | null;
+            .lean()) as PopulatedMessageDoc | null;
         return msg ? this.transformMessage(msg) : null;
     }
 
     // Find messages between two users with pagination
     public async findByConversation(
-        user1Id: Types.ObjectId,
-        user2Id: Types.ObjectId,
+        user1Id: string,
+        user2Id: string,
         limit = 50,
         before?: string,
         around?: string,
@@ -110,8 +100,8 @@ export class MongooseMessageRepository implements IMessageRepository {
         if (around !== undefined && around !== '') {
             // Fetch context around a specific message
             const targetMessage = (await this.messageModel
-                .findById(around)
-                .lean()) as unknown as PopulatedMessageDoc | null;
+                .findOne({ snowflakeId: around })
+                .lean()) as PopulatedMessageDoc | null;
             if (!targetMessage) return [];
 
             const targetDate = targetMessage.createdAt;
@@ -126,10 +116,10 @@ export class MongooseMessageRepository implements IMessageRepository {
                 .sort({ createdAt: -1 })
                 .limit(Math.floor(limit / 2))
                 .populate({
-                    path: 'repliedToMessageId',
-                    populate: { path: 'repliedToMessageId' },
+                    path: 'repliedToMessage',
+                    populate: { path: 'repliedToMessage' },
                 })
-                .lean()) as unknown as PopulatedMessageDoc[];
+                .lean()) as PopulatedMessageDoc[];
 
             const afterMessages = (await this.messageModel
                 .find({
@@ -139,10 +129,10 @@ export class MongooseMessageRepository implements IMessageRepository {
                 .sort({ createdAt: 1 }) // Ascending to get closest to target
                 .limit(Math.ceil(limit / 2))
                 .populate({
-                    path: 'repliedToMessageId',
-                    populate: { path: 'repliedToMessageId' },
+                    path: 'repliedToMessage',
+                    populate: { path: 'repliedToMessage' },
                 })
-                .lean()) as unknown as PopulatedMessageDoc[];
+                .lean()) as PopulatedMessageDoc[];
 
             // Combine and sort chronologically
             const combined = [...beforeMessages, ...afterMessages].sort(
@@ -156,18 +146,14 @@ export class MongooseMessageRepository implements IMessageRepository {
         const query = { ...baseQuery };
 
         if (before !== undefined && before !== '') {
-            const isValidObjectId = /^[a-f\d]{24}$/i.test(before);
-
-            if (isValidObjectId) {
-                query._id = { $lt: new Types.ObjectId(before) };
+            if (isValidSnowflakeId(before)) {
+                query.snowflakeId = { $lt: before };
             } else {
                 query.createdAt = { $lt: new Date(before) };
             }
         } else if (after !== undefined && after !== '') {
-            const isValidObjectId = /^[a-f\d]{24}$/i.test(after);
-
-            if (isValidObjectId) {
-                query._id = { $gt: new Types.ObjectId(after) };
+            if (isValidSnowflakeId(after)) {
+                query.snowflakeId = { $gt: after };
             } else {
                 query.createdAt = { $gt: new Date(after) };
             }
@@ -178,10 +164,10 @@ export class MongooseMessageRepository implements IMessageRepository {
             .sort({ createdAt: after !== undefined && after !== '' ? 1 : -1 })
             .limit(limit)
             .populate({
-                path: 'repliedToMessageId',
-                populate: { path: 'repliedToMessageId' },
+                path: 'repliedToMessage',
+                populate: { path: 'repliedToMessage' },
             })
-            .lean()) as unknown as PopulatedMessageDoc[];
+            .lean()) as PopulatedMessageDoc[];
 
         if (after === undefined || after === '') {
             messages.reverse();
@@ -192,41 +178,27 @@ export class MongooseMessageRepository implements IMessageRepository {
 
     public async create(
         data: {
-            senderId: Types.ObjectId;
-            receiverId: Types.ObjectId;
+            senderId: string;
+            receiverId: string;
             text: string;
-            replyToId?: Types.ObjectId;
-            repliedToMessageId?: Types.ObjectId;
+            replyToId?: string;
+            repliedToMessageId?: string;
             poll?: IPoll;
             attachments?: IMessageAttachment[];
             noEmbeds?: boolean;
         },
         session?: ClientSession,
     ): Promise<IMessage> {
-        const createData = {
-            ...data,
-            senderId: new Types.ObjectId(data.senderId),
-            receiverId: new Types.ObjectId(data.receiverId),
-            replyToId: data.replyToId
-                ? new Types.ObjectId(data.replyToId)
-                : undefined,
-            repliedToMessageId: data.repliedToMessageId
-                ? new Types.ObjectId(data.repliedToMessageId)
-                : undefined,
-        };
-        const message = new this.messageModel(createData);
+        const message = new this.messageModel(data);
         const savedMessage = await message.save({ session });
         const msgObj = savedMessage.toObject({ transform: false });
         return this.transformMessage(msgObj);
     }
 
-    public async update(
-        id: Types.ObjectId,
-        text: string,
-    ): Promise<IMessage | null> {
+    public async update(id: string, text: string): Promise<IMessage | null> {
         const msg = (await this.messageModel
-            .findByIdAndUpdate(
-                id,
+            .findOneAndUpdate(
+                { snowflakeId: id },
                 {
                     text,
                     editedAt: new Date(),
@@ -235,34 +207,36 @@ export class MongooseMessageRepository implements IMessageRepository {
                 { new: true },
             )
             .populate({
-                path: 'repliedToMessageId',
-                populate: { path: 'repliedToMessageId' },
+                path: 'repliedToMessage',
+                populate: { path: 'repliedToMessage' },
             })
-            .lean()) as unknown as PopulatedMessageDoc | null;
+            .lean()) as PopulatedMessageDoc | null;
         return msg ? this.transformMessage(msg) : null;
     }
 
     public async updateMessage(
-        id: string | Types.ObjectId,
+        id: string,
         data: Partial<IMessage>,
     ): Promise<IMessage | null> {
         const msg = (await this.messageModel
-            .findByIdAndUpdate(new Types.ObjectId(id), data, { new: true })
+            .findOneAndUpdate({ snowflakeId: id }, data, { new: true })
             .populate({
-                path: 'repliedToMessageId',
-                populate: { path: 'repliedToMessageId' },
+                path: 'repliedToMessage',
+                populate: { path: 'repliedToMessage' },
             })
-            .lean()) as unknown as PopulatedMessageDoc | null;
+            .lean()) as PopulatedMessageDoc | null;
         return msg ? this.transformMessage(msg) : null;
     }
 
-    public async delete(id: Types.ObjectId): Promise<boolean> {
-        const result = await this.messageModel.deleteOne({ _id: id });
+    public async delete(id: string): Promise<boolean> {
+        const result = await this.messageModel.deleteOne({
+            snowflakeId: id,
+        });
         return result.deletedCount > 0;
     }
 
     public async updateManyBySenderId(
-        senderId: Types.ObjectId,
+        senderId: string,
         update: {
             senderDeleted?: boolean;
             anonymizedSender?: string;
@@ -276,7 +250,7 @@ export class MongooseMessageRepository implements IMessageRepository {
     }
 
     public async updateManyByReceiverId(
-        receiverId: Types.ObjectId,
+        receiverId: string,
         update: { receiverDeleted?: boolean; anonymizedReceiver?: string },
     ): Promise<{ modifiedCount: number }> {
         const result = await this.messageModel.updateMany(

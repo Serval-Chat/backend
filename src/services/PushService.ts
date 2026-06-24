@@ -303,7 +303,7 @@ async function isAllowedByPreferences(
     userId: string,
     type: NotificationType,
 ): Promise<boolean> {
-    const user = await User.findById(userId)
+    const user = await User.findOne({ snowflakeId: userId })
         .select('notificationPreferences')
         .lean();
     if (user === null || user.notificationPreferences === undefined)

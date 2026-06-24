@@ -28,12 +28,12 @@ describe('Deleted Message Visibility Integration', () => {
     });
 
     beforeEach(async () => {
-        testServer = await createTestServer(admin._id.toString());
-        testChannel = await createTestChannel(testServer._id.toString());
+        testServer = await createTestServer(admin.snowflakeId);
+        testChannel = await createTestChannel(testServer.snowflakeId);
 
         await ServerMember.create({
-            serverId: testServer._id,
-            userId: regularUser._id,
+            serverId: testServer.snowflakeId,
+            userId: regularUser.snowflakeId,
             roles: []
         });
     });
@@ -44,7 +44,7 @@ describe('Deleted Message Visibility Integration', () => {
 
     it('should allow a user with seeDeletedMessages permission to see soft-deleted messages', async () => {
         const sendRes = await request(app)
-            .post(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
+            .post(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages`)
             .set('Authorization', `Bearer ${regularUserToken}`)
             .send({
                 text: 'This message will be deleted'
@@ -54,17 +54,19 @@ describe('Deleted Message Visibility Integration', () => {
         const messageId = sendRes.body.id;
 
         const deleteRes = await request(app)
-            .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${messageId}`)
+            .delete(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${messageId}`)
             .set('Authorization', `Bearer ${regularUserToken}`);
 
         expect(deleteRes.status).toBe(200);
 
-        const dbMessage = await ServerMessage.findById(messageId);
+        const dbMessage = await ServerMessage.findOne({
+            snowflakeId: messageId,
+        });
         expect(dbMessage).toBeDefined();
         expect(dbMessage?.deletedAt).toBeDefined();
 
         const fetchRegularRes = await request(app)
-            .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
+            .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages`)
             .set('Authorization', `Bearer ${regularUserToken}`);
 
         console.log(fetchRegularRes.body); expect(fetchRegularRes.status).toBe(200);
@@ -72,7 +74,7 @@ describe('Deleted Message Visibility Integration', () => {
         expect(regularMsgs.some((m: { id: string }) => m.id === messageId)).toBe(false);
 
         const fetchAdminRes = await request(app)
-            .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
+            .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages`)
             .set('Authorization', `Bearer ${adminToken}`);
 
         expect(fetchAdminRes.status).toBe(200);
@@ -84,7 +86,7 @@ describe('Deleted Message Visibility Integration', () => {
 
     it('should show deleted messages to a role with seeDeletedMessages permission', async () => {
         const specialRole = await Role.create({
-            serverId: testServer._id,
+            serverId: testServer.snowflakeId,
             name: 'Audit Role',
             position: 1,
             permissions: {
@@ -106,12 +108,12 @@ describe('Deleted Message Visibility Integration', () => {
         });
 
         await ServerMember.updateOne(
-            { serverId: testServer._id, userId: regularUser._id },
-            { $push: { roles: specialRole._id } }
+            { serverId: testServer.snowflakeId, userId: regularUser.snowflakeId },
+            { $push: { roles: specialRole.snowflakeId } }
         );
 
         const sendRes = await request(app)
-            .post(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
+            .post(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages`)
             .set('Authorization', `Bearer ${adminToken}`)
             .send({
                 text: 'Admin secret'
@@ -120,11 +122,11 @@ describe('Deleted Message Visibility Integration', () => {
         const messageId = sendRes.body.id;
 
         await request(app)
-            .delete(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages/${messageId}`)
+            .delete(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/${messageId}`)
             .set('Authorization', `Bearer ${adminToken}`);
 
         const fetchRes = await request(app)
-            .get(`/api/v1/servers/${testServer._id}/channels/${testChannel._id}/messages`)
+            .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages`)
             .set('Authorization', `Bearer ${regularUserToken}`);
 
         expect(fetchRes.status).toBe(200);

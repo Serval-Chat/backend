@@ -1,6 +1,5 @@
 // Reaction Repository Interface
 
-import type { Types } from 'mongoose';
 import type { IReaction } from '@/models/Reaction';
 
 interface BaseReactionData {
@@ -43,9 +42,9 @@ export interface IReactionRepository {
     // @returns The created reaction
     // @throws Error if reaction already exists or limit exceeded
     addReaction(
-        messageId: Types.ObjectId,
+        messageId: string,
         messageType: 'dm' | 'server',
-        userId: Types.ObjectId,
+        userId: string,
         emoji: string,
         emojiType: 'unicode' | 'custom',
         emojiId?: string,
@@ -59,9 +58,9 @@ export interface IReactionRepository {
     // @param emojiId - Emoji ID (for custom) or undefined
     // @returns True if removed, false if not found
     removeReaction(
-        messageId: Types.ObjectId,
+        messageId: string,
         messageType: 'dm' | 'server',
-        userId: Types.ObjectId,
+        userId: string,
         emoji?: string,
         emojiId?: string,
     ): Promise<boolean>;
@@ -76,9 +75,9 @@ export interface IReactionRepository {
     // @param currentUserId - Optional current user ID to mark hasReacted
     // @returns Array of reaction data grouped by emoji
     getReactionsByMessage(
-        messageId: Types.ObjectId,
+        messageId: string,
         messageType: 'dm' | 'server',
-        currentUserId?: Types.ObjectId,
+        currentUserId?: string,
     ): Promise<ReactionData[]>;
 
     // Get reactions for multiple messages
@@ -87,9 +86,9 @@ export interface IReactionRepository {
     // @param currentUserId - Optional current user ID
     // @returns Map of messageId to reaction data
     getReactionsForMessages(
-        messageIds: Types.ObjectId[],
+        messageIds: string[],
         messageType: 'dm' | 'server',
-        currentUserId?: Types.ObjectId,
+        currentUserId?: string,
     ): Promise<Record<string, ReactionData[]>>;
 
     // Get total count of unique emoji reactions on a message
@@ -97,7 +96,7 @@ export interface IReactionRepository {
     // @param messageType - Type of message ('dm' | 'server')
     // @returns Count of unique emoji types
     getReactionCount(
-        messageId: Types.ObjectId,
+        messageId: string,
         messageType: 'dm' | 'server',
     ): Promise<number>;
 
@@ -112,9 +111,9 @@ export interface IReactionRepository {
     // @param emojiId - Emoji ID (for custom) or undefined
     // @returns True if user has already reacted
     hasUserReacted(
-        messageId: Types.ObjectId,
+        messageId: string,
         messageType: 'dm' | 'server',
-        userId: Types.ObjectId,
+        userId: string,
         emoji?: string,
         emojiId?: string,
     ): Promise<boolean>;
@@ -125,7 +124,7 @@ export interface IReactionRepository {
     // @param messageType - Type of message ('dm' | 'server')
     // @returns Number of reactions deleted
     deleteAllForMessage(
-        messageId: Types.ObjectId,
+        messageId: string,
         messageType: 'dm' | 'server',
     ): Promise<number>;
 
@@ -133,7 +132,7 @@ export interface IReactionRepository {
     // Used when a user is deleted
     // @param userId - ID of the user
     // @returns Number of reactions deleted
-    deleteAllByUser(userId: Types.ObjectId): Promise<number>;
+    deleteAllByUser(userId: string): Promise<number>;
 
     // Remove all reactions of a specific emoji from a message
     // @param messageId - ID of the message
@@ -142,7 +141,7 @@ export interface IReactionRepository {
     // @param emojiId - Emoji ID (for custom) or undefined
     // @returns Number of reactions deleted
     removeEmojiFromMessage(
-        messageId: Types.ObjectId,
+        messageId: string,
         messageType: 'dm' | 'server',
         emoji?: string,
         emojiId?: string,

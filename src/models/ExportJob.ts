@@ -1,4 +1,5 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
@@ -10,10 +11,11 @@ export type ExportStatus =
     | 'cancelled';
 
 export interface IExportJob extends Document {
+    snowflakeId: string;
     _id: Types.ObjectId;
-    channelId: Types.ObjectId;
-    serverId: Types.ObjectId;
-    requestedBy: Types.ObjectId;
+    channelId: string;
+    serverId: string;
+    requestedBy: string;
     status: ExportStatus;
     attempts: number;
     maxAttempts: number;
@@ -30,20 +32,17 @@ export interface IExportJob extends Document {
 const exportJobSchema = new Schema<IExportJob>(
     {
         channelId: {
-            type: Schema.Types.ObjectId,
-            ref: 'Channel',
+            type: String,
             required: true,
             index: true,
         },
         serverId: {
-            type: Schema.Types.ObjectId,
-            ref: 'Server',
+            type: String,
             required: true,
             index: true,
         },
         requestedBy: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
         },
         status: {
@@ -67,6 +66,8 @@ const exportJobSchema = new Schema<IExportJob>(
 );
 
 exportJobSchema.plugin(mongooseIdPlugin);
+
+exportJobSchema.plugin(snowflakeIdPlugin);
 exportJobSchema.index({ status: 1, nextAttemptAt: 1 });
 
 export const ExportJob: Model<IExportJob> = mongoose.model(

@@ -40,7 +40,7 @@ import {
     BotUploadBannerResponseDTO,
 } from './dto/bot.response.dto';
 import crypto from 'crypto';
-import { Types } from 'mongoose';
+import { isValidSnowflakeId } from '@/utils/snowflake';
 
 import { TYPES } from '@/di/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
@@ -50,6 +50,7 @@ import {
     Bot,
     BOT_PERMISSION_KEYS,
     DEFAULT_BOT_PERMISSIONS,
+    type IBot,
 } from '@/models/Bot';
 import { User } from '@/models/User';
 import { Server, ServerMember, ServerBan, Role } from '@/models/Server';
@@ -64,7 +65,7 @@ import {
 import { ErrorMessages } from '@/constants/errorMessages';
 import fs from 'fs';
 import path from 'path';
-import { mapUser } from '@/utils/user';
+import { mapUser, type MappedUser } from '@/utils/user';
 import { IsHumanGuard } from '@/modules/auth/bot.guard';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -74,7 +75,7 @@ import {
     mapBotToServerPermissions,
 } from '@/utils/botPermissions';
 import { PermissionService } from '@/permissions/PermissionService';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
+import { getDocumentId } from '@/utils/mongooseId';
 import {
     CreateBotRequestDTO,
     UpdateBotRequestDTO,
@@ -104,6 +105,34 @@ function validateClientId(clientId: string): void {
 function isSafeMediaFilename(filename: string): boolean {
     return /^[a-f0-9]{32}\.(webp|gif)$/.test(filename);
 }
+
+type PopulatedBotUser = {
+    snowflakeId: string;
+    username: string;
+    displayName?: string;
+    bio?: string;
+    profilePicture?: string;
+    banner?: string;
+    bannerColor?: string;
+    isBot?: boolean;
+    createdAt?: Date;
+};
+
+type LeanBotDoc = {
+    _id: IBot['_id'];
+    snowflakeId: string;
+    clientId: string;
+    userId: string;
+    ownerId: string;
+    botPermissions: IBot['botPermissions'];
+    createdAt: Date;
+    updatedAt: Date;
+    userIdUser?: PopulatedBotUser | null;
+};
+
+type ResolvedBotDoc = Omit<LeanBotDoc, 'userId' | 'userIdUser'> & {
+    userId: MappedUser;
+};
 
 async function sanitizeBotUsername(name: string): Promise<string> {
     const base =
@@ -138,8 +167,8 @@ export class BotController {
     ) {}
 
     private async broadcastCommandsUpdated(bot: {
-        _id: Types.ObjectId;
-        userId: Types.ObjectId;
+        snowflakeId: string;
+        userId: string;
     }): Promise<void> {
         const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
             bot.userId,
@@ -150,10 +179,25 @@ export class BotController {
                 type: 'commands_updated',
                 payload: {
                     serverId: serverId.toString(),
-                    botId: getDocumentIdString(bot),
+                    botId: bot.snowflakeId,
                 },
             });
         });
+    }
+
+    /**
+     * resolves 'userIdUser' into the `userId` slot - BotResponseDTO.userId
+     * is typed as BotUserDTO, not a string, so the virtual can't be returned as-is.
+     */
+    private resolveBotUser(doc: LeanBotDoc): ResolvedBotDoc {
+        const mappedUser = mapUser(doc.userIdUser);
+        delete doc.userIdUser;
+        const docUnknown: unknown = doc;
+        const resolved = docUnknown as ResolvedBotDoc;
+        if (mappedUser !== null) {
+            resolved.userId = mappedUser;
+        }
+        return resolved;
     }
 
     @Get(':clientId/public')
@@ -161,31 +205,22 @@ export class BotController {
     @ApiOkResponse({ type: BotPublicInfoResponseDTO })
     public async getPublicInfo(@Param('clientId') clientId: string) {
         validateClientId(clientId);
-        const bot = await Bot.findOne({ clientId })
+        const bot = (await Bot.findOne({ clientId })
             .populate(
-                'userId',
+                'userIdUser',
                 'username displayName bio profilePicture banner bannerColor usernameGradient isBot',
             )
-            .lean();
+            .lean()) as LeanBotDoc | null;
 
         if (bot === null) throw new NotFoundException('Bot not found');
 
-        const botUser = bot.userId as unknown as {
-            _id: Types.ObjectId;
-            username: string;
-            displayName?: string;
-            bio?: string;
-            profilePicture?: string;
-            banner?: string;
-        };
-
-        const serverCount = await ServerMember.countDocuments({
-            userId: getDocumentId(botUser) as Types.ObjectId,
-        });
-
-        const mappedUser = mapUser(botUser);
+        const mappedUser = mapUser(bot.userIdUser);
         if (mappedUser === null)
             throw new NotFoundException('Bot user not found');
+
+        const serverCount = await ServerMember.countDocuments({
+            userId: mappedUser.id,
+        });
 
         return {
             clientId: bot.clientId,
@@ -218,7 +253,7 @@ export class BotController {
             throw new BadRequestException('name must be 32 chars or fewer');
         }
 
-        const ownerId = new Types.ObjectId(req.user.id);
+        const ownerId = req.user.id;
         const botCount = await Bot.countDocuments({ ownerId });
         if (botCount >= 25) {
             throw new ForbiddenException('Maximum 25 bots per user');
@@ -242,26 +277,22 @@ export class BotController {
         const bot = await Bot.create({
             clientId,
             botTokenHash,
-            userId: getDocumentId(botUser) as Types.ObjectId,
+            userId: botUser.snowflakeId,
             ownerId,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS },
         });
 
-        const botDoc = await Bot.findById(getDocumentId(bot))
+        const botDoc = (await Bot.findById(getDocumentId(bot))
             .populate(
-                'userId',
+                'userIdUser',
                 'username displayName bio profilePicture banner bannerColor isBot createdAt',
             )
-            .lean();
+            .lean()) as LeanBotDoc | null;
 
-        if (botDoc !== null) {
-            const mappedUser = mapUser(botDoc.userId);
-            if (mappedUser !== null) {
-                botDoc.userId = mappedUser as unknown as Types.ObjectId;
-            }
-        }
-
-        return { bot: botDoc, token: botToken };
+        return {
+            bot: botDoc !== null ? this.resolveBotUser(botDoc) : null,
+            token: botToken,
+        };
     }
 
     @UseGuards(JwtAuthGuard)
@@ -269,21 +300,15 @@ export class BotController {
     @ApiOperation({ summary: "List caller's bots" })
     @ApiOkResponse({ type: [BotResponseDTO] })
     public async listBots(@Req() req: AuthenticatedRequest) {
-        const ownerId = new Types.ObjectId(req.user.id);
-        const bots = await Bot.find({ ownerId })
+        const ownerId = req.user.id;
+        const bots = (await Bot.find({ ownerId })
             .populate(
-                'userId',
+                'userIdUser',
                 'username displayName bio profilePicture banner bannerColor isBot createdAt',
             )
             .sort({ createdAt: -1 })
-            .lean();
-        return bots.map((b) => {
-            const mappedUser = mapUser(b.userId);
-            if (mappedUser !== null) {
-                b.userId = mappedUser as unknown as Types.ObjectId;
-            }
-            return b;
-        });
+            .lean()) as LeanBotDoc[];
+        return bots.map((b) => this.resolveBotUser(b));
     }
 
     @UseGuards(JwtAuthGuard)
@@ -295,12 +320,12 @@ export class BotController {
         @Param('clientId') clientId: string,
     ) {
         validateClientId(clientId);
-        const bot = await Bot.findOne({ clientId })
+        const bot = (await Bot.findOne({ clientId })
             .populate(
-                'userId',
+                'userIdUser',
                 'username displayName bio profilePicture banner bannerColor isBot createdAt',
             )
-            .lean();
+            .lean()) as LeanBotDoc | null;
 
         if (bot === null) throw new NotFoundException('Bot not found');
 
@@ -308,12 +333,7 @@ export class BotController {
             throw new ForbiddenException('Not your bot');
         }
 
-        const mappedUser = mapUser(bot.userId);
-        if (mappedUser !== null) {
-            bot.userId = mappedUser as unknown as Types.ObjectId;
-        }
-
-        return bot;
+        return this.resolveBotUser(bot);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -351,24 +371,20 @@ export class BotController {
         }
 
         if (Object.keys(update).length > 0) {
-            await User.findByIdAndUpdate(bot.userId, { $set: update });
+            await User.findOneAndUpdate(
+                { snowflakeId: bot.userId },
+                { $set: update },
+            );
         }
 
-        const updated = await Bot.findOne({ clientId })
+        const updated = (await Bot.findOne({ clientId })
             .populate(
-                'userId',
+                'userIdUser',
                 'username displayName bio profilePicture banner bannerColor isBot createdAt',
             )
-            .lean();
+            .lean()) as LeanBotDoc | null;
 
-        if (updated !== null) {
-            const mappedUser = mapUser(updated.userId);
-            if (mappedUser !== null) {
-                updated.userId = mappedUser as unknown as Types.ObjectId;
-            }
-        }
-
-        return updated;
+        return updated !== null ? this.resolveBotUser(updated) : null;
     }
 
     @UseGuards(JwtAuthGuard)
@@ -389,30 +405,22 @@ export class BotController {
 
         for (const key of BOT_PERMISSION_KEYS) {
             if (key in body && typeof body[key] === 'boolean') {
-                (bot.botPermissions as unknown as Record<string, boolean>)[
-                    key
-                ] = body[key] as boolean;
+                (bot.botPermissions as Record<string, boolean>)[key] =
+                    body[key];
             }
         }
 
         bot.markModified('botPermissions');
         await bot.save();
 
-        const updated = await Bot.findOne({ clientId })
+        const updated = (await Bot.findOne({ clientId })
             .populate(
-                'userId',
+                'userIdUser',
                 'username displayName bio profilePicture banner bannerColor isBot createdAt',
             )
-            .lean();
+            .lean()) as LeanBotDoc | null;
 
-        if (updated !== null) {
-            const mappedUser = mapUser(updated.userId);
-            if (mappedUser !== null) {
-                updated.userId = mappedUser as unknown as Types.ObjectId;
-            }
-        }
-
-        return updated;
+        return updated !== null ? this.resolveBotUser(updated) : null;
     }
 
     @UseGuards(JwtAuthGuard)
@@ -431,7 +439,10 @@ export class BotController {
             throw new ForbiddenException('Not your bot');
         }
 
-        await User.findByIdAndUpdate(bot.userId, { deletedAt: new Date() });
+        await User.findOneAndUpdate(
+            { snowflakeId: bot.userId },
+            { deletedAt: new Date() },
+        );
         await Bot.deleteOne({ clientId });
 
         return { message: 'Bot deleted' };
@@ -457,7 +468,7 @@ export class BotController {
             throw new ForbiddenException('Not your bot');
         }
 
-        const botUser = await User.findById(bot.userId).lean();
+        const botUser = await User.findOne({ snowflakeId: bot.userId }).lean();
         if (botUser === null || botUser.deletedAt !== undefined) {
             throw new ForbiddenException('Bot account disabled');
         }
@@ -465,7 +476,10 @@ export class BotController {
         const newToken = generateBotToken();
         bot.botTokenHash = hashBotToken(newToken);
         await bot.save();
-        await User.findByIdAndUpdate(bot.userId, { $inc: { tokenVersion: 1 } });
+        await User.findOneAndUpdate(
+            { snowflakeId: bot.userId },
+            { $inc: { tokenVersion: 1 } },
+        );
 
         return { token: newToken };
     }
@@ -484,7 +498,7 @@ export class BotController {
     ) {
         validateClientId(clientId);
         const { serverId } = body;
-        if (!Types.ObjectId.isValid(serverId)) {
+        if (!isValidSnowflakeId(serverId)) {
             throw new BadRequestException('Valid serverId required');
         }
 
@@ -496,18 +510,15 @@ export class BotController {
             );
         }
 
-        const serverOid = new Types.ObjectId(serverId);
-        const callerOid = new Types.ObjectId(req.user.id);
-
-        const server = await Server.findById(serverOid).lean();
+        const server = await Server.findOne({ snowflakeId: serverId }).lean();
         if (server === null || server.deletedAt !== undefined)
             throw new NotFoundException('Server not found');
 
         const isOwner = server.ownerId.toString() === req.user.id;
         if (!isOwner) {
             const membership = await ServerMember.findOne({
-                serverId: serverOid,
-                userId: callerOid,
+                serverId,
+                userId: req.user.id,
             }).lean();
             if (membership === null)
                 throw new ForbiddenException('Not a member of this server');
@@ -526,10 +537,10 @@ export class BotController {
             }
         }
 
-        const botUserId = new Types.ObjectId(bot.userId.toString());
+        const botUserId = bot.userId.toString();
 
         const alreadyMember = await ServerMember.findOne({
-            serverId: serverOid,
+            serverId,
             userId: botUserId,
         }).lean();
         if (alreadyMember !== null) {
@@ -537,13 +548,15 @@ export class BotController {
         }
 
         const banned = await ServerBan.findOne({
-            serverId: serverOid,
+            serverId,
             userId: botUserId,
         }).lean();
         if (banned !== null)
             throw new ForbiddenException('Bot is banned from this server');
 
-        const botUser = await User.findById(botUserId).lean();
+        const botUser = await User.findOne({
+            snowflakeId: botUserId,
+        }).lean();
         if (botUser === null) throw new NotFoundException('Bot user not found');
         const botName = botUser.displayName ?? botUser.username;
 
@@ -557,34 +570,32 @@ export class BotController {
         const serverPerms = mapBotToServerPermissions(requestedBotPerms);
 
         const managedRole = await this.roleRepo.create({
-            serverId: serverOid,
+            serverId,
             name: botName,
             managed: true,
-            managedBotId: getDocumentId(bot) as Types.ObjectId,
+            managedBotId: bot.snowflakeId,
             position,
             separateFromOtherRoles: true,
             permissions: serverPerms,
             glowEnabled: false,
         });
 
-        const roles: Types.ObjectId[] = [
-            getDocumentId(managedRole) as Types.ObjectId,
-        ];
+        const roles: string[] = [managedRole.snowflakeId];
         const everyoneRole = await Role.findOne({
-            serverId: serverOid,
+            serverId,
             name: '@everyone',
         }).lean();
-        if (everyoneRole !== null)
-            roles.push(getDocumentId(everyoneRole) as Types.ObjectId);
-        if (server.defaultRoleId) roles.push(server.defaultRoleId);
+        if (everyoneRole !== null) roles.push(everyoneRole.snowflakeId);
+        if (server.defaultRoleId !== undefined && server.defaultRoleId !== '')
+            roles.push(server.defaultRoleId);
 
         await ServerMember.create({
-            serverId: serverOid,
+            serverId,
             userId: botUserId,
             roles,
         });
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_created',
@@ -620,7 +631,7 @@ export class BotController {
             throw new ForbiddenException('Not your bot');
         }
 
-        const botUserId = new Types.ObjectId(bot.userId.toString());
+        const botUserId = bot.userId.toString();
         const count = await ServerMember.countDocuments({ userId: botUserId });
 
         return { count };
@@ -641,9 +652,7 @@ export class BotController {
             throw new ForbiddenException('Not your bot');
         }
 
-        return this.slashCommandRepo.findByBotId(
-            getDocumentId(bot) as Types.ObjectId,
-        );
+        return this.slashCommandRepo.findByBotId(bot.snowflakeId);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -664,15 +673,13 @@ export class BotController {
         const isSelf = bot.userId.toString() === req.user.id;
         if (!isOwner && !isSelf) throw new ForbiddenException('Not your bot');
 
-        await this.slashCommandRepo.deleteByBotId(
-            getDocumentId(bot) as Types.ObjectId,
-        );
+        await this.slashCommandRepo.deleteByBotId(bot.snowflakeId);
 
         const created = [];
         for (const cmd of body.commands) {
             created.push(
                 await this.slashCommandRepo.create({
-                    botId: getDocumentId(bot) as Types.ObjectId,
+                    botId: bot.snowflakeId,
                     name: cmd.name.toLowerCase(),
                     description: cmd.description,
                     options: cmd.options || [],
@@ -775,23 +782,20 @@ export class BotController {
             await processAndSaveImage(
                 uploadedPath,
                 targetPath,
-                ImagePresets.profilePicture(
-                    format as 'webp' | 'gif',
-                    isAnimated,
-                ),
+                ImagePresets.profilePicture(format, isAnimated),
             );
 
             await this.userRepo.updateProfilePicture(
-                getDocumentId(botUser) as Types.ObjectId,
+                botUser.snowflakeId,
                 filename,
             );
             const pictureUrl = `/api/v1/profile/picture/${filename}`;
 
             const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
-                getDocumentId(botUser) as Types.ObjectId,
+                botUser.snowflakeId,
             );
             const updatePayload = {
-                userId: getDocumentIdString(botUser),
+                userId: botUser.snowflakeId,
                 profilePicture: pictureUrl,
             };
             serverIds.forEach((sid) => {
@@ -898,20 +902,14 @@ export class BotController {
             await processAndSaveImage(
                 uploadedPath,
                 targetPath,
-                ImagePresets.profileBanner(
-                    format as 'webp' | 'gif',
-                    isAnimated,
-                ),
+                ImagePresets.profileBanner(format, isAnimated),
             );
 
-            await this.userRepo.updateBanner(
-                getDocumentId(botUser) as Types.ObjectId,
-                filename,
-            );
+            await this.userRepo.updateBanner(botUser.snowflakeId, filename);
             const bannerUrl = `/api/v1/profile/banner/${filename}`;
 
             const serverIds = await this.serverMemberRepo.findServerIdsByUserId(
-                getDocumentId(botUser) as Types.ObjectId,
+                botUser.snowflakeId,
             );
             const bannerPayload = {
                 username: botUser.username ?? '',

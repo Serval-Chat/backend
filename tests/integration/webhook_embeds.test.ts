@@ -34,10 +34,10 @@ type WsReceivedEnvelope = {
 
 const WS_EVENT_TIMEOUT_MS = 5000;
 
-function makeAccessToken(user: { _id: { toString(): string }, login: string, username: string, tokenVersion?: number, isBot?: boolean }) {
+function makeAccessToken(user: { snowflakeId: string, login: string, username: string, tokenVersion?: number, isBot?: boolean }) {
     return jwt.sign(
         {
-            id: user._id.toString(),
+            id: user.snowflakeId,
             login: user.login,
             username: user.username,
             tokenVersion: user.tokenVersion ?? 0,
@@ -132,25 +132,25 @@ describe('Webhook Embed Updates Broadcast', () => {
     it('should broadcast message_server_embeds_updated to everyone in the channel when a webhook sends a link', async () => {
         const owner = await createTestUser({ username: 'owner', login: 'owner@test.com' });
         const viewer = await createTestUser({ username: 'viewer', login: 'viewer@test.com' });
-        const serverDoc = await createTestServer(owner._id.toString());
-        const channelDoc = await createTestChannel(serverDoc._id.toString());
+        const serverDoc = await createTestServer(owner.snowflakeId);
+        const channelDoc = await createTestChannel(serverDoc.snowflakeId);
 
-        await ServerMember.create({ serverId: serverDoc._id, userId: viewer._id, roles: [] });
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: viewer.snowflakeId, roles: [] });
 
         const viewerToken = makeAccessToken(viewer);
         const viewerSocket = await openAuthenticatedSocket(wsUrl, viewerToken);
 
         viewerSocket.send(JSON.stringify({
             id: crypto.randomUUID(),
-            event: { type: 'join_server', payload: { serverId: serverDoc._id.toString() } }
+            event: { type: 'join_server', payload: { serverId: serverDoc.snowflakeId } }
         }));
         await waitForWsEvent(viewerSocket, 'server_joined');
 
         viewerSocket.send(JSON.stringify({
             id: crypto.randomUUID(),
             event: { type: 'join_channel', payload: { 
-                serverId: serverDoc._id.toString(),
-                channelId: channelDoc._id.toString() 
+                serverId: serverDoc.snowflakeId,
+                channelId: channelDoc.snowflakeId 
             } }
         }));
         await waitForWsEvent(viewerSocket, 'channel_joined');
@@ -158,10 +158,10 @@ describe('Webhook Embed Updates Broadcast', () => {
         const webhookToken = crypto.randomBytes(64).toString('hex');
         const webhook = await Webhook.create({
             name: 'Test Webhook',
-            channelId: channelDoc._id,
-            serverId: serverDoc._id,
+            channelId: channelDoc.snowflakeId,
+            serverId: serverDoc.snowflakeId,
             token: webhookToken,
-            createdBy: owner._id,
+            createdBy: owner.snowflakeId,
         });
 
         const messageReceivedPromise = waitForWsEvent(viewerSocket, 'message_server');
@@ -192,27 +192,27 @@ describe('Webhook Embed Updates Broadcast', () => {
     it('should broadcast to users who have NOT joined the channel but ARE in the server (via permission broadcast)', async () => {
         const owner = await createTestUser({ username: 'owner2', login: 'owner2@test.com' });
         const viewer = await createTestUser({ username: 'viewer2', login: 'viewer2@test.com' });
-        const serverDoc = await createTestServer(owner._id.toString());
-        const channelDoc = await createTestChannel(serverDoc._id.toString());
+        const serverDoc = await createTestServer(owner.snowflakeId);
+        const channelDoc = await createTestChannel(serverDoc.snowflakeId);
 
-        await ServerMember.create({ serverId: serverDoc._id, userId: viewer._id, roles: [] });
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: viewer.snowflakeId, roles: [] });
 
         const viewerToken = makeAccessToken(viewer);
         const viewerSocket = await openAuthenticatedSocket(wsUrl, viewerToken);
 
         viewerSocket.send(JSON.stringify({
             id: crypto.randomUUID(),
-            event: { type: 'join_server', payload: { serverId: serverDoc._id.toString() } }
+            event: { type: 'join_server', payload: { serverId: serverDoc.snowflakeId } }
         }));
         await waitForWsEvent(viewerSocket, 'server_joined');
 
         const webhookToken = crypto.randomBytes(64).toString('hex');
         const webhook = await Webhook.create({
             name: 'Test Webhook 2',
-            channelId: channelDoc._id,
-            serverId: serverDoc._id,
+            channelId: channelDoc.snowflakeId,
+            serverId: serverDoc.snowflakeId,
             token: webhookToken,
-            createdBy: owner._id,
+            createdBy: owner.snowflakeId,
         });
 
         const embedsUpdatedPromise = waitForWsEvent(viewerSocket, 'message_server_embeds_updated');

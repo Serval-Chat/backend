@@ -1,6 +1,5 @@
 import { Inject, Logger } from '@nestjs/common';
 import { injectable, inject } from 'inversify';
-import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import crypto from 'crypto';
 import { ScraperService } from './ScraperService';
@@ -16,7 +15,6 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { IEmbed } from '@/models/Embed';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
-import { getDocumentIdString } from '@/utils/mongooseId';
 
 @injectable()
 export class EmbedService {
@@ -54,7 +52,7 @@ export class EmbedService {
         message: IServerMessage | IMessage,
         isServerMessage: boolean,
     ): Promise<void> {
-        const messageId = getDocumentIdString(message);
+        const messageId = message.snowflakeId;
 
         if (message.noEmbeds === true) {
             this.logger.debug(
@@ -239,7 +237,7 @@ export class EmbedService {
 
         if (isServerMessage) {
             const serverMsg = message as IServerMessage;
-            await this.serverMessageRepo.update(new Types.ObjectId(messageId), {
+            await this.serverMessageRepo.update(messageId, {
                 embeds: allEmbeds,
             });
 

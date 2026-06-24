@@ -1,6 +1,5 @@
 import { injectable, inject } from 'inversify';
 import { Inject } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
@@ -27,7 +26,6 @@ import type {
     ServerMember as ResolverMember,
 } from '@/permissions/types';
 import { PERMISSION_KEYS } from '@/permissions/types';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 type PermissionOverrideSource =
     | Map<string, unknown>
@@ -148,7 +146,7 @@ export class PermissionService {
         this.subscribeToInvalidations();
     }
 
-    public invalidateCache(serverId: Types.ObjectId): void {
+    public invalidateCache(serverId: string): void {
         const serverIdStr = serverId.toString();
         this.invalidateLocal(serverIdStr);
         this.publishInvalidation(serverIdStr);
@@ -205,16 +203,16 @@ export class PermissionService {
     }
 
     public async getHighestRolePosition(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        userId: string,
     ): Promise<number> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return -1;
-        return resolver.getHighestRolePosition(userId.toString());
+        return resolver.getHighestRolePosition(userId);
     }
 
     public async normalizePermissionMap(
-        serverId: Types.ObjectId,
+        serverId: string,
         permissions: Record<string, Record<string, boolean>> | undefined,
     ): Promise<Record<string, Record<string, boolean>>> {
         if (!permissions) return {};
@@ -222,7 +220,7 @@ export class PermissionService {
         const everyoneRole = await this.roleRepo.findEveryoneRole(serverId);
         if (!everyoneRole) return permissions;
 
-        const everyoneRoleId = getDocumentIdString(everyoneRole);
+        const everyoneRoleId = everyoneRole.snowflakeId;
         const normalized: Record<string, Record<string, boolean>> = {};
 
         const everyoneOverride = permissions['everyone'];
@@ -239,19 +237,19 @@ export class PermissionService {
     }
 
     public async hasPermission(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        userId: string,
         permission: PermissionKey,
     ): Promise<boolean> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return false;
-        return resolver.hasServerPermission(userId.toString(), permission);
+        return resolver.hasServerPermission(userId, permission);
     }
 
     // Throws `error` if the user lacks `permission` on the server.
     public async requirePermission(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        userId: string,
         permission: PermissionKey,
         error: Error,
     ): Promise<void> {
@@ -262,8 +260,8 @@ export class PermissionService {
 
     // Throws `error` if the user lacks every permission in `permissions`.
     public async requireAnyPermission(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        userId: string,
         permissions: readonly PermissionKey[],
         error: Error,
     ): Promise<void> {
@@ -277,52 +275,48 @@ export class PermissionService {
 
     // True if the user holds at least one of the given permissions on the server.
     public async hasAnyPermission(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        userId: string,
         permissions: readonly PermissionKey[],
     ): Promise<boolean> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return false;
         return permissions.some((permission) =>
-            resolver.hasServerPermission(userId.toString(), permission),
+            resolver.hasServerPermission(userId, permission),
         );
     }
 
     public async getAllServerPermissions(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
+        serverId: string,
+        userId: string,
     ): Promise<Permissions> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return {};
 
         const perms: Permissions = {};
         for (const key of PERMISSION_KEYS) {
-            perms[key] = resolver.hasServerPermission(userId.toString(), key);
+            perms[key] = resolver.hasServerPermission(userId, key);
         }
         return perms;
     }
 
     public async hasChannelPermission(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
-        channelId: Types.ObjectId,
+        serverId: string,
+        userId: string,
+        channelId: string,
         permission: PermissionKey,
     ): Promise<boolean> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) return false;
-        const result = resolver.canUserDo(
-            userId.toString(),
-            channelId.toString(),
-            permission,
-        );
+        const result = resolver.canUserDo(userId, channelId, permission);
         return result;
     }
 
     // Throws `error` if the user lacks `permission` on the channel.
     public async requireChannelPermission(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
-        channelId: Types.ObjectId,
+        serverId: string,
+        userId: string,
+        channelId: string,
         permission: PermissionKey,
         error: Error,
     ): Promise<void> {
@@ -339,41 +333,37 @@ export class PermissionService {
     }
 
     public async hasChannelPermissions(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
-        channelIds: Types.ObjectId[],
+        serverId: string,
+        userId: string,
+        channelIds: string[],
         permission: PermissionKey,
     ): Promise<Map<string, boolean>> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) {
-            return new Map(channelIds.map((id) => [id.toString(), false]));
+            return new Map(channelIds.map((id) => [id, false]));
         }
-        return resolver.canUserDoMultiple(
-            userId.toString(),
-            channelIds.map((id) => id.toString()),
-            permission,
-        );
+        return resolver.canUserDoMultiple(userId, channelIds, permission);
     }
 
     public async hasCategoryPermissions(
-        serverId: Types.ObjectId,
-        userId: Types.ObjectId,
-        categoryIds: Types.ObjectId[],
+        serverId: string,
+        userId: string,
+        categoryIds: string[],
         permission: PermissionKey,
     ): Promise<Map<string, boolean>> {
         const resolver = await this.getResolver(serverId);
         if (!resolver) {
-            return new Map(categoryIds.map((id) => [id.toString(), false]));
+            return new Map(categoryIds.map((id) => [id, false]));
         }
         return resolver.canUserDoInCategoriesMultiple(
-            userId.toString(),
-            categoryIds.map((id) => id.toString()),
+            userId,
+            categoryIds,
             permission,
         );
     }
 
     private async getResolver(
-        serverId: Types.ObjectId,
+        serverId: string,
     ): Promise<PermissionResolver | null> {
         const now = Date.now();
         const serverIdStr = serverId.toString();
@@ -393,16 +383,14 @@ export class PermissionService {
         if (!server) return null;
 
         const everyoneRoleId = everyoneRole
-            ? getDocumentIdString(everyoneRole)
+            ? everyoneRole.snowflakeId
             : undefined;
 
         const resolverData: ServerData = {
             serverId,
-            ownerId: new Types.ObjectId(server.ownerId),
+            ownerId: server.ownerId,
             roles: roles.map((r): ServerRole => this.mapRole(r)),
-            everyoneRoleId: everyoneRole
-                ? (getDocumentId(everyoneRole) as Types.ObjectId)
-                : undefined,
+            everyoneRoleId,
             channels: channels.map(
                 (c): ResolverChannel => this.mapChannel(c, everyoneRoleId),
             ),
@@ -423,7 +411,7 @@ export class PermissionService {
 
     private mapRole(role: IRole): ServerRole {
         return {
-            id: getDocumentId(role) as Types.ObjectId,
+            id: role.snowflakeId,
             serverId: role.serverId,
             name: role.name,
             position: role.position,
@@ -436,14 +424,12 @@ export class PermissionService {
         everyoneRoleId: string | undefined,
     ): ResolverChannel {
         const overrides = remapEveryoneOverrideKey(
-            extractOverridesToMap(
-                channel.permissions as unknown as PermissionOverrideSource,
-            ),
+            extractOverridesToMap(channel.permissions),
             everyoneRoleId,
         );
 
         return {
-            id: getDocumentId(channel) as Types.ObjectId,
+            id: channel.snowflakeId,
             serverId: channel.serverId,
             categoryId: channel.categoryId ?? null,
             overrides,
@@ -455,14 +441,12 @@ export class PermissionService {
         everyoneRoleId: string | undefined,
     ): ResolverCategory {
         const overrides = remapEveryoneOverrideKey(
-            extractOverridesToMap(
-                category.permissions as unknown as PermissionOverrideSource,
-            ),
+            extractOverridesToMap(category.permissions),
             everyoneRoleId,
         );
 
         return {
-            id: getDocumentId(category) as Types.ObjectId,
+            id: category.snowflakeId,
             serverId: category.serverId,
             overrides,
         };
@@ -470,7 +454,7 @@ export class PermissionService {
 
     private mapMember(member: IServerMember): ResolverMember {
         return {
-            id: getDocumentId(member) as Types.ObjectId,
+            id: member.snowflakeId,
             serverId: member.serverId,
             userId: member.userId,
             roleIds: member.roles,

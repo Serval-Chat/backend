@@ -17,7 +17,7 @@ const serverId = new Types.ObjectId().toHexString();
 const channelId = new Types.ObjectId().toHexString();
 
 const jwtReq = (id: string, isBot = false) =>
-    ({ user: { id, isBot } }) as unknown as ExpressRequest;
+    ({ user: { id, isBot } }) as ExpressRequest;
 
 const mockSearchService = {
     searchDmMessages: jest.fn(),
@@ -126,7 +126,7 @@ describe('UserMessageSearchController', () => {
         mockSearchService.searchDmMessages.mockResolvedValueOnce(sampleDmHits);
 
         const result = await controller.searchMessages(
-            dmQuery as never,
+            dmQuery,
             jwtReq(userId).user?.id as string,
         );
 
@@ -143,7 +143,7 @@ describe('UserMessageSearchController', () => {
         });
 
         await controller.searchMessages(
-            dmQuery as never,
+            dmQuery,
             jwtReq(userId).user?.id as string,
         );
 
@@ -243,7 +243,7 @@ describe('ServerMessageSearchController', () => {
         const result = await controller.searchMessages(
             serverId,
             channelId,
-            channelQuery as never,
+            channelQuery,
             jwtReq(userId).user?.id as string,
         );
 
@@ -382,7 +382,7 @@ describe('messageSearchLimiter configuration', () => {
     it('has the expected windowMs and max settings', () => {
         // express-rate-limit exposes its config on the handler's options property
         const opts = (
-            messageSearchLimiter as unknown as {
+            messageSearchLimiter as {
                 options?: { windowMs: number; max: number };
             }
         ).options;

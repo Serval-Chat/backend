@@ -1,6 +1,5 @@
 import { User } from '../models/User';
 import { Role } from '../models/Server';
-import { getDocumentIdString } from '@/utils/mongooseId';
 
 /**
  * Parse gobblygook to readable text
@@ -21,11 +20,11 @@ export async function parseNotificationText(text: string): Promise<string> {
     if (userIds.length > 0) {
         try {
             const users = await User.find(
-                { _id: { $in: userIds } },
+                { snowflakeId: { $in: userIds } },
                 'username',
             ).lean();
             const userMap = new Map(
-                users.map((u) => [getDocumentIdString(u), u.username]),
+                users.map((u) => [u.snowflakeId, u.username]),
             );
             parsedText = parsedText.replace(
                 /<userid:'([^']+)'>/g,
@@ -52,12 +51,10 @@ export async function parseNotificationText(text: string): Promise<string> {
     if (roleIds.length > 0) {
         try {
             const roles = await Role.find(
-                { _id: { $in: roleIds } },
+                { snowflakeId: { $in: roleIds } },
                 'name',
             ).lean();
-            const roleMap = new Map(
-                roles.map((r) => [getDocumentIdString(r), r.name]),
-            );
+            const roleMap = new Map(roles.map((r) => [r.snowflakeId, r.name]));
             parsedText = parsedText.replace(
                 /<roleid:'([^']+)'>/g,
                 (match, id) => {

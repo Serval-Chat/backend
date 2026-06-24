@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 import { ServerMessageController } from '../ServerMessageController';
 import {
     BadRequestException,
@@ -7,23 +7,13 @@ import {
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import type { Request } from 'express';
-import type {
-    IServerMessageRepository,
-    IServerMessage,
-} from '@/di/interfaces/IServerMessageRepository';
-import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
+import type { IServerMessage } from '@/di/interfaces/IServerMessageRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import type { IWsServer } from '@/ws/interfaces/IWsServer';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { SendMessageRequestDTO } from '../dto/server-message.request.dto';
 import type { PollVoteRequestDTO } from '../dto/poll-vote.request.dto';
 import type { IPoll, IPollOption } from '@/models/Message';
-import type { EmbedService } from '@/services/EmbedService';
 
 const hex = () => new Types.ObjectId().toHexString();
 
@@ -47,9 +37,9 @@ function makePoll(overrides: Partial<IPoll> = {}): IPoll {
 function makeMessage(poll: IPoll | undefined = makePoll()): IServerMessage {
     return {
         _id: new Types.ObjectId(MSG_ID),
-        serverId: new Types.ObjectId(SERVER_ID),
-        channelId: new Types.ObjectId(CHANNEL_ID),
-        senderId: new Types.ObjectId(USER_ID),
+        serverId: SERVER_ID,
+        channelId: CHANNEL_ID,
+        senderId: USER_ID,
         text: '',
         createdAt: new Date(),
         poll,
@@ -59,7 +49,7 @@ function makeMessage(poll: IPoll | undefined = makePoll()): IServerMessage {
 function makeReq(userId = USER_ID): Request {
     return {
         user: { id: userId, username: 'testuser', isBot: false },
-    } as unknown as Request;
+    } as Request;
 }
 
 let mockServerMessageRepo: {
@@ -92,25 +82,25 @@ let controller: ServerMessageController;
 
 function buildController(): void {
     controller = new ServerMessageController(
-        mockServerMessageRepo as unknown as IServerMessageRepository,
-        mockMemberRepo as unknown as IServerMemberRepository,
-        mockChannelRepo as unknown as IChannelRepository,
-        mockReactionRepo as unknown as IReactionRepository,
-        mockPermissionService as unknown as PermissionService,
+        mockServerMessageRepo as any,
+        mockMemberRepo as any,
+        mockChannelRepo as any,
+        mockReactionRepo as any,
+        mockPermissionService as any,
         mockLogger,
-        mockWsServer as unknown as IWsServer,
-        {} as unknown as IAuditLogRepository,
-        {} as unknown as IServerAuditLogService,
+        mockWsServer as any,
+        {} as IAuditLogRepository,
+        {} as IServerAuditLogService,
         {
             findById: jest.fn().mockResolvedValue({
                 _id: new Types.ObjectId(SERVER_ID),
                 ownerId: new Types.ObjectId(),
             }),
-        } as unknown as IServerRepository,
+        } as any,
         {
             processServerMessage: jest.fn().mockResolvedValue(undefined),
             processUserMessage: jest.fn().mockResolvedValue(undefined),
-        } as unknown as EmbedService,
+        } as any,
         {
             getClient: jest.fn().mockReturnValue({
                 pipeline: jest.fn().mockReturnValue({
@@ -141,7 +131,7 @@ beforeEach(() => {
     mockChannelRepo = {
         findById: jest.fn().mockResolvedValue({
             _id: new Types.ObjectId(CHANNEL_ID),
-            serverId: new Types.ObjectId(SERVER_ID),
+            serverId: SERVER_ID,
             type: 'text',
         }),
         updateLastMessageAt: jest.fn().mockResolvedValue(undefined),
@@ -187,7 +177,7 @@ beforeEach(() => {
         error: jest.fn(),
         debug: jest.fn(),
         warn: jest.fn(),
-    } as unknown as ILogger;
+    };
 
     buildController();
 });
@@ -204,7 +194,7 @@ describe('sendMessage  -  poll creation', () => {
                 multiSelect: false,
                 options: [{ text: 'Apple' }, { text: 'Banana' }],
             },
-        } as unknown as SendMessageRequestDTO;
+        } as SendMessageRequestDTO;
 
         const result = await controller.sendMessage(
             SERVER_ID,
@@ -232,7 +222,7 @@ describe('sendMessage  -  poll creation', () => {
                 multiSelect: false,
                 options: [{ text: 'Red' }, { text: 'Blue' }, { text: 'Green' }],
             },
-        } as unknown as SendMessageRequestDTO;
+        } as SendMessageRequestDTO;
 
         await controller.sendMessage(
             SERVER_ID,
@@ -267,7 +257,7 @@ describe('sendMessage  -  poll creation', () => {
                 options: [{ text: 'Yes' }, { text: 'No' }],
                 expiresAt: future,
             },
-        } as unknown as SendMessageRequestDTO;
+        } as SendMessageRequestDTO;
 
         await controller.sendMessage(
             SERVER_ID,
@@ -297,7 +287,7 @@ describe('sendMessage  -  poll creation', () => {
                 options: [{ text: 'A' }, { text: 'B' }],
                 expiresAt: '',
             },
-        } as unknown as SendMessageRequestDTO;
+        } as SendMessageRequestDTO;
 
         await controller.sendMessage(
             SERVER_ID,
@@ -313,9 +303,9 @@ describe('sendMessage  -  poll creation', () => {
     it('creates a message without a poll when poll is omitted', async () => {
         const noPollMsg: IServerMessage = {
             _id: new Types.ObjectId(MSG_ID),
-            serverId: new Types.ObjectId(SERVER_ID),
-            channelId: new Types.ObjectId(CHANNEL_ID),
-            senderId: new Types.ObjectId(USER_ID),
+            serverId: SERVER_ID,
+            channelId: CHANNEL_ID,
+            senderId: USER_ID,
             text: 'No poll here',
             createdAt: new Date(),
         } as IServerMessage;
@@ -323,7 +313,7 @@ describe('sendMessage  -  poll creation', () => {
 
         const body = {
             content: 'No poll here',
-        } as unknown as SendMessageRequestDTO;
+        } as SendMessageRequestDTO;
         const result = await controller.sendMessage(
             SERVER_ID,
             CHANNEL_ID,
@@ -346,7 +336,7 @@ describe('sendMessage  -  poll creation', () => {
                 multiSelect: false,
                 options: [{ text: 'Apple' }, { text: 'Banana' }],
             },
-        } as unknown as SendMessageRequestDTO;
+        } as SendMessageRequestDTO;
 
         await controller.sendMessage(
             SERVER_ID,
@@ -431,9 +421,9 @@ describe('votePoll  -  poll validation', () => {
     it('throws BadRequestException when the message has no poll', async () => {
         const msgWithoutPoll: IServerMessage = {
             _id: new Types.ObjectId(MSG_ID),
-            serverId: new Types.ObjectId(SERVER_ID),
-            channelId: new Types.ObjectId(CHANNEL_ID),
-            senderId: new Types.ObjectId(USER_ID),
+            serverId: SERVER_ID,
+            channelId: CHANNEL_ID,
+            senderId: USER_ID,
             text: '',
             createdAt: new Date(),
         } as IServerMessage;
@@ -573,7 +563,7 @@ describe('votePoll  -  vote mutation logic', () => {
                 {
                     id: otherId,
                     text: 'Other',
-                    votes: [new Types.ObjectId(USER_ID)],
+                    votes: [USER_ID],
                 },
                 { id: targetId, text: 'Target', votes: [] },
             ] as IPollOption[],
@@ -606,7 +596,7 @@ describe('votePoll  -  vote mutation logic', () => {
             title: 'Toggle',
             multiSelect: false,
             options: [
-                { id: optId, text: 'A', votes: [new Types.ObjectId(USER_ID)] },
+                { id: optId, text: 'A', votes: [USER_ID] },
                 { id: hex(), text: 'B', votes: [] },
             ] as IPollOption[],
         };
@@ -630,7 +620,7 @@ describe('votePoll  -  vote mutation logic', () => {
     });
 
     it("preserves other users' votes while adding the current user", async () => {
-        const anotherUser = new Types.ObjectId();
+        const anotherUser = hex();
         const optId = hex();
         const poll: IPoll = {
             title: 'Multi users',
@@ -666,7 +656,7 @@ describe('votePoll  -  vote mutation logic', () => {
             title: 'No dup',
             multiSelect: false,
             options: [
-                { id: optId, text: 'A', votes: [new Types.ObjectId(USER_ID)] },
+                { id: optId, text: 'A', votes: [USER_ID] },
                 { id: hex(), text: 'B', votes: [] },
             ] as IPollOption[],
         };

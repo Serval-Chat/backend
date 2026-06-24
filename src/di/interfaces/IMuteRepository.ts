@@ -2,16 +2,17 @@ import type { Types } from 'mongoose';
 
 export interface IMute {
     _id: Types.ObjectId;
-    userId: Types.ObjectId;
+    snowflakeId: string;
+    userId: string;
     reason: string;
     active: boolean;
     expirationTimestamp?: Date;
     createdAt?: Date;
-    issuedBy?: Types.ObjectId;
+    issuedBy?: string;
     timestamp?: Date;
     history?: Array<{
         reason: string;
-        issuedBy: Types.ObjectId;
+        issuedBy: string;
         timestamp: Date;
         expirationTimestamp?: Date;
         endedAt?: Date;
@@ -19,26 +20,24 @@ export interface IMute {
 }
 
 export interface IMuteRepository {
-    findActiveByUserId(userId: Types.ObjectId): Promise<IMute | null>;
+    findActiveByUserId(userId: string): Promise<IMute | null>;
     create(
-        userId: Types.ObjectId,
+        userId: string,
         reason: string,
         expirationTimestamp?: Date,
     ): Promise<IMute>;
-    expire(muteId: Types.ObjectId): Promise<boolean>;
-    checkExpired(userId: Types.ObjectId): Promise<void>;
+    expire(muteId: string): Promise<boolean>;
+    checkExpired(userId: string): Promise<void>;
     findAllActive(): Promise<IMute[]>;
-    findByUserIdWithHistory(userId: Types.ObjectId): Promise<IMute | null>;
+    findByUserIdWithHistory(userId: string): Promise<IMute | null>;
     createOrUpdateWithHistory(data: {
-        userId: Types.ObjectId;
+        userId: string;
         reason: string;
-        issuedBy: Types.ObjectId;
+        issuedBy: string;
         expirationTimestamp?: Date;
     }): Promise<IMute>;
-    deactivateAllForUser(
-        userId: Types.ObjectId,
-    ): Promise<{ modifiedCount: number }>;
-    deleteAllForUser(userId: Types.ObjectId): Promise<{ deletedCount: number }>;
+    deactivateAllForUser(userId: string): Promise<{ modifiedCount: number }>;
+    deleteAllForUser(userId: string): Promise<{ deletedCount: number }>;
     findAll(options: { limit?: number; offset?: number }): Promise<IMute[]>;
     countActive(): Promise<number>;
     countCreatedAfter(date: Date): Promise<number>;

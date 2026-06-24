@@ -1,5 +1,4 @@
 import { Inject } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { injectable } from 'inversify';
 import { TYPES } from '@/di/types';
 import {
@@ -12,7 +11,6 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { mapAuditLogEntry } from '@/utils/auditLog';
 import { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 
 @injectable()
 export class ServerAuditLogService implements IServerAuditLogService {
@@ -28,10 +26,10 @@ export class ServerAuditLogService implements IServerAuditLogService {
     ) {}
 
     public async createAndBroadcast(data: {
-        serverId: Types.ObjectId;
-        actorId: Types.ObjectId;
+        serverId: string;
+        actorId: string;
         actionType: string;
-        targetId?: Types.ObjectId;
+        targetId?: string;
         targetType?:
             | 'user'
             | 'channel'
@@ -39,7 +37,7 @@ export class ServerAuditLogService implements IServerAuditLogService {
             | 'role'
             | 'message'
             | 'server';
-        targetUserId?: Types.ObjectId;
+        targetUserId?: string;
         changes?: IAuditLogChange[];
         reason?: string;
         metadata?: Record<string, unknown>;
@@ -54,7 +52,7 @@ export class ServerAuditLogService implements IServerAuditLogService {
         const auditLog = await this.auditLogRepo.create(data);
 
         const populatedAuditLog = await this.auditLogRepo.findById(
-            getDocumentId(auditLog) as Types.ObjectId,
+            auditLog.snowflakeId,
         );
         if (populatedAuditLog) {
             this.logger.debug(
@@ -76,7 +74,7 @@ export class ServerAuditLogService implements IServerAuditLogService {
             );
         } else {
             this.logger.warn(
-                `[ServerAuditLogService] Failed to find populated audit log for broadcast: ${getDocumentIdString(auditLog)}`,
+                `[ServerAuditLogService] Failed to find populated audit log for broadcast: ${auditLog.snowflakeId}`,
             );
         }
 

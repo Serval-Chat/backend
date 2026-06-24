@@ -4,17 +4,8 @@ import { ChatController } from '@/ws/controller/ChatController';
 import { BadRequestException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import type { Request } from 'express';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
-import type {
-    IMessageRepository,
-    IMessage,
-} from '@/di/interfaces/IMessageRepository';
-import type { IDmUnreadRepository } from '@/di/interfaces/IDmUnreadRepository';
-import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
+import type { IMessage } from '@/di/interfaces/IMessageRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
-import type { IWsServer } from '@/ws/interfaces/IWsServer';
-import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import type { IPoll, IPollOption } from '@/models/Message';
 import type { IWsUser } from '@/ws/types';
 import mongoose from 'mongoose';
@@ -45,8 +36,8 @@ function makePoll(overrides: Partial<IPoll> = {}): IPoll {
 function makeDmMessage(poll: IPoll | undefined = makePoll()): IMessage {
     return {
         _id: new Types.ObjectId(MSG_ID),
-        senderId: new Types.ObjectId(USER_ID),
-        receiverId: new Types.ObjectId(PEER_ID),
+        senderId: USER_ID,
+        receiverId: PEER_ID,
         text: 'Check this poll',
         createdAt: new Date(),
         poll,
@@ -56,11 +47,11 @@ function makeDmMessage(poll: IPoll | undefined = makePoll()): IMessage {
 function makeReq(userId = USER_ID): Request {
     return {
         user: { id: userId, username: 'testuser', isBot: false },
-    } as unknown as Request;
+    } as Request;
 }
 
 function makeWsUser(userId = USER_ID): IWsUser {
-    return { userId, username: 'testuser', isBot: false } as unknown as IWsUser;
+    return { userId, username: 'testuser', isBot: false } as IWsUser;
 }
 
 describe('DM Polls', () => {
@@ -129,33 +120,33 @@ describe('DM Polls', () => {
             error: jest.fn(),
             debug: jest.fn(),
             warn: jest.fn(),
-        } as unknown as ILogger;
+        };
         transactionManager = {
             runInTransaction: jest.fn().mockImplementation((fn) => fn(null)),
         };
 
         userMessageController = new UserMessageController(
-            userRepo as unknown as IUserRepository,
-            friendshipRepo as unknown as IFriendshipRepository,
-            messageRepo as unknown as IMessageRepository,
-            dmUnreadRepo as unknown as IDmUnreadRepository,
-            reactionRepo as unknown as IReactionRepository,
-            logger as unknown as ILogger,
-            wsServer as unknown as any,
+            userRepo as any,
+            friendshipRepo as any,
+            messageRepo as any,
+            dmUnreadRepo as any,
+            reactionRepo as any,
+            logger,
+            wsServer as any,
             {} as any,
             { removeDmMessage: jest.fn().mockResolvedValue(undefined) } as any,
         );
 
         chatController = new ChatController(
-            userRepo as unknown as IUserRepository,
-            messageRepo as unknown as IMessageRepository,
-            dmUnreadRepo as unknown as IDmUnreadRepository,
-            friendshipRepo as unknown as IFriendshipRepository,
+            userRepo as any,
+            messageRepo as any,
+            dmUnreadRepo as any,
+            friendshipRepo as any,
             {
                 findActiveByUserId: jest.fn().mockResolvedValue(null),
                 checkExpired: jest.fn().mockResolvedValue(undefined),
             } as any, // MuteRepository
-            transactionManager as unknown as TransactionManager,
+            transactionManager,
             {} as any, // EmbedService
             {
                 getClient: jest.fn().mockReturnValue({
@@ -167,8 +158,7 @@ describe('DM Polls', () => {
                 removeDmMessage: jest.fn().mockResolvedValue(undefined),
             } as any,
         );
-        (chatController as unknown as any).wsServer =
-            wsServer as unknown as IWsServer;
+        (chatController as any).wsServer = wsServer;
     });
 
     describe('ChatController.onSendMessageDm (Poll Creation)', () => {
@@ -190,7 +180,7 @@ describe('DM Polls', () => {
             });
 
             await chatController.onSendMessageDm(
-                { receiverId: PEER_ID, text: 'Vote!', poll: pollData as any },
+                { receiverId: PEER_ID, text: 'Vote!', poll: pollData },
                 makeWsUser(),
             );
 
@@ -245,13 +235,13 @@ describe('DM Polls', () => {
 
             const updatedMsg = { ...msg, poll: { ...poll } };
             const mockModel = {
-                findByIdAndUpdate: jest.fn().mockReturnValue({
+                findOneAndUpdate: jest.fn().mockReturnValue({
                     lean: () => Promise.resolve(updatedMsg),
                 }),
             };
             const modelSpy = jest
                 .spyOn(mongoose, 'model')
-                .mockReturnValue(mockModel as unknown as mongoose.Model<any>);
+                .mockReturnValue(mockModel);
 
             const targetOptionId = poll.options[0]!.id;
             const result = await userMessageController.votePoll(

@@ -1,5 +1,4 @@
 import { injectable } from 'inversify';
-import { Types } from 'mongoose';
 import {
     IRoleRepository,
     IRole,
@@ -12,11 +11,11 @@ import { Role } from '@/models/Server';
 // Implements IRoleRepository using Mongoose Role model
 @injectable()
 export class MongooseRoleRepository implements IRoleRepository {
-    public async findById(id: Types.ObjectId): Promise<IRole | null> {
-        return await Role.findById(id).lean();
+    public async findById(id: string): Promise<IRole | null> {
+        return await Role.findOne({ snowflakeId: id }).lean();
     }
 
-    public async findByServerId(serverId: Types.ObjectId): Promise<IRole[]> {
+    public async findByServerId(serverId: string): Promise<IRole[]> {
         return await Role.find({ serverId }).sort({ position: -1 }).lean();
     }
 
@@ -24,7 +23,7 @@ export class MongooseRoleRepository implements IRoleRepository {
     //
     // Sets default color and empty permissions if not provided
     public async create(data: {
-        serverId: Types.ObjectId;
+        serverId: string;
         name: string;
         color?: string;
         startColor?: string;
@@ -35,7 +34,7 @@ export class MongooseRoleRepository implements IRoleRepository {
         position?: number;
         permissions?: Partial<IRolePermissions>;
         managed?: boolean;
-        managedBotId?: Types.ObjectId;
+        managedBotId?: string;
         glowEnabled?: boolean;
     }): Promise<IRole> {
         const role = new Role({
@@ -61,48 +60,48 @@ export class MongooseRoleRepository implements IRoleRepository {
     }
 
     public async update(
-        id: Types.ObjectId,
+        id: string,
         data: Partial<IRole>,
     ): Promise<IRole | null> {
-        return await Role.findByIdAndUpdate(id, data, { new: true }).lean();
+        return await Role.findOneAndUpdate({ snowflakeId: id }, data, {
+            new: true,
+        }).lean();
     }
 
-    public async delete(id: Types.ObjectId): Promise<boolean> {
-        const result = await Role.deleteOne({ _id: id });
+    public async delete(id: string): Promise<boolean> {
+        const result = await Role.deleteOne({ snowflakeId: id });
         return result.deletedCount > 0;
     }
 
-    public async findEveryoneRole(
-        serverId: Types.ObjectId,
-    ): Promise<IRole | null> {
+    public async findEveryoneRole(serverId: string): Promise<IRole | null> {
         return await Role.findOne({ serverId, name: '@everyone' }).lean();
     }
 
     public async updatePosition(
-        id: Types.ObjectId,
+        id: string,
         position: number,
     ): Promise<IRole | null> {
-        return await Role.findByIdAndUpdate(
-            id,
+        return await Role.findOneAndUpdate(
+            { snowflakeId: id },
             { position },
             { new: true },
         ).lean();
     }
 
-    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: string): Promise<number> {
         const result = await Role.deleteMany({ serverId });
         return result.deletedCount;
     }
 
     public async findByServerIdAndName(
-        serverId: Types.ObjectId,
+        serverId: string,
         name: string,
     ): Promise<IRole | null> {
         return await Role.findOne({ serverId, name }).lean();
     }
 
     public async findMaxPositionByServerId(
-        serverId: Types.ObjectId,
+        serverId: string,
     ): Promise<IRole | null> {
         return await Role.findOne({ serverId }).sort({ position: -1 }).lean();
     }

@@ -5,11 +5,12 @@ import type { Types } from 'mongoose';
 // Represents a custom emoji uploaded to a server
 export interface IEmoji {
     _id: Types.ObjectId;
+    snowflakeId: string;
     name: string;
     imageUrl: string;
-    serverId: Types.ObjectId;
+    serverId: string;
     // The user who uploaded the emoji (userId)
-    createdBy: Types.ObjectId;
+    createdBy: string;
     createdAt?: Date;
 }
 
@@ -18,34 +19,31 @@ export interface IEmoji {
 // Encapsulates custom emoji operations
 export interface IEmojiRepository {
     // Find emoji by ID
-    findById(id: Types.ObjectId): Promise<IEmoji | null>;
+    findById(id: string): Promise<IEmoji | null>;
 
     // Find all emojis for a server
-    findByServerId(serverId: Types.ObjectId): Promise<IEmoji[]>;
+    findByServerId(serverId: string): Promise<IEmoji[]>;
 
     // Create a new emoji
     create(data: {
         name: string;
         imageUrl: string;
-        serverId: Types.ObjectId;
-        createdBy: Types.ObjectId;
+        serverId: string;
+        createdBy: string;
     }): Promise<IEmoji>;
 
     // Delete emoji by ID
-    delete(id: Types.ObjectId): Promise<boolean>;
+    delete(id: string): Promise<boolean>;
 
     // Find all emojis for a server with creator info populated
-    findByServerIdWithCreator(serverId: Types.ObjectId): Promise<IEmoji[]>;
+    findByServerIdWithCreator(serverId: string): Promise<IEmoji[]>;
 
     // Find emoji by ID with creator info populated
-    findByIdWithCreator(id: Types.ObjectId): Promise<IEmoji | null>;
+    findByIdWithCreator(id: string): Promise<IEmoji | null>;
 
     // Find emoji by server and name
-    findByServerAndName(
-        serverId: Types.ObjectId,
-        name: string,
-    ): Promise<IEmoji | null>;
+    findByServerAndName(serverId: string, name: string): Promise<IEmoji | null>;
 
     // Find emojis by multiple server IDs
-    findByServerIds(serverIds: Types.ObjectId[]): Promise<IEmoji[]>;
+    findByServerIds(serverIds: string[]): Promise<IEmoji[]>;
 }

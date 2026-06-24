@@ -9,7 +9,7 @@ import type { IKlipyCache } from '@/models/KlipyCache';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { Model } from 'mongoose';
 import logger from '@/utils/logger';
-import { Types } from 'mongoose';
+import type { Types } from 'mongoose';
 
 interface PingModelLike {
     distinct(field: string, query: object): Promise<Types.ObjectId[]>;
@@ -155,8 +155,8 @@ export async function cleanupDeadPings(
 
         const seenPairs = new Set<string>();
         for (const ping of dmPings) {
-            const uid = (ping.userId as Types.ObjectId).toString();
-            const sid = (ping.senderId as Types.ObjectId).toString();
+            const uid = String(ping.userId);
+            const sid = String(ping.senderId);
             const key = uid < sid ? `${uid}:${sid}` : `${sid}:${uid}`;
             seenPairs.add(key);
         }
@@ -165,21 +165,19 @@ export async function cleanupDeadPings(
 
         for (const key of seenPairs) {
             const [a, b] = key.split(':');
-            const aOid = new Types.ObjectId(a);
-            const bOid = new Types.ObjectId(b);
 
             const friendship = await friendshipModel.findOne({
                 $or: [
-                    { userId: aOid, friendId: bOid },
-                    { userId: bOid, friendId: aOid },
+                    { userId: a, friendId: b },
+                    { userId: b, friendId: a },
                 ],
             });
 
             if (!friendship) {
                 const result = await pingModel.deleteMany({
                     $or: [
-                        { userId: aOid, senderId: bOid },
-                        { userId: bOid, senderId: aOid },
+                        { userId: a, senderId: b },
+                        { userId: b, senderId: a },
                     ],
                     serverId: { $exists: false },
                 });

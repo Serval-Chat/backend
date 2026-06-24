@@ -1,13 +1,15 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import type { Document, Types } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type { Document } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
 // DM Unread Interface
 //
 // Tracks the number of unread messages for a user from a specific peer
 export interface IDmUnread extends Document {
-    user: Types.ObjectId;
-    peer: Types.ObjectId;
+    snowflakeId: string;
+    user: string;
+    peer: string;
     count: number;
     createdAt: Date;
     updatedAt: Date;
@@ -16,12 +18,11 @@ export interface IDmUnread extends Document {
 const schema = new Schema<IDmUnread>(
     {
         user: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
             index: true,
         },
-        peer: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        peer: { type: String, required: true },
         count: { type: Number, required: true, default: 0 },
     },
     {
@@ -30,6 +31,8 @@ const schema = new Schema<IDmUnread>(
 );
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 schema.index({ user: 1, peer: 1 }, { unique: true });
 
 // DM Unread Model

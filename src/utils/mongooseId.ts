@@ -41,17 +41,28 @@ const cloneWithId = <T>(value: T, idKey: 'id' | '_id'): T => {
     }
 
     const sourceKey = idKey === 'id' ? '_id' : 'id';
+    const snowflakeId = (value as { snowflakeId?: unknown }).snowflakeId;
+    const hasSnowflakeId = idKey === 'id' && typeof snowflakeId === 'string';
     const next: PlainRecord = {};
 
     for (const [key, childValue] of Object.entries(value)) {
         if (key === sourceKey) {
             continue;
         }
+        // mongoose generates an `id` virtual from _id; skip it here so
+        // migrated entities expose their snowflakeId, not the Mongo ObjectId.
+        if (key === 'id' && hasSnowflakeId) {
+            continue;
+        }
 
         next[key] = cloneWithId(childValue, idKey);
     }
 
-    if (value[sourceKey] !== undefined && value[idKey] === undefined) {
+    if (hasSnowflakeId) {
+        // migrated entities use snowflakeId as their public id, prefer it
+        // over Mongo _id and Mongoose's derived `id` virtual to avoid leaking ObjectIds.
+        next[idKey] = snowflakeId;
+    } else if (value[idKey] === undefined && value[sourceKey] !== undefined) {
         next[idKey] = value[sourceKey];
     }
 
@@ -61,13 +72,6 @@ const cloneWithId = <T>(value: T, idKey: 'id' | '_id'): T => {
 export const toApiId = <T>(value: T): T => cloneWithId(value, 'id');
 
 export const toDatabaseId = <T>(value: T): T => cloneWithId(value, '_id');
-
-export const toObjectId = (value: string | Types.ObjectId): Types.ObjectId =>
-    value instanceof Types.ObjectId ? value : new Types.ObjectId(value);
-
-export const toObjectIds = (
-    values: readonly (string | Types.ObjectId)[],
-): Types.ObjectId[] => values.map(toObjectId);
 
 export const getDocumentId = (value: {
     _id?: unknown;

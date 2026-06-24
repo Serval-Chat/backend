@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { Types } from 'mongoose';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { AdminBadgeController } from '../AdminBadgeController';
 import { Badge } from '@/models/Badge';
 
@@ -12,9 +12,9 @@ jest.mock('@/models/Badge', () => ({
 }));
 
 // Add static methods to mocked Badge
-(Badge as unknown as { find: jest.Mock }).find = jest.fn();
-(Badge as unknown as { findOne: jest.Mock }).findOne = jest.fn();
-(Badge as unknown as { deleteOne: jest.Mock }).deleteOne = jest.fn();
+(Badge as any).find = jest.fn();
+(Badge as any).findOne = jest.fn();
+(Badge as any).deleteOne = jest.fn();
 
 function makeChain(value: unknown) {
     return {
@@ -33,9 +33,7 @@ describe('AdminBadgeController', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        controller = new AdminBadgeController(
-            mockUserRepo as unknown as IUserRepository,
-        );
+        controller = new AdminBadgeController(mockUserRepo as any);
     });
 
     describe('getBadges', () => {
@@ -68,9 +66,7 @@ describe('AdminBadgeController', () => {
                 save: jest.fn().mockResolvedValue(true),
                 toObject: jest.fn().mockReturnValue({ id: 'new' }),
             };
-            (Badge as unknown as jest.Mock).mockImplementation(
-                () => mockBadgeInstance,
-            );
+            (Badge as any).mockImplementation(() => mockBadgeInstance);
 
             const result = await controller.createBadge({
                 id: 'new',

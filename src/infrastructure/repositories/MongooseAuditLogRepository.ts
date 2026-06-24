@@ -1,4 +1,4 @@
-import { type QueryFilter, Types } from 'mongoose';
+import { type QueryFilter } from 'mongoose';
 import type {
     IAuditLog,
     IAuditLogChange,
@@ -13,10 +13,10 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
     public constructor() {}
 
     public async create(data: {
-        serverId?: Types.ObjectId;
-        actorId: Types.ObjectId;
+        serverId?: string;
+        actorId: string;
         actionType: string;
-        targetId?: Types.ObjectId;
+        targetId?: string;
         targetType?:
             | 'user'
             | 'channel'
@@ -24,7 +24,7 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             | 'role'
             | 'message'
             | 'server';
-        targetUserId?: Types.ObjectId;
+        targetUserId?: string;
         changes?: IAuditLogChange[];
         reason?: string;
         metadata?: Record<string, unknown>;
@@ -45,18 +45,18 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
         });
 
         const savedAuditLog = await auditLog.save();
-        return savedAuditLog.toObject() as IAuditLog;
+        return savedAuditLog.toObject();
     }
 
     public async find(options: {
-        serverId?: Types.ObjectId | null;
+        serverId?: string | null;
         limit?: number;
         offset?: number;
         cursor?: string;
-        actorId?: Types.ObjectId;
+        actorId?: string;
         actionType?: string;
-        targetId?: Types.ObjectId;
-        targetUserId?: Types.ObjectId;
+        targetId?: string;
+        targetUserId?: string;
         startDate?: Date;
         endDate?: Date;
         reason?: string;
@@ -104,30 +104,30 @@ export class MongooseAuditLogRepository implements IAuditLogRepository {
             .find(query)
             .sort({ _id: -1 })
             .limit(options.limit ?? 50)
-            .populate('actorId', 'username profilePicture displayName')
-            .populate('targetUserId', 'username displayName profilePicture')
+            .populate('actorIdUser', 'username profilePicture displayName')
+            .populate('targetUserIdUser', 'username displayName profilePicture')
             .lean()
             .exec();
 
-        return results as unknown as IAuditLog[];
+        return results;
     }
 
-    public async findById(id: Types.ObjectId): Promise<IAuditLog | null> {
+    public async findById(id: string): Promise<IAuditLog | null> {
         const result = await this.auditLogModel
-            .findById(id)
-            .populate('actorId', 'username profilePicture displayName')
-            .populate('targetUserId', 'username displayName profilePicture')
+            .findOne({ snowflakeId: id })
+            .populate('actorIdUser', 'username profilePicture displayName')
+            .populate('targetUserIdUser', 'username displayName profilePicture')
             .lean()
             .exec();
 
-        return result as IAuditLog | null;
+        return result;
     }
 
     public async count(options: {
-        serverId?: Types.ObjectId | null;
-        actorId?: Types.ObjectId;
+        serverId?: string | null;
+        actorId?: string;
         actionType?: string;
-        targetUserId?: Types.ObjectId;
+        targetUserId?: string;
         startDate?: Date;
         endDate?: Date;
     }): Promise<number> {

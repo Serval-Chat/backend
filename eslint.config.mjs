@@ -40,7 +40,16 @@ export default [
       "@typescript-eslint/strict-boolean-expressions": "error",
       "@typescript-eslint/no-unnecessary-condition": "warn",
       "@typescript-eslint/switch-exhaustiveness-check": "error",
-      "@typescript-eslint/explicit-member-accessibility": "error"
+      "@typescript-eslint/explicit-member-accessibility": "error",
+      "@typescript-eslint/no-unnecessary-type-assertion": "error",
+
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector: "TSAsExpression[expression.type='TSAsExpression'][expression.typeAnnotation.type='TSUnknownKeyword']",
+          message: "Avoid 'as unknown as X' double-casts. Prefer a named type for the populate/lean result (or .populate<T>()) so the cast is checked once instead of bypassed twice."
+        }
+      ]
     }
   },
   {
@@ -71,6 +80,8 @@ export default [
     ignores: [
       "dist/**",
       "node_modules/**",
+      "packages/**/dist/**",
+      "packages/**/node_modules/**",
     ]
   }
 ];

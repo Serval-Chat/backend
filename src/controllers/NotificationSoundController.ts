@@ -4,7 +4,6 @@ import {
     Post,
     Delete,
     Param,
-    Req,
     Res,
     UseGuards,
     UseInterceptors,
@@ -18,17 +17,14 @@ import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import path from 'path';
 import { promises as fsPromises, constants as fsConstants } from 'fs';
 import { randomUUID } from 'crypto';
 import { SERVER_URL } from '@/config/env';
 import { processAudio } from '@/utils/audio';
-import { Types } from 'mongoose';
 import { WsServer } from '@/ws/server';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
-import { getDocumentId } from '@/utils/mongooseId';
 import {
     ApiTags,
     ApiOperation,
@@ -94,7 +90,7 @@ export class NotificationSoundController {
             throw new BadRequestException('No file uploaded');
         }
 
-        const user = await this.userRepo.findById(new Types.ObjectId(userId));
+        const user = await this.userRepo.findById(userId);
         if (user === null) throw new NotFoundException('User not found');
 
         const currentSounds = user.settings?.notificationSounds ?? [];
@@ -125,12 +121,9 @@ export class NotificationSoundController {
             };
 
             const updatedSounds = [...currentSounds, newSound];
-            await this.userRepo.updateSettings(
-                getDocumentId(user) as Types.ObjectId,
-                {
-                    notificationSounds: updatedSounds,
-                },
-            );
+            await this.userRepo.updateSettings(user.snowflakeId, {
+                notificationSounds: updatedSounds,
+            });
 
             this.wsServer.broadcastToUser(userId, {
                 type: 'notification_sounds_updated',
@@ -151,7 +144,7 @@ export class NotificationSoundController {
     @ApiOperation({ summary: 'Get all custom notification sounds' })
     @ApiOkResponse({ type: [NotificationSoundResponseDTO] })
     public async getSounds(@CurrentUser('id') userId: string) {
-        const user = await this.userRepo.findById(new Types.ObjectId(userId));
+        const user = await this.userRepo.findById(userId);
         return user?.settings?.notificationSounds ?? [];
     }
 
@@ -163,7 +156,7 @@ export class NotificationSoundController {
         @CurrentUser('id') userId: string,
         @Param('id') id: string,
     ) {
-        const user = await this.userRepo.findById(new Types.ObjectId(userId));
+        const user = await this.userRepo.findById(userId);
         if (user === null) throw new NotFoundException('User not found');
 
         const currentSounds = user.settings?.notificationSounds ?? [];
@@ -172,12 +165,9 @@ export class NotificationSoundController {
             throw new NotFoundException('Sound not found');
 
         const updatedSounds = currentSounds.filter((s) => s.id !== id);
-        await this.userRepo.updateSettings(
-            getDocumentId(user) as Types.ObjectId,
-            {
-                notificationSounds: updatedSounds,
-            },
-        );
+        await this.userRepo.updateSettings(user.snowflakeId, {
+            notificationSounds: updatedSounds,
+        });
 
         const filePath = path.join(this.soundsDir, `${id}.ogg`);
         await fsPromises.unlink(filePath).catch(() => {});

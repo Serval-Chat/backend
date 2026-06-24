@@ -47,7 +47,7 @@ const clearExpiredStatus = async (user: MutableUser): Promise<void> => {
 // Get the active custom status for a user, filtering out expired statuses
 // Automatically clears expired statuses from the database
 export const getActiveCustomStatus = (user: MutableUser): CustomStatusValue => {
-    const status = user.customStatus as ActiveCustomStatus | null | undefined;
+    const status = user.customStatus;
     if (
         status === null ||
         status === undefined ||
@@ -105,14 +105,14 @@ export const resolveSerializedCustomStatus = (
     const hasContent = Boolean(
         (typeof rawStatus.text === 'string' &&
             rawStatus.text.trim().length > 0) ||
-        (rawStatus.emoji !== undefined && rawStatus.emoji !== ''),
+            (rawStatus.emoji !== undefined && rawStatus.emoji !== ''),
     );
     if (hasContent === false) return null;
 
     const expiresAt =
         typeof rawStatus.expiresAt === 'string' ||
         rawStatus.expiresAt instanceof Date
-            ? new Date(rawStatus.expiresAt as string | number | Date)
+            ? new Date(rawStatus.expiresAt)
             : null;
     if (isExpired(expiresAt)) {
         return null;
@@ -121,7 +121,7 @@ export const resolveSerializedCustomStatus = (
     const updatedAt =
         typeof rawStatus.updatedAt === 'string' ||
         rawStatus.updatedAt instanceof Date
-            ? new Date(rawStatus.updatedAt as string | number | Date)
+            ? new Date(rawStatus.updatedAt)
             : new Date();
 
     return {

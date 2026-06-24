@@ -19,7 +19,7 @@ describe('Bot Self-Authorization Restriction', () => {
 
         owner = await createTestUser();
         ownerToken = generateAuthToken(owner);
-        testServer = await createTestServer(owner._id.toString());
+        testServer = await createTestServer(owner.snowflakeId);
     });
 
     afterAll(async () => {
@@ -32,8 +32,8 @@ describe('Bot Self-Authorization Restriction', () => {
         const bot = await Bot.create({
             clientId: '1234567890abcdef1234567890abcdef',
             botTokenHash: 'hash',
-            userId: botUser._id,
-            ownerId: owner._id,
+            userId: botUser.snowflakeId,
+            ownerId: owner.snowflakeId,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS },
         });
 
@@ -45,7 +45,7 @@ describe('Bot Self-Authorization Restriction', () => {
             .post(`/api/v1/bots/${bot.clientId}/authorize`)
             .set('Authorization', `Bearer ${botToken}`)
             .send({
-                serverId: testServer._id.toString(),
+                serverId: testServer.snowflakeId,
             });
 
 
@@ -58,8 +58,8 @@ describe('Bot Self-Authorization Restriction', () => {
         const bot = await Bot.create({
             clientId: 'abcdef1234567890abcdef1234567890',
             botTokenHash: 'hash',
-            userId: botUser._id,
-            ownerId: owner._id,
+            userId: botUser.snowflakeId,
+            ownerId: owner.snowflakeId,
             botPermissions: { ...DEFAULT_BOT_PERMISSIONS },
         });
 
@@ -67,7 +67,7 @@ describe('Bot Self-Authorization Restriction', () => {
             .post(`/api/v1/bots/${bot.clientId}/authorize`)
             .set('Authorization', `Bearer ${ownerToken}`)
             .send({
-                serverId: testServer._id.toString(),
+                serverId: testServer.snowflakeId,
             });
 
         expect(res.status).toBe(200);

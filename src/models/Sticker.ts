@@ -1,4 +1,5 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 import {
@@ -8,12 +9,13 @@ import {
 } from '@/constants/stickers';
 
 export interface ISticker extends Document {
+    snowflakeId: string;
     _id: Types.ObjectId;
     name: string;
     imageUrl: string;
     isAnimated: boolean;
-    serverId: Types.ObjectId;
-    createdBy: Types.ObjectId;
+    serverId: string;
+    createdBy: string;
     createdAt: Date;
 }
 
@@ -35,13 +37,11 @@ const schema = new Schema<ISticker>(
             default: false,
         },
         serverId: {
-            type: Schema.Types.ObjectId,
-            ref: 'Server',
+            type: String,
             required: true,
         },
         createdBy: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
         },
         createdAt: {
@@ -56,6 +56,8 @@ const schema = new Schema<ISticker>(
 );
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 schema.index({ serverId: 1, name: 1 }, { unique: true });
 
 export const Sticker = model<ISticker>('Sticker', schema);

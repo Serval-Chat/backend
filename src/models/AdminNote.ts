@@ -1,21 +1,37 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import type { Types, Document } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type { Document } from 'mongoose';
 import { Schema, model } from 'mongoose';
+
+interface IAdminNoteUserRef {
+    username?: string;
+    displayName?: string | null;
+    profilePicture?: string;
+}
 
 export interface IAdminNoteHistory {
     content: string;
-    editorId: Types.ObjectId;
+    editorId: string;
+    // not a real Mongoose populate path, history is an array of subdocs,
+    // so resolved separately via resolveAdminNoteUserRefs.
+    editorIdUser?: IAdminNoteUserRef;
     editedAt: Date;
 }
 
 export interface IAdminNote extends Document {
-    targetId: Types.ObjectId;
+    snowflakeId: string;
+    // snowflakeId of the User or Server this note targets.
+    targetId: string;
     targetType: 'User' | 'Server';
-    adminId: Types.ObjectId;
+    adminId: string;
+    // populated via .populate('adminIdUser').
+    adminIdUser?: IAdminNoteUserRef;
     content: string;
     history: IAdminNoteHistory[];
     deletedAt?: Date;
-    deletedBy?: Types.ObjectId;
+    deletedBy?: string;
+    // populated via .populate('deletedByUser').
+    deletedByUser?: IAdminNoteUserRef;
     deleteReason?: string;
     createdAt: Date;
     updatedAt: Date;
@@ -24,7 +40,7 @@ export interface IAdminNote extends Document {
 const adminNoteHistorySchema = new Schema<IAdminNoteHistory>(
     {
         content: { type: String, required: true },
-        editorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        editorId: { type: String, required: true },
         editedAt: { type: Date, required: true },
     },
     { _id: false },
@@ -32,7 +48,9 @@ const adminNoteHistorySchema = new Schema<IAdminNoteHistory>(
 
 const adminNoteSchema = new Schema<IAdminNote>(
     {
-        targetId: { type: Schema.Types.ObjectId, required: true, index: true },
+        // mixed for historical reasons; always holds a snowflakeId string
+        // (see IAdminNote.targetId).
+        targetId: { type: Schema.Types.Mixed, required: true, index: true },
         targetType: {
             type: String,
             enum: ['User', 'Server'],
@@ -40,21 +58,36 @@ const adminNoteSchema = new Schema<IAdminNote>(
             index: true,
         },
         adminId: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
             index: true,
         },
         content: { type: String, required: true },
         history: { type: [adminNoteHistorySchema], default: [] },
         deletedAt: { type: Date },
-        deletedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+        deletedBy: { type: String },
         deleteReason: { type: String },
     },
     { timestamps: true },
 );
 
 adminNoteSchema.plugin(mongooseIdPlugin);
+
+adminNoteSchema.plugin(snowflakeIdPlugin);
+
+adminNoteSchema.virtual('adminIdUser', {
+    ref: 'User',
+    localField: 'adminId',
+    foreignField: 'snowflakeId',
+    justOne: true,
+});
+adminNoteSchema.virtual('deletedByUser', {
+    ref: 'User',
+    localField: 'deletedBy',
+    foreignField: 'snowflakeId',
+    justOne: true,
+});
+
 adminNoteSchema.index({ targetId: 1, targetType: 1, createdAt: -1 });
 
 export const AdminNote = model<IAdminNote>('AdminNote', adminNoteSchema);

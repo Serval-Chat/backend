@@ -1,6 +1,7 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { isValidSnowflakeId, snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Model } from 'mongoose';
-import mongoose, { Schema, Types } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
 // Friendship interface
 //
@@ -9,10 +10,11 @@ import mongoose, { Schema, Types } from 'mongoose';
 //
 // Legacy support due to existing database structure
 interface IFriendship extends Document {
+    snowflakeId: string;
     user: string; // Keep for backward compatibility
     friend: string; // Keep for backward compatibility
-    userId: Types.ObjectId; // New userId reference
-    friendId: Types.ObjectId; // New userId reference
+    userId: string;
+    friendId: string;
     createdAt: Date;
     isPinned?: boolean; // Whether this user has pinned the DM with friendId
 }
@@ -21,10 +23,11 @@ interface IFriendship extends Document {
 //
 // Represents a pending, accepted, or rejected friend request
 interface IFriendRequest extends Document {
+    snowflakeId: string;
     from: string; // Keep for backward compatibility
     to: string; // Keep for backward compatibility
-    fromId: Types.ObjectId; // New userId reference
-    toId: Types.ObjectId; // New userId reference
+    fromId: string;
+    toId: string;
     status: 'pending' | 'accepted' | 'rejected';
     createdAt: Date;
 }
@@ -32,12 +35,13 @@ interface IFriendRequest extends Document {
 const friendshipSchema = new Schema<IFriendship>({
     user: { type: String, required: false }, // Legacy field
     friend: { type: String, required: false }, // Legacy field
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
-    friendId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
+    userId: { type: String, required: false },
+    friendId: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
     isPinned: { type: Boolean, default: false },
 });
 friendshipSchema.plugin(mongooseIdPlugin);
+friendshipSchema.plugin(snowflakeIdPlugin);
 friendshipSchema.index({ user: 1, friend: 1 }, { unique: true, sparse: true });
 friendshipSchema.index(
     { userId: 1, friendId: 1 },
@@ -47,8 +51,8 @@ friendshipSchema.index(
 const friendRequestSchema = new Schema<IFriendRequest>({
     from: { type: String, required: false }, // Legacy field
     to: { type: String, required: false }, // Legacy field
-    fromId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
-    toId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
+    fromId: { type: String, required: false },
+    toId: { type: String, required: false },
     status: {
         type: String,
         enum: ['pending', 'accepted', 'rejected'],
@@ -57,6 +61,7 @@ const friendRequestSchema = new Schema<IFriendRequest>({
     createdAt: { type: Date, default: Date.now },
 });
 friendRequestSchema.plugin(mongooseIdPlugin);
+friendRequestSchema.plugin(snowflakeIdPlugin);
 friendRequestSchema.index({ from: 1, to: 1 }, { unique: true, sparse: true });
 friendRequestSchema.index(
     { fromId: 1, toId: 1 },
@@ -85,14 +90,12 @@ export const areFriends = async (
     if (user1 === user2) return true;
 
     const conditions: Record<string, unknown>[] = [];
-    const user1IsObjectId = Types.ObjectId.isValid(user1);
-    const user2IsObjectId = Types.ObjectId.isValid(user2);
+    const user1IsSnowflakeId = isValidSnowflakeId(user1);
+    const user2IsSnowflakeId = isValidSnowflakeId(user2);
 
-    if (user1IsObjectId && user2IsObjectId) {
-        const user1Id = new Types.ObjectId(user1);
-        const user2Id = new Types.ObjectId(user2);
-        conditions.push({ userId: user1Id, friendId: user2Id });
-        conditions.push({ userId: user2Id, friendId: user1Id });
+    if (user1IsSnowflakeId && user2IsSnowflakeId) {
+        conditions.push({ userId: user1, friendId: user2 });
+        conditions.push({ userId: user2, friendId: user1 });
     }
 
     // Fallback for legacy documents that still rely on usernames
@@ -105,7 +108,7 @@ export const areFriends = async (
     ) {
         conditions.push({ user: username1, friend: username2 });
         conditions.push({ user: username2, friend: username1 });
-    } else if (!user1IsObjectId && !user2IsObjectId) {
+    } else if (!user1IsSnowflakeId && !user2IsSnowflakeId) {
         conditions.push({ user: user1, friend: user2 });
         conditions.push({ user: user2, friend: user1 });
     }

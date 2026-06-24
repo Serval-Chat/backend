@@ -1,4 +1,5 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -6,8 +7,9 @@ export type UserConnectionType = 'Website';
 export type UserConnectionStatus = 'pending' | 'verified';
 
 export interface IUserConnection extends Document {
+    snowflakeId: string;
     _id: Types.ObjectId;
-    userId: Types.ObjectId;
+    userId: string;
     type: UserConnectionType;
     value: string;
     normalizedValue: string;
@@ -23,8 +25,7 @@ export interface IUserConnection extends Document {
 const userConnectionSchema = new Schema<IUserConnection>(
     {
         userId: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
+            type: String,
             required: true,
             index: true,
         },
@@ -50,6 +51,8 @@ const userConnectionSchema = new Schema<IUserConnection>(
 );
 
 userConnectionSchema.plugin(mongooseIdPlugin);
+
+userConnectionSchema.plugin(snowflakeIdPlugin);
 userConnectionSchema.index(
     { type: 1, normalizedValue: 1 },
     {

@@ -1,5 +1,4 @@
 import { injectable } from 'inversify';
-import { Types } from 'mongoose';
 import {
     ICategoryRepository,
     ICategory,
@@ -16,7 +15,7 @@ const transformCategory = (doc: unknown): ICategory | null => {
         ...record,
         _id: record._id,
         serverId: record.serverId,
-    } as unknown as ICategory;
+    } as ICategory;
 };
 
 // Mongoose Category repository
@@ -24,22 +23,23 @@ const transformCategory = (doc: unknown): ICategory | null => {
 // Implements ICategoryRepository using Mongoose Category model
 @injectable()
 export class MongooseCategoryRepository implements ICategoryRepository {
-    public async findById(id: Types.ObjectId): Promise<ICategory | null> {
-        const result = await Category.findById(id).lean();
+    public async findById(id: string): Promise<ICategory | null> {
+        const result = await Category.findOne({ snowflakeId: id }).lean();
         return transformCategory(result);
     }
 
     public async findByIdAndServer(
-        id: Types.ObjectId,
-        serverId: Types.ObjectId,
+        id: string,
+        serverId: string,
     ): Promise<ICategory | null> {
-        const result = await Category.findOne({ _id: id, serverId }).lean();
+        const result = await Category.findOne({
+            snowflakeId: id,
+            serverId,
+        }).lean();
         return transformCategory(result);
     }
 
-    public async findByServerId(
-        serverId: Types.ObjectId,
-    ): Promise<ICategory[]> {
+    public async findByServerId(serverId: string): Promise<ICategory[]> {
         const results = await Category.find({ serverId })
             .sort({ position: 1 })
             .lean();
@@ -47,7 +47,7 @@ export class MongooseCategoryRepository implements ICategoryRepository {
     }
 
     public async findMaxPositionByServerId(
-        serverId: Types.ObjectId,
+        serverId: string,
     ): Promise<ICategory | null> {
         const result = await Category.findOne({ serverId })
             .sort({ position: -1 })
@@ -58,51 +58,51 @@ export class MongooseCategoryRepository implements ICategoryRepository {
     public async create(data: CreateCategoryDTO): Promise<ICategory> {
         const category = new Category(data);
         const result = await category.save();
-        const transformed = transformCategory(
-            result.toObject() as unknown as Record<string, unknown>,
-        );
+        const transformed = transformCategory(result.toObject());
         if (transformed === null) throw new Error('Failed to create category');
         return transformed;
     }
 
     public async update(
-        id: Types.ObjectId,
+        id: string,
         data: Partial<ICategory>,
     ): Promise<ICategory | null> {
-        const result = await Category.findByIdAndUpdate(id, data, {
-            new: true,
-        }).lean();
+        const result = await Category.findOneAndUpdate(
+            { snowflakeId: id },
+            data,
+            { new: true },
+        ).lean();
         return transformCategory(result);
     }
 
-    public async delete(id: Types.ObjectId): Promise<boolean> {
-        const result = await Category.deleteOne({ _id: id });
+    public async delete(id: string): Promise<boolean> {
+        const result = await Category.deleteOne({ snowflakeId: id });
         return result.deletedCount > 0;
     }
 
     public async updatePosition(
-        id: Types.ObjectId,
+        id: string,
         position: number,
     ): Promise<ICategory | null> {
-        const result = await Category.findByIdAndUpdate(
-            id,
+        const result = await Category.findOneAndUpdate(
+            { snowflakeId: id },
             { position },
             { new: true },
         ).lean();
         return transformCategory(result);
     }
 
-    public async deleteByServerId(serverId: Types.ObjectId): Promise<number> {
+    public async deleteByServerId(serverId: string): Promise<number> {
         const result = await Category.deleteMany({ serverId });
         return result.deletedCount;
     }
 
     public async updatePositions(
-        updates: { id: Types.ObjectId; position: number }[],
+        updates: { id: string; position: number }[],
     ): Promise<boolean> {
         try {
             const updatePromises = updates.map(({ id, position }) =>
-                Category.findByIdAndUpdate(id, { position }),
+                Category.findOneAndUpdate({ snowflakeId: id }, { position }),
             );
             await Promise.all(updatePromises);
             return true;

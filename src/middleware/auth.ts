@@ -6,8 +6,7 @@ import logger from '@/utils/logger';
 import type { JWTPayload } from '@/utils/jwt';
 import { Ban } from '@/models/Ban';
 import { User } from '@/models/User';
-import { Bot } from '@/models/Bot';
-import { Types } from 'mongoose';
+import { resolveBotAuthPayload } from '@/utils/botAuth';
 
 declare module 'express-serve-static-core' {
     interface Request {
@@ -50,7 +49,9 @@ export const authenticateToken = async (
 
     try {
         if (decoded !== null) {
-            const user = await User.findById(decoded.id).lean();
+            const user = await User.findOne({
+                snowflakeId: decoded.id,
+            }).lean();
             if (!user || user.deletedAt) {
                 return res.status(401).json({ error: 'Invalid token' });
             }
@@ -61,20 +62,9 @@ export const authenticateToken = async (
                 return res.status(401).json({ error: 'Token expired' });
             }
 
-            let userObjectId: Types.ObjectId;
-            try {
-                userObjectId = new Types.ObjectId(decoded.id);
-            } catch {
-                logger.error(
-                    '[AUTH] Invalid user ID in token payload:',
-                    decoded.id,
-                );
-                return res.status(401).json({ error: 'Invalid token payload' });
-            }
-
-            await Ban.checkExpired(userObjectId);
+            await Ban.checkExpired(decoded.id);
             const activeBan = await Ban.findOne({
-                userId: userObjectId,
+                userId: decoded.id,
                 active: true,
             });
             if (activeBan) {
@@ -124,38 +114,14 @@ export const authenticateToken = async (
             .createHash('sha256')
             .update(token)
             .digest('hex');
-        const bot = await Bot.findOne({ botTokenHash: tokenHash })
-            .select('+botTokenHash')
-            .populate('userId', 'username tokenVersion deletedAt isBot')
-            .lean();
+        const botPayload = await resolveBotAuthPayload(tokenHash);
 
-        if (!bot) {
+        if (botPayload === null) {
             if (req.path.startsWith('/api/')) {
                 return res.status(401).json({ error: 'Invalid token' });
             }
             return res.redirect('/login.html');
         }
-
-        const botUser = bot.userId as unknown as {
-            _id: Types.ObjectId;
-            username: string;
-            tokenVersion: number;
-            deletedAt?: Date;
-            isBot: boolean;
-        };
-
-        if (botUser.deletedAt !== undefined) {
-            return res.status(401).json({ error: 'Invalid token' });
-        }
-
-        const botPayload: JWTPayload = {
-            type: 'access',
-            id: botUser._id.toString(),
-            login: `bot.${bot.clientId}`,
-            username: botUser.username,
-            tokenVersion: botUser.tokenVersion,
-            isBot: true,
-        };
 
         Object.defineProperty(req, 'user', {
             value: botPayload,

@@ -6,10 +6,10 @@ import {
     IsMessageContent,
     IsWebhookToken,
     IsFilename,
+    IsMessageId,
 } from '@/validation/schemas/common';
 import { Transform } from 'class-transformer';
 import { IEmbed, IEmbedButton } from '@/models/Embed';
-import { IsMongoId } from 'class-validator';
 
 export class CreateWebhookRequestDTO {
     @ApiProperty()
@@ -80,7 +80,7 @@ export class WebhookMessageParamDTO {
     public token!: string;
 
     @ApiProperty()
-    @IsMongoId()
+    @IsMessageId()
     public messageId!: string;
 }
 

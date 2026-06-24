@@ -21,7 +21,6 @@ import { trace, SpanStatusCode, context } from '@opentelemetry/api';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { PermissionService } from '@/permissions/PermissionService';
 import { isPermissionKey } from '@/permissions/types';
-import mongoose from 'mongoose';
 
 import type { IWsServer } from './interfaces/IWsServer';
 
@@ -887,8 +886,8 @@ export class WsServer extends EventEmitter implements IWsServer {
 
         if (permissionCheck.type === 'server') {
             return this.permissionService.hasPermission(
-                new mongoose.Types.ObjectId(serverId),
-                new mongoose.Types.ObjectId(userId),
+                serverId,
+                userId,
                 permissionCheck.permission,
             );
         } else if (
@@ -896,9 +895,9 @@ export class WsServer extends EventEmitter implements IWsServer {
             permissionCheck.targetId !== ''
         ) {
             return this.permissionService.hasChannelPermission(
-                new mongoose.Types.ObjectId(serverId),
-                new mongoose.Types.ObjectId(userId),
-                new mongoose.Types.ObjectId(permissionCheck.targetId),
+                serverId,
+                userId,
+                permissionCheck.targetId,
                 permissionCheck.permission,
             );
         }

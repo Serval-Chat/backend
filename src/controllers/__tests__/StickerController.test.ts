@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { StickerController } from '../StickerController';
 import { Types } from 'mongoose';
-import type { IStickerRepository } from '@/di/interfaces/IStickerRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { ErrorMessages } from '@/constants/errorMessages';
-import type { Request } from 'express';
+import { generateSnowflakeId } from '@/utils/snowflake';
+import type { AuthenticatedRequest } from '@/middleware/auth';
 
 jest.mock('@/config/env', () => ({
     PORT: 3000,
@@ -15,6 +15,7 @@ jest.mock('@/config/env', () => ({
     PUBLIC_FOLDER_PATH: 'public',
     USE_HTTPS: 'off',
     SERVER_URL: 'http://localhost:3000',
+    SNOWFLAKE_WORKER_ID: 0,
 }));
 
 describe('StickerController', () => {
@@ -23,11 +24,11 @@ describe('StickerController', () => {
     const mockStickerRepo = {
         findById: jest.fn(),
         findByServerIds: jest.fn(),
-    } as unknown as IStickerRepository;
+    } as any;
 
     const mockServerMemberRepo = {
         findAllByUserId: jest.fn(),
-    } as unknown as IServerMemberRepository;
+    } as any;
 
     beforeEach(() => {
         controller = new StickerController(
@@ -37,16 +38,17 @@ describe('StickerController', () => {
         jest.clearAllMocks();
     });
 
-    const STICKER_ID = new Types.ObjectId().toHexString();
+    const STICKER_ID = generateSnowflakeId();
 
     describe('getStickerById', () => {
         it('should return a sticker by ID', async () => {
             const sticker = {
-                _id: new Types.ObjectId(STICKER_ID),
+                _id: new Types.ObjectId(),
+                snowflakeId: STICKER_ID,
                 name: 'test',
                 imageUrl: 'url',
-                serverId: new Types.ObjectId(),
-                createdBy: new Types.ObjectId(),
+                serverId: generateSnowflakeId(),
+                createdBy: generateSnowflakeId(),
                 createdAt: new Date(),
             };
             (mockStickerRepo.findById as jest.Mock).mockResolvedValue(sticker);
@@ -71,9 +73,11 @@ describe('StickerController', () => {
 
     describe('getAllStickers', () => {
         it('should return stickers for all user servers', async () => {
-            const userId = new Types.ObjectId().toHexString();
-            const serverId = new Types.ObjectId();
-            const req = { user: { id: userId } } as unknown as Request;
+            const userId = generateSnowflakeId();
+            const serverId = generateSnowflakeId();
+            const req = {
+                user: { id: userId },
+            } as AuthenticatedRequest;
 
             (
                 mockServerMemberRepo.findAllByUserId as jest.Mock
@@ -81,10 +85,11 @@ describe('StickerController', () => {
             (mockStickerRepo.findByServerIds as jest.Mock).mockResolvedValue([
                 {
                     _id: new Types.ObjectId(),
+                    snowflakeId: generateSnowflakeId(),
                     name: 'test',
                     imageUrl: 'url',
                     serverId: serverId,
-                    createdBy: new Types.ObjectId(),
+                    createdBy: generateSnowflakeId(),
                     createdAt: new Date(),
                 },
             ]);

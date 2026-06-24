@@ -8,12 +8,7 @@ import {
 } from '@/di/interfaces/IServerRepository';
 import { Server } from '@/models/Server';
 import { injectable } from 'inversify';
-import {
-    toApiId,
-    toDatabaseId,
-    toObjectId,
-    toObjectIds,
-} from '@/utils/mongooseId';
+import { toApiId, toDatabaseId } from '@/utils/mongooseId';
 
 // Mongoose Server repository
 //
@@ -24,18 +19,26 @@ export class MongooseServerRepository implements IServerRepository {
     public constructor() {}
 
     private mapOne(value: unknown): IServer | null {
-        return value === null ? null : (toApiId(value) as unknown as IServer);
+        if (value === null) return null;
+        const record = value as Record<string, unknown>;
+        const withApiId: unknown = toApiId(record);
+        return {
+            ...(withApiId as IServer),
+            id: record.snowflakeId,
+        } as IServer;
     }
 
     private mapMany(value: unknown): IServer[] {
-        return toApiId(value) as unknown as IServer[];
+        return (value as Record<string, unknown>[]).map(
+            (v) => this.mapOne(v) as IServer,
+        );
     }
 
     public async findById(
         id: RepositoryId,
         includeDeleted: boolean = false,
     ): Promise<IServer | null> {
-        const query: QueryFilter<unknown> = { _id: toObjectId(id) };
+        const query: QueryFilter<unknown> = { snowflakeId: String(id) };
         if (includeDeleted !== true) {
             query.deletedAt = { $exists: false };
         }
@@ -46,18 +49,18 @@ export class MongooseServerRepository implements IServerRepository {
         return this.mapMany(
             await this.serverModel
                 .find({
-                    _id: { $in: toObjectIds(ids) },
+                    snowflakeId: { $in: ids.map(String) },
                     deletedAt: { $exists: false },
                 })
                 .lean(),
         );
     }
 
-    public async findByOwnerId(ownerId: RepositoryId): Promise<IServer[]> {
+    public async findByOwnerId(ownerId: string): Promise<IServer[]> {
         return this.mapMany(
             await this.serverModel
                 .find({
-                    ownerId: toObjectId(ownerId),
+                    ownerId,
                     deletedAt: { $exists: false },
                 })
                 .lean(),
@@ -67,9 +70,10 @@ export class MongooseServerRepository implements IServerRepository {
     public async create(data: CreateServerDTO): Promise<IServer> {
         const server = new this.serverModel({
             ...toDatabaseId(data),
-            ownerId: toObjectId(data.ownerId),
+            ownerId: data.ownerId,
         });
-        return toApiId((await server.save()).toObject()) as unknown as IServer;
+        const saved = await server.save();
+        return this.mapOne(saved.toObject()) as IServer;
     }
 
     public async update(
@@ -79,7 +83,10 @@ export class MongooseServerRepository implements IServerRepository {
         return this.mapOne(
             await this.serverModel
                 .findOneAndUpdate(
-                    { _id: toObjectId(id), deletedAt: { $exists: false } },
+                    {
+                        snowflakeId: String(id),
+                        deletedAt: { $exists: false },
+                    },
                     toDatabaseId(data),
                     { new: true },
                 )
@@ -89,7 +96,7 @@ export class MongooseServerRepository implements IServerRepository {
 
     public async delete(id: RepositoryId): Promise<boolean> {
         const result = await this.serverModel.deleteOne({
-            _id: toObjectId(id),
+            snowflakeId: String(id),
         });
         return result.deletedCount > 0;
     }
@@ -99,7 +106,7 @@ export class MongooseServerRepository implements IServerRepository {
     // Marks the server as deleted by setting 'deletedAt' timestamp
     public async softDelete(id: RepositoryId): Promise<boolean> {
         const result = await this.serverModel.updateOne(
-            { _id: toObjectId(id) },
+            { snowflakeId: String(id) },
             { $set: { deletedAt: new Date() } },
         );
         return result.modifiedCount > 0;
@@ -108,7 +115,7 @@ export class MongooseServerRepository implements IServerRepository {
     // Restore a soft-deleted server
     public async restore(id: RepositoryId): Promise<boolean> {
         const result = await this.serverModel.updateOne(
-            { _id: toObjectId(id) },
+            { snowflakeId: String(id) },
             { $unset: { deletedAt: 1 } },
         );
         return result.modifiedCount > 0;
@@ -119,7 +126,10 @@ export class MongooseServerRepository implements IServerRepository {
         roleId: RepositoryId,
     ): Promise<boolean> {
         const result = await this.serverModel.updateOne(
-            { _id: toObjectId(serverId), defaultRoleId: toObjectId(roleId) },
+            {
+                snowflakeId: String(serverId),
+                defaultRoleId: String(roleId),
+            },
             { $unset: { defaultRoleId: 1 } },
         );
         return result.modifiedCount > 0;
@@ -140,7 +150,7 @@ export class MongooseServerRepository implements IServerRepository {
         if (options.search !== undefined && options.search !== '') {
             query.$or = [
                 { name: { $regex: options.search, $options: 'i' } },
-                { _id: options.search }, // Exact match for ID
+                { snowflakeId: options.search }, // direct id lookup alongside name search
             ];
         }
         return this.mapMany(
@@ -275,7 +285,7 @@ export class MongooseServerRepository implements IServerRepository {
             {
                 $lookup: {
                     from: 'servermembers',
-                    localField: '_id',
+                    localField: 'snowflakeId',
                     foreignField: 'serverId',
                     as: 'members',
                 },
@@ -288,7 +298,7 @@ export class MongooseServerRepository implements IServerRepository {
             {
                 $lookup: {
                     from: 'servermessages',
-                    localField: '_id',
+                    localField: 'snowflakeId',
                     foreignField: 'serverId',
                     pipeline: [
                         { $match: { isWebhook: { $ne: true } } },
@@ -325,6 +335,7 @@ export class MongooseServerRepository implements IServerRepository {
             { $sort: { weightScore: -1, createdAt: -1 } },
             { $skip: options.offset },
             { $limit: options.limit },
+            { $addFields: { id: '$snowflakeId' } },
             { $project: { members: 0, messagesInfo: 0 } },
         ];
 

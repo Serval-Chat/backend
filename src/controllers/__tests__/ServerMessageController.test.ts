@@ -1,17 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ServerMessageController } from '../ServerMessageController';
 import { Types } from 'mongoose';
 import type { Request } from 'express';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
-import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { ILogger } from '@/di/interfaces/ILogger';
-import type { WsServer } from '@/ws/server';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
-import type { IServerRepository } from '@/di/interfaces/IServerRepository';
-import type { EmbedService } from '@/services/EmbedService';
 const VALID_SERVER_ID = '507f1f77bcf86cd799439011';
 const VALID_CHANNEL_ID = '507f1f77bcf86cd799439012';
 const VALID_USER_ID = '507f1f77bcf86cd799439013';
@@ -30,10 +21,10 @@ describe('ServerMessageController Manual Instance', () => {
         create: jest.fn(),
         findById: jest.fn(),
         update: jest.fn(),
-    } as unknown as IServerMessageRepository;
+    } as any;
     const mockReactionRepo = {
         getReactionsForMessages: jest.fn().mockResolvedValue({}),
-    } as unknown as IReactionRepository;
+    } as any;
     const mockPermissionService = {
         hasChannelPermission: jest.fn().mockResolvedValue(true),
         requireChannelPermission: jest.fn(async function (
@@ -57,18 +48,18 @@ describe('ServerMessageController Manual Instance', () => {
                 throw error;
             }
         }),
-    } as unknown as PermissionService;
+    } as any;
     const mockLogger = {
         info: jest.fn(),
         error: jest.fn(),
         debug: jest.fn(),
         warn: jest.fn(),
-    } as unknown as ILogger;
+    } as any;
     const mockWsServer = {
         broadcastToServer: jest.fn(),
         broadcastToChannel: jest.fn(),
         broadcastToServerWithPermission: jest.fn().mockResolvedValue(undefined),
-    } as unknown as WsServer;
+    } as any;
     const mockChannelRepo = {
         findById: jest.fn().mockResolvedValue({
             _id: VALID_CHANNEL_ID,
@@ -76,16 +67,16 @@ describe('ServerMessageController Manual Instance', () => {
             type: 'text',
         }),
         updateLastMessageAt: jest.fn().mockResolvedValue(undefined),
-    } as unknown as IChannelRepository;
+    } as any;
     const mockServerAuditLogService = {
         createAndBroadcast: jest.fn().mockResolvedValue(undefined),
-    } as unknown as IServerAuditLogService;
+    } as any;
     const mockServerRepo = {
         findById: jest.fn().mockResolvedValue({
             _id: VALID_SERVER_ID,
             ownerId: VALID_USER_ID,
         }),
-    } as unknown as IServerRepository;
+    } as any;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -114,19 +105,19 @@ describe('ServerMessageController Manual Instance', () => {
         };
         controller = new ServerMessageController(
             mockServerMessageRepo,
-            mockMemberRepo as unknown as IServerMemberRepository,
+            mockMemberRepo as any,
             mockChannelRepo,
             mockReactionRepo,
             mockPermissionService,
             mockLogger,
             mockWsServer,
-            {} as unknown as IAuditLogRepository,
+            {} as IAuditLogRepository,
             mockServerAuditLogService,
             mockServerRepo,
             {
                 processServerMessage: jest.fn().mockResolvedValue(undefined),
                 processUserMessage: jest.fn().mockResolvedValue(undefined),
-            } as unknown as EmbedService,
+            } as any,
             {
                 getClient: jest.fn().mockReturnValue({
                     pipeline: jest.fn().mockReturnValue({
@@ -163,7 +154,7 @@ describe('ServerMessageController Manual Instance', () => {
             mockPermissionService.hasChannelPermission as jest.Mock
         ).mockResolvedValue(true);
 
-        const req = { user: { id: VALID_USER_ID } } as unknown as Request;
+        const req = { user: { id: VALID_USER_ID } } as Request;
         const result = await controller.getMessages(
             VALID_SERVER_ID,
             VALID_CHANNEL_ID,
@@ -193,7 +184,7 @@ describe('ServerMessageController Manual Instance', () => {
                 VALID_USER_ID,
                 true,
                 'testuser',
-                { text: 'hello from a bot' } as never,
+                { text: 'hello from a bot' },
             );
 
             expect(mockSearchService.indexChannelMessage).toHaveBeenCalledWith(
@@ -211,7 +202,7 @@ describe('ServerMessageController Manual Instance', () => {
                 VALID_USER_ID,
                 false,
                 'testuser',
-                { text: 'hello from a human' } as never,
+                { text: 'hello from a human' },
             );
 
             expect(mockSearchService.indexChannelMessage).toHaveBeenCalledWith(
@@ -224,7 +215,7 @@ describe('ServerMessageController Manual Instance', () => {
     });
 
     describe('togglePin / toggleSticky search re-indexing', () => {
-        const req = { user: { id: VALID_USER_ID } } as unknown as Request;
+        const req = { user: { id: VALID_USER_ID } } as Request;
 
         const makeMessage = (overrides: Record<string, unknown> = {}) => ({
             _id: new Types.ObjectId(VALID_MESSAGE_ID),

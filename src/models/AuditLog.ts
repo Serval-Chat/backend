@@ -1,5 +1,6 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import type { Types, Document } from 'mongoose';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type { Document } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
 export interface IAuditLogChange {
@@ -12,10 +13,14 @@ export interface IAuditLogChange {
 //
 // Represents a record of an administrative action for accountability
 export interface IAuditLog extends Document {
-    serverId?: Types.ObjectId;
-    actorId: Types.ObjectId;
+    snowflakeId: string;
+    serverId?: string;
+    actorId: string;
     actionType: string;
-    targetId?: Types.ObjectId;
+    // snowflakeId of the entity named by targetType. typed as Mixed (not String)
+    // for historical reasons; always a string now since all targetType values
+    // refer to snowflake-migrated entities.
+    targetId?: string;
     targetType?:
         | 'user'
         | 'channel'
@@ -23,7 +28,7 @@ export interface IAuditLog extends Document {
         | 'role'
         | 'message'
         | 'server';
-    targetUserId?: Types.ObjectId;
+    targetUserId?: string;
     changes?: IAuditLogChange[];
     reason?: string;
     metadata?: Record<string, unknown>;
@@ -41,15 +46,17 @@ const changeSchema = new Schema<IAuditLogChange>(
 );
 
 const schema = new Schema<IAuditLog>({
-    serverId: { type: Schema.Types.ObjectId, ref: 'Server', index: true },
-    actorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    serverId: { type: String, index: true },
+    actorId: { type: String, required: true },
     actionType: { type: String, required: true },
-    targetId: { type: Schema.Types.ObjectId },
+    // mixed for historical reasons; always holds a snowflakeId string
+    // (see IAuditLog.targetId).
+    targetId: { type: Schema.Types.Mixed },
     targetType: {
         type: String,
         enum: ['user', 'channel', 'category', 'role', 'message', 'server'],
     },
-    targetUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+    targetUserId: { type: String },
     changes: { type: [changeSchema] },
     reason: { type: String },
     metadata: { type: Schema.Types.Mixed },
@@ -58,6 +65,21 @@ const schema = new Schema<IAuditLog>({
 });
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
+
+schema.virtual('actorIdUser', {
+    ref: 'User',
+    localField: 'actorId',
+    foreignField: 'snowflakeId',
+    justOne: true,
+});
+schema.virtual('targetUserIdUser', {
+    ref: 'User',
+    localField: 'targetUserId',
+    foreignField: 'snowflakeId',
+    justOne: true,
+});
 
 // Composite index for efficient per-server queries sorted by time
 schema.index({ serverId: 1, timestamp: -1 });

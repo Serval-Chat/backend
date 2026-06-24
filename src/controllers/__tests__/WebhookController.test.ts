@@ -1,11 +1,12 @@
 import { Types } from 'mongoose';
 import { ForbiddenException } from '@nestjs/common';
 import { WebhookController } from '../WebhookController';
+import { generateSnowflakeId } from '@/utils/snowflake';
 
 describe('WebhookController', () => {
     const serverId = new Types.ObjectId();
     const channelId = new Types.ObjectId();
-    const messageId = new Types.ObjectId();
+    const messageId = generateSnowflakeId();
     const token = 'a'.repeat(128);
 
     const webhookRepo = {
@@ -35,7 +36,8 @@ describe('WebhookController', () => {
             token,
         });
         serverMessageRepo.findById.mockResolvedValue({
-            _id: messageId,
+            _id: new Types.ObjectId(),
+            snowflakeId: messageId,
             serverId,
             channelId,
             isWebhook: true,
@@ -43,7 +45,8 @@ describe('WebhookController', () => {
         });
         serverMessageRepo.delete.mockResolvedValue(true);
         serverMessageRepo.create.mockResolvedValue({
-            _id: messageId,
+            _id: new Types.ObjectId(),
+            snowflakeId: messageId,
             createdAt: new Date('2026-05-31T12:00:00.000Z'),
             attachments: [],
         });
@@ -60,7 +63,7 @@ describe('WebhookController', () => {
                 debug: jest.fn(),
                 warn: jest.fn(),
                 info: jest.fn(),
-            } as never,
+            },
             wsServer as never,
             {
                 getClient: jest.fn().mockReturnValue({
@@ -120,7 +123,7 @@ describe('WebhookController', () => {
                         },
                     },
                 ],
-            } as never,
+            },
             {
                 'x-github-event': 'push',
                 'user-agent': 'GitHub-Hookshot/abc123',
@@ -154,7 +157,7 @@ describe('WebhookController', () => {
                     html_url:
                         'https://github.com/octocat/Hello-World/issues/12',
                 },
-            } as never,
+            },
             {
                 'user-agent': 'GitHub-Hookshot/abc123',
             },

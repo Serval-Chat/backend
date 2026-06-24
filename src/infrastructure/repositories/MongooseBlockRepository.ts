@@ -1,5 +1,4 @@
 import { injectable } from 'inversify';
-import { Types } from 'mongoose';
 import { BlockProfile, IBlockProfile } from '@/models/BlockProfile';
 import { UserBlock, IUserBlock } from '@/models/UserBlock';
 import {
@@ -11,7 +10,7 @@ import {
 @injectable()
 export class MongooseBlockRepository implements IBlockRepository {
     public async createProfile(
-        ownerId: Types.ObjectId,
+        ownerId: string,
         name: string,
         flags: number,
     ): Promise<IBlockProfile> {
@@ -19,7 +18,7 @@ export class MongooseBlockRepository implements IBlockRepository {
     }
 
     public async findProfilesByOwner(
-        ownerId: Types.ObjectId,
+        ownerId: string,
     ): Promise<IBlockProfile[]> {
         return await BlockProfile.find({ ownerId })
             .sort({ createdAt: 1 })
@@ -27,58 +26,56 @@ export class MongooseBlockRepository implements IBlockRepository {
     }
 
     public async findProfileById(
-        profileId: Types.ObjectId,
+        profileId: string,
     ): Promise<IBlockProfile | null> {
-        return await BlockProfile.findById(profileId).exec();
+        return await BlockProfile.findOne({ snowflakeId: profileId }).exec();
     }
 
     public async updateProfile(
-        profileId: Types.ObjectId,
-        ownerId: Types.ObjectId,
+        profileId: string,
+        ownerId: string,
         updates: { name?: string; flags?: number },
     ): Promise<IBlockProfile | null> {
         return await BlockProfile.findOneAndUpdate(
-            { _id: profileId, ownerId },
+            { snowflakeId: profileId, ownerId },
             { $set: updates },
             { new: true },
         ).exec();
     }
 
     public async deleteProfile(
-        profileId: Types.ObjectId,
-        ownerId: Types.ObjectId,
+        profileId: string,
+        ownerId: string,
     ): Promise<boolean> {
         await UserBlock.deleteMany({ profileId, blockerId: ownerId }).exec();
 
         const result = await BlockProfile.deleteOne({
-            _id: profileId,
+            snowflakeId: profileId,
             ownerId,
         }).exec();
 
         return result.deletedCount > 0;
     }
 
-    public async countProfilesByOwner(
-        ownerId: Types.ObjectId,
-    ): Promise<number> {
+    public async countProfilesByOwner(ownerId: string): Promise<number> {
         return await BlockProfile.countDocuments({ ownerId }).exec();
     }
 
     public async upsertBlock(
-        blockerId: Types.ObjectId,
-        targetId: Types.ObjectId,
-        profileId: Types.ObjectId,
+        blockerId: string,
+        targetId: string,
+        profileId: string,
     ): Promise<IUserBlock> {
-        return (await UserBlock.findOneAndUpdate(
+        return await UserBlock.findOneAndUpdate(
             { blockerId, targetId },
             { $set: { profileId } },
             { upsert: true, new: true },
-        ).exec()) as IUserBlock;
+        ).exec();
     }
 
     public async deleteBlock(
-        blockerId: Types.ObjectId,
-        targetId: Types.ObjectId,
+        blockerId: string,
+        targetId: string,
     ): Promise<boolean> {
         const result = await UserBlock.deleteOne({
             blockerId,
@@ -88,69 +85,62 @@ export class MongooseBlockRepository implements IBlockRepository {
     }
 
     public async findBlocksByBlocker(
-        blockerId: Types.ObjectId,
+        blockerId: string,
     ): Promise<BlockWithFlags[]> {
         const blocks = await UserBlock.find({ blockerId })
-            .populate('profileId')
-            .populate('targetId', 'username')
+            .populate<{
+                profileIdProfile: IBlockProfile | null;
+            }>('profileIdProfile')
+            .populate<{
+                targetIdUser: { username: string } | null;
+            }>('targetIdUser', 'username')
             .exec();
 
-        return blocks.map((b) => {
-            const profile = b.profileId as unknown as IBlockProfile | null;
-            const target = b.targetId as unknown as {
-                _id: Types.ObjectId;
-                username: string;
-            } | null;
-
-            const rawTargetId = b.get('targetId');
-            const rawProfileId = b.get('profileId');
-
-            return {
-                targetId: target
-                    ? target._id.toString()
-                    : rawTargetId.toString(),
-                targetUsername: target ? target.username : 'Deleted User',
-                profileId: profile
-                    ? profile._id.toString()
-                    : rawProfileId.toString(),
-                flags: profile ? profile.flags : 0,
-            };
-        });
+        return blocks.map((b) => ({
+            targetId: b.targetId,
+            targetUsername: b.targetIdUser
+                ? b.targetIdUser.username
+                : 'Deleted User',
+            profileId: b.profileIdProfile
+                ? b.profileIdProfile.snowflakeId
+                : b.profileId,
+            flags: b.profileIdProfile ? b.profileIdProfile.flags : 0,
+        }));
     }
 
     public async findBlocksByTarget(
-        targetId: Types.ObjectId,
+        targetId: string,
     ): Promise<BlockedByWithFlags[]> {
         const blocks = await UserBlock.find({ targetId })
-            .populate('profileId')
+            .populate<{
+                profileIdProfile: IBlockProfile | null;
+            }>('profileIdProfile')
             .exec();
 
-        return blocks.map((b) => {
-            const profile = b.profileId as unknown as IBlockProfile | null;
-            return {
-                blockerId: b.blockerId.toString(),
-                flags: profile ? profile.flags : 0,
-            };
-        });
+        return blocks.map((b) => ({
+            blockerId: b.blockerId,
+            flags: b.profileIdProfile ? b.profileIdProfile.flags : 0,
+        }));
     }
 
     public async findBlock(
-        blockerId: Types.ObjectId,
-        targetId: Types.ObjectId,
+        blockerId: string,
+        targetId: string,
     ): Promise<IUserBlock | null> {
         return await UserBlock.findOne({ blockerId, targetId }).exec();
     }
 
     public async getActiveBlockFlags(
-        blockerId: Types.ObjectId,
-        targetId: Types.ObjectId,
+        blockerId: string,
+        targetId: string,
     ): Promise<number> {
         const block = await UserBlock.findOne({ blockerId, targetId })
-            .populate('profileId')
+            .populate<{
+                profileIdProfile: IBlockProfile | null;
+            }>('profileIdProfile')
             .exec();
         if (block === null) return 0;
 
-        const profile = block.profileId as unknown as IBlockProfile | null;
-        return profile ? profile.flags : 0;
+        return block.profileIdProfile ? block.profileIdProfile.flags : 0;
     }
 }

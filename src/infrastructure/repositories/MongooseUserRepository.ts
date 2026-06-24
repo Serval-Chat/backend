@@ -1,4 +1,3 @@
-import { Types } from 'mongoose';
 import type { QueryFilter } from 'mongoose';
 import {
     IUserRepository,
@@ -42,16 +41,19 @@ export class MongooseUserRepository implements IUserRepository {
         return docs as IUser[];
     }
 
-    public async findById(id: Types.ObjectId): Promise<IUser | null> {
+    public async findById(id: string): Promise<IUser | null> {
         return this.toDomain(
-            await this.userModel.findById(id).select('-password').lean(),
+            await this.userModel
+                .findOne({ snowflakeId: id })
+                .select('-password')
+                .lean(),
         );
     }
 
-    public async findByIds(ids: Types.ObjectId[]): Promise<IUser[]> {
+    public async findByIds(ids: string[]): Promise<IUser[]> {
         return this.toDomainList(
             await this.userModel
-                .find({ _id: { $in: ids } })
+                .find({ snowflakeId: { $in: ids } })
                 .select(
                     'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
                 )
@@ -77,7 +79,7 @@ export class MongooseUserRepository implements IUserRepository {
     }
 
     public async findByUsernamePrefix(
-        userIds: Types.ObjectId[],
+        userIds: string[],
         prefix: string,
         limit: number = 10,
     ): Promise<IUser[]> {
@@ -87,7 +89,7 @@ export class MongooseUserRepository implements IUserRepository {
         return this.toDomainList(
             await this.userModel
                 .find({
-                    _id: { $in: userIds },
+                    snowflakeId: { $in: userIds },
                     username: { $regex: `^${safePrefix}`, $options: 'i' },
                 })
                 .select(
@@ -104,18 +106,18 @@ export class MongooseUserRepository implements IUserRepository {
     }
 
     public async update(
-        id: Types.ObjectId,
+        id: string,
         data: Partial<IUser>,
     ): Promise<IUser | null> {
         return this.toDomain(
             await this.userModel
-                .findByIdAndUpdate(id, data, { new: true })
+                .findOneAndUpdate({ snowflakeId: id }, data, { new: true })
                 .lean(),
         );
     }
 
-    public async delete(id: Types.ObjectId): Promise<boolean> {
-        const result = await this.userModel.deleteOne({ _id: id });
+    public async delete(id: string): Promise<boolean> {
+        const result = await this.userModel.deleteOne({ snowflakeId: id });
         return result.deletedCount > 0;
     }
 
@@ -123,11 +125,8 @@ export class MongooseUserRepository implements IUserRepository {
     //
     // Marks the user as deleted, sets a reason, and increments the token version
     // To invalidate all existing sessions
-    public async softDelete(
-        id: Types.ObjectId,
-        reason: string,
-    ): Promise<boolean> {
-        const user = await this.userModel.findById(id);
+    public async softDelete(id: string, reason: string): Promise<boolean> {
+        const user = await this.userModel.findOne({ snowflakeId: id });
         if (!user) return false;
 
         user.deletedAt = new Date();
@@ -139,16 +138,18 @@ export class MongooseUserRepository implements IUserRepository {
     }
 
     public async comparePassword(
-        id: Types.ObjectId,
+        id: string,
         candidate: string,
     ): Promise<boolean> {
-        const user = await this.userModel.findById(id).select('password');
+        const user = await this.userModel
+            .findOne({ snowflakeId: id })
+            .select('password');
         if (!user) return false;
-        return (user as unknown as IUserModel).comparePassword(candidate);
+        return (user as IUserModel).comparePassword(candidate);
     }
 
     public async updateCustomStatus(
-        id: Types.ObjectId,
+        id: string,
         status: {
             text: string;
             emoji?: string;
@@ -156,37 +157,43 @@ export class MongooseUserRepository implements IUserRepository {
             updatedAt: Date;
         } | null,
     ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, { customStatus: status });
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { customStatus: status },
+        );
     }
 
     public async updateProfilePicture(
-        id: Types.ObjectId,
+        id: string,
         filename: string,
     ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, {
-            profilePicture: filename,
-        });
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            {
+                profilePicture: filename,
+            },
+        );
     }
 
-    public async updateLogin(
-        id: Types.ObjectId,
-        newLogin: string,
-    ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, { login: newLogin });
+    public async updateLogin(id: string, newLogin: string): Promise<void> {
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { login: newLogin },
+        );
     }
 
     public async updatePassword(
-        id: Types.ObjectId,
+        id: string,
         newPassword: string,
     ): Promise<void> {
-        const user = await this.userModel.findById(id);
+        const user = await this.userModel.findOne({ snowflakeId: id });
         if (!user) throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
-        (user as unknown as IUserModel).password = newPassword;
+        (user as IUserModel).password = newPassword;
         await user.save();
     }
 
     public async updateUsernameStyle(
-        id: Types.ObjectId,
+        id: string,
         style: {
             usernameFont?: string;
             usernameGradient?: {
@@ -201,7 +208,7 @@ export class MongooseUserRepository implements IUserRepository {
             };
         },
     ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, style);
+        await this.userModel.findOneAndUpdate({ snowflakeId: id }, style);
     }
 
     // Update a user's username
@@ -209,10 +216,10 @@ export class MongooseUserRepository implements IUserRepository {
     // Cascades the change to related collections (Friendships, FriendRequests)
     // To maintain data consistency for legacy fields
     public async updateUsername(
-        id: Types.ObjectId,
+        id: string,
         newUsername: string,
     ): Promise<void> {
-        const user = await this.userModel.findById(id);
+        const user = await this.userModel.findOne({ snowflakeId: id });
         if (!user) throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
 
         const oldUsername = user.username;
@@ -238,32 +245,35 @@ export class MongooseUserRepository implements IUserRepository {
         );
     }
 
-    public async updateLanguage(
-        id: Types.ObjectId,
-        language: string,
-    ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, { language });
+    public async updateLanguage(id: string, language: string): Promise<void> {
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { language },
+        );
     }
 
-    public async updateBio(
-        id: Types.ObjectId,
-        bio: string | null,
-    ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, { bio });
+    public async updateBio(id: string, bio: string | null): Promise<void> {
+        await this.userModel.findOneAndUpdate({ snowflakeId: id }, { bio });
     }
 
     public async updatePronouns(
-        id: Types.ObjectId,
+        id: string,
         pronouns: string | null,
     ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, { pronouns });
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { pronouns },
+        );
     }
 
     public async updateDisplayName(
-        id: Types.ObjectId,
+        id: string,
         displayName: string | null,
     ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, { displayName });
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { displayName },
+        );
     }
 
     public async findMany(options: {
@@ -297,7 +307,7 @@ export class MongooseUserRepository implements IUserRepository {
             const activeBans = await this.banModel
                 .find({ active: true })
                 .select('userId');
-            query._id = { $in: activeBans.map((b) => b.userId) };
+            query.snowflakeId = { $in: activeBans.map((b) => b.userId) };
         } else if (filter === 'admin') {
             query['permissions.adminAccess'] = true;
         } else if (filter === 'recent') {
@@ -316,22 +326,30 @@ export class MongooseUserRepository implements IUserRepository {
         );
     }
 
-    public async hardDelete(id: Types.ObjectId): Promise<boolean> {
-        const result = await this.userModel.findByIdAndDelete(id);
+    public async hardDelete(id: string): Promise<boolean> {
+        const result = await this.userModel.findOneAndDelete({
+            snowflakeId: id,
+        });
         return !!result;
     }
 
     public async updatePermissions(
-        id: Types.ObjectId,
+        id: string,
         permissions: AdminPermissions,
     ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, { permissions });
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { permissions },
+        );
     }
 
-    public async incrementTokenVersion(id: Types.ObjectId): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, {
-            $inc: { tokenVersion: 1 },
-        });
+    public async incrementTokenVersion(id: string): Promise<void> {
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            {
+                $inc: { tokenVersion: 1 },
+            },
+        );
     }
 
     public async removeBadgeFromAllUsers(badgeId: string): Promise<void> {
@@ -342,7 +360,7 @@ export class MongooseUserRepository implements IUserRepository {
     }
 
     public async updateSettings(
-        id: Types.ObjectId,
+        id: string,
         settings: {
             muteNotifications?: boolean;
             useDiscordStyleMessages?: boolean;
@@ -382,9 +400,12 @@ export class MongooseUserRepository implements IUserRepository {
             update[`settings.${key}`] = value;
         }
 
-        await this.userModel.findByIdAndUpdate(id, {
-            $set: update,
-        });
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            {
+                $set: update,
+            },
+        );
     }
 
     public async count(): Promise<number> {
@@ -398,13 +419,16 @@ export class MongooseUserRepository implements IUserRepository {
     }
 
     public async updateBanner(
-        id: Types.ObjectId,
+        id: string,
         filename: string | null,
     ): Promise<void> {
-        await this.userModel.findByIdAndUpdate(id, { banner: filename });
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { banner: filename },
+        );
     }
 
-    public async isBanned(userId: Types.ObjectId): Promise<boolean> {
+    public async isBanned(userId: string): Promise<boolean> {
         await this.banModel.checkExpired(userId);
         const activeBan = await this.banModel.findOne({
             userId,

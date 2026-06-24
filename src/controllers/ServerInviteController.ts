@@ -14,7 +14,6 @@ import {
     HttpStatus,
     HttpCode,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -50,7 +49,6 @@ import {
     InviteDeletedResponseDTO,
 } from '@/controllers/dto/server-invite.response.dto';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
-import { getDocumentId } from '@/utils/mongooseId';
 import {
     isInviteExpired,
     isInviteMaxedOut,
@@ -102,32 +100,31 @@ export class ServerInviteController {
     public async getServerInvites(
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
-    ): Promise<(IInvite & { createdByUsername?: string })[]> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
+    ): Promise<(IInvite & { id: string; createdByUsername?: string })[]> {
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageInvites',
             new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE),
         );
 
-        const invites = await this.inviteRepo.findByServerId(serverOid);
+        const invites = await this.inviteRepo.findByServerId(serverId);
         const creatorIds = [
             ...new Set(
                 invites.map((invite): string => String(invite.createdByUserId)),
             ),
-        ].map((id): Types.ObjectId => new Types.ObjectId(id));
+        ];
         const creators = await this.userRepo.findByIds(creatorIds);
         const usernameById = new Map(
             creators.map((user): [string, string | undefined] => [
-                String(user._id),
+                user.snowflakeId,
                 user.username,
             ]),
         );
 
         return invites.map((invite) => ({
             ...invite,
+            id: invite.snowflakeId,
             createdByUsername: usernameById.get(String(invite.createdByUserId)),
         }));
     }
@@ -154,24 +151,17 @@ export class ServerInviteController {
         @CurrentUser('id') userId: string,
         @CurrentUser('username') username: string,
         @Body() body: CreateInviteRequestDTO,
-    ): Promise<IInvite & { createdByUsername?: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
+    ): Promise<IInvite & { id: string; createdByUsername?: string }> {
         const { maxUses, expiresIn, customPath } = body;
 
         let code = customPath;
         if (code !== undefined && code !== '') {
-            await this.ensureVanityInviteAllowed(
-                serverOid,
-                userId,
-                userOid,
-                code,
-            );
+            await this.ensureVanityInviteAllowed(serverId, userId, code);
         } else {
-            await this.ensureRegularInviteAllowed(serverOid, userOid);
+            await this.ensureRegularInviteAllowed(serverId, userId);
 
             if (maxUses === undefined && expiresIn === undefined) {
-                const reused = await this.reusePreferredInvite(serverOid);
+                const reused = await this.reusePreferredInvite(serverId);
                 if (reused !== null) return reused;
             }
 
@@ -184,7 +174,7 @@ export class ServerInviteController {
                 : undefined;
 
         const invite = await this.inviteRepo.create({
-            serverId: serverOid,
+            serverId: serverId,
             code,
             customPath:
                 customPath !== undefined && customPath !== ''
@@ -192,14 +182,14 @@ export class ServerInviteController {
                     : undefined,
             maxUses: maxUses !== undefined ? maxUses : 0,
             expiresAt,
-            createdByUserId: userOid,
+            createdByUserId: userId,
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'invite_create',
-            targetId: getDocumentId(invite) as Types.ObjectId,
+            targetId: invite.snowflakeId,
             targetType: 'server',
             metadata: {
                 code: invite.code,
@@ -219,25 +209,28 @@ export class ServerInviteController {
             },
         });
 
-        await this.discoveryService.refreshServer(serverOid);
+        await this.discoveryService.refreshServer(serverId);
 
-        return { ...invite, createdByUsername: username };
+        return {
+            ...invite,
+            id: invite.snowflakeId,
+            createdByUsername: username,
+        };
     }
 
     private async ensureVanityInviteAllowed(
-        serverOid: Types.ObjectId,
+        serverId: string,
         userId: string,
-        userOid: Types.ObjectId,
         code: string,
     ): Promise<void> {
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageInvites',
             new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE),
         );
 
-        const server = await this.serverRepo.findById(serverOid);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null || String(server.ownerId) !== userId) {
             throw new ForbiddenException(
                 ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
@@ -251,26 +244,30 @@ export class ServerInviteController {
     }
 
     private async ensureRegularInviteAllowed(
-        serverOid: Types.ObjectId,
-        userOid: Types.ObjectId,
+        serverId: string,
+        userId: string,
     ): Promise<void> {
         await this.permissionService.requireAnyPermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             ['inviteUsers', 'manageInvites'],
             new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_INVITE),
         );
     }
 
     private async reusePreferredInvite(
-        serverOid: Types.ObjectId,
-    ): Promise<(IInvite & { createdByUsername?: string }) | null> {
+        serverId: string,
+    ): Promise<(IInvite & { id: string; createdByUsername?: string }) | null> {
         const preferred =
-            await this.inviteRepo.findPreferredByServerId(serverOid);
+            await this.inviteRepo.findPreferredByServerId(serverId);
         if (preferred === null || !isInviteUsable(preferred)) return null;
 
         const creator = await this.userRepo.findById(preferred.createdByUserId);
-        return { ...preferred, createdByUsername: creator?.username };
+        return {
+            ...preferred,
+            id: preferred.snowflakeId,
+            createdByUsername: creator?.username,
+        };
     }
 
     @Delete('servers/:serverId/invites/:inviteId')
@@ -291,29 +288,26 @@ export class ServerInviteController {
         @Param('inviteId') inviteId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-        const inviteOid = new Types.ObjectId(inviteId);
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageInvites',
             new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE),
         );
 
-        const invite = await this.inviteRepo.findById(inviteOid);
-        if (invite === null || !invite.serverId.equals(serverOid)) {
+        const invite = await this.inviteRepo.findById(inviteId);
+        if (invite === null || invite.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        await this.inviteRepo.delete(inviteOid);
-        await this.discoveryService.refreshServer(serverOid);
+        await this.inviteRepo.delete(inviteId);
+        await this.discoveryService.refreshServer(serverId);
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'invite_delete',
-            targetId: inviteOid,
+            targetId: inviteId,
             targetType: 'server',
             metadata: {
                 code: invite.code,
@@ -437,12 +431,10 @@ export class ServerInviteController {
             );
         }
 
-        const serverId = invite.serverId.toString();
-        const serverOid = invite.serverId;
-        const userOid = new Types.ObjectId(userId);
+        const serverId = invite.serverId;
         const existingMember = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (existingMember !== null) {
             throw new BadRequestException(ErrorMessages.SERVER.ALREADY_MEMBER);
@@ -450,42 +442,40 @@ export class ServerInviteController {
 
         // Prevent banned users from re-joining via invite
         const existingBan = await this.serverBanRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (existingBan !== null) {
             throw new ForbiddenException(ErrorMessages.SERVER.BANNED);
         }
 
-        const server = await this.serverRepo.findById(serverOid);
-        const roles: Types.ObjectId[] = [];
+        const server = await this.serverRepo.findById(serverId);
+        const roles: string[] = [];
 
         const everyoneRole = await this.roleRepo.findByServerIdAndName(
-            serverOid,
+            serverId,
             '@everyone',
         );
         if (everyoneRole !== null) {
-            roles.push(getDocumentId(everyoneRole) as Types.ObjectId);
+            roles.push(everyoneRole.snowflakeId);
         }
 
         if (server !== null && server.defaultRoleId !== undefined) {
-            roles.push(new Types.ObjectId(server.defaultRoleId));
+            roles.push(server.defaultRoleId);
         }
 
         await this.serverMemberRepo.create({
-            serverId: serverOid,
-            userId: userOid,
+            serverId: serverId,
+            userId: userId,
             roles,
             onboardingRequired: server?.onboarding?.enabled === true,
         });
 
         // Increment invite usage count after successful join
-        await this.inviteRepo.incrementUses(
-            getDocumentId(invite) as Types.ObjectId,
-        );
-        this.permissionService.invalidateCache(serverOid);
+        await this.inviteRepo.incrementUses(invite.snowflakeId);
+        this.permissionService.invalidateCache(serverId);
 
-        const user = await this.userRepo.findById(userOid);
+        const user = await this.userRepo.findById(userId);
         const username =
             user !== null ? (user.username ?? 'Unknown') : 'Unknown';
 
@@ -495,12 +485,12 @@ export class ServerInviteController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'member_join',
-            targetId: userOid,
+            targetId: userId,
             targetType: 'user',
-            targetUserId: userOid,
+            targetUserId: userId,
             metadata: {
                 inviteCode: code,
                 inviteUses: invite.uses + 1,
@@ -509,7 +499,7 @@ export class ServerInviteController {
             },
         });
 
-        await this.discoveryService.refreshServer(serverOid);
+        await this.discoveryService.refreshServer(serverId);
 
         return { serverId };
     }

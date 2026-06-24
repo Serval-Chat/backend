@@ -1,19 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ReactionController } from '../ReactionController';
 import { Types } from 'mongoose';
 import type { AddUnicodeReactionRequestDTO } from '../dto/reaction.request.dto';
 import { EmojiTypeDTO } from '../dto/reaction.request.dto';
-import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
-import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
-import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { PermissionService } from '@/permissions/PermissionService';
-import type { WsServer } from '@/ws/server';
-import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
-import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { ForbiddenException } from '@nestjs/common';
 
 describe('ReactionController', () => {
@@ -22,19 +14,19 @@ describe('ReactionController', () => {
     const mockReactionRepo = {
         addReaction: jest.fn().mockResolvedValue({}),
         getReactionsByMessage: jest.fn().mockResolvedValue([]),
-    } as unknown as IReactionRepository;
+    } as any;
     const mockMessageRepo = {
         findById: jest.fn(),
-    } as unknown as IMessageRepository;
+    } as any;
     const mockServerMessageRepo = {
         findById: jest.fn(),
-    } as unknown as IServerMessageRepository;
+    } as any;
     const mockServerMemberRepo = {
         findByServerAndUser: jest.fn().mockResolvedValue({ userId: 'u1' }),
-    } as unknown as IServerMemberRepository;
+    } as any;
     const mockChannelRepo = {
         findById: jest.fn(),
-    } as unknown as IChannelRepository;
+    } as any;
     const mockPermissionService = {
         hasChannelPermission: jest.fn().mockResolvedValue(true),
         requireChannelPermission: jest.fn(async function (
@@ -58,18 +50,18 @@ describe('ReactionController', () => {
                 throw error;
             }
         }),
-    } as unknown as PermissionService;
+    } as any;
     const mockWsServer = {
         broadcastToServer: jest.fn(),
         broadcastToUser: jest.fn(),
-    } as unknown as WsServer;
+    } as any;
     const mockBlockRepo = {
         getActiveBlockFlags: jest.fn().mockResolvedValue(0),
-    } as unknown as IBlockRepository;
+    } as any;
     const mockMuteRepo = {
         checkExpired: jest.fn().mockResolvedValue(undefined),
         findActiveByUserId: jest.fn().mockResolvedValue(null),
-    } as unknown as IMuteRepository;
+    } as any;
 
     beforeEach(() => {
         controller = new ReactionController(
@@ -80,9 +72,9 @@ describe('ReactionController', () => {
             mockChannelRepo,
             mockPermissionService,
             mockWsServer,
-            {} as unknown as IFriendshipRepository, // friendshipRepo
-            {} as unknown as IAuditLogRepository, // auditLogRepo
-            {} as unknown as IServerAuditLogService, // serverAuditLogService
+            {} as IFriendshipRepository, // friendshipRepo
+            {} as IAuditLogRepository, // auditLogRepo
+            {} as IServerAuditLogService, // serverAuditLogService
             mockBlockRepo,
             mockMuteRepo,
         );

@@ -6,11 +6,9 @@ import {
     Delete,
     Body,
     Param,
-    Req,
     UseGuards,
     Inject,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
 import {
     ApiTags,
     ApiOperation,
@@ -20,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { WsServer } from '@/ws/server';
+import { isValidSnowflakeId } from '@/utils/snowflake';
 import type {
     IChannelRepository,
     IChannel,
@@ -36,13 +35,10 @@ import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRep
 import { PermissionService } from '@/permissions/PermissionService';
 import { ExportService } from '@/services/ExportService';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
-import { isPermissionKey, Permissions } from '@/permissions/types';
+import { isPermissionKey } from '@/permissions/types';
 import type { ILogger } from '@/di/interfaces/ILogger';
 
-import { Request } from 'express';
-import { JWTPayload } from '@/utils/jwt';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
-import { getDocumentId, getDocumentIdString } from '@/utils/mongooseId';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
@@ -110,42 +106,38 @@ export class ServerChannelController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<ChannelWithReadResponseDTO[]> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const channels = await this.channelRepo.findByServerId(serverOid);
+        const channels = await this.channelRepo.findByServerId(serverId);
 
         const categoryIds = [
             ...new Map(
                 channels
                     .map((c) => c.categoryId)
                     .filter(
-                        (id): id is Types.ObjectId =>
-                            id !== null && id !== undefined,
+                        (id): id is string => id !== null && id !== undefined,
                     )
-                    .map((id) => [id.toString(), id] as const),
+                    .map((id) => [id, id] as const),
             ).values(),
         ];
 
         const [channelPermissionMap, categoryPermissionMap] = await Promise.all(
             [
                 this.permissionService.hasChannelPermissions(
-                    serverOid,
-                    userOid,
-                    channels.map((c) => getDocumentId(c) as Types.ObjectId),
+                    serverId,
+                    userId,
+                    channels.map((c) => c.snowflakeId),
                     'viewChannels',
                 ),
                 this.permissionService.hasCategoryPermissions(
-                    serverOid,
-                    userOid,
+                    serverId,
+                    userId,
                     categoryIds,
                     'viewCategories',
                 ),
@@ -155,9 +147,9 @@ export class ServerChannelController {
         const visibleChannels: IChannel[] = [];
         for (const c of channels) {
             const canViewChannel =
-                channelPermissionMap.get(getDocumentIdString(c)) === true;
+                channelPermissionMap.get(c.snowflakeId) === true;
 
-            const categoryId = c.categoryId?.toString() ?? null;
+            const categoryId = c.categoryId ?? null;
             const canViewParentCategory =
                 categoryId === null ||
                 categoryPermissionMap.get(categoryId) === true;
@@ -168,8 +160,8 @@ export class ServerChannelController {
         }
 
         const reads = await this.serverChannelReadRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         const readMap = new Map<string, Date>();
         reads.forEach((read) => {
@@ -178,7 +170,7 @@ export class ServerChannelController {
 
         const mappedChannels = visibleChannels.map(
             async (channel: IChannel) => {
-                const channelId = getDocumentIdString(channel);
+                const channelId = channel.snowflakeId;
                 const lastMessageAt: Date | null =
                     channel.lastMessageAt !== undefined
                         ? channel.lastMessageAt
@@ -191,8 +183,8 @@ export class ServerChannelController {
                 if (channel.slowMode !== undefined && channel.slowMode > 0) {
                     const lastMessage =
                         await this.serverMessageRepo.findLastByChannelAndUser(
-                            new Types.ObjectId(channelId),
-                            userOid,
+                            channelId,
+                            userId,
                         );
                     if (lastMessage !== null) {
                         const lastSentAt =
@@ -211,9 +203,9 @@ export class ServerChannelController {
 
                 return {
                     ...channel,
-                    id: getDocumentIdString(channel),
+                    id: channel.snowflakeId,
                     serverId: channel.serverId.toString(),
-                    categoryId: channel.categoryId?.toString() ?? null,
+                    categoryId: channel.categoryId ?? null,
                     lastMessageAt: lastMessageAt
                         ? lastMessageAt.toISOString()
                         : null,
@@ -225,10 +217,10 @@ export class ServerChannelController {
                     slowModeNextMessageAllowedAt,
                     permissions:
                         await this.permissionService.normalizePermissionMap(
-                            serverOid,
-                            channel.permissions as Record<string, Permissions>,
+                            serverId,
+                            channel.permissions,
                         ),
-                } as unknown as ChannelWithReadResponseDTO;
+                };
             },
         );
 
@@ -243,32 +235,26 @@ export class ServerChannelController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<ICategory[]> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
-        const categories = await this.categoryRepo.findByServerId(serverOid);
-        const categoryIds = categories.map(
-            (c) => getDocumentId(c) as Types.ObjectId,
-        );
+        const categories = await this.categoryRepo.findByServerId(serverId);
+        const categoryIds = categories.map((c) => c.snowflakeId);
         const permissionMap =
             await this.permissionService.hasCategoryPermissions(
-                serverOid,
-                userOid,
-                categoryIds as Types.ObjectId[],
+                serverId,
+                userId,
+                categoryIds,
                 'viewCategories',
             );
 
         return categories.filter(
-            (category) =>
-                permissionMap.get(getDocumentIdString(category)) === true,
+            (category) => permissionMap.get(category.snowflakeId) === true,
         );
     }
 
@@ -281,18 +267,15 @@ export class ServerChannelController {
         @CurrentUser('id') userId: string,
         @Body() body: CreateChannelRequestDTO,
     ): Promise<IChannel> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
         const maxPositionChannel =
-            await this.channelRepo.findMaxPositionByServerId(serverOid);
+            await this.channelRepo.findMaxPositionByServerId(serverId);
         const finalPosition =
             body.position !== undefined
                 ? body.position
@@ -315,20 +298,20 @@ export class ServerChannelController {
         } else {
             // Default permission: allow @everyone to send messages
             const everyoneRole =
-                await this.permissionService.normalizePermissionMap(serverOid, {
+                await this.permissionService.normalizePermissionMap(serverId, {
                     everyone: { sendMessages: true },
                 });
             Object.assign(filteredPermissions, everyoneRole);
         }
 
         const channel = await this.channelRepo.create({
-            serverId: serverOid,
+            serverId: serverId,
             name: body.name,
             type: body.type ?? 'text',
             position: finalPosition,
             categoryId:
                 body.categoryId !== undefined && body.categoryId !== ''
-                    ? new Types.ObjectId(body.categoryId)
+                    ? body.categoryId
                     : null,
             permissions: filteredPermissions,
             ...(body.description !== undefined &&
@@ -352,15 +335,15 @@ export class ServerChannelController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'create_channel',
-            targetId: getDocumentId(channel) as Types.ObjectId,
+            targetId: channel.snowflakeId,
             targetType: 'channel',
             metadata: { channelName: channel.name, channelType: channel.type },
         });
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         return channel;
     }
@@ -377,20 +360,17 @@ export class ServerChannelController {
         @CurrentUser('id') userId: string,
         @Body() body: ReorderChannelsRequestDTO,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
         const existingChannels =
-            await this.channelRepo.findByServerId(serverOid);
+            await this.channelRepo.findByServerId(serverId);
         const channelMap = new Map(
-            existingChannels.map((c) => [getDocumentIdString(c), c]),
+            existingChannels.map((c) => [c.snowflakeId, c]),
         );
 
         const changes = [];
@@ -403,7 +383,7 @@ export class ServerChannelController {
                     after: position,
                 });
             }
-            await this.channelRepo.update(new Types.ObjectId(channelId), {
+            await this.channelRepo.update(channelId, {
                 position,
             });
         }
@@ -431,15 +411,15 @@ export class ServerChannelController {
 
         if (changes.length > 0) {
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'channels_reordered',
                 targetType: 'channel',
                 changes,
             });
         }
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         return { message: 'Channels reordered' };
     }
@@ -455,13 +435,9 @@ export class ServerChannelController {
         @Param('channelId') channelId: string,
         @CurrentUser('id') userId: string,
     ): Promise<ChannelStatsResponseDTO> {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
@@ -469,15 +445,15 @@ export class ServerChannelController {
 
         const [canView] = await Promise.all([
             this.permissionService.hasChannelPermission(
-                serverOid,
-                userOid,
-                channelOid,
+                serverId,
+                userId,
+                channelId,
                 'viewChannels',
             ),
             this.permissionService.hasChannelPermission(
-                serverOid,
-                userOid,
-                channelOid,
+                serverId,
+                userId,
+                channelId,
                 'connect',
             ),
         ]);
@@ -486,7 +462,7 @@ export class ServerChannelController {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const channel = await this.channelRepo.findById(channelOid);
+        const channel = await this.channelRepo.findById(channelId);
         if (channel === null) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
@@ -496,10 +472,10 @@ export class ServerChannelController {
         }
 
         const messageCount =
-            await this.serverMessageRepo.countByChannelId(channelOid);
+            await this.serverMessageRepo.countByChannelId(channelId);
 
         return {
-            channelId: getDocumentIdString(channel),
+            channelId: channel.snowflakeId,
             channelName: channel.name,
             createdAt: channel.createdAt.toISOString(),
             messageCount,
@@ -517,18 +493,14 @@ export class ServerChannelController {
         @CurrentUser('id') userId: string,
         @Body() body: UpdateChannelRequestDTO,
     ): Promise<IChannel> {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
-        const existingChannel = await this.channelRepo.findById(channelOid);
+        const existingChannel = await this.channelRepo.findById(channelId);
         if (
             existingChannel === null ||
             existingChannel.serverId.toString() !== serverId
@@ -543,7 +515,7 @@ export class ServerChannelController {
         if (body.categoryId !== undefined)
             updates.categoryId =
                 body.categoryId !== null && body.categoryId !== ''
-                    ? new Types.ObjectId(body.categoryId)
+                    ? body.categoryId
                     : null;
         if (body.description !== undefined)
             updates.description = body.description;
@@ -572,7 +544,7 @@ export class ServerChannelController {
 
         if (body.link !== undefined) updates.link = body.link;
 
-        const channel = await this.channelRepo.update(channelOid, updates);
+        const channel = await this.channelRepo.update(channelId, updates);
         if (channel === null) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
@@ -662,17 +634,17 @@ export class ServerChannelController {
 
         if (changes.length > 0) {
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'edit_channel',
-                targetId: channelOid,
+                targetId: channelId,
                 targetType: 'channel',
                 changes,
                 metadata: { channelName: existingChannel.name },
             });
         }
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         return channel;
     }
@@ -687,29 +659,25 @@ export class ServerChannelController {
         @Param('channelId') channelId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
-        const channel = await this.channelRepo.findById(channelOid);
-        const server = await this.serverRepo.findById(serverOid);
+        const channel = await this.channelRepo.findById(channelId);
+        const server = await this.serverRepo.findById(serverId);
 
         if (channel !== null && server !== null) {
             await this.exportService.handleChannelDeletion(
-                channelOid,
+                channelId,
                 channel.name,
                 server.name,
             );
         }
 
-        await this.channelRepo.delete(channelOid);
+        await this.channelRepo.delete(channelId);
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channel_deleted',
@@ -717,15 +685,15 @@ export class ServerChannelController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'delete_channel',
-            targetId: channelOid,
+            targetId: channelId,
             targetType: 'channel',
             metadata: { channelName: channel !== null ? channel.name : '' },
         });
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         return { message: 'Channel deleted' };
     }
@@ -739,18 +707,15 @@ export class ServerChannelController {
         @CurrentUser('id') userId: string,
         @Body() body: CreateCategoryRequestDTO,
     ): Promise<ICategory> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
         const maxPositionCategory =
-            await this.categoryRepo.findMaxPositionByServerId(serverOid);
+            await this.categoryRepo.findMaxPositionByServerId(serverId);
         const finalPosition =
             body.position !== undefined
                 ? body.position
@@ -759,7 +724,7 @@ export class ServerChannelController {
                   : 0;
 
         const category = await this.categoryRepo.create({
-            serverId: serverOid,
+            serverId: serverId,
             name: body.name,
             position: finalPosition,
             ...(body.markdownBlockadeRules !== undefined && {
@@ -773,10 +738,10 @@ export class ServerChannelController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'create_category',
-            targetId: getDocumentId(category) as Types.ObjectId,
+            targetId: category.snowflakeId,
             targetType: 'category',
             metadata: {
                 categoryName: category.name,
@@ -784,7 +749,7 @@ export class ServerChannelController {
             },
         });
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         return category;
     }
@@ -801,18 +766,15 @@ export class ServerChannelController {
         @CurrentUser('id') userId: string,
         @Body() body: ReorderCategoriesRequestDTO,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
         for (const { categoryId, position } of body.categoryPositions) {
-            await this.categoryRepo.update(new Types.ObjectId(categoryId), {
+            await this.categoryRepo.update(categoryId, {
                 position,
             });
         }
@@ -826,7 +788,7 @@ export class ServerChannelController {
             },
         });
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         return { message: 'Categories reordered' };
     }
@@ -842,13 +804,9 @@ export class ServerChannelController {
         @CurrentUser('id') userId: string,
         @Body() body: UpdateCategoryRequestDTO,
     ): Promise<ICategory> {
-        const serverOid = new Types.ObjectId(serverId);
-        const categoryOid = new Types.ObjectId(categoryId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
@@ -860,12 +818,12 @@ export class ServerChannelController {
         if (body.markdownBlockadeRules !== undefined)
             updates.markdownBlockadeRules = body.markdownBlockadeRules;
 
-        const existingCategory = await this.categoryRepo.findById(categoryOid);
+        const existingCategory = await this.categoryRepo.findById(categoryId);
         if (existingCategory === null) {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
-        const category = await this.categoryRepo.update(categoryOid, updates);
+        const category = await this.categoryRepo.update(categoryId, updates);
         if (category === null) {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
@@ -889,10 +847,10 @@ export class ServerChannelController {
         }
         if (changes.length > 0) {
             await this.serverAuditLogService.createAndBroadcast({
-                serverId: serverOid,
-                actorId: userOid,
+                serverId: serverId,
+                actorId: userId,
                 actionType: 'edit_category',
-                targetId: categoryOid,
+                targetId: categoryId,
                 targetType: 'category',
                 changes,
                 metadata: {
@@ -902,7 +860,7 @@ export class ServerChannelController {
             });
         }
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         return category;
     }
@@ -920,34 +878,27 @@ export class ServerChannelController {
         @Param('categoryId') categoryId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const categoryOid = new Types.ObjectId(categoryId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
-        const category = await this.categoryRepo.findById(categoryOid);
+        const category = await this.categoryRepo.findById(categoryId);
         if (category === null) {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
-        await this.categoryRepo.delete(categoryOid);
+        await this.categoryRepo.delete(categoryId);
 
         // Orphan channels by moving them out of the deleted category
-        const channels = await this.channelRepo.findByServerId(serverOid);
+        const channels = await this.channelRepo.findByServerId(serverId);
         for (const channel of channels) {
             if (channel.categoryId?.toString() === categoryId) {
-                await this.channelRepo.update(
-                    getDocumentId(channel) as Types.ObjectId,
-                    {
-                        categoryId: null,
-                    },
-                );
+                await this.channelRepo.update(channel.snowflakeId, {
+                    categoryId: null,
+                });
             }
         }
 
@@ -957,10 +908,10 @@ export class ServerChannelController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'delete_category',
-            targetId: categoryOid,
+            targetId: categoryId,
             targetType: 'category',
             metadata: {
                 categoryName: category.name,
@@ -968,7 +919,7 @@ export class ServerChannelController {
             },
         });
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         return { message: 'Category deleted' };
     }
@@ -986,33 +937,29 @@ export class ServerChannelController {
         @Param('channelId') channelId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
-        const channel = await this.channelRepo.findById(channelOid);
+        const channel = await this.channelRepo.findById(channelId);
         if (channel === null) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
         const normalized = await this.permissionService.normalizePermissionMap(
-            serverOid,
-            channel.permissions as Record<string, Record<string, boolean>>,
+            serverId,
+            channel.permissions,
         );
 
         return { permissions: normalized };
@@ -1032,18 +979,14 @@ export class ServerChannelController {
         @CurrentUser('id') userId: string,
         @Body() body: UpdatePermissionsRequestDTO,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const channelOid = new Types.ObjectId(channelId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
-        const channel = await this.channelRepo.findById(channelOid);
+        const channel = await this.channelRepo.findById(channelId);
         if (channel === null) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
@@ -1066,8 +1009,8 @@ export class ServerChannelController {
             string,
             Record<string, boolean>
         >;
-        const roles = await this.roleRepo.findByServerId(serverOid);
-        const roleMap = new Map(roles.map((r) => [getDocumentIdString(r), r]));
+        const roles = await this.roleRepo.findByServerId(serverId);
+        const roleMap = new Map(roles.map((r) => [r.snowflakeId, r]));
 
         const allRoleIds = new Set([
             ...Object.keys(oldPerms),
@@ -1103,15 +1046,15 @@ export class ServerChannelController {
         }
 
         const normalized = await this.permissionService.normalizePermissionMap(
-            serverOid,
+            serverId,
             filteredPermissions,
         );
 
-        await this.channelRepo.update(channelOid, {
+        await this.channelRepo.update(channelId, {
             permissions: normalized,
         });
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId.toString(), {
             type: 'channel_permissions_updated',
@@ -1124,10 +1067,10 @@ export class ServerChannelController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'channel_permissions_updated',
-            targetId: channelOid,
+            targetId: channelId,
             targetType: 'channel',
             metadata: { channelName: channel.name },
             ...(changes.length > 0 && { changes }),
@@ -1149,33 +1092,29 @@ export class ServerChannelController {
         @Param('categoryId') categoryId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const categoryOid = new Types.ObjectId(categoryId);
-        const userOid = new Types.ObjectId(userId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
         }
 
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
-        const category = await this.categoryRepo.findById(categoryOid);
+        const category = await this.categoryRepo.findById(categoryId);
         if (category === null) {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
 
         const normalized = await this.permissionService.normalizePermissionMap(
-            serverOid,
-            category.permissions as Record<string, Record<string, boolean>>,
+            serverId,
+            category.permissions,
         );
 
         return { permissions: normalized };
@@ -1195,18 +1134,14 @@ export class ServerChannelController {
         @CurrentUser('id') userId: string,
         @Body() body: UpdatePermissionsRequestDTO,
     ): Promise<{ permissions: Record<string, Record<string, boolean>> }> {
-        const serverOid = new Types.ObjectId(serverId);
-        const categoryOid = new Types.ObjectId(categoryId);
-        const userOid = new Types.ObjectId(userId);
-
         await this.permissionService.requirePermission(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
             'manageChannels',
             new ApiError(403, ErrorMessages.CHANNEL.NO_PERMISSION_MANAGE),
         );
 
-        const category = await this.categoryRepo.findById(categoryOid);
+        const category = await this.categoryRepo.findById(categoryId);
         if (category === null) {
             throw new ApiError(404, ErrorMessages.CHANNEL.CATEGORY_NOT_FOUND);
         }
@@ -1229,8 +1164,8 @@ export class ServerChannelController {
             string,
             Record<string, boolean>
         >;
-        const roles = await this.roleRepo.findByServerId(serverOid);
-        const roleMap = new Map(roles.map((r) => [getDocumentIdString(r), r]));
+        const roles = await this.roleRepo.findByServerId(serverId);
+        const roleMap = new Map(roles.map((r) => [r.snowflakeId, r]));
 
         const allRoleIds = new Set([
             ...Object.keys(oldPerms),
@@ -1266,15 +1201,15 @@ export class ServerChannelController {
         }
 
         const normalized = await this.permissionService.normalizePermissionMap(
-            serverOid,
+            serverId,
             filteredPermissions,
         );
 
-        await this.categoryRepo.update(categoryOid, {
+        await this.categoryRepo.update(categoryId, {
             permissions: normalized,
         });
 
-        this.permissionService.invalidateCache(serverOid);
+        this.permissionService.invalidateCache(serverId);
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'category_permissions_updated',
@@ -1286,10 +1221,10 @@ export class ServerChannelController {
         });
 
         await this.serverAuditLogService.createAndBroadcast({
-            serverId: serverOid,
-            actorId: userOid,
+            serverId: serverId,
+            actorId: userId,
             actionType: 'category_permissions_updated',
-            targetId: categoryOid,
+            targetId: categoryId,
             targetType: 'category',
             metadata: { categoryName: category.name },
             ...(changes.length > 0 && { changes }),
@@ -1311,12 +1246,9 @@ export class ServerChannelController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<Record<string, string[]>> {
-        const serverOid = new Types.ObjectId(serverId);
-        const userOid = new Types.ObjectId(userId);
-
         const member = await this.serverMemberRepo.findByServerAndUser(
-            serverOid,
-            userOid,
+            serverId,
+            userId,
         );
         if (member === null) {
             throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
@@ -1346,11 +1278,11 @@ export class ServerChannelController {
                 const members = await redis.smembers(key);
                 if (members.length > 0) {
                     const canView =
-                        Types.ObjectId.isValid(channelId) &&
+                        isValidSnowflakeId(channelId) &&
                         (await this.permissionService.hasChannelPermission(
-                            serverOid,
-                            userOid,
-                            new Types.ObjectId(channelId),
+                            serverId,
+                            userId,
+                            channelId,
                             'viewChannels',
                         ));
                     if (canView) {

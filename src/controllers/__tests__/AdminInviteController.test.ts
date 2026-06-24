@@ -1,7 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NotFoundException } from '@nestjs/common';
 import { AdminInviteController } from '../AdminInviteController';
-import type { RegistrationInviteService } from '@/services/RegistrationInviteService';
-import type { Response } from 'express';
 
 describe('AdminInviteController', () => {
     let controller: AdminInviteController;
@@ -15,9 +14,7 @@ describe('AdminInviteController', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        controller = new AdminInviteController(
-            mockInviteService as unknown as RegistrationInviteService,
-        );
+        controller = new AdminInviteController(mockInviteService as any);
     });
 
     describe('listInvites', () => {
@@ -68,7 +65,7 @@ describe('AdminInviteController', () => {
             mockInviteService.getTokensFilePath.mockReturnValue(
                 '/path/to/tokens.txt',
             );
-            controller.exportInvites(res as unknown as Response);
+            controller.exportInvites(res as any);
             expect(res.download).toHaveBeenCalledWith(
                 '/path/to/tokens.txt',
                 'invites.txt',

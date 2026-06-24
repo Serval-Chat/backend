@@ -113,7 +113,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
         const profileId = (profile.id !== undefined && profile.id !== null && profile.id !== '') ? profile.id : profile._id;
 
         // create a block relationship attached to this profile.
-        await api(app, userToken).put(`/api/v1/blocks/${other._id.toString()}`, { profileId });
+        await api(app, userToken).put(`/api/v1/blocks/${other.snowflakeId}`, { profileId });
 
         const before = await api(app, userToken).get('/api/v1/blocks').then((r: Response) => r.body);
         assert.ok(Array.isArray(before) && before.length > 0);
@@ -132,7 +132,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
         const batch = [];
         for (let i = 0; i < 4096; i++) {
             batch.push({
-                ownerId: user._id,
+                ownerId: user.snowflakeId,
                 name: `Profile ${i}`,
                 flags: 0
             });
@@ -173,25 +173,25 @@ describe('Advanced Blocking - Block Lifecycle', () => {
         }).then((r: Response) => r.body);
         const profileId = (profile.id !== undefined && profile.id !== null && profile.id !== '') ? profile.id : profile._id;
 
-        const res = await api(app, blockerToken).put(`/api/v1/blocks/${blocked._id.toString()}`, { profileId });
+        const res = await api(app, blockerToken).put(`/api/v1/blocks/${blocked.snowflakeId}`, { profileId });
         if (res.status !== 200) console.error("BLOCK PUT FAIL", res.status, res.body);
         assert.equal(res.status, 200);
-        assert.equal(res.body.targetUserId, blocked._id.toString());
+        assert.equal(res.body.targetUserId, blocked.snowflakeId);
     });
 
     it('DELETE /blocks/:targetId removes block', async () => {
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.BLOCK_REACTIONS);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.BLOCK_REACTIONS);
 
-        const del = await api(app, blockerToken).delete(`/api/v1/blocks/${blocked._id.toString()}`);
+        const del = await api(app, blockerToken).delete(`/api/v1/blocks/${blocked.snowflakeId}`);
         assert.ok([200, 204].includes(del.status), `Expected 200 or 204, got ${del.status}`);
 
         const list = await api(app, blockerToken).get('/api/v1/blocks').then((r: Response) => r.body);
-        const found = (Array.isArray(list) ? list : []).find(b => b.targetUserId === blocked._id.toString());
+        const found = (Array.isArray(list) ? list : []).find(b => b.targetUserId === blocked.snowflakeId);
         assert.equal(found, undefined, 'Block should be removed');
     });
 
     it('GET /blocks returns all block relationships as array', async () => {
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.BLOCK_REACTIONS);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.BLOCK_REACTIONS);
 
         const res = await api(app, blockerToken).get('/api/v1/blocks');
         assert.equal(res.status, 200);
@@ -229,7 +229,7 @@ describe('Advanced Blocking - Flag 1: BLOCK_REACTIONS (HTTP)', () => {
         const invite = await api(app, blockerToken).post(`/api/v1/servers/${serverId}/invites`).then((r: Response) => r.body);
         await api(app, blockedToken).post(`/api/v1/invites/${invite.code}/join`);
 
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.BLOCK_REACTIONS);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.BLOCK_REACTIONS);
     });
 
     it('Opacity: HTTP 200 when blocked user tries to react to blocker message', async () => {
@@ -316,29 +316,29 @@ describe('Advanced Blocking - Flag 3: HIDE_FROM_MEMBER_LIST', () => {
         const before = await api(app, blockerToken).get(`/api/v1/servers/${serverId}/members`);
         assert.equal(before.status, 200, 'Should be 200 before block');
 
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.HIDE_FROM_MEMBER_LIST);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.HIDE_FROM_MEMBER_LIST);
 
         const after = await api(app, blockerToken).get(`/api/v1/servers/${serverId}/members`);
         assert.equal(after.status, 200, 'Should be 200 after block (not 403)');
     });
 
     it('Blocked member excluded from blocker\'s member list', async () => {
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.HIDE_FROM_MEMBER_LIST);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.HIDE_FROM_MEMBER_LIST);
 
         const res = await api(app, blockerToken).get(`/api/v1/servers/${serverId}/members`);
         assert.equal(res.status, 200);
         const members = Array.isArray(res.body) ? res.body : ((res.body.members !== undefined && res.body.members !== null) ? res.body.members : []);
-        const found = (members as { userId?: string; id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m.id) === blocked._id.toString());
+        const found = (members as { userId?: string; id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m.id) === blocked.snowflakeId);
         assert.equal(found, undefined, 'Blocked user should be hidden from blocker\'s member list');
     });
 
     it('Blocked user still sees full member list (asymmetric)', async () => {
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.HIDE_FROM_MEMBER_LIST);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.HIDE_FROM_MEMBER_LIST);
 
         const res = await api(app, blockedToken).get(`/api/v1/servers/${serverId}/members`);
         assert.equal(res.status, 200);
         const members = Array.isArray(res.body) ? res.body : ((res.body.members !== undefined && res.body.members !== null) ? res.body.members : []);
-        const found = (members as { userId?: string; id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m.id) === blocker._id.toString());
+        const found = (members as { userId?: string; id?: string }[]).find((m) => ((m.userId !== undefined && m.userId !== '') ? m.userId : m.id) === blocker.snowflakeId);
         assert.ok(found !== undefined, 'Blocker should still appear in blocked user\'s member list');
     });
 });
@@ -362,18 +362,18 @@ describe('Advanced Blocking - Flags 12a-12d: Profile Field Visibility', () => {
     });
 
     it('Opacity: profile endpoint always returns 200', async () => {
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.HIDE_MY_BIO);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.HIDE_MY_BIO);
 
-        const res = await api(app, blockedToken).get(`/api/v1/profile/${blocker._id.toString()}`);
+        const res = await api(app, blockedToken).get(`/api/v1/profile/${blocker.snowflakeId}`);
         assert.equal(res.status, 200, 'Must return 200 even when fields are hidden');
     });
 
     it('HIDE_MY_BIO nulls bio in profile seen by blocked user', async () => {
         await api(app, blockerToken).patch('/api/v1/profile/bio', { bio: 'My secret bio' });
 
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.HIDE_MY_BIO);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.HIDE_MY_BIO);
 
-        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker._id.toString()}`).then((r: Response) => r.body);
+        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker.snowflakeId}`).then((r: Response) => r.body);
         assert.ok(
             profile.bio === null || profile.bio === undefined || profile.bio === '',
             `Bio should be hidden, got: ${JSON.stringify(profile.bio)}`
@@ -383,9 +383,9 @@ describe('Advanced Blocking - Flags 12a-12d: Profile Field Visibility', () => {
     it('HIDE_MY_PRONOUNS nulls pronouns in profile seen by blocked user', async () => {
         await api(app, blockerToken).patch('/api/v1/profile/pronouns', { pronouns: 'they/them' });
 
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.HIDE_MY_PRONOUNS);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.HIDE_MY_PRONOUNS);
 
-        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker._id.toString()}`).then((r: Response) => r.body);
+        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker.snowflakeId}`).then((r: Response) => r.body);
         assert.ok(
             profile.pronouns === null || profile.pronouns === undefined || profile.pronouns === '',
             `Pronouns should be hidden, got: ${JSON.stringify(profile.pronouns)}`
@@ -395,9 +395,9 @@ describe('Advanced Blocking - Flags 12a-12d: Profile Field Visibility', () => {
     it('HIDE_MY_DISPLAY_NAME nulls displayName in profile seen by blocked user', async () => {
         await api(app, blockerToken).patch('/api/v1/profile/display-name', { displayName: 'My Display Name' });
 
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.HIDE_MY_DISPLAY_NAME);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.HIDE_MY_DISPLAY_NAME);
 
-        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker._id.toString()}`).then((r: Response) => r.body);
+        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker.snowflakeId}`).then((r: Response) => r.body);
         assert.ok(
             profile.displayName === null || profile.displayName === undefined || profile.displayName === '',
             `displayName should be hidden, got: ${JSON.stringify(profile.displayName)}`
@@ -410,9 +410,9 @@ describe('Advanced Blocking - Flags 12a-12d: Profile Field Visibility', () => {
         const otherToken = otherRes.body.token;
 
         await api(app, blockerToken).patch('/api/v1/profile/bio', { bio: 'Public bio' });
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.HIDE_MY_BIO);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.HIDE_MY_BIO);
 
-        const profile = await api(app, otherToken).get(`/api/v1/profile/${blocker._id.toString()}`).then((r: Response) => r.body);
+        const profile = await api(app, otherToken).get(`/api/v1/profile/${blocker.snowflakeId}`).then((r: Response) => r.body);
         assert.ok(
             profile.bio === 'Public bio' || profile.bio !== null,
             `Bio should be visible to non-blocked users`
@@ -430,9 +430,9 @@ describe('Advanced Blocking - Flags 12a-12d: Profile Field Visibility', () => {
             BlockFlags.HIDE_MY_DISPLAY_NAME |
             BlockFlags.HIDE_MY_AVATAR;
 
-        await setupBlock(app, blockerToken, blocked._id.toString(), allHideFlags);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, allHideFlags);
 
-        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker._id.toString()}`).then((r: Response) => r.body);
+        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker.snowflakeId}`).then((r: Response) => r.body);
         const isNullOrEmpty = (v: unknown) => v === null || v === undefined || v === ''; assert.ok(isNullOrEmpty(profile.bio), 'bio hidden');
         assert.ok(isNullOrEmpty(profile.pronouns), 'pronouns hidden');
         assert.ok(isNullOrEmpty(profile.displayName), 'displayName hidden');
@@ -458,9 +458,9 @@ describe('Advanced Blocking - General Opacity Guarantees', () => {
 
     it('No endpoint leaks block existence via 403 or 404', async () => {
         const ALL_FLAGS = Object.values(BlockFlags).reduce((a, b) => a | b, 0);
-        await setupBlock(app, blockerToken, blocked._id.toString(), ALL_FLAGS);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, ALL_FLAGS);
 
-        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker._id.toString()}`);
+        const profile = await api(app, blockedToken).get(`/api/v1/profile/${blocker.snowflakeId}`);
         assert.equal(profile.status, 200, `Profile must return 200 when fields hidden, got ${profile.status}`);
 
         const friend = await api(app, blockedToken).post('/api/v1/friends', { username: blocker.username });
@@ -469,14 +469,14 @@ describe('Advanced Blocking - General Opacity Guarantees', () => {
 
     it('Unblocking restores full visibility', async () => {
         await api(app, blockerToken).patch('/api/v1/profile/bio', { bio: 'Secret bio' });
-        await setupBlock(app, blockerToken, blocked._id.toString(), BlockFlags.HIDE_MY_BIO);
+        await setupBlock(app, blockerToken, blocked.snowflakeId, BlockFlags.HIDE_MY_BIO);
 
-        const hidden = await api(app, blockedToken).get(`/api/v1/profile/${blocker._id.toString()}`).then((r: Response) => r.body);
+        const hidden = await api(app, blockedToken).get(`/api/v1/profile/${blocker.snowflakeId}`).then((r: Response) => r.body);
         assert.ok(hidden.bio === null || hidden.bio === undefined || hidden.bio === '', 'bio should be hidden');
 
-        await api(app, blockerToken).delete(`/api/v1/blocks/${blocked._id.toString()}`);
+        await api(app, blockerToken).delete(`/api/v1/blocks/${blocked.snowflakeId}`);
 
-        const visible = await api(app, blockedToken).get(`/api/v1/profile/${blocker._id.toString()}`).then(r => r.body);
+        const visible = await api(app, blockedToken).get(`/api/v1/profile/${blocker.snowflakeId}`).then(r => r.body);
         assert.ok(visible.bio === 'Secret bio' || (visible.bio !== null && visible.bio !== undefined), 'bio should be visible after unblock');
     });
 });

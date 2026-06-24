@@ -1,4 +1,5 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
+import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
@@ -14,6 +15,7 @@ export enum MessageAlignment {
 // Represents a registered user in the system
 // Includes profile settings, permissions, and security fields
 export interface IUser extends Document {
+    snowflakeId: string;
     _id: Types.ObjectId;
     login: string;
     username: string;
@@ -293,6 +295,8 @@ schema.methods.comparePassword = function (candidate: string) {
 };
 
 schema.plugin(mongooseIdPlugin);
+
+schema.plugin(snowflakeIdPlugin);
 
 // User model
 export const User = model<IUser>('User', schema);

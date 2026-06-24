@@ -1,7 +1,4 @@
-import { Types } from 'mongoose';
 import { IMuteRepository, IMute } from '@/di/interfaces/IMuteRepository';
-import { IMuteHistoryEntry } from '@/models/Mute';
-import logger from '@/utils/logger';
 import { Mute } from '@/models/Mute';
 import { injectable } from 'inversify';
 
@@ -10,14 +7,12 @@ export class MongooseMuteRepository implements IMuteRepository {
     private muteModel = Mute;
     public constructor() {}
 
-    public async findActiveByUserId(
-        userId: Types.ObjectId,
-    ): Promise<IMute | null> {
+    public async findActiveByUserId(userId: string): Promise<IMute | null> {
         return await this.muteModel.findOne({ userId, active: true }).lean();
     }
 
     public async create(
-        userId: Types.ObjectId,
+        userId: string,
         reason: string,
         expirationTimestamp?: Date,
     ): Promise<IMute> {
@@ -30,15 +25,15 @@ export class MongooseMuteRepository implements IMuteRepository {
         return await mute.save();
     }
 
-    public async expire(muteId: Types.ObjectId): Promise<boolean> {
+    public async expire(muteId: string): Promise<boolean> {
         const result = await this.muteModel.updateOne(
-            { _id: muteId },
+            { snowflakeId: muteId },
             { active: false },
         );
         return result.modifiedCount > 0;
     }
 
-    public async checkExpired(userId: Types.ObjectId): Promise<void> {
+    public async checkExpired(userId: string): Promise<void> {
         await this.muteModel.checkExpired(userId);
     }
 
@@ -49,28 +44,26 @@ export class MongooseMuteRepository implements IMuteRepository {
             .lean();
     }
 
+    // issuedBy is a plain snowflakeId string, AdminController displays it as-is,
+    // so populating it would be wasted work.
     public async findByUserIdWithHistory(
-        userId: Types.ObjectId,
+        userId: string,
     ): Promise<IMute | null> {
-        return await this.muteModel
-            .findOne({ userId })
-            .populate('history.issuedBy', 'username')
-            .lean();
+        return await this.muteModel.findOne({ userId }).lean();
     }
 
     public async createOrUpdateWithHistory(data: {
-        userId: Types.ObjectId;
+        userId: string;
         reason: string;
-        issuedBy: Types.ObjectId;
+        issuedBy: string;
         expirationTimestamp?: Date;
     }): Promise<IMute> {
         const { userId, reason, issuedBy, expirationTimestamp } = data;
-        const issuedById = new Types.ObjectId(issuedBy);
         const now = new Date();
 
         const historyEntry = {
             reason: reason.trim(),
-            issuedBy: issuedById,
+            issuedBy,
             timestamp: now,
             expirationTimestamp,
         };
@@ -89,14 +82,14 @@ export class MongooseMuteRepository implements IMuteRepository {
                 }
             }
 
-            mute.history.push(historyEntry as unknown as IMuteHistoryEntry);
+            mute.history.push(historyEntry);
             mute.reason = historyEntry.reason;
             if (historyEntry.expirationTimestamp !== undefined) {
                 mute.expirationTimestamp = historyEntry.expirationTimestamp;
             } else {
                 mute.expirationTimestamp = undefined;
             }
-            mute.issuedBy = issuedById;
+            mute.issuedBy = issuedBy;
             mute.timestamp = now;
             mute.active = true;
             await mute.save();
@@ -104,7 +97,7 @@ export class MongooseMuteRepository implements IMuteRepository {
         } else {
             const newMute = await this.muteModel.create({
                 userId,
-                issuedBy: issuedById,
+                issuedBy,
                 reason: historyEntry.reason,
                 expirationTimestamp: historyEntry.expirationTimestamp,
                 timestamp: now,
@@ -116,7 +109,7 @@ export class MongooseMuteRepository implements IMuteRepository {
     }
 
     public async deactivateAllForUser(
-        userId: Types.ObjectId,
+        userId: string,
     ): Promise<{ modifiedCount: number }> {
         const result = await this.muteModel.updateMany(
             { userId, active: true },
@@ -126,48 +119,24 @@ export class MongooseMuteRepository implements IMuteRepository {
     }
 
     public async deleteAllForUser(
-        userId: Types.ObjectId,
+        userId: string,
     ): Promise<{ deletedCount: number }> {
         const result = await this.muteModel.deleteMany({ userId });
         return { deletedCount: result.deletedCount };
     }
 
+    // userId/issuedBy are plain snowflakeId strings, AdminBansAndMutes.tsx
+    // displays them as-is and never needs populated user objects.
     public async findAll(options: {
         limit?: number;
         offset?: number;
     }): Promise<IMute[]> {
-        try {
-            return await this.muteModel
-                .find({})
-                .sort({ timestamp: -1 })
-                .limit(options.limit ?? 50)
-                .skip(options.offset ?? 0)
-                .populate([
-                    {
-                        path: 'userId',
-                        select: 'username',
-                        match: { deletedAt: { $exists: false } },
-                    },
-                    {
-                        path: 'issuedBy',
-                        select: 'username',
-                        match: { deletedAt: { $exists: false } },
-                    },
-                ])
-                .lean();
-        } catch (error) {
-            logger.error(
-                'Failed to populate mute data. Fallback to unpopulated query.',
-                error,
-            );
-
-            return await this.muteModel
-                .find({})
-                .sort({ timestamp: -1 })
-                .limit(options.limit ?? 50)
-                .skip(options.offset ?? 0)
-                .lean();
-        }
+        return await this.muteModel
+            .find({})
+            .sort({ timestamp: -1 })
+            .limit(options.limit ?? 50)
+            .skip(options.offset ?? 0)
+            .lean();
     }
 
     public async countActive(): Promise<number> {

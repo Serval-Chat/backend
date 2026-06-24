@@ -1,6 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional } from 'class-validator';
-import { IsMessageContent, IsMessageId } from '@/validation/schemas/common';
+import {
+    IsMessageContent,
+    IsMessageId,
+    IsStickerId,
+} from '@/validation/schemas/common';
 import { IEmbed, IEmbedButton } from '@/models/Embed';
 import { Type } from 'class-transformer';
 import {
@@ -174,7 +178,7 @@ export class SendMessageRequestDTO {
 
     @ApiPropertyOptional({ description: 'Sticker ID' })
     @IsOptional()
-    @IsMessageId()
+    @IsStickerId()
     public stickerId?: string;
 
     @ApiPropertyOptional({ description: 'Poll details' })

@@ -1,7 +1,6 @@
 import { injectable } from 'inversify';
 import { IPingRepository, IPing } from '@/di/interfaces/IPingRepository';
 import { Ping } from '@/models/Ping';
-import { Types } from 'mongoose';
 import {
     PingMentionMessageDTO,
     PingExportMessageDTO,
@@ -13,15 +12,17 @@ import {
 // Encapsulates all ping operations
 @injectable()
 export class MongoosePingRepository implements IPingRepository {
-    public async findById(id: Types.ObjectId): Promise<IPing | null> {
-        return (await Ping.findById(id).lean()) as unknown as IPing | null;
+    public async findById(id: string): Promise<IPing | null> {
+        return (await Ping.findOne({
+            snowflakeId: id,
+        }).lean()) as IPing | null;
     }
 
     public async findByUserId(
-        userId: Types.ObjectId,
+        userId: string,
         maxAge?: number,
     ): Promise<IPing[]> {
-        const query: { userId: Types.ObjectId; timestamp?: { $gte: Date } } = {
+        const query: { userId: string; timestamp?: { $gte: Date } } = {
             userId,
         };
 
@@ -31,19 +32,20 @@ export class MongoosePingRepository implements IPingRepository {
             query.timestamp = { $gte: cutoffDate };
         }
 
-        return (await Ping.find(query)
+        const pingDocs: unknown = await Ping.find(query)
             .sort({ timestamp: -1 })
-            .lean()) as unknown as IPing[];
+            .lean();
+        return pingDocs as IPing[];
     }
 
     public async create(data: {
-        userId: Types.ObjectId;
+        userId: string;
         type: 'mention' | 'export_status';
         sender: string;
-        senderId: Types.ObjectId;
-        serverId?: Types.ObjectId;
-        channelId?: Types.ObjectId;
-        messageId: Types.ObjectId;
+        senderId: string;
+        serverId?: string;
+        channelId?: string;
+        messageId: string;
         message: PingMentionMessageDTO | PingExportMessageDTO;
         timestamp?: Date;
     }): Promise<IPing> {
@@ -56,12 +58,14 @@ export class MongoosePingRepository implements IPingRepository {
             message: data.message,
             timestamp: data.timestamp ?? new Date(),
 
-            ...(data.serverId && {
-                serverId: data.serverId,
-            }),
-            ...(data.channelId && {
-                channelId: data.channelId,
-            }),
+            ...(data.serverId !== undefined &&
+                data.serverId !== '' && {
+                    serverId: data.serverId,
+                }),
+            ...(data.channelId !== undefined &&
+                data.channelId !== '' && {
+                    channelId: data.channelId,
+                }),
         };
 
         const ping = await Ping.findOneAndUpdate(
@@ -80,13 +84,14 @@ export class MongoosePingRepository implements IPingRepository {
             },
         );
 
-        return ping as unknown as IPing;
+        const pingUnknown: unknown = ping;
+        return pingUnknown as IPing;
     }
 
     public async exists(
-        userId: Types.ObjectId,
-        senderId: Types.ObjectId,
-        messageId: Types.ObjectId,
+        userId: string,
+        senderId: string,
+        messageId: string,
     ): Promise<boolean> {
         const count = await Ping.countDocuments({
             userId,
@@ -96,14 +101,14 @@ export class MongoosePingRepository implements IPingRepository {
         return count > 0;
     }
 
-    public async delete(id: Types.ObjectId): Promise<boolean> {
-        const result = await Ping.deleteOne({ _id: id });
+    public async delete(id: string): Promise<boolean> {
+        const result = await Ping.deleteOne({ snowflakeId: id });
         return result.deletedCount > 0;
     }
 
     public async deleteByChannelId(
-        userId: Types.ObjectId,
-        channelId: Types.ObjectId,
+        userId: string,
+        channelId: string,
     ): Promise<number> {
         const result = await Ping.deleteMany({
             userId,
@@ -113,8 +118,8 @@ export class MongoosePingRepository implements IPingRepository {
     }
 
     public async deleteByServerId(
-        userId: Types.ObjectId,
-        serverId: Types.ObjectId,
+        userId: string,
+        serverId: string,
     ): Promise<number> {
         const result = await Ping.deleteMany({
             userId,
@@ -123,7 +128,7 @@ export class MongoosePingRepository implements IPingRepository {
         return result.deletedCount;
     }
 
-    public async deleteByUserId(userId: Types.ObjectId): Promise<number> {
+    public async deleteByUserId(userId: string): Promise<number> {
         const result = await Ping.deleteMany({
             userId,
         });
@@ -139,8 +144,8 @@ export class MongoosePingRepository implements IPingRepository {
     }
 
     public async deleteBetweenUsers(
-        user1: Types.ObjectId,
-        user2: Types.ObjectId,
+        user1: string,
+        user2: string,
     ): Promise<number> {
         const result = await Ping.deleteMany({
             $or: [

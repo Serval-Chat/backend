@@ -8,14 +8,15 @@ import type { IMessageAttachment } from '@/models/Attachment';
 // Represents a direct message between two users
 export interface IMessage {
     _id: Types.ObjectId;
-    senderId: Types.ObjectId;
-    receiverId: Types.ObjectId;
+    snowflakeId: string;
+    senderId: string;
+    receiverId: string;
     text: string;
     createdAt?: Date;
-    replyToId?: Types.ObjectId;
-    repliedToMessageId?: Types.ObjectId;
+    replyToId?: string;
+    repliedToMessageId?: string;
     referenced_message?: IMessage;
-    stickerId?: Types.ObjectId;
+    stickerId?: string;
     editedAt?: Date;
     isEdited?: boolean;
     senderDeleted?: boolean;
@@ -33,11 +34,11 @@ export interface IMessage {
 //
 // Encapsulates all direct message-related database operations
 export interface IMessageRepository {
-    findById(id: Types.ObjectId): Promise<IMessage | null>;
+    findById(id: string): Promise<IMessage | null>;
 
     findByConversation(
-        user1Id: Types.ObjectId,
-        user2Id: Types.ObjectId,
+        user1Id: string,
+        user2Id: string,
         limit?: number,
         before?: string,
         around?: string,
@@ -46,12 +47,12 @@ export interface IMessageRepository {
 
     create(
         data: {
-            senderId: Types.ObjectId;
-            receiverId: Types.ObjectId;
+            senderId: string;
+            receiverId: string;
             text?: string;
-            replyToId?: Types.ObjectId;
-            repliedToMessageId?: Types.ObjectId;
-            stickerId?: Types.ObjectId;
+            replyToId?: string;
+            repliedToMessageId?: string;
+            stickerId?: string;
             poll?: IPoll;
             attachments?: IMessageAttachment[];
             noEmbeds?: boolean;
@@ -59,18 +60,18 @@ export interface IMessageRepository {
         session?: ClientSession,
     ): Promise<IMessage>;
 
-    update(id: Types.ObjectId, text: string): Promise<IMessage | null>;
+    update(id: string, text: string): Promise<IMessage | null>;
 
     updateMessage(
-        id: string | Types.ObjectId,
+        id: string,
         data: Partial<IMessage>,
     ): Promise<IMessage | null>;
 
-    delete(id: Types.ObjectId): Promise<boolean>;
+    delete(id: string): Promise<boolean>;
 
     // Update many messages sent by a user (for hard delete - anonymize)
     updateManyBySenderId(
-        senderId: Types.ObjectId,
+        senderId: string,
         update: {
             senderDeleted?: boolean;
             anonymizedSender?: string;
@@ -79,7 +80,7 @@ export interface IMessageRepository {
 
     // Update many messages received by a user (for hard delete - anonymize)
     updateManyByReceiverId(
-        receiverId: Types.ObjectId,
+        receiverId: string,
         update: {
             receiverDeleted?: boolean;
             anonymizedReceiver?: string;

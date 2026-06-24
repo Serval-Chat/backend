@@ -1,4 +1,3 @@
-import type { Types } from 'mongoose';
 import type {
     IAuditLog,
     IAuditLogChange,
@@ -9,10 +8,10 @@ export interface IServerAuditLogService {
      * Create an audit log entry and broadcast it to all authorized server members.
      */
     createAndBroadcast(data: {
-        serverId: Types.ObjectId;
-        actorId: Types.ObjectId;
+        serverId: string;
+        actorId: string;
         actionType: string;
-        targetId?: Types.ObjectId;
+        targetId?: string;
         targetType?:
             | 'user'
             | 'channel'
@@ -20,7 +19,7 @@ export interface IServerAuditLogService {
             | 'role'
             | 'message'
             | 'server';
-        targetUserId?: Types.ObjectId;
+        targetUserId?: string;
         changes?: IAuditLogChange[];
         reason?: string;
         metadata?: Record<string, unknown>;
