@@ -139,6 +139,9 @@ export class UserProfileResponseDTO {
 
     @ApiPropertyOptional({ type: ActiveMuteResponseDTO, nullable: true })
     public activeMute?: ActiveMuteResponseDTO | null;
+
+    @ApiPropertyOptional({ nullable: true })
+    public decorationId?: string | null;
 }
 
 export class UpdateProfilePictureResponseDTO {

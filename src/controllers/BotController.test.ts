@@ -130,6 +130,7 @@ const mockUserRepo = {
     update: jest.fn(),
     updateProfilePicture: jest.fn(),
     updateBanner: jest.fn(),
+    updateDecoration: jest.fn(),
 };
 
 const mockServerMemberRepo = {

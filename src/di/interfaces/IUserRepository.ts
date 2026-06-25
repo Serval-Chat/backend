@@ -95,6 +95,7 @@ export interface IUser {
         >;
     };
     banner?: string;
+    decorationId?: string;
     serverSettings?: {
         order: (
             | string
@@ -264,6 +265,9 @@ export interface IUserRepository {
 
     // Update user's banner
     updateBanner(id: string, filename: string | null): Promise<void>;
+
+    // Update user's decoration
+    updateDecoration(id: string, decorationId: string | null): Promise<void>;
 
     // Verify if user is currently banned
     isBanned(userId: string): Promise<boolean>;

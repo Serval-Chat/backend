@@ -428,6 +428,18 @@ export class MongooseUserRepository implements IUserRepository {
         );
     }
 
+    public async updateDecoration(
+        id: string,
+        decorationId: string | null,
+    ): Promise<void> {
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            decorationId === null
+                ? { $unset: { decorationId: '' } }
+                : { decorationId },
+        );
+    }
+
     public async isBanned(userId: string): Promise<boolean> {
         await this.banModel.checkExpired(userId);
         const activeBan = await this.banModel.findOne({

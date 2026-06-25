@@ -54,6 +54,7 @@ import { WebhookController } from './controllers/WebhookController';
 import { EmbedController } from './controllers/EmbedController';
 import { InteractionController } from './controllers/InteractionController';
 import { ApplicationController } from './controllers/ApplicationController';
+import { DecorationController } from './controllers/DecorationController';
 import {
     botTokenLimiter,
     discoverySearchLimiter,
@@ -172,6 +173,7 @@ import {
         EmbedController,
         InteractionController,
         ApplicationController,
+        DecorationController,
     ],
     providers: [
         {

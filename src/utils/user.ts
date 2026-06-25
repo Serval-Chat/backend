@@ -62,6 +62,7 @@ export interface DBUser {
     bio?: string;
     pronouns?: string;
     badges?: string[] | Badge[];
+    decorationId?: string;
     deletedAt?: Date | null;
     anonymizedUsername?: string | null;
     banner?: string | null;
@@ -98,6 +99,7 @@ export interface MappedUser {
     bio: string;
     pronouns: string;
     badges: Badge[];
+    decorationId?: string;
     deletedAt: Date | null;
     anonymizedUsername: string | null;
     banner: string | null;
@@ -159,6 +161,7 @@ export function mapUser(
         bio: u.bio ?? '',
         pronouns: u.pronouns ?? '',
         badges: populatedBadges,
+        decorationId: u.decorationId,
         deletedAt: u.deletedAt ?? null,
         anonymizedUsername: u.anonymizedUsername ?? null,
         banner:

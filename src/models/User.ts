@@ -50,6 +50,7 @@ export interface IUser extends Document {
     bio?: string;
     pronouns?: string;
     badges?: string[]; // Array of badge IDs
+    decorationId?: string;
     totpSecret?: string | null;
     totpEnabled?: boolean;
     totpVerifiedAt?: Date | null;
@@ -176,6 +177,7 @@ const schema = new Schema<IUser>(
         bio: { type: String, maxlength: 500, trim: true },
         pronouns: { type: String, maxlength: 60, trim: true },
         badges: { type: [String], default: [] },
+        decorationId: { type: String, required: false },
         totpSecret: { type: String, default: null },
         totpEnabled: { type: Boolean, default: false },
         totpVerifiedAt: { type: Date, default: null },
