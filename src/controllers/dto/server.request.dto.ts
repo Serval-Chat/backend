@@ -145,7 +145,7 @@ export class ServerOnboardingSettingsRequestDTO {
 export class SelfRolesRequestDTO {
     @ApiPropertyOptional({ type: [String] })
     @IsArray()
-    @IsMongoId({ each: true })
+    @IsRoleId({ each: true })
     public roleIds!: string[];
 }
 
