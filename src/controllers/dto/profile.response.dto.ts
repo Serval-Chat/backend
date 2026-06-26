@@ -123,6 +123,15 @@ export class UserProfileResponseDTO {
     @ApiProperty({ nullable: true })
     public banner!: string | null;
 
+    @ApiPropertyOptional({ nullable: true })
+    public bannerColor?: string | null;
+
+    @ApiPropertyOptional({ nullable: true })
+    public profilePrimaryColor?: string | null;
+
+    @ApiPropertyOptional({ nullable: true })
+    public profileAccentColor?: string | null;
+
     @ApiPropertyOptional()
     public serverSettings?: {
         order: (
@@ -166,6 +175,17 @@ export class BadgeOperationResponseDTO {
 
     @ApiProperty({ type: [BadgeResponseDTO] })
     public badges!: BadgeResponseDTO[];
+}
+
+export class UpdateAppearanceResponseDTO {
+    @ApiProperty()
+    public message!: string;
+
+    @ApiPropertyOptional({ nullable: true })
+    public profilePrimaryColor?: string | null;
+
+    @ApiPropertyOptional({ nullable: true })
+    public profileAccentColor?: string | null;
 }
 
 export class CreateWebsiteConnectionResponseDTO {

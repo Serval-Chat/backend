@@ -67,6 +67,8 @@ export interface DBUser {
     anonymizedUsername?: string | null;
     banner?: string | null;
     bannerColor?: string | null;
+    profilePrimaryColor?: string | null;
+    profileAccentColor?: string | null;
     settings?: {
         muteNotifications?: boolean;
         useDiscordStyleMessages?: boolean;
@@ -104,6 +106,8 @@ export interface MappedUser {
     anonymizedUsername: string | null;
     banner: string | null;
     bannerColor?: string | null;
+    profilePrimaryColor?: string | null;
+    profileAccentColor?: string | null;
     permissions?: AdminPermissions;
     settings?: DBUser['settings'];
     totpEnabled?: boolean;
@@ -169,6 +173,8 @@ export function mapUser(
                 ? `/api/v1/profile/banner/${u.banner}`
                 : null,
         bannerColor: u.bannerColor ?? null,
+        profilePrimaryColor: u.profilePrimaryColor ?? null,
+        profileAccentColor: u.profileAccentColor ?? null,
         ...(options.includePermissions === true && {
             permissions: u.permissions ?? DEFAULT_PERMISSIONS,
         }),

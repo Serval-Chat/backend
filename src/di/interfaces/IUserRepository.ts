@@ -95,6 +95,9 @@ export interface IUser {
         >;
     };
     banner?: string;
+    bannerColor?: string;
+    profilePrimaryColor?: string | null;
+    profileAccentColor?: string | null;
     decorationId?: string;
     serverSettings?: {
         order: (

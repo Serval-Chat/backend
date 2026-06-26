@@ -97,6 +97,8 @@ export interface IUser extends Document {
     };
     banner?: string;
     bannerColor?: string;
+    profilePrimaryColor?: string;
+    profileAccentColor?: string;
     serverSettings?: {
         order: (
             | string
@@ -238,6 +240,8 @@ const schema = new Schema<IUser>(
         },
         banner: { type: String, required: false },
         bannerColor: { type: String, required: false },
+        profilePrimaryColor: { type: String, required: false },
+        profileAccentColor: { type: String, required: false },
         serverSettings: {
             order: {
                 type: [Schema.Types.Mixed],

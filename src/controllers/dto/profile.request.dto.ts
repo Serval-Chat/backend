@@ -36,6 +36,7 @@ export class UsernameGradientDTO {
 
     @ApiProperty()
     @IsArray()
+    @ArrayMaxSize(20)
     @IsColor({ each: true })
     public colors!: string[];
 
@@ -181,4 +182,16 @@ export class ConnectionParamDTO {
     @ApiProperty()
     @IsConnectionId()
     public connectionId!: string;
+}
+
+export class UpdateAppearanceRequestDTO {
+    @ApiPropertyOptional({ nullable: true })
+    @IsOptional()
+    @IsColor()
+    public profilePrimaryColor?: string | null;
+
+    @ApiPropertyOptional({ nullable: true })
+    @IsOptional()
+    @IsColor()
+    public profileAccentColor?: string | null;
 }

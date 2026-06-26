@@ -47,6 +47,7 @@ import {
     UpdateBannerResponseDTO,
     BadgeOperationResponseDTO,
     CreateWebsiteConnectionResponseDTO,
+    UpdateAppearanceResponseDTO,
 } from './dto/profile.response.dto';
 import {
     UpdateBioRequestDTO,
@@ -61,6 +62,7 @@ import {
     FilenameParamDTO,
     CreateWebsiteConnectionRequestDTO,
     ConnectionParamDTO,
+    UpdateAppearanceRequestDTO,
 } from './dto/profile.request.dto';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
@@ -1747,6 +1749,107 @@ export class ProfileController {
             usernameFont: updatedUser?.usernameFont,
             usernameGradient: updatedUser?.usernameGradient,
             usernameGlow: updatedUser?.usernameGlow,
+        };
+    }
+
+    @Patch('appearance')
+    @NoBot()
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update profile appearance colors' })
+    @ApiOkResponse({
+        type: UpdateAppearanceResponseDTO,
+        description: 'Appearance updated',
+    })
+    public async updateAppearance(
+        @Req() req: AuthenticatedRequest,
+        @Body() body: UpdateAppearanceRequestDTO,
+    ): Promise<UpdateAppearanceResponseDTO> {
+        const userId = req.user.id;
+        await assertHttpNotMuted(
+            this.muteRepo,
+            userId,
+            'change your profile appearance',
+        );
+
+        const update: {
+            profilePrimaryColor?: string | null;
+            profileAccentColor?: string | null;
+        } = {};
+        if (body.profilePrimaryColor !== undefined)
+            update.profilePrimaryColor = body.profilePrimaryColor ?? null;
+        if (body.profileAccentColor !== undefined)
+            update.profileAccentColor = body.profileAccentColor ?? null;
+
+        if (Object.keys(update).length > 0) {
+            const currentUser = await this.userRepo.findById(userId);
+            const resultingPrimary =
+                update.profilePrimaryColor !== undefined
+                    ? update.profilePrimaryColor
+                    : currentUser?.profilePrimaryColor;
+            const resultingAccent =
+                update.profileAccentColor !== undefined
+                    ? update.profileAccentColor
+                    : currentUser?.profileAccentColor;
+
+            if (
+                resultingAccent != null &&
+                resultingAccent !== '' &&
+                (resultingPrimary == null || resultingPrimary === '')
+            ) {
+                throw new ApiError(
+                    400,
+                    'Accent color requires a primary color to be set',
+                );
+            }
+
+            await this.userRepo.update(userId, update);
+        }
+
+        const updatedUser = await this.userRepo.findById(userId);
+
+        try {
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
+            const friendships =
+                await this.friendshipRepo.findAllByUserId(userId);
+
+            const payload = {
+                userId,
+                profilePrimaryColor: updatedUser?.profilePrimaryColor ?? null,
+                profileAccentColor: updatedUser?.profileAccentColor ?? null,
+            };
+
+            serverIds.forEach((serverId) => {
+                this.wsServer.broadcastToServer(serverId.toString(), {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            friendships.forEach((friendship) => {
+                const friendId =
+                    friendship.userId.toString() === userId
+                        ? friendship.friendId.toString()
+                        : friendship.userId.toString();
+                this.wsServer.broadcastToUser(friendId, {
+                    type: 'user_updated',
+                    payload,
+                });
+            });
+
+            this.wsServer.broadcastToUser(userId, {
+                type: 'user_updated',
+                payload,
+            });
+        } catch (err) {
+            this.logger.error('Failed to emit appearance update:', err);
+        }
+
+        return {
+            message: 'Profile appearance updated successfully',
+            profilePrimaryColor: updatedUser?.profilePrimaryColor ?? null,
+            profileAccentColor: updatedUser?.profileAccentColor ?? null,
         };
     }
 
