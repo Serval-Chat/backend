@@ -29,6 +29,9 @@ export class FriendResponseDTO {
 
     @ApiPropertyOptional()
     public isPinned?: boolean;
+
+    @ApiPropertyOptional()
+    public isOnline?: boolean;
 }
 
 export class IncomingFriendRequestResponseDTO {

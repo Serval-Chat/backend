@@ -207,21 +207,34 @@ export class FriendshipController {
             );
         });
 
-        return friendsWithLatestMessage
-            .map(({ friend, latestMessageAt }) => {
-                const payload = this.mapUserToFriendPayload(friend);
-                if (payload !== null) {
-                    payload.latestMessageAt = latestMessageAt;
-                    payload.isPinned =
-                        isPinnedByFriendId.get(payload.id) ?? false;
+        const payloadsWithOnline = await Promise.all(
+            friendsWithLatestMessage.map(
+                async ({ friend, latestMessageAt }) => {
+                    const payload = this.mapUserToFriendPayload(friend);
+                    if (payload !== null) {
+                        payload.latestMessageAt = latestMessageAt;
+                        payload.isPinned =
+                            isPinnedByFriendId.get(payload.id) ?? false;
 
-                    if (friend.deletedAt !== undefined) {
-                        payload.profilePicture = '/images/deleted-cat.jpg';
+                        if (friend.deletedAt !== undefined) {
+                            payload.profilePicture = '/images/deleted-cat.jpg';
+                        }
+
+                        payload.isOnline =
+                            friend.snowflakeId !== ''
+                                ? await this.wsServer.isUserOnline(
+                                      friend.snowflakeId,
+                                  )
+                                : false;
                     }
-                }
-                return payload;
-            })
-            .filter((p): p is FriendResponseDTO => p !== null);
+                    return payload;
+                },
+            ),
+        );
+
+        return payloadsWithOnline.filter(
+            (p): p is FriendResponseDTO => p !== null,
+        );
     }
 
     @Get('profiles')
