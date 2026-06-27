@@ -107,6 +107,13 @@ export class PermissionResolver {
         this.everyoneRoleId = data.everyoneRoleId?.toString();
     }
 
+    public hasMember(userId: string): boolean {
+        return (
+            userId === this.data.ownerId.toString() ||
+            this.memberByUserId.has(userId)
+        );
+    }
+
     public hasServerPermission(
         userId: string,
         permission: PermissionKey,

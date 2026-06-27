@@ -206,7 +206,7 @@ export class PermissionService {
         serverId: string,
         userId: string,
     ): Promise<number> {
-        const resolver = await this.getResolver(serverId);
+        const resolver = await this.getResolver(serverId, userId);
         if (!resolver) return -1;
         return resolver.getHighestRolePosition(userId);
     }
@@ -241,7 +241,7 @@ export class PermissionService {
         userId: string,
         permission: PermissionKey,
     ): Promise<boolean> {
-        const resolver = await this.getResolver(serverId);
+        const resolver = await this.getResolver(serverId, userId);
         if (!resolver) return false;
         return resolver.hasServerPermission(userId, permission);
     }
@@ -279,7 +279,7 @@ export class PermissionService {
         userId: string,
         permissions: readonly PermissionKey[],
     ): Promise<boolean> {
-        const resolver = await this.getResolver(serverId);
+        const resolver = await this.getResolver(serverId, userId);
         if (!resolver) return false;
         return permissions.some((permission) =>
             resolver.hasServerPermission(userId, permission),
@@ -290,7 +290,7 @@ export class PermissionService {
         serverId: string,
         userId: string,
     ): Promise<Permissions> {
-        const resolver = await this.getResolver(serverId);
+        const resolver = await this.getResolver(serverId, userId);
         if (!resolver) return {};
 
         const perms: Permissions = {};
@@ -306,7 +306,7 @@ export class PermissionService {
         channelId: string,
         permission: PermissionKey,
     ): Promise<boolean> {
-        const resolver = await this.getResolver(serverId);
+        const resolver = await this.getResolver(serverId, userId);
         if (!resolver) return false;
         const result = resolver.canUserDo(userId, channelId, permission);
         return result;
@@ -338,7 +338,7 @@ export class PermissionService {
         channelIds: string[],
         permission: PermissionKey,
     ): Promise<Map<string, boolean>> {
-        const resolver = await this.getResolver(serverId);
+        const resolver = await this.getResolver(serverId, userId);
         if (!resolver) {
             return new Map(channelIds.map((id) => [id, false]));
         }
@@ -351,7 +351,7 @@ export class PermissionService {
         categoryIds: string[],
         permission: PermissionKey,
     ): Promise<Map<string, boolean>> {
-        const resolver = await this.getResolver(serverId);
+        const resolver = await this.getResolver(serverId, userId);
         if (!resolver) {
             return new Map(categoryIds.map((id) => [id, false]));
         }
@@ -364,11 +364,17 @@ export class PermissionService {
 
     private async getResolver(
         serverId: string,
+        userId?: string,
     ): Promise<PermissionResolver | null> {
         const now = Date.now();
         const serverIdStr = serverId.toString();
         const cached = this.resolverCache.get(serverIdStr);
-        if (cached && cached.expiresAt > now) return cached.resolver;
+        if (cached && cached.expiresAt > now) {
+            if (userId === undefined || cached.resolver.hasMember(userId)) {
+                return cached.resolver;
+            }
+            this.resolverCache.delete(serverIdStr);
+        }
 
         const [server, roles, channels, categories, members, everyoneRole] =
             await Promise.all([

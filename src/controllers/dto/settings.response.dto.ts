@@ -103,6 +103,9 @@ export class UserSettingsResponseDTO {
     public limitedAnimations?: boolean;
 
     @ApiPropertyOptional()
+    public showUsersPronouns?: boolean;
+
+    @ApiPropertyOptional()
     public customFontUrl?: string;
 
     @ApiPropertyOptional()

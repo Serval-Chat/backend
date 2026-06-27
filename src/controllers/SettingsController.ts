@@ -42,6 +42,7 @@ interface UserSettings {
     disableCustomUsernameColors?: boolean;
     disableCustomUsernameGlow?: boolean;
     limitedAnimations?: boolean;
+    showUsersPronouns?: boolean;
     customFontUrl?: string;
     customFontFamily?: string;
     notificationSounds?: {
@@ -115,6 +116,7 @@ export class SettingsController {
             disableCustomUsernameColors: false,
             disableCustomUsernameGlow: false,
             limitedAnimations: false,
+            showUsersPronouns: false,
             customFontUrl: '',
             customFontFamily: '',
             keybinds: {},
