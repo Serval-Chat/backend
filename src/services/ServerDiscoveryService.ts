@@ -17,7 +17,7 @@ import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { Server } from '@/models/Server';
 import { toApiId } from '@/utils/mongooseId';
 
-export const DISCOVERY_INDEX = 'serchat-server-discovery-v1';
+export const DISCOVERY_INDEX = 'serchat-server-discovery-v2';
 
 const RANDOM_INVITE_CODE_PATTERN = /^[0-9a-fA-F]{8}$/;
 const CACHE_TTL_SECONDS = 45;

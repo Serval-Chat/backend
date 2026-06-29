@@ -33,6 +33,9 @@ export const VALID_KEYBIND_ACTION_IDS = [
     'debug.typing.less',
     'debug.theme.previous',
     'debug.theme.next',
+    'debug.notification.example',
+    'debug.notification.dm',
+    'debug.notification.mention',
     'theme.previous',
     'theme.next',
 ] as const;
