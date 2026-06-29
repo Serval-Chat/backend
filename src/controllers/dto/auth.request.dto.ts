@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
     Matches as MatchesValidator,
     MinLength as MinLengthValidator,
+    MaxLength as MaxLengthValidator,
     IsEmail,
     IsString,
 } from 'class-validator';
@@ -27,6 +28,7 @@ export class LoginRequestDTO {
 export class RegisterRequestDTO {
     @ApiProperty({ example: 'user@example.com' })
     @IsEmail({}, { message: ErrorMessages.AUTH.INVALID_EMAIL })
+    @MaxLengthValidator(50, { message: 'Login must be at most 50 characters' })
     public login!: string;
 
     @ApiProperty()

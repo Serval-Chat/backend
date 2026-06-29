@@ -215,6 +215,9 @@ export function IsName(validationOptions?: ValidationOptions) {
 export function IsInviteToken(validationOptions?: ValidationOptions) {
     return applyDecorators(
         IsString(validationOptions),
+        Transform(({ value }) =>
+            typeof value === 'string' ? value.trim() : value,
+        ),
         MinLength(1, {
             ...validationOptions,
             message: 'Invite token is required',
