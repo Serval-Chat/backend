@@ -78,6 +78,26 @@ export class ActiveMuteResponseDTO {
     public expirationTimestamp?: Date | null;
 }
 
+export class PrivacySettingsDTO {
+    @ApiProperty({ default: false })
+    public privateProfile!: boolean;
+
+    @ApiProperty({ default: false })
+    public hideDisplayName!: boolean;
+
+    @ApiProperty({ default: false })
+    public hidePronouns!: boolean;
+
+    @ApiProperty({ default: false })
+    public hideConnections!: boolean;
+
+    @ApiProperty({ default: false })
+    public hideBio!: boolean;
+
+    @ApiProperty({ default: false })
+    public hideStatus!: boolean;
+}
+
 export class UserProfileResponseDTO {
     @ApiProperty()
     @IsMongoId()
@@ -151,6 +171,12 @@ export class UserProfileResponseDTO {
 
     @ApiPropertyOptional({ nullable: true })
     public decorationId?: string | null;
+
+    @ApiPropertyOptional({ type: PrivacySettingsDTO })
+    public privacySettings?: PrivacySettingsDTO;
+
+    @ApiPropertyOptional({ default: false })
+    public isPrivate?: boolean;
 }
 
 export class UpdateProfilePictureResponseDTO {

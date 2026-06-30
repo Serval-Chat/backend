@@ -48,6 +48,7 @@ import {
     BadgeOperationResponseDTO,
     CreateWebsiteConnectionResponseDTO,
     UpdateAppearanceResponseDTO,
+    PrivacySettingsDTO,
 } from './dto/profile.response.dto';
 import {
     UpdateBioRequestDTO,
@@ -63,6 +64,7 @@ import {
     CreateWebsiteConnectionRequestDTO,
     ConnectionParamDTO,
     UpdateAppearanceRequestDTO,
+    UpdatePrivacySettingsRequestDTO,
 } from './dto/profile.request.dto';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
@@ -294,10 +296,12 @@ export class ProfileController {
         }
 
         mapped.serverSettings = user.serverSettings;
-        mapped.connections =
-            options.viewerId === user.snowflakeId
-                ? await this.getOwnConnections(user.snowflakeId)
-                : await this.getVerifiedConnections(user.snowflakeId);
+
+        const isOwnProfile = options.viewerId === user.snowflakeId;
+
+        mapped.connections = isOwnProfile
+            ? await this.getOwnConnections(user.snowflakeId)
+            : await this.getVerifiedConnections(user.snowflakeId);
 
         if (
             options.includeActiveMute === true &&
@@ -317,17 +321,58 @@ export class ProfileController {
                     : null;
         }
 
+        (mapped as UserProfileResponseDTO).isPrivate =
+            user.privacySettings?.privateProfile ?? false;
+
+        if (isOwnProfile) {
+            const ps = user.privacySettings ?? {};
+            (mapped as UserProfileResponseDTO).privacySettings = {
+                privateProfile: ps.privateProfile ?? false,
+                hideDisplayName: ps.hideDisplayName ?? false,
+                hidePronouns: ps.hidePronouns ?? false,
+                hideConnections: ps.hideConnections ?? false,
+                hideBio: ps.hideBio ?? false,
+                hideStatus: ps.hideStatus ?? false,
+            };
+        }
+
         if (
             options.viewerId !== undefined &&
             options.viewerId !== '' &&
-            options.viewerId !== user.snowflakeId
+            !isOwnProfile
         ) {
+            const profile = mapped as UserProfileResponseDTO;
+            const ps = user.privacySettings ?? {};
+
+            const viewerIsFriend = await this.friendshipRepo.areFriends(
+                user.snowflakeId,
+                options.viewerId,
+            );
+
+            // Privacy settings only restrict non-friends; friends see public + private fields
+            if (!viewerIsFriend) {
+                if (ps.hideDisplayName === true) {
+                    profile.displayName = null;
+                }
+                if (ps.hidePronouns === true) {
+                    profile.pronouns = undefined;
+                }
+                if (ps.hideBio === true) {
+                    profile.bio = undefined;
+                }
+                if (ps.hideStatus === true) {
+                    profile.customStatus = null;
+                }
+                if (ps.hideConnections === true) {
+                    profile.connections = [];
+                }
+            }
+
             const blockFlags = await this.blockRepo.getActiveBlockFlags(
                 user.snowflakeId,
                 options.viewerId,
             );
 
-            const profile = mapped as UserProfileResponseDTO;
             if ((blockFlags & BlockFlags.HIDE_MY_PRONOUNS) !== 0) {
                 profile.pronouns = undefined;
             }
@@ -1396,6 +1441,44 @@ export class ProfileController {
             message: 'Display name updated successfully',
             displayName:
                 updatedUser !== null ? (updatedUser.displayName ?? null) : null,
+        };
+    }
+
+    @Patch('privacy')
+    @NoBot()
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update privacy settings' })
+    @ApiOkResponse({ description: 'Privacy settings updated' })
+    public async updatePrivacySettings(
+        @Req() req: AuthenticatedRequest,
+        @Body() body: UpdatePrivacySettingsRequestDTO,
+    ): Promise<{ message: string; privacySettings: PrivacySettingsDTO }> {
+        const userId = req.user.id;
+
+        const user = await this.userRepo.findById(userId);
+        if (user === null) {
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        const current = user.privacySettings ?? {};
+        const updated = {
+            privateProfile:
+                body.privateProfile ?? current.privateProfile ?? false,
+            hideDisplayName:
+                body.hideDisplayName ?? current.hideDisplayName ?? false,
+            hidePronouns: body.hidePronouns ?? current.hidePronouns ?? false,
+            hideConnections:
+                body.hideConnections ?? current.hideConnections ?? false,
+            hideBio: body.hideBio ?? current.hideBio ?? false,
+            hideStatus: body.hideStatus ?? current.hideStatus ?? false,
+        };
+
+        await this.userRepo.update(userId, { privacySettings: updated });
+
+        return {
+            message: 'Privacy settings updated successfully',
+            privacySettings: updated,
         };
     }
 

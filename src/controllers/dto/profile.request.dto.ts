@@ -195,3 +195,35 @@ export class UpdateAppearanceRequestDTO {
     @IsColor()
     public profileAccentColor?: string | null;
 }
+
+export class UpdatePrivacySettingsRequestDTO {
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public privateProfile?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public hideDisplayName?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public hidePronouns?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public hideConnections?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public hideBio?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    public hideStatus?: boolean;
+}

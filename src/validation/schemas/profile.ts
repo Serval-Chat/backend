@@ -155,6 +155,18 @@ export const settingsSchema = z.object({
         .optional(),
 });
 
+// Privacy settings validation schema
+export const privacySettingsSchema = z.object({
+    privateProfile: z.boolean().optional(),
+    hideDisplayName: z.boolean().optional(),
+    hidePronouns: z.boolean().optional(),
+    hideConnections: z.boolean().optional(),
+    hideBio: z.boolean().optional(),
+    hideStatus: z.boolean().optional(),
+});
+
+export type PrivacySettingsRequest = z.infer<typeof privacySettingsSchema>;
+
 export type UpdateProfileRequest = z.infer<typeof updateProfileSchema>;
 export type ChangePasswordRequest = z.infer<typeof changePasswordSchema>;
 export type CustomStatusRequest = z.infer<typeof customStatusSchema>;

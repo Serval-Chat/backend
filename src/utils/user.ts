@@ -85,6 +85,14 @@ export interface DBUser {
     serverSettings?: ServerSettings;
     permissions?: AdminPermissions;
     connections?: UserConnection[];
+    privacySettings?: {
+        privateProfile?: boolean;
+        hideDisplayName?: boolean;
+        hidePronouns?: boolean;
+        hideConnections?: boolean;
+        hideBio?: boolean;
+        hideStatus?: boolean;
+    };
 }
 
 export interface MappedUser {

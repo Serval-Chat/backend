@@ -105,6 +105,14 @@ export interface IUser {
             | { id: string; name: string; color: string; serverIds: string[] }
         )[];
     };
+    privacySettings?: {
+        privateProfile?: boolean;
+        hideDisplayName?: boolean;
+        hidePronouns?: boolean;
+        hideConnections?: boolean;
+        hideBio?: boolean;
+        hideStatus?: boolean;
+    };
 }
 
 // User Repository Interface

@@ -106,6 +106,14 @@ export interface IUser extends Document {
             | { id: string; name: string; color: string; serverIds: string[] }
         )[];
     };
+    privacySettings?: {
+        privateProfile?: boolean;
+        hideDisplayName?: boolean;
+        hidePronouns?: boolean;
+        hideConnections?: boolean;
+        hideBio?: boolean;
+        hideStatus?: boolean;
+    };
     comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -249,6 +257,14 @@ const schema = new Schema<IUser>(
                 type: [Schema.Types.Mixed],
                 default: [],
             },
+        },
+        privacySettings: {
+            privateProfile: { type: Boolean, default: false },
+            hideDisplayName: { type: Boolean, default: false },
+            hidePronouns: { type: Boolean, default: false },
+            hideConnections: { type: Boolean, default: false },
+            hideBio: { type: Boolean, default: false },
+            hideStatus: { type: Boolean, default: false },
         },
     },
     {
