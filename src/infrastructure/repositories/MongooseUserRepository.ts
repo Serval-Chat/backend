@@ -55,7 +55,7 @@ export class MongooseUserRepository implements IUserRepository {
             await this.userModel
                 .find({ snowflakeId: { $in: ids } })
                 .select(
-                    'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
+                    'snowflakeId username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
                 )
                 .lean(),
         );
@@ -93,7 +93,7 @@ export class MongooseUserRepository implements IUserRepository {
                     username: { $regex: `^${safePrefix}`, $options: 'i' },
                 })
                 .select(
-                    'username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
+                    'snowflakeId username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
                 )
                 .limit(limit)
                 .lean(),
