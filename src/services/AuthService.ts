@@ -37,7 +37,13 @@ export interface AuthResult {
         reason: string;
         expirationTimestamp?: Date;
     };
+    locked?: {
+        lockedUntil: Date;
+    };
 }
+
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
 export interface TempTokenPayload {
     type?: 'access' | '2fa_temp';
@@ -113,15 +119,50 @@ export class AuthService {
             };
         }
 
+        // Reject if the account is currently locked out from prior failed
+        if (
+            user.loginLockedUntil !== undefined &&
+            user.loginLockedUntil !== null &&
+            user.loginLockedUntil.getTime() > Date.now()
+        ) {
+            this.logger.warn(
+                `Login failed: Account locked - ${normalizedLogin}`,
+            );
+            return {
+                success: false,
+                error: ErrorMessages.AUTH.ACCOUNT_LOCKED,
+                locked: { lockedUntil: user.loginLockedUntil },
+            };
+        }
+
         // Validate password via repository
         const valid = await this.userRepo.comparePassword(
             user.snowflakeId,
             password,
         );
         if (!valid) {
+            const failures = (user.failedLoginAttempts ?? 0) + 1;
+            const lockedOut = failures >= MAX_FAILED_LOGIN_ATTEMPTS;
+            const lockedUntil = lockedOut
+                ? new Date(Date.now() + LOGIN_LOCKOUT_DURATION_MS)
+                : null;
+            await this.userRepo.update(user.snowflakeId, {
+                failedLoginAttempts: lockedOut ? 0 : failures,
+                loginLockedUntil: lockedUntil,
+            });
+
             this.logger.warn(
                 `Login failed: Invalid password - ${normalizedLogin}`,
             );
+
+            if (lockedOut && lockedUntil !== null) {
+                return {
+                    success: false,
+                    error: ErrorMessages.AUTH.ACCOUNT_LOCKED,
+                    locked: { lockedUntil },
+                };
+            }
+
             return {
                 success: false,
                 error: ErrorMessages.AUTH.INVALID_CREDENTIALS,
@@ -148,6 +189,16 @@ export class AuthService {
                     }),
                 },
             };
+        }
+
+        if (
+            (user.failedLoginAttempts ?? 0) > 0 ||
+            user.loginLockedUntil !== undefined
+        ) {
+            await this.userRepo.update(user.snowflakeId, {
+                failedLoginAttempts: 0,
+                loginLockedUntil: null,
+            });
         }
 
         this.logger.info(`Login successful: ${normalizedLogin}`);

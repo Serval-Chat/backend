@@ -49,6 +49,8 @@ export const ErrorMessages = {
         INVALID_TEMP_TOKEN: 'Invalid or expired temporary authentication token',
         TWO_FA_LOCKED:
             'Too many two-factor attempts. Try again after lock expires.',
+        ACCOUNT_LOCKED:
+            'Too many failed login attempts. This account is temporarily locked, try again later.',
     },
 
     SERVER: {

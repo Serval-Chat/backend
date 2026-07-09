@@ -57,6 +57,8 @@ export interface IUser extends Document {
     backupCodes?: string[];
     totpVerifyFailures?: number;
     totpLockedUntil?: Date | null;
+    failedLoginAttempts?: number;
+    loginLockedUntil?: Date | null;
     notificationPreferences?: {
         mention: boolean;
         friend_request: boolean;
@@ -195,6 +197,8 @@ const schema = new Schema<IUser>(
         backupCodes: { type: [String], default: [] },
         totpVerifyFailures: { type: Number, default: 0 },
         totpLockedUntil: { type: Date, default: null },
+        failedLoginAttempts: { type: Number, default: 0 },
+        loginLockedUntil: { type: Date, default: null },
         settings: {
             muteNotifications: { type: Boolean, default: false },
             useDiscordStyleMessages: { type: Boolean, default: false },

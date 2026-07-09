@@ -65,6 +65,8 @@ export interface IUser {
     backupCodes?: string[];
     totpVerifyFailures?: number;
     totpLockedUntil?: Date | null;
+    failedLoginAttempts?: number;
+    loginLockedUntil?: Date | null;
     settings?: {
         muteNotifications?: boolean;
         useDiscordStyleMessages?: boolean;

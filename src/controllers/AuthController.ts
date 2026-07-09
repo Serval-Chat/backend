@@ -112,6 +112,14 @@ export class AuthController {
                 return;
             }
 
+            if (authResult.locked) {
+                res.status(HttpStatus.FORBIDDEN).json({
+                    error: authResult.error,
+                    locked: authResult.locked,
+                });
+                return;
+            }
+
             res.status(HttpStatus.UNAUTHORIZED).json({
                 error:
                     authResult.error !== undefined && authResult.error !== ''
