@@ -338,8 +338,10 @@ export function IsEmoji(validationOptions?: ValidationOptions) {
                         if (typeof value !== 'string' || value.length === 0)
                             return true;
 
-                        const rawIdMatch = value.match(/^[a-fA-F0-9]{24}$/);
-                        if (rawIdMatch) return true;
+                        const rawIdMatch = value.match(
+                            /^(?:[0-9a-fA-F]{24}|\d{17,20})$/,
+                        );
+                        if (rawIdMatch !== null) return true;
 
                         const segmenter = new Intl.Segmenter('en', {
                             granularity: 'grapheme',
