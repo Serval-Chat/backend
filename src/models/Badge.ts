@@ -1,5 +1,4 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
-import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 
@@ -7,7 +6,6 @@ import { Schema, model } from 'mongoose';
 //
 // Represents a decorative badge that can be awarded to users (e.g., 'Bug Hunter')
 export interface IBadge extends Document {
-    snowflakeId: string;
     _id: Types.ObjectId;
     id: string; // Unique identifier
     name: string; // Display name
@@ -27,8 +25,6 @@ const badgeSchema = new Schema<IBadge>({
 });
 
 badgeSchema.plugin(mongooseIdPlugin);
-
-badgeSchema.plugin(snowflakeIdPlugin);
 
 // Badge model
 export const Badge = model<IBadge>('Badge', badgeSchema);

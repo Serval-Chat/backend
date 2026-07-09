@@ -63,7 +63,7 @@ const cloneWithId = <T>(value: T, idKey: 'id' | '_id'): T => {
         // over Mongo _id and Mongoose's derived `id` virtual to avoid leaking ObjectIds.
         next[idKey] = snowflakeId;
     } else if (value[idKey] === undefined && value[sourceKey] !== undefined) {
-        next[idKey] = value[sourceKey];
+        next[idKey] = cloneWithId(value[sourceKey], idKey);
     }
 
     return next as T;
