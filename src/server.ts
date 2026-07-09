@@ -72,6 +72,7 @@ export function setupExpressApp(app: Application): Application {
                         'https://unpkg.com',
                         'https://ajax.googleapis.com',
                         'https://static.cloudflareinsights.com',
+                        'https://challenges.cloudflare.com',
                         (_req, res) =>
                             `'nonce-${(res as ResponseWithLocals).locals.cspNonce}'`,
                         ...(PROJECT_LEVEL === 'development'
@@ -166,6 +167,7 @@ export function setupExpressApp(app: Application): Application {
                     frameSrc: [
                         'https://www.youtube.com',
                         'https://www.youtube-nocookie.com',
+                        'https://challenges.cloudflare.com',
                     ],
                     ...(PROJECT_LEVEL === 'production'
                         ? { upgradeInsecureRequests: [] }
