@@ -82,7 +82,6 @@ import {
     ServerDiscoveryService,
     normalizeDiscoveryTags,
 } from '@/services/ServerDiscoveryService';
-import { getDocumentIdString } from '@/utils/mongooseId';
 
 @Controller('api/v1/servers')
 @ApiTags('Servers')
@@ -458,7 +457,7 @@ export class ServerController {
             .exec();
 
         return emojis.map((e) => ({
-            id: getDocumentIdString(e),
+            id: e.snowflakeId as string,
             name: e.name,
             imageUrl: e.imageUrl,
             serverId:
