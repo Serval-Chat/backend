@@ -24,6 +24,7 @@ import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { extractClientIp } from '@/utils/ip';
+import { verifyTurnstile } from '@/utils/turnstile';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { normalizeEmail } from '@/utils/email';
@@ -95,9 +96,21 @@ export class AuthController {
     @ApiResponse({ status: 403, description: 'Account banned' })
     public async login(
         @Body() body: LoginRequestDTO,
+        @Req() req: Request,
         @Res() res: Response,
     ): Promise<void> {
-        const { login, password } = body;
+        const { login, password, cfTurnstileResponse } = body;
+
+        const isHuman = await verifyTurnstile(
+            cfTurnstileResponse,
+            extractClientIp(req),
+        );
+        if (!isHuman) {
+            res.status(HttpStatus.BAD_REQUEST).json({
+                error: 'Captcha verification failed. Please try again.',
+            });
+            return;
+        }
 
         const authResult = await this.authService.login(login, password);
 
@@ -315,9 +328,21 @@ export class AuthController {
     @ApiResponse({ status: 500, description: 'Internal server error' })
     public async register(
         @Body() body: RegisterRequestDTO,
+        @Req() req: Request,
         @Res() res: Response,
     ): Promise<void> {
-        const { login, username, password, invite } = body;
+        const { login, username, password, invite, cfTurnstileResponse } = body;
+
+        const isHuman = await verifyTurnstile(
+            cfTurnstileResponse,
+            extractClientIp(req),
+        );
+        if (!isHuman) {
+            res.status(HttpStatus.BAD_REQUEST).json({
+                error: 'Captcha verification failed. Please try again.',
+            });
+            return;
+        }
 
         if (login.includes('+')) {
             registrationAttemptsCounter.labels('failure').inc();

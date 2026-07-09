@@ -34,6 +34,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000';
 const METRICS_TOKEN = process.env.METRICS_TOKEN ?? '';
 const KLIPY_API_KEY = process.env.KLIPY_API_KEY ?? '';
 const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH ?? 2000);
+const CF_TURNSTILE_SECRET = process.env.CF_TURNSTILE_SECRET ?? '';
 
 const OTEL_ENDPOINT =
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'grpc://otel-collector:4317';
@@ -150,4 +151,5 @@ export {
     SCRAPER_HOST,
     SCRAPER_PORT,
     SNOWFLAKE_WORKER_ID,
+    CF_TURNSTILE_SECRET,
 };

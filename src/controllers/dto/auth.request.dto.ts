@@ -5,6 +5,7 @@ import {
     MaxLength as MaxLengthValidator,
     IsEmail,
     IsString,
+    IsNotEmpty,
 } from 'class-validator';
 import {
     IsLogin,
@@ -23,6 +24,11 @@ export class LoginRequestDTO {
     @ApiProperty()
     @IsPassword()
     public password!: string;
+
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    public cfTurnstileResponse!: string;
 }
 
 export class RegisterRequestDTO {
@@ -44,6 +50,11 @@ export class RegisterRequestDTO {
     @ApiProperty()
     @IsInviteToken()
     public invite!: string;
+
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    public cfTurnstileResponse!: string;
 }
 
 export class ChangeLoginRequestDTO {
