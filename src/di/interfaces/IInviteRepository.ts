@@ -59,6 +59,13 @@ export interface IInviteRepository {
     // Increment uses count
     incrementUses(id: string): Promise<IInvite | null>;
 
+    // Atomically claims one use if under maxUses
+    // returns null if none available.
+    claimUse(id: string): Promise<IInvite | null>;
+
+    // Compensating action for claimUse when the join fails afterward.
+    releaseUse(id: string): Promise<IInvite | null>;
+
     // Delete invite by ID
     delete(id: string): Promise<boolean>;
 

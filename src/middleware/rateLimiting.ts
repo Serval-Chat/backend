@@ -194,6 +194,7 @@ function authenticatedUserKey(req: Request): string {
             const payload = jwt.verify(
                 header.slice('Bearer '.length),
                 JWT_SECRET,
+                { algorithms: ['HS256'] },
             ) as JWTPayload;
             if (payload.type === undefined || payload.type === 'access') {
                 return payload.id;

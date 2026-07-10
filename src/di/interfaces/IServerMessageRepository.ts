@@ -89,6 +89,13 @@ export interface IServerMessageRepository {
         data: Partial<IServerMessage>,
     ): Promise<IServerMessage | null>;
 
+    // Atomically replaces a user's poll ballot; empty array retracts the vote.
+    setPollVote(
+        id: string,
+        userId: string,
+        optionIds: string[],
+    ): Promise<IServerMessage | null>;
+
     findByChannelId(
         channelId: string,
         limit?: number,

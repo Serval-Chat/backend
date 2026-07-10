@@ -73,6 +73,12 @@ export interface IWsServer {
         replyTo?: string,
     ): void;
     closeConnection(ws: WebSocket, code: number, reason: string): void;
+    disconnectUser(userId: string, code: number, reason: string): void;
+    unsubscribeUserFromServer(
+        userId: string,
+        serverId: string,
+        channelIds: string[],
+    ): void;
     broadcastToPresenceAudience(
         friendIds: string[],
         serverIds: string[],

@@ -35,7 +35,16 @@ const TAURI_ALLOWED_ORIGINS = [
 export function setupExpressApp(app: Application): Application {
     const logger = container.get<ILogger>(TYPES.Logger);
 
-    app.set('trust proxy', true);
+    const trustProxy = process.env.TRUST_PROXY;
+    if (trustProxy === undefined || trustProxy === '') {
+        app.set('trust proxy', true);
+    } else if (trustProxy === 'true' || trustProxy === 'false') {
+        app.set('trust proxy', trustProxy === 'true');
+    } else if (/^\d+$/.test(trustProxy)) {
+        app.set('trust proxy', parseInt(trustProxy, 10));
+    } else {
+        app.set('trust proxy', trustProxy);
+    }
     app.disable('x-powered-by');
 
     app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -278,7 +287,7 @@ export function setupExpressApp(app: Application): Application {
         /^(127\.|::1$|::ffff:127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/;
 
     app.get('/metrics', async (req: Request, res: Response) => {
-        const ip = req.ip ?? '';
+        const ip = (req.socket.remoteAddress ?? '').replace(/^::ffff:/, '');
         if (!METRICS_ALLOWED_RE.test(ip)) {
             res.status(403).end('Forbidden');
             return;

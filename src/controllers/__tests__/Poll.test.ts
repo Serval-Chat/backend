@@ -52,11 +52,29 @@ function makeReq(userId = USER_ID): Request {
     } as Request;
 }
 
+function applyPollVote(
+    poll: IPoll,
+    userId: string,
+    optionIds: string[],
+): IPoll {
+    return {
+        ...poll,
+        options: poll.options.map((opt) => {
+            const votes = opt.votes.filter((v) => v.toString() !== userId);
+            if (optionIds.includes(opt.id)) {
+                votes.push(userId);
+            }
+            return { ...opt, votes };
+        }),
+    };
+}
+
 let mockServerMessageRepo: {
     findByChannelId: jest.Mock;
     findById: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
+    setPollVote: jest.Mock;
 };
 let mockMemberRepo: {
     findByServerAndUser: jest.Mock;
@@ -122,6 +140,7 @@ beforeEach(() => {
         findById: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        setPollVote: jest.fn(),
     };
 
     mockMemberRepo = {
@@ -460,7 +479,7 @@ describe('votePoll  -  poll validation', () => {
     it('does not throw when poll has a future expiresAt', async () => {
         const poll = makePoll({ expiresAt: new Date(Date.now() + 3_600_000) });
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
-        mockServerMessageRepo.update.mockResolvedValue(makeMessage(poll));
+        mockServerMessageRepo.setPollVote.mockResolvedValue(makeMessage(poll));
 
         const body: PollVoteRequestDTO = { optionIds: [poll.options[0]!.id] };
         await expect(
@@ -511,7 +530,7 @@ describe('votePoll  -  poll validation', () => {
     it('allows multiple options on a multi-select poll', async () => {
         const poll = makePoll({ multiSelect: true });
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
-        mockServerMessageRepo.update.mockResolvedValue(makeMessage(poll));
+        mockServerMessageRepo.setPollVote.mockResolvedValue(makeMessage(poll));
 
         const body: PollVoteRequestDTO = {
             optionIds: [poll.options[0]!.id, poll.options[1]!.id],
@@ -535,10 +554,12 @@ describe('votePoll  -  vote mutation logic', () => {
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
 
         let capturedPoll: IPoll | undefined;
-        mockServerMessageRepo.update.mockImplementation(async (_id, data) => {
-            capturedPoll = (data as Partial<IServerMessage>).poll;
-            return makeMessage(capturedPoll);
-        });
+        mockServerMessageRepo.setPollVote.mockImplementation(
+            async (_id, userId, optionIds) => {
+                capturedPoll = applyPollVote(poll, userId, optionIds);
+                return makeMessage(capturedPoll);
+            },
+        );
 
         await controller.votePoll(
             SERVER_ID,
@@ -571,10 +592,12 @@ describe('votePoll  -  vote mutation logic', () => {
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
 
         let capturedPoll: IPoll | undefined;
-        mockServerMessageRepo.update.mockImplementation(async (_id, data) => {
-            capturedPoll = (data as Partial<IServerMessage>).poll;
-            return makeMessage(capturedPoll);
-        });
+        mockServerMessageRepo.setPollVote.mockImplementation(
+            async (_id, userId, optionIds) => {
+                capturedPoll = applyPollVote(poll, userId, optionIds);
+                return makeMessage(capturedPoll);
+            },
+        );
 
         await controller.votePoll(
             SERVER_ID,
@@ -603,10 +626,12 @@ describe('votePoll  -  vote mutation logic', () => {
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
 
         let capturedPoll: IPoll | undefined;
-        mockServerMessageRepo.update.mockImplementation(async (_id, data) => {
-            capturedPoll = (data as Partial<IServerMessage>).poll;
-            return makeMessage(capturedPoll);
-        });
+        mockServerMessageRepo.setPollVote.mockImplementation(
+            async (_id, userId, optionIds) => {
+                capturedPoll = applyPollVote(poll, userId, optionIds);
+                return makeMessage(capturedPoll);
+            },
+        );
 
         await controller.votePoll(
             SERVER_ID,
@@ -633,10 +658,12 @@ describe('votePoll  -  vote mutation logic', () => {
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
 
         let capturedPoll: IPoll | undefined;
-        mockServerMessageRepo.update.mockImplementation(async (_id, data) => {
-            capturedPoll = (data as Partial<IServerMessage>).poll;
-            return makeMessage(capturedPoll);
-        });
+        mockServerMessageRepo.setPollVote.mockImplementation(
+            async (_id, userId, optionIds) => {
+                capturedPoll = applyPollVote(poll, userId, optionIds);
+                return makeMessage(capturedPoll);
+            },
+        );
 
         await controller.votePoll(
             SERVER_ID,
@@ -663,10 +690,12 @@ describe('votePoll  -  vote mutation logic', () => {
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
 
         let capturedPoll: IPoll | undefined;
-        mockServerMessageRepo.update.mockImplementation(async (_id, data) => {
-            capturedPoll = (data as Partial<IServerMessage>).poll;
-            return makeMessage(capturedPoll);
-        });
+        mockServerMessageRepo.setPollVote.mockImplementation(
+            async (_id, userId, optionIds) => {
+                capturedPoll = applyPollVote(poll, userId, optionIds);
+                return makeMessage(capturedPoll);
+            },
+        );
 
         await controller.votePoll(
             SERVER_ID,
@@ -685,7 +714,7 @@ describe('votePoll  -  WebSocket broadcast', () => {
     it('broadcasts poll_vote_updated_server to the correct channel', async () => {
         const poll = makePoll();
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
-        mockServerMessageRepo.update.mockResolvedValue(makeMessage(poll));
+        mockServerMessageRepo.setPollVote.mockResolvedValue(makeMessage(poll));
 
         await controller.votePoll(
             SERVER_ID,
@@ -705,7 +734,7 @@ describe('votePoll  -  WebSocket broadcast', () => {
     it('broadcast payload includes messageId, serverId, channelId, and poll', async () => {
         const poll = makePoll();
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
-        mockServerMessageRepo.update.mockResolvedValue(makeMessage(poll));
+        mockServerMessageRepo.setPollVote.mockResolvedValue(makeMessage(poll));
 
         await controller.votePoll(
             SERVER_ID,
@@ -731,7 +760,7 @@ describe('votePoll  -  WebSocket broadcast', () => {
     it('does NOT broadcast when repo.update returns null', async () => {
         const poll = makePoll();
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
-        mockServerMessageRepo.update.mockResolvedValue(null);
+        mockServerMessageRepo.setPollVote.mockResolvedValue(null);
 
         await expect(
             controller.votePoll(
@@ -752,7 +781,7 @@ describe('votePoll  -  return value', () => {
         const poll = makePoll();
         const updatedMsg = { ...makeMessage(poll), text: 'updated' };
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
-        mockServerMessageRepo.update.mockResolvedValue(updatedMsg);
+        mockServerMessageRepo.setPollVote.mockResolvedValue(updatedMsg);
 
         const result = await controller.votePoll(
             SERVER_ID,
@@ -784,7 +813,7 @@ describe('Poll expiry edge cases', () => {
     it('accepts a vote when expiresAt is undefined (poll never expires)', async () => {
         const poll = makePoll({ expiresAt: undefined });
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
-        mockServerMessageRepo.update.mockResolvedValue(makeMessage(poll));
+        mockServerMessageRepo.setPollVote.mockResolvedValue(makeMessage(poll));
 
         await expect(
             controller.votePoll(
@@ -817,7 +846,7 @@ describe('Poll expiry edge cases', () => {
             expiresAt: new Date(Date.now() + 7 * 24 * 3_600_000),
         });
         mockServerMessageRepo.findById.mockResolvedValue(makeMessage(poll));
-        mockServerMessageRepo.update.mockResolvedValue(makeMessage(poll));
+        mockServerMessageRepo.setPollVote.mockResolvedValue(makeMessage(poll));
 
         await expect(
             controller.votePoll(

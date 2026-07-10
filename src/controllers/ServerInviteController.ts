@@ -464,15 +464,30 @@ export class ServerInviteController {
             roles.push(server.defaultRoleId);
         }
 
-        await this.serverMemberRepo.create({
-            serverId: serverId,
-            userId: userId,
-            roles,
-            onboardingRequired: server?.onboarding?.enabled === true,
-        });
+        const claimedInvite = await this.inviteRepo.claimUse(
+            invite.snowflakeId,
+        );
+        if (claimedInvite === null) {
+            throw new HttpException(
+                ErrorMessages.INVITE.MAX_USES_REACHED,
+                HttpStatus.GONE,
+            );
+        }
 
-        // Increment invite usage count after successful join
-        await this.inviteRepo.incrementUses(invite.snowflakeId);
+        try {
+            await this.serverMemberRepo.create({
+                serverId: serverId,
+                userId: userId,
+                roles,
+                onboardingRequired: server?.onboarding?.enabled === true,
+            });
+        } catch (err) {
+            await this.inviteRepo
+                .releaseUse(invite.snowflakeId)
+                .catch(() => undefined);
+            throw err;
+        }
+
         this.permissionService.invalidateCache(serverId);
 
         const user = await this.userRepo.findById(userId);
@@ -493,7 +508,7 @@ export class ServerInviteController {
             targetUserId: userId,
             metadata: {
                 inviteCode: code,
-                inviteUses: invite.uses + 1,
+                inviteUses: claimedInvite.uses,
                 inviteMaxUses: invite.maxUses,
                 inviteExpiresAt: invite.expiresAt,
             },

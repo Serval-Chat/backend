@@ -41,7 +41,9 @@ export const authenticateToken = async (
 
     let decoded: JWTPayload | null = null;
     try {
-        const verified = jwt.verify(token, JWT_SECRET) as JWTPayload;
+        const verified = jwt.verify(token, JWT_SECRET, {
+            algorithms: ['HS256'],
+        }) as JWTPayload;
         if (verified.type === 'access') decoded = verified;
     } catch {
         console.error('Invalid JWT token');

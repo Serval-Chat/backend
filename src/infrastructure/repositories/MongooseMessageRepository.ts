@@ -1,4 +1,4 @@
-import { type QueryFilter, ClientSession } from 'mongoose';
+import { type QueryFilter, ClientSession, type UpdateQuery } from 'mongoose';
 import {
     IMessageRepository,
     IMessage,
@@ -226,6 +226,29 @@ export class MongooseMessageRepository implements IMessageRepository {
             })
             .lean()) as PopulatedMessageDoc | null;
         return msg ? this.transformMessage(msg) : null;
+    }
+
+    public async setPollVote(
+        id: string,
+        userId: string,
+        optionIds: string[],
+    ): Promise<IMessage | null> {
+        await this.messageModel.updateOne(
+            { snowflakeId: id },
+            {
+                $pull: { 'poll.options.$[].votes': userId },
+            },
+        );
+        if (optionIds.length > 0) {
+            await this.messageModel.updateOne(
+                { snowflakeId: id },
+                {
+                    $addToSet: { 'poll.options.$[opt].votes': userId },
+                },
+                { arrayFilters: [{ 'opt.id': { $in: optionIds } }] },
+            );
+        }
+        return this.findById(id);
     }
 
     public async delete(id: string): Promise<boolean> {

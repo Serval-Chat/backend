@@ -124,6 +124,8 @@ export interface IUserRepository {
     // Find user by ID (lean)
     findById(id: string): Promise<IUser | null>;
 
+    findByIdWithTotpSecrets(id: string): Promise<IUser | null>;
+
     // Find multiple users by IDs
     findByIds(ids: string[]): Promise<IUser[]>;
 

@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
 import crypto from 'crypto';
-import { WsController, Event, Validate } from '@/ws/decorators';
+import { WsController, Event, Validate, RateLimit } from '@/ws/decorators';
 import type {
     IWsAuthenticateEvent,
     IWsAuthenticatedEvent,
@@ -43,6 +43,7 @@ export class AuthController {
      */
     @Event('authenticate')
     @Validate(AuthenticateSchema)
+    @RateLimit(5, 10000) // 5 authentication attempts per 10s per connection
     public async onAuthenticate(
         payload: IWsAuthenticateEvent['payload'],
         _authenticatedUser: undefined, // Not authenticated yet
@@ -56,7 +57,12 @@ export class AuthController {
 
         let decoded: JWTPayload | null = null;
         try {
-            decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+            const verified = jwt.verify(token, JWT_SECRET, {
+                algorithms: ['HS256'],
+            }) as JWTPayload;
+            if (verified.type === 'access') {
+                decoded = verified;
+            }
         } catch {
             console.error('Failed to verify token.');
         }

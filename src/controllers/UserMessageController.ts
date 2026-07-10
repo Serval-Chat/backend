@@ -54,7 +54,6 @@ import {
     UserMessageParamsDTO,
 } from './dto/user-message.request.dto';
 import { PollVoteRequestDTO } from './dto/poll-vote.request.dto';
-import mongoose from 'mongoose';
 import { BadRequestException } from '@nestjs/common';
 
 interface UnreadCountsResponse {
@@ -422,22 +421,11 @@ export class UserMessageController {
             );
         }
 
-        const userObjId = meId;
-
-        const newOptions = poll.options.map((opt) => {
-            const votes = opt.votes.filter((v) => v.toString() !== meId);
-            if (body.optionIds.includes(opt.id)) {
-                votes.push(userObjId);
-            }
-            return { ...opt, votes };
-        });
-
-        const MessageModel = mongoose.model('Message');
-        const updatedDoc = (await MessageModel.findOneAndUpdate(
-            { snowflakeId: id },
-            { 'poll.options': newOptions },
-            { new: true },
-        ).lean()) as IMessage | null;
+        const updatedDoc = await this.messageRepo.setPollVote(
+            id,
+            meId,
+            body.optionIds,
+        );
 
         if (updatedDoc === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);

@@ -240,7 +240,7 @@ export class AuthService {
         userId: string,
         code: string,
     ): Promise<{ backupCodes: string[] }> {
-        const user = await this.userRepo.findById(userId);
+        const user = await this.userRepo.findByIdWithTotpSecrets(userId);
         if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         if (!isNonEmptyString(user.totpSecret)) {
             throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_SETUP_REQUIRED);
@@ -266,10 +266,9 @@ export class AuthService {
 
     public verifyTempToken(tempToken: string): TempTokenPayload {
         try {
-            const decoded = jwt.verify(
-                tempToken,
-                JWT_SECRET,
-            ) as TempTokenPayload;
+            const decoded = jwt.verify(tempToken, JWT_SECRET, {
+                algorithms: ['HS256'],
+            }) as TempTokenPayload;
             if (
                 decoded.type !== '2fa_temp' ||
                 decoded.scope !== 'auth:2fa:verify'
@@ -288,7 +287,7 @@ export class AuthService {
         backupCode?: string;
         requireEnabled?: boolean;
     }): Promise<void> {
-        const user = await this.userRepo.findById(input.userId);
+        const user = await this.userRepo.findByIdWithTotpSecrets(input.userId);
         if (!user) throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         if (input.requireEnabled === true && user.totpEnabled !== true) {
             throw new ApiError(400, ErrorMessages.AUTH.TWO_FA_NOT_ENABLED);
@@ -506,7 +505,7 @@ export class AuthService {
     public async confirmPasswordReset(
         token: string,
         newPassword: string,
-    ): Promise<string> {
+    ): Promise<{ requestId: string; userId: string }> {
         const requestId = crypto.randomBytes(8).toString('hex');
         const hashedToken = crypto
             .createHash('sha256')
@@ -581,6 +580,6 @@ export class AuthService {
             targetUserId: resetRequest.userId,
         });
 
-        return requestId;
+        return { requestId, userId: resetRequest.userId };
     }
 }

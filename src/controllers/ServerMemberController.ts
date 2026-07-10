@@ -540,6 +540,24 @@ export class ServerMemberController {
         return { ...member, user: user ? mapUser(user as IUser) : null };
     }
 
+    private async teardownServerSubscriptions(
+        serverId: string,
+        userId: string,
+    ): Promise<void> {
+        try {
+            const channels =
+                (await this.channelRepo?.findByServerId(serverId)) ?? [];
+            const channelIds = channels.map((channel) => channel.snowflakeId);
+            this.wsServer.unsubscribeUserFromServer(
+                userId,
+                serverId,
+                channelIds,
+            );
+        } catch (err) {
+            this.logger.error('Failed to tear down server subscriptions:', err);
+        }
+    }
+
     @Delete('members/me')
     @ApiOperation({ summary: 'Leave the server' })
     @ApiOkResponse({
@@ -575,6 +593,8 @@ export class ServerMemberController {
             type: 'member_removed',
             payload: { serverId, userId },
         });
+
+        await this.teardownServerSubscriptions(serverId, userId);
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverId,
@@ -658,6 +678,8 @@ export class ServerMemberController {
             type: 'member_removed',
             payload: { serverId, userId },
         });
+
+        await this.teardownServerSubscriptions(serverId, userId);
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverId,
@@ -746,6 +768,8 @@ export class ServerMemberController {
             type: 'member_banned',
             payload: { serverId, userId },
         });
+
+        await this.teardownServerSubscriptions(serverId, userId);
 
         await this.serverAuditLogService.createAndBroadcast({
             serverId: serverId,

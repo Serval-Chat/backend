@@ -8,7 +8,12 @@ import { ServerMessage } from '@/models/Server';
 import { IEmbed } from '@/models/Embed';
 import { Reaction } from '@/models/Reaction';
 import type { IPoll } from '@/models/Message';
-import { type QueryFilter, Types, ClientSession } from 'mongoose';
+import {
+    type QueryFilter,
+    Types,
+    ClientSession,
+    type UpdateQuery,
+} from 'mongoose';
 import type { ReactionData } from '@/di/interfaces/IReactionRepository';
 import type { IMessageAttachment } from '@/models/Attachment';
 import { isValidSnowflakeId } from '@/utils/snowflake';
@@ -305,6 +310,29 @@ export class MongooseServerMessageRepository
             reactions: reactions[updated.snowflakeId] || [],
         } as PopulatedServerMessageDoc;
         return this.transformMessage(msg);
+    }
+
+    public async setPollVote(
+        id: string,
+        userId: string,
+        optionIds: string[],
+    ): Promise<IServerMessage | null> {
+        await ServerMessage.updateOne(
+            { snowflakeId: id },
+            {
+                $pull: { 'poll.options.$[].votes': userId },
+            },
+        );
+        if (optionIds.length > 0) {
+            await ServerMessage.updateOne(
+                { snowflakeId: id },
+                {
+                    $addToSet: { 'poll.options.$[opt].votes': userId },
+                },
+                { arrayFilters: [{ 'opt.id': { $in: optionIds } }] },
+            );
+        }
+        return this.findById(id);
     }
 
     // Helper to fetch aggregated reactions for multiple messages

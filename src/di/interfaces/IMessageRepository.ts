@@ -67,6 +67,13 @@ export interface IMessageRepository {
         data: Partial<IMessage>,
     ): Promise<IMessage | null>;
 
+    // Atomically replaces a user's poll ballot; empty array retracts the vote.
+    setPollVote(
+        id: string,
+        userId: string,
+        optionIds: string[],
+    ): Promise<IMessage | null>;
+
     delete(id: string): Promise<boolean>;
 
     // Update many messages sent by a user (for hard delete - anonymize)

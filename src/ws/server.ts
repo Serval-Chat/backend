@@ -88,6 +88,14 @@ type RedisBroadcastMessage =
               event: AnyResponseWsEvent;
               excludeUserIds?: string[];
           };
+      }
+    | {
+          action: 'disconnectUser';
+          payload: { userId: string; code: number; reason: string };
+      }
+    | {
+          action: 'unsubscribeUserFromServer';
+          payload: { userId: string; serverId: string; channelIds: string[] };
       };
 
 type IRedisEnvelope = { instanceId: string } & RedisBroadcastMessage;
@@ -261,6 +269,20 @@ export class WsServer extends EventEmitter implements IWsServer {
                         data.payload.event,
                         undefined,
                         data.payload.excludeUserIds,
+                    );
+                    break;
+                case 'disconnectUser':
+                    this._localDisconnectUser(
+                        data.payload.userId,
+                        data.payload.code,
+                        data.payload.reason,
+                    );
+                    break;
+                case 'unsubscribeUserFromServer':
+                    this._localUnsubscribeUserFromServer(
+                        data.payload.userId,
+                        data.payload.serverId,
+                        data.payload.channelIds,
                     );
                     break;
             }
@@ -1038,6 +1060,58 @@ export class WsServer extends EventEmitter implements IWsServer {
     public closeConnection(ws: WebSocket, code: number, reason: string): void {
         ws.close(code, reason);
         void this.removeConnection(ws);
+    }
+
+    // Propagates session revocation (password change, logout, 2FA change, ban)
+    // to live sockets, which are otherwise only authenticated at handshake time.
+    public disconnectUser(userId: string, code: number, reason: string): void {
+        this.publishToRedis('disconnectUser', { userId, code, reason });
+        this._localDisconnectUser(userId, code, reason);
+    }
+
+    private _localDisconnectUser(
+        userId: string,
+        code: number,
+        reason: string,
+    ): void {
+        const sockets = this.getUserSockets(userId);
+        for (const ws of sockets) {
+            this.closeConnection(ws, code, reason);
+        }
+        if (sockets.length > 0) {
+            logger.info(
+                `[WsServer] Disconnected ${sockets.length} local session(s) for user ${userId}: ${reason}`,
+            );
+        }
+    }
+
+    // Called when a user loses server access (kick, ban, self-leave) so their
+    // existing sockets stop receiving that server's broadcasts.
+    public unsubscribeUserFromServer(
+        userId: string,
+        serverId: string,
+        channelIds: string[],
+    ): void {
+        this.publishToRedis('unsubscribeUserFromServer', {
+            userId,
+            serverId,
+            channelIds,
+        });
+        this._localUnsubscribeUserFromServer(userId, serverId, channelIds);
+    }
+
+    private _localUnsubscribeUserFromServer(
+        userId: string,
+        serverId: string,
+        channelIds: string[],
+    ): void {
+        const sockets = this.getUserSockets(userId);
+        for (const ws of sockets) {
+            this.unsubscribeFromServer(ws, serverId);
+            for (const channelId of channelIds) {
+                this.unsubscribeFromChannel(ws, channelId);
+            }
+        }
     }
 
     /**

@@ -8,7 +8,6 @@ import type { IMessage } from '@/di/interfaces/IMessageRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IPoll, IPollOption } from '@/models/Message';
 import type { IWsUser } from '@/ws/types';
-import mongoose from 'mongoose';
 
 jest.mock('@/services/PushService', () => ({
     notifyUser: jest.fn().mockResolvedValue(undefined),
@@ -50,6 +49,23 @@ function makeReq(userId = USER_ID): Request {
     } as Request;
 }
 
+function applyPollVote(
+    poll: IPoll,
+    userId: string,
+    optionIds: string[],
+): IPoll {
+    return {
+        ...poll,
+        options: poll.options.map((opt) => {
+            const votes = opt.votes.filter((v) => v.toString() !== userId);
+            if (optionIds.includes(opt.id)) {
+                votes.push(userId);
+            }
+            return { ...opt, votes };
+        }),
+    };
+}
+
 function makeWsUser(userId = USER_ID): IWsUser {
     return { userId, username: 'testuser', isBot: false } as IWsUser;
 }
@@ -65,6 +81,7 @@ describe('DM Polls', () => {
         findById: jest.Mock;
         create: jest.Mock;
         update: jest.Mock;
+        setPollVote: jest.Mock;
         findByConversation: jest.Mock;
     };
     let dmUnreadRepo: {
@@ -101,6 +118,7 @@ describe('DM Polls', () => {
             findById: jest.fn(),
             create: jest.fn(),
             update: jest.fn(),
+            setPollVote: jest.fn(),
             findByConversation: jest.fn().mockResolvedValue([]),
         };
         dmUnreadRepo = {
@@ -233,17 +251,13 @@ describe('DM Polls', () => {
             const msg = makeDmMessage(poll);
             messageRepo.findById.mockResolvedValue(msg);
 
-            const updatedMsg = { ...msg, poll: { ...poll } };
-            const mockModel = {
-                findOneAndUpdate: jest.fn().mockReturnValue({
-                    lean: () => Promise.resolve(updatedMsg),
-                }),
-            };
-            const modelSpy = jest
-                .spyOn(mongoose, 'model')
-                .mockReturnValue(mockModel);
-
             const targetOptionId = poll.options[0]!.id;
+            const updatedMsg = {
+                ...msg,
+                poll: applyPollVote(poll, USER_ID, [targetOptionId]),
+            };
+            messageRepo.setPollVote.mockResolvedValue(updatedMsg);
+
             const result = await userMessageController.votePoll(
                 { id: MSG_ID },
                 makeReq().user?.id as string,
@@ -251,6 +265,11 @@ describe('DM Polls', () => {
             );
 
             expect(result).toBeDefined();
+            expect(messageRepo.setPollVote).toHaveBeenCalledWith(
+                MSG_ID,
+                USER_ID,
+                [targetOptionId],
+            );
             expect(wsServer.broadcastToUser).toHaveBeenCalledWith(
                 USER_ID,
                 expect.objectContaining({ type: 'poll_vote_updated_dm' }),
@@ -259,8 +278,6 @@ describe('DM Polls', () => {
                 PEER_ID,
                 expect.objectContaining({ type: 'poll_vote_updated_dm' }),
             );
-
-            modelSpy.mockRestore();
         });
 
         it('should throw BadRequestException if poll is expired', async () => {

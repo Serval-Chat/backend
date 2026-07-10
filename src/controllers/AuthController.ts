@@ -36,6 +36,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
 import { ILogger } from '@/di/interfaces/ILogger';
+import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import {
     LoginResponseDTO,
@@ -87,7 +88,19 @@ export class AuthController {
         private authService: AuthService,
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
+        @Inject(TYPES.WsServer)
+        private wsServer: IWsServer,
     ) {}
+
+    private static readonly SESSION_REVOKED_CLOSE_CODE = 4003;
+
+    private revokeUserSessions(userId: string): void {
+        this.wsServer.disconnectUser(
+            userId,
+            AuthController.SESSION_REVOKED_CLOSE_CODE,
+            'Session revoked',
+        );
+    }
 
     @Post('login')
     @HttpCode(HttpStatus.OK)
@@ -203,6 +216,7 @@ export class AuthController {
             body.code,
         );
         await this.userRepo.incrementTokenVersion(user.id);
+        this.revokeUserSessions(user.id);
 
         const updatedUser = await this.userRepo.findById(user.id);
         if (updatedUser === null || updatedUser.deletedAt !== undefined) {
@@ -300,6 +314,7 @@ export class AuthController {
         );
 
         await this.userRepo.incrementTokenVersion(user.id);
+        this.revokeUserSessions(user.id);
 
         const updatedUser = await this.userRepo.findById(user.id);
         if (updatedUser === null || updatedUser.deletedAt !== undefined) {
@@ -550,6 +565,7 @@ export class AuthController {
 
         await this.userRepo.updatePassword(userId, newPassword);
         await this.userRepo.incrementTokenVersion(userId);
+        this.revokeUserSessions(userId);
 
         const updatedUser = await this.userRepo.findById(userId);
         if (updatedUser === null) {
@@ -599,10 +615,13 @@ export class AuthController {
     public async confirmPasswordReset(
         @Body() body: PasswordResetConfirmDTO,
     ): Promise<PasswordResetResponseDTO> {
-        const requestId = await this.authService.confirmPasswordReset(
-            body.token,
-            body.newPassword,
-        );
+        const { requestId, userId } =
+            await this.authService.confirmPasswordReset(
+                body.token,
+                body.newPassword,
+            );
+
+        this.revokeUserSessions(userId);
 
         return {
             message: 'Password has been reset successfully.',

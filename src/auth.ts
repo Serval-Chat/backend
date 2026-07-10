@@ -28,7 +28,13 @@ export async function expressAuthentication(
         }
 
         try {
-            const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+            const decoded = jwt.verify(token, JWT_SECRET, {
+                algorithms: ['HS256'],
+            }) as JWTPayload;
+
+            if (decoded.type !== undefined && decoded.type !== 'access') {
+                return Promise.reject(new Error('Invalid token'));
+            }
 
             const user = await User.findOne({
                 snowflakeId: decoded.id,

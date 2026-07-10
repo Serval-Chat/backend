@@ -104,6 +104,29 @@ export class MongooseInviteRepository implements IInviteRepository {
         ).lean();
     }
 
+    public async claimUse(id: string): Promise<IInvite | null> {
+        return await Invite.findOneAndUpdate(
+            {
+                snowflakeId: id,
+                $or: [
+                    { maxUses: { $exists: false } },
+                    { maxUses: 0 },
+                    { $expr: { $lt: ['$uses', '$maxUses'] } },
+                ],
+            },
+            { $inc: { uses: 1 } },
+            { new: true },
+        ).lean();
+    }
+
+    public async releaseUse(id: string): Promise<IInvite | null> {
+        return await Invite.findOneAndUpdate(
+            { snowflakeId: id, uses: { $gt: 0 } },
+            { $inc: { uses: -1 } },
+            { new: true },
+        ).lean();
+    }
+
     public async delete(id: string): Promise<boolean> {
         const result = await Invite.deleteOne({ snowflakeId: id });
         return result.deletedCount > 0;

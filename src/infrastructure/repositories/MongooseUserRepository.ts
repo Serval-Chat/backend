@@ -50,6 +50,15 @@ export class MongooseUserRepository implements IUserRepository {
         );
     }
 
+    public async findByIdWithTotpSecrets(id: string): Promise<IUser | null> {
+        return this.toDomain(
+            await this.userModel
+                .findOne({ snowflakeId: id })
+                .select('+totpSecret +backupCodes')
+                .lean(),
+        );
+    }
+
     public async findByIds(ids: string[]): Promise<IUser[]> {
         return this.toDomainList(
             await this.userModel

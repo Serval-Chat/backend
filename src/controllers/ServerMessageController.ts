@@ -906,19 +906,11 @@ export class ServerMessageController {
             );
         }
 
-        const userObjId = userId;
-
-        const newOptions = poll.options.map((opt) => {
-            const votes = opt.votes.filter((v) => v.toString() !== userId);
-            if (body.optionIds.includes(opt.id)) {
-                votes.push(userObjId);
-            }
-            return { ...opt, votes };
-        });
-
-        const updatedMessage = await this.serverMessageRepo.update(messageId, {
-            poll: { ...poll, options: newOptions },
-        });
+        const updatedMessage = await this.serverMessageRepo.setPollVote(
+            messageId,
+            userId,
+            body.optionIds,
+        );
 
         if (!updatedMessage) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
