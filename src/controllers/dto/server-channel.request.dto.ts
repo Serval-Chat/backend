@@ -7,7 +7,6 @@ import {
     IsArray,
     ValidateNested,
     MaxLength,
-    IsMongoId,
     Min,
     Max,
     IsIn,
@@ -59,7 +58,6 @@ export class CreateChannelRequestDTO {
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsMongoId()
     @IsCategoryId()
     public categoryId?: string;
 
@@ -128,7 +126,6 @@ export class UpdateChannelRequestDTO {
 
     @ApiPropertyOptional({ nullable: true, type: String })
     @IsOptional()
-    @IsMongoId()
     @IsCategoryId()
     public categoryId?: string | null;
 
@@ -178,7 +175,6 @@ export class UpdateChannelRequestDTO {
 
 export class ChannelPositionDTO {
     @ApiProperty()
-    @IsMongoId()
     @IsChannelId()
     public channelId!: string;
 
@@ -234,7 +230,6 @@ export class UpdateCategoryRequestDTO {
 
 export class CategoryPositionDTO {
     @ApiProperty()
-    @IsMongoId()
     @IsCategoryId()
     public categoryId!: string;
 

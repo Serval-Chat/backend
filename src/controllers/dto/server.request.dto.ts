@@ -7,14 +7,19 @@ import {
     IsEnum,
     ValidateIf,
     MinLength,
-    IsMongoId,
     IsArray,
     ArrayMaxSize,
     MaxLength,
     IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsName, IsRoleId, IsColor } from '@/validation/schemas/common';
+import {
+    IsName,
+    IsRoleId,
+    IsColor,
+    IsChannelId,
+    IsCategoryId,
+} from '@/validation/schemas/common';
 import { ServerBannerTypeDTO } from './common.request.dto';
 
 export class ServerBannerDTO {
@@ -93,7 +98,6 @@ export class UpdateServerRequestDTO {
 
     @ApiPropertyOptional({ nullable: true, type: String })
     @IsOptional()
-    @IsMongoId()
     @IsRoleId()
     public defaultRoleId?: string | null;
 
@@ -126,19 +130,19 @@ export class ServerOnboardingSettingsRequestDTO {
     @ApiPropertyOptional({ type: [String] })
     @IsOptional()
     @IsArray()
-    @IsMongoId({ each: true })
+    @IsRoleId({ each: true })
     public selfAssignableRoleIds?: string[];
 
     @ApiPropertyOptional({ nullable: true, type: String })
     @IsOptional()
-    @IsMongoId()
+    @IsChannelId()
     public landingChannelId?: string | null;
 
     @ApiPropertyOptional({ type: [String] })
     @IsOptional()
     @IsArray()
     @ArrayMaxSize(8)
-    @IsMongoId({ each: true })
+    @IsChannelId({ each: true })
     public welcomeChannelIds?: string[];
 }
 
@@ -152,19 +156,18 @@ export class SelfRolesRequestDTO {
 export class ChannelPreferencesRequestDTO {
     @ApiPropertyOptional({ type: [String] })
     @IsArray()
-    @IsMongoId({ each: true })
+    @IsChannelId({ each: true })
     public hiddenChannelIds!: string[];
 
     @ApiPropertyOptional({ type: [String] })
     @IsArray()
-    @IsMongoId({ each: true })
+    @IsCategoryId({ each: true })
     public hiddenCategoryIds!: string[];
 }
 
 export class SetDefaultRoleRequestDTO {
     @ApiProperty({ nullable: true, type: String })
     @IsOptional()
-    @IsMongoId()
     @IsRoleId()
     public roleId!: string | null;
 }

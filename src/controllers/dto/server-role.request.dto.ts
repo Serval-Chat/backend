@@ -10,7 +10,6 @@ import {
     Min,
     Max,
     ArrayMaxSize,
-    IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -88,7 +87,6 @@ export class CreateRoleRequestDTO {
 
 export class RolePositionDTO {
     @ApiProperty()
-    @IsMongoId()
     @IsRoleId()
     public roleId!: string;
 

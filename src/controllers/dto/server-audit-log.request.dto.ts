@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsMongoId, IsOptional, IsString } from 'class-validator';
-import { IsLimit } from '@/validation/schemas/common';
+import { IsOptional, IsString } from 'class-validator';
+import { IsLimit, IsUserId } from '@/validation/schemas/common';
 
 export class ServerAuditLogRequestDTO {
     /**
@@ -32,8 +32,7 @@ export class ServerAuditLogRequestDTO {
      */
     @ApiPropertyOptional()
     @IsOptional()
-    @IsMongoId()
-    @IsString()
+    @IsUserId()
     public moderatorId?: string;
 
     /**
