@@ -25,6 +25,9 @@ export class BotUserDTO {
     @ApiProperty()
     public isBot!: boolean;
 
+    @ApiProperty()
+    public botVerified!: boolean;
+
     @ApiPropertyOptional()
     public createdAt?: string;
 }
@@ -58,6 +61,15 @@ export class BotResponseDTO {
 
     @ApiPropertyOptional()
     public createdAt?: string;
+
+    @ApiProperty()
+    public verified!: boolean;
+
+    @ApiProperty()
+    public verificationRequested!: boolean;
+
+    @ApiProperty({ nullable: true, enum: ['verified', 'unverified', null] })
+    public verificationOverride!: 'verified' | 'unverified' | null;
 }
 
 export class CreateBotResponseDTO {
@@ -105,6 +117,9 @@ export class BotPublicInfoResponseDTO {
 
     @ApiProperty()
     public serverCount!: number;
+
+    @ApiProperty()
+    public verified!: boolean;
 }
 
 export class BotServerCountResponseDTO {

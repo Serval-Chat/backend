@@ -19,6 +19,7 @@ export interface IUser {
     login?: string;
     username?: string;
     isBot?: boolean;
+    botVerified?: boolean;
     displayName?: string;
     password: string;
     email?: string;

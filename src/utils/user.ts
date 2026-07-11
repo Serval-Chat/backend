@@ -49,6 +49,7 @@ export interface DBUser {
     displayName?: string | null;
     profilePicture?: string | null;
     isBot?: boolean;
+    botVerified?: boolean;
     usernameFont?: string;
     usernameGradient?: { enabled: boolean; colors: string[]; angle: number };
     usernameGlow?: { enabled: boolean; color: string; intensity: number };
@@ -101,6 +102,7 @@ export interface MappedUser {
     displayName: string | null;
     profilePicture: string | null;
     isBot: boolean;
+    botVerified: boolean;
     usernameFont: string;
     usernameGradient: { enabled: boolean; colors: string[]; angle: number };
     usernameGlow: { enabled: boolean; color: string; intensity: number };
@@ -157,6 +159,7 @@ export function mapUser(
         displayName: u.displayName ?? null,
         profilePicture: profilePictureUrl,
         isBot: u.isBot ?? false,
+        botVerified: u.botVerified ?? false,
         usernameFont: u.usernameFont ?? 'default',
         usernameGradient: u.usernameGradient ?? {
             enabled: false,

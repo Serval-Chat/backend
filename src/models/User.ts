@@ -21,6 +21,7 @@ export interface IUser extends Document {
     username: string;
     password: string;
     isBot?: boolean;
+    botVerified: boolean;
     profilePicture?: string;
     usernameFont?: string; // Stored as a string but typed by Mongoose enum
     usernameGradient?: {
@@ -140,6 +141,7 @@ const schema = new Schema<IUser>(
         displayName: { type: String, maxlength: 32, trim: true },
         password: { type: String, required: true, select: false },
         isBot: { type: Boolean, default: false },
+        botVerified: { type: Boolean, default: false },
         profilePicture: { type: String, required: false },
         usernameFont: {
             type: String,
@@ -182,6 +184,7 @@ const schema = new Schema<IUser>(
             viewLogs: { type: Boolean, default: false },
             manageServer: { type: Boolean, default: false },
             manageInvites: { type: Boolean, default: false },
+            manageBots: { type: Boolean, default: false },
         },
         deletedAt: { type: Date },
         deletedReason: { type: String },

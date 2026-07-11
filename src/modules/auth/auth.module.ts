@@ -99,11 +99,15 @@ export class JwtAuthGuard implements CanActivate {
                         throw new ForbiddenException(
                             'Insufficient permissions',
                         );
-                    const hasAll = requiredPermissions.every(
-                        (p) =>
-                            (userPermissions as Record<string, boolean>)[p] ===
-                            true,
-                    );
+                    const permissions = userPermissions as Record<
+                        string,
+                        boolean
+                    >;
+                    const hasAll =
+                        permissions.adminAccess === true ||
+                        requiredPermissions.every(
+                            (p) => permissions[p] === true,
+                        );
                     if (!hasAll)
                         throw new ForbiddenException(
                             'Insufficient permissions',

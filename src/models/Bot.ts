@@ -75,6 +75,9 @@ export interface IBot extends Document {
     userId: string;
     ownerId: string;
     botPermissions: BotPermissions;
+    verified: boolean;
+    verificationRequested: boolean;
+    verificationOverride: 'verified' | 'unverified' | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -118,6 +121,13 @@ const schema = new Schema<IBot>(
             seeDeletedMessages: { type: Boolean, default: false },
             moderateMembers: { type: Boolean, default: false },
             manageStickers: { type: Boolean, default: false },
+        },
+        verified: { type: Boolean, default: false },
+        verificationRequested: { type: Boolean, default: false },
+        verificationOverride: {
+            type: String,
+            enum: ['verified', 'unverified', null],
+            default: null,
         },
     },
     {

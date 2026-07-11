@@ -43,6 +43,7 @@ jest.mock('@/models/Bot', () => ({
         create: jest.fn(),
         deleteOne: jest.fn(),
         findById: jest.fn(),
+        updateOne: jest.fn(),
     },
     DEFAULT_BOT_PERMISSIONS: {
         readMessages: false,
@@ -172,7 +173,7 @@ describe('getPublicInfo', () => {
         ).rejects.toThrow(NotFoundException);
     });
 
-    it('returns public bot info including server count', async () => {
+    it('returns public bot info including server count and defaults verified to false when unset', async () => {
         const botUserOid = new Types.ObjectId();
         (Bot.findOne as jest.Mock).mockReturnValue(
             makeChain({
@@ -198,6 +199,30 @@ describe('getPublicInfo', () => {
         expect(result.username).toBe('mybot');
         expect(result.displayName).toBe('My Bot');
         expect(result.serverCount).toBe(7);
+        expect(result.verified).toBe(false);
+    });
+
+    it('surfaces verified: true for a verified bot', async () => {
+        const botUserOid = new Types.ObjectId();
+        (Bot.findOne as jest.Mock).mockReturnValue(
+            makeChain({
+                clientId: '0123456789abcdef0123456789abcdef',
+                botPermissions: { readMessages: true, sendMessages: false },
+                userId: botUserOid.toHexString(),
+                verified: true,
+                userIdUser: {
+                    snowflakeId: botUserOid.toHexString(),
+                    username: 'mybot',
+                },
+            }),
+        );
+        (ServerMember.countDocuments as jest.Mock).mockResolvedValue(0);
+
+        const result = await controller.getPublicInfo(
+            '0123456789abcdef0123456789abcdef',
+        );
+
+        expect(result.verified).toBe(true);
     });
 });
 
@@ -408,6 +433,93 @@ describe('authorizeToServer', () => {
             SERVER_ID,
             expect.objectContaining({ type: 'member_added' }),
         );
+    });
+});
+
+describe('requestVerification', () => {
+    const req = { user: { id: OWNER_ID } } as never;
+    const CLIENT_ID = '0123456789abcdef0123456789abcdef';
+
+    it('throws NotFoundException when bot does not exist', async () => {
+        (Bot.findOne as jest.Mock).mockReturnValue(makeChain(null));
+
+        await expect(
+            controller.requestVerification(req, CLIENT_ID),
+        ).rejects.toThrow(NotFoundException);
+        expect(Bot.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when caller is not the owner', async () => {
+        const otherOwnerId = new Types.ObjectId().toHexString();
+        (Bot.findOne as jest.Mock).mockReturnValue(
+            makeChain({
+                clientId: CLIENT_ID,
+                ownerId: new Types.ObjectId(otherOwnerId),
+                verified: false,
+                verificationRequested: false,
+            }),
+        );
+
+        await expect(
+            controller.requestVerification(req, CLIENT_ID),
+        ).rejects.toThrow(ForbiddenException);
+        expect(Bot.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op and does not touch the database when already verified', async () => {
+        (Bot.findOne as jest.Mock).mockReturnValue(
+            makeChain({
+                clientId: CLIENT_ID,
+                ownerId: new Types.ObjectId(OWNER_ID),
+                verified: true,
+                verificationRequested: false,
+            }),
+        );
+
+        const result = await controller.requestVerification(req, CLIENT_ID);
+
+        expect(result).toEqual({
+            message: 'Already verified or request pending.',
+        });
+        expect(Bot.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op when a request is already pending', async () => {
+        (Bot.findOne as jest.Mock).mockReturnValue(
+            makeChain({
+                clientId: CLIENT_ID,
+                ownerId: new Types.ObjectId(OWNER_ID),
+                verified: false,
+                verificationRequested: true,
+            }),
+        );
+
+        const result = await controller.requestVerification(req, CLIENT_ID);
+
+        expect(result).toEqual({
+            message: 'Already verified or request pending.',
+        });
+        expect(Bot.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('sets verificationRequested to true for a fresh application', async () => {
+        (Bot.findOne as jest.Mock).mockReturnValue(
+            makeChain({
+                clientId: CLIENT_ID,
+                ownerId: new Types.ObjectId(OWNER_ID),
+                verified: false,
+                verificationRequested: false,
+            }),
+        );
+        (Bot.updateOne as jest.Mock).mockResolvedValue({ modifiedCount: 1 });
+
+        const result = await controller.requestVerification(req, CLIENT_ID);
+
+        expect(Bot.updateOne).toHaveBeenCalledWith(
+            { clientId: CLIENT_ID },
+            { verificationRequested: true },
+        );
+        expect(result).toEqual({ message: 'Verification requested' });
     });
 });
 

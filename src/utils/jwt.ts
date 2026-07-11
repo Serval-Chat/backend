@@ -15,13 +15,15 @@ export interface JWTPayload {
     isBot?: boolean;
 }
 
-// Helper to check if user has a specific permission
 export function hasPermission(
     user: JWTPayload | undefined,
     permission: keyof AdminPermissions,
 ): boolean {
     if (!user?.permissions) return false;
-    return user.permissions[permission] === true;
+    return (
+        user.permissions.adminAccess === true ||
+        user.permissions[permission] === true
+    );
 }
 
 // Generate a JWT for authenticated users

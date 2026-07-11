@@ -115,6 +115,7 @@ type PopulatedBotUser = {
     banner?: string;
     bannerColor?: string;
     isBot?: boolean;
+    botVerified?: boolean;
     createdAt?: Date;
 };
 
@@ -125,6 +126,9 @@ type LeanBotDoc = {
     userId: string;
     ownerId: string;
     botPermissions: IBot['botPermissions'];
+    verified: boolean;
+    verificationRequested: boolean;
+    verificationOverride: 'verified' | 'unverified' | null;
     createdAt: Date;
     updatedAt: Date;
     userIdUser?: PopulatedBotUser | null;
@@ -192,6 +196,9 @@ export class BotController {
     private resolveBotUser(doc: LeanBotDoc): ResolvedBotDoc {
         const mappedUser = mapUser(doc.userIdUser);
         delete doc.userIdUser;
+        doc.verified = doc.verified ?? false;
+        doc.verificationRequested = doc.verificationRequested ?? false;
+        doc.verificationOverride = doc.verificationOverride ?? null;
         const docUnknown: unknown = doc;
         const resolved = docUnknown as ResolvedBotDoc;
         if (mappedUser !== null) {
@@ -208,7 +215,7 @@ export class BotController {
         const bot = (await Bot.findOne({ clientId })
             .populate(
                 'userIdUser',
-                'username displayName bio profilePicture banner bannerColor usernameGradient isBot',
+                'username displayName bio profilePicture banner bannerColor usernameGradient isBot botVerified',
             )
             .lean()) as LeanBotDoc | null;
 
@@ -232,7 +239,33 @@ export class BotController {
             usernameGradient: mappedUser.usernameGradient,
             botPermissions: bot.botPermissions,
             serverCount,
+            verified: bot.verified ?? false,
         };
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post(':clientId/verification-request')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Apply for verified bot badge (owner only)' })
+    @ApiOkResponse({ type: BotDeleteResponseDTO })
+    public async requestVerification(
+        @Req() req: AuthenticatedRequest,
+        @Param('clientId') clientId: string,
+    ) {
+        validateClientId(clientId);
+        const bot = await Bot.findOne({ clientId }).lean();
+        if (bot === null) throw new NotFoundException('Bot not found');
+        if (bot.ownerId.toString() !== req.user.id) {
+            throw new ForbiddenException('Not your bot');
+        }
+
+        if (bot.verified === true || bot.verificationRequested === true) {
+            return { message: 'Already verified or request pending.' };
+        }
+
+        await Bot.updateOne({ clientId }, { verificationRequested: true });
+
+        return { message: 'Verification requested' };
     }
 
     @UseGuards(JwtAuthGuard)
@@ -285,7 +318,7 @@ export class BotController {
         const botDoc = (await Bot.findById(getDocumentId(bot))
             .populate(
                 'userIdUser',
-                'username displayName bio profilePicture banner bannerColor isBot createdAt',
+                'username displayName bio profilePicture banner bannerColor isBot botVerified createdAt',
             )
             .lean()) as LeanBotDoc | null;
 
@@ -304,7 +337,7 @@ export class BotController {
         const bots = (await Bot.find({ ownerId })
             .populate(
                 'userIdUser',
-                'username displayName bio profilePicture banner bannerColor isBot createdAt',
+                'username displayName bio profilePicture banner bannerColor isBot botVerified createdAt',
             )
             .sort({ createdAt: -1 })
             .lean()) as LeanBotDoc[];
@@ -323,7 +356,7 @@ export class BotController {
         const bot = (await Bot.findOne({ clientId })
             .populate(
                 'userIdUser',
-                'username displayName bio profilePicture banner bannerColor isBot createdAt',
+                'username displayName bio profilePicture banner bannerColor isBot botVerified createdAt',
             )
             .lean()) as LeanBotDoc | null;
 
@@ -380,7 +413,7 @@ export class BotController {
         const updated = (await Bot.findOne({ clientId })
             .populate(
                 'userIdUser',
-                'username displayName bio profilePicture banner bannerColor isBot createdAt',
+                'username displayName bio profilePicture banner bannerColor isBot botVerified createdAt',
             )
             .lean()) as LeanBotDoc | null;
 
@@ -416,7 +449,7 @@ export class BotController {
         const updated = (await Bot.findOne({ clientId })
             .populate(
                 'userIdUser',
-                'username displayName bio profilePicture banner bannerColor isBot createdAt',
+                'username displayName bio profilePicture banner bannerColor isBot botVerified createdAt',
             )
             .lean()) as LeanBotDoc | null;
 

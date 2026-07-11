@@ -58,7 +58,9 @@ import { Badge } from '@/models/Badge';
 
 type ApiUser = IUser & { id: string };
 import { Ban } from '@/models/Ban';
-import { ServerBan } from '@/models/Server';
+import { ServerBan, ServerMember } from '@/models/Server';
+import { Bot } from '@/models/Bot';
+import { User } from '@/models/User';
 import { UserConnection } from '@/models/UserConnection';
 import { resolveSerializedCustomStatus } from '@/utils/status';
 import { IAdminNote, IAdminNoteHistory } from '@/models/AdminNote';
@@ -125,9 +127,15 @@ import {
     AdminServerListItemDTO,
 } from './dto/admin-servers.response.dto';
 import {
-    AdminServerVerificationOverrideRequestDTO,
+    VerificationOverrideRequestDTO,
     AdminServerVerificationStatsDTO,
 } from './dto/admin-server-verification.dto';
+import {
+    AdminBotListItemDTO,
+    AdminBotListResponseDTO,
+    AdminBotVerifyResponseDTO,
+    AdminBotVerificationOverrideResponseDTO,
+} from './dto/admin-bots.response.dto';
 import {
     AdminServerDetailsDTO,
     AdminChannelShortDTO,
@@ -535,6 +543,8 @@ export class AdminController {
                     safeData.serverId = additionalData.serverId;
                 if (additionalData.serverName !== undefined)
                     safeData.serverName = additionalData.serverName;
+                if (additionalData.clientId !== undefined)
+                    safeData.clientId = additionalData.clientId;
                 if (additionalData.fields !== undefined)
                     safeData.fields = additionalData.fields;
                 if (additionalData.noteId !== undefined)
@@ -2000,7 +2010,7 @@ export class AdminController {
     @ApiResponse({ status: 404, description: 'Server not found' })
     public async setServerVerificationOverride(
         @Path('serverId') serverId: string,
-        @Body() body: AdminServerVerificationOverrideRequestDTO,
+        @Body() body: VerificationOverrideRequestDTO,
         @Request() req: AuthenticatedRequest,
     ): Promise<{
         verified: boolean;
@@ -2109,6 +2119,297 @@ export class AdminController {
                 serverName: server.name,
             },
         );
+        return { verified: false };
+    }
+
+    private async buildAdminBotList(
+        bots: {
+            snowflakeId: string;
+            clientId: string;
+            userId: string;
+            ownerId: string;
+            verified: boolean;
+            verificationOverride: 'verified' | 'unverified' | null;
+            verificationRequested: boolean;
+            createdAt: Date;
+            userIdUser?: {
+                username?: string;
+                displayName?: string | null;
+                profilePicture?: string;
+            } | null;
+        }[],
+    ): Promise<AdminBotListItemDTO[]> {
+        if (bots.length === 0) return [];
+
+        const ownerIds = [...new Set(bots.map((b) => b.ownerId))].filter((id) =>
+            isValidSnowflakeId(id),
+        );
+        const botUserIds = bots.map((b) => b.userId);
+
+        const [owners, serverCounts] = await Promise.all([
+            this.userRepo
+                .findByIds(ownerIds)
+                .then((u) => toApiId(u) as ApiUser[]),
+            ServerMember.aggregate<{ _id: string; count: number }>([
+                { $match: { userId: { $in: botUserIds } } },
+                { $group: { _id: '$userId', count: { $sum: 1 } } },
+            ]),
+        ]);
+
+        const ownerById = new Map(owners.map((o) => [o.id, o]));
+        const serverCountByUserId = new Map(
+            serverCounts.map((s) => [s._id, s.count]),
+        );
+
+        return bots.map((bot) => {
+            const owner = ownerById.get(bot.ownerId);
+
+            const item = new AdminBotListItemDTO();
+            item.id = bot.snowflakeId;
+            item.clientId = bot.clientId;
+            item.username = bot.userIdUser?.username ?? '';
+            item.displayName = bot.userIdUser?.displayName ?? null;
+            item.profilePicture =
+                bot.userIdUser?.profilePicture !== undefined &&
+                bot.userIdUser.profilePicture !== ''
+                    ? `/api/v1/profile/picture/${bot.userIdUser.profilePicture}`
+                    : null;
+            item.ownerId = bot.ownerId.toString();
+            item.owner = owner
+                ? {
+                      id: owner.id,
+                      username: owner.username ?? '',
+                      displayName: owner.displayName ?? null,
+                      profilePicture:
+                          owner.profilePicture !== undefined &&
+                          owner.profilePicture !== ''
+                              ? `/api/v1/profile/picture/${owner.profilePicture}`
+                              : null,
+                  }
+                : null;
+            item.serverCount = serverCountByUserId.get(bot.userId) ?? 0;
+            item.createdAt = bot.createdAt;
+            item.verified = bot.verified ?? false;
+            item.verificationOverride = bot.verificationOverride ?? null;
+            item.verificationRequested = bot.verificationRequested ?? false;
+            return item;
+        });
+    }
+
+    @Get('bots')
+    @Permissions('manageBots')
+    @ApiOperation({ summary: 'List bots with owner details' })
+    @ApiResponse({ status: 200, type: [AdminBotListItemDTO] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async listBots(
+        @Query('limit') limit: number = 50,
+        @Query('offset') offset: number = 0,
+        @Query('search') search?: string,
+    ): Promise<AdminBotListResponseDTO> {
+        const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
+        const query: Record<string, unknown> = {};
+
+        if (search !== undefined && search.trim() !== '') {
+            const escaped = search
+                .trim()
+                .slice(0, 64)
+                .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escaped, 'i');
+            const matchingBotUsers = await User.find({
+                isBot: true,
+                $or: [{ username: regex }, { displayName: regex }],
+            })
+                .select('snowflakeId')
+                .lean();
+            query.userId = {
+                $in: matchingBotUsers.map((u) => u.snowflakeId),
+            };
+        }
+
+        const bots = await Bot.find(query)
+            .populate('userIdUser', 'username displayName profilePicture')
+            .sort({ createdAt: -1 })
+            .skip(Number(offset))
+            .limit(safeLimit)
+            .lean();
+
+        return this.buildAdminBotList(bots);
+    }
+
+    @Get('bots/awaiting-review')
+    @Permissions('manageBots')
+    @ApiOperation({ summary: 'List bots awaiting verification review' })
+    @ApiResponse({ status: 200, type: [AdminBotListItemDTO] })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    public async listAwaitingReviewBots(
+        @Query('limit') limit: number = 50,
+        @Query('offset') offset: number = 0,
+    ): Promise<{ items: AdminBotListResponseDTO; total: number }> {
+        const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
+        const query = { verificationRequested: true };
+
+        const [bots, total] = await Promise.all([
+            Bot.find(query)
+                .populate('userIdUser', 'username displayName profilePicture')
+                .sort({ createdAt: -1 })
+                .skip(Number(offset))
+                .limit(safeLimit)
+                .lean(),
+            Bot.countDocuments(query),
+        ]);
+
+        const items = await this.buildAdminBotList(bots);
+        return { items, total };
+    }
+
+    @Delete('bots/:clientId/verification')
+    @Permissions('manageBots')
+    @ApiOperation({ summary: 'Decline bot verification application' })
+    @ApiOkResponse({
+        type: AdminSimpleMessageResponseDTO,
+        description: 'Verification declined',
+    })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Bot not found' })
+    public async declineBotVerification(
+        @Path('clientId') clientId: string,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<{ message: string }> {
+        const bot = await Bot.findOne({ clientId }).lean();
+        if (bot === null || bot.verificationRequested !== true) {
+            throw new NotFoundException('Verification request not found.');
+        }
+
+        await Promise.all([
+            Bot.updateOne({ clientId }, { verificationRequested: false }),
+            this.logAdminAction(
+                req,
+                'decline_bot_verification',
+                bot.ownerId.toString(),
+                { clientId },
+            ),
+        ]);
+
+        return { message: 'Verification application declined.' };
+    }
+
+    @Put('bots/:clientId/verification-override')
+    @Permissions('manageBots')
+    @ApiOperation({
+        summary: 'Set or clear a manual bot verification override',
+    })
+    @ApiOkResponse({ type: AdminBotVerificationOverrideResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Bot not found' })
+    public async setBotVerificationOverride(
+        @Path('clientId') clientId: string,
+        @Body() body: VerificationOverrideRequestDTO,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<{
+        verified: boolean;
+        override: 'verified' | 'unverified' | null;
+    }> {
+        const bot = await Bot.findOne({ clientId }).lean();
+        if (bot === null) {
+            throw new NotFoundException('Bot not found');
+        }
+
+        const override = body.override ?? null;
+        const verified =
+            override === 'verified'
+                ? true
+                : override === 'unverified'
+                  ? false
+                  : (bot.verified ?? false);
+
+        await Promise.all([
+            Bot.updateOne(
+                { clientId },
+                {
+                    verified,
+                    verificationOverride: override,
+                    verificationRequested:
+                        override === null
+                            ? (bot.verificationRequested ?? false)
+                            : false,
+                },
+            ),
+            this.userRepo.update(bot.userId, { botVerified: verified }),
+            this.logAdminAction(
+                req,
+                'set_bot_verification_override',
+                bot.ownerId.toString(),
+                { clientId, content: override ?? 'cleared' },
+            ),
+        ]);
+
+        return { verified, override };
+    }
+
+    @Post('bots/:clientId/verify')
+    @HttpCode(200)
+    @Permissions('manageBots')
+    @ApiOperation({ summary: 'Grant a bot the verified badge' })
+    @ApiOkResponse({ type: AdminBotVerifyResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Bot not found' })
+    public async verifyBot(
+        @Path('clientId') clientId: string,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<{ verified: boolean }> {
+        const bot = await Bot.findOne({ clientId }).lean();
+        if (bot === null) {
+            throw new NotFoundException('Bot not found');
+        }
+
+        if (bot.verificationRequested !== true) {
+            throw new BadRequestException(
+                'Verification has not been requested for this bot.',
+            );
+        }
+
+        await Promise.all([
+            Bot.updateOne(
+                { clientId },
+                {
+                    verified: true,
+                    verificationOverride: 'verified',
+                    verificationRequested: false,
+                },
+            ),
+            this.userRepo.update(bot.userId, { botVerified: true }),
+            this.logAdminAction(req, 'verify_bot', bot.ownerId.toString(), {
+                clientId,
+            }),
+        ]);
+        return { verified: true };
+    }
+
+    @Delete('bots/:clientId/verify')
+    @Permissions('manageBots')
+    @ApiOperation({ summary: 'Remove the verified badge from a bot' })
+    @ApiOkResponse({ type: AdminBotVerifyResponseDTO })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @ApiResponse({ status: 404, description: 'Bot not found' })
+    public async unverifyBot(
+        @Path('clientId') clientId: string,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<{ verified: boolean }> {
+        const bot = await Bot.findOne({ clientId }).lean();
+        if (bot === null) {
+            throw new NotFoundException('Bot not found');
+        }
+
+        await Promise.all([
+            Bot.updateOne(
+                { clientId },
+                { verified: false, verificationOverride: 'unverified' },
+            ),
+            this.userRepo.update(bot.userId, { botVerified: false }),
+            this.logAdminAction(req, 'unverify_bot', bot.ownerId.toString(), {
+                clientId,
+            }),
+        ]);
         return { verified: false };
     }
 

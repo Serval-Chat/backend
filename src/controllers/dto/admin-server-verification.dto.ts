@@ -27,7 +27,7 @@ export class AdminServerVerificationStatsDTO {
     public lastRunAt!: Date | null;
 }
 
-export class AdminServerVerificationOverrideRequestDTO {
+export class VerificationOverrideRequestDTO {
     @ApiPropertyOptional({ enum: ['verified', 'unverified', null] })
     @IsOptional()
     @IsIn(['verified', 'unverified', null])

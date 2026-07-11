@@ -15,6 +15,7 @@ export interface AdminPermissions {
     viewLogs: boolean; // Can view audit logs
     manageServer: boolean; // Can manage servers (delete/restore)
     manageInvites: boolean; // Can manage registration invites
+    manageBots: boolean; // Can manage bot verification
 }
 
 export const DEFAULT_PERMISSIONS: AdminPermissions = {
@@ -28,6 +29,7 @@ export const DEFAULT_PERMISSIONS: AdminPermissions = {
     viewLogs: false,
     manageServer: false,
     manageInvites: false,
+    manageBots: false,
 };
 
 // Array of permission keys for reference
@@ -42,4 +44,5 @@ export const PERMISSION_KEYS = [
     'viewLogs',
     'manageServer',
     'manageInvites',
+    'manageBots',
 ] as const;
