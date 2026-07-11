@@ -209,6 +209,53 @@ describe('WS bot implicit event delivery', () => {
         botSocket.close();
     });
 
+    it('delivers server messages to a bot added to the server after it connected', async () => {
+        const owner = await createTestUser({ username: 'owner_ws_late', login: 'owner_ws_late' });
+        const human = await createTestUser({ username: 'human_ws_late', login: 'human_ws_late' });
+        const botUser = await createTestUser({ username: 'bot_ws_late', login: 'bot_ws_late', isBot: true });
+
+        const serverDoc = await createTestServer(owner.snowflakeId);
+        const channelDoc = await createTestChannel(serverDoc.snowflakeId);
+        await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: human.snowflakeId, roles: [] });
+
+        const botDoc = await Bot.create({
+            clientId: crypto.randomBytes(16).toString('hex'),
+            botTokenHash: crypto.createHash('sha256').update('secret').digest('hex'),
+            ownerId: owner.snowflakeId,
+            userId: botUser.snowflakeId,
+            botPermissions: {
+                ...DEFAULT_BOT_PERMISSIONS,
+                joinServers: true,
+                readMessages: true,
+                sendMessages: true,
+            },
+        });
+
+        const botSocket = await openAuthenticatedSocket(wsUrl, makeAccessToken(botUser));
+
+        const ownerToken = makeAccessToken(owner);
+        const authorizeRes = await request(app)
+            .post(`/api/v1/bots/${botDoc.clientId}/authorize`)
+            .set('Authorization', `Bearer ${ownerToken}`)
+            .send({ serverId: serverDoc.snowflakeId });
+        expect(authorizeRes.status).toBe(200);
+
+        const messageEventPromise = waitForWsEvent(botSocket, 'message_server');
+        const humanToken = makeAccessToken(human);
+        const httpRes = await request(app)
+            .post(
+                `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages`,
+            )
+            .set('Authorization', `Bearer ${humanToken}`)
+            .send({ text: 'after join' });
+        expect(httpRes.status).toBe(201);
+
+        const messageEvent = await messageEventPromise;
+        expect(messageEvent.event.payload.text).toBe('after join');
+
+        botSocket.close();
+    });
+
     it('delivers interaction_create_server to bot without explicit join_server', async () => {
         const owner = await createTestUser({ username: 'owner_ws_interaction', login: 'owner_ws_interaction' });
         const human = await createTestUser({ username: 'human_ws_interaction', login: 'human_ws_interaction' });

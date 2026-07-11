@@ -79,6 +79,7 @@ export interface IWsServer {
         serverId: string,
         channelIds: string[],
     ): void;
+    subscribeUserToServer(userId: string, serverId: string): void;
     broadcastToPresenceAudience(
         friendIds: string[],
         serverIds: string[],

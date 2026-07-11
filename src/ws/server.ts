@@ -96,6 +96,10 @@ type RedisBroadcastMessage =
     | {
           action: 'unsubscribeUserFromServer';
           payload: { userId: string; serverId: string; channelIds: string[] };
+      }
+    | {
+          action: 'subscribeUserToServer';
+          payload: { userId: string; serverId: string };
       };
 
 type IRedisEnvelope = { instanceId: string } & RedisBroadcastMessage;
@@ -283,6 +287,12 @@ export class WsServer extends EventEmitter implements IWsServer {
                         data.payload.userId,
                         data.payload.serverId,
                         data.payload.channelIds,
+                    );
+                    break;
+                case 'subscribeUserToServer':
+                    this._localSubscribeUserToServer(
+                        data.payload.userId,
+                        data.payload.serverId,
                     );
                     break;
             }
@@ -1111,6 +1121,21 @@ export class WsServer extends EventEmitter implements IWsServer {
             for (const channelId of channelIds) {
                 this.unsubscribeFromChannel(ws, channelId);
             }
+        }
+    }
+
+    public subscribeUserToServer(userId: string, serverId: string): void {
+        this.publishToRedis('subscribeUserToServer', { userId, serverId });
+        this._localSubscribeUserToServer(userId, serverId);
+    }
+
+    private _localSubscribeUserToServer(
+        userId: string,
+        serverId: string,
+    ): void {
+        const sockets = this.getUserSockets(userId);
+        for (const ws of sockets) {
+            this.subscribeToServer(ws, serverId);
         }
     }
 

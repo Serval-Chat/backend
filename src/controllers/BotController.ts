@@ -630,6 +630,8 @@ export class BotController {
 
         this.permissionService.invalidateCache(serverId);
 
+        this.wsServer.subscribeUserToServer(botUserId.toString(), serverId);
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'role_created',
             payload: { serverId, role: managedRole },

@@ -490,6 +490,8 @@ export class ServerInviteController {
 
         this.permissionService.invalidateCache(serverId);
 
+        this.wsServer.subscribeUserToServer(userId, serverId);
+
         const user = await this.userRepo.findById(userId);
         const username =
             user !== null ? (user.username ?? 'Unknown') : 'Unknown';
