@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Patch,
     Delete,
     Body,
     Param,
@@ -31,7 +32,10 @@ import type { AuthenticatedRequest } from '@/middleware/auth';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { notifyUser } from '@/services/PushService';
-import { SendFriendRequestDTO } from './dto/friendship.request.dto';
+import {
+    SendFriendRequestDTO,
+    SetFriendNicknameDTO,
+} from './dto/friendship.request.dto';
 import {
     FriendResponseDTO,
     IncomingFriendRequestResponseDTO,
@@ -103,6 +107,7 @@ export class FriendshipController {
         const friendIds = new Set<string>();
         const friendshipCreatedAtByFriendId = new Map<string, Date>();
         const isPinnedByFriendId = new Map<string, boolean>();
+        const nicknameByFriendId = new Map<string, string>();
         const legacyUsernames = new Set<string>();
 
         friendships.forEach((rel) => {
@@ -124,6 +129,13 @@ export class FriendshipController {
                 }
                 if (userIdStr === userId && rel.isPinned === true) {
                     isPinnedByFriendId.set(otherId, true);
+                }
+                if (
+                    userIdStr === userId &&
+                    rel.nickname !== undefined &&
+                    rel.nickname !== ''
+                ) {
+                    nicknameByFriendId.set(otherId, rel.nickname);
                 }
             } else if (rel.friend !== undefined && rel.friend !== '') {
                 legacyUsernames.add(rel.friend);
@@ -215,6 +227,8 @@ export class FriendshipController {
                         payload.latestMessageAt = latestMessageAt;
                         payload.isPinned =
                             isPinnedByFriendId.get(payload.id) ?? false;
+                        payload.nickname =
+                            nicknameByFriendId.get(payload.id) ?? null;
 
                         if (friend.deletedAt !== undefined) {
                             payload.profilePicture = '/images/deleted-cat.jpg';
@@ -670,6 +684,76 @@ export class FriendshipController {
         }
 
         return { friendId, isPinned: nextPinned };
+    }
+
+    @Patch(':friendId/nickname')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Set a private local nickname for a friend' })
+    @ApiResponse({ status: 404, description: 'User Not Found' })
+    public async setFriendNickname(
+        @Param('friendId') friendId: string,
+        @Body() body: SetFriendNicknameDTO,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<{ friendId: string; nickname: string }> {
+        const meId = req.user.id;
+
+        if (!(await this.friendshipRepo.areFriends(meId, friendId))) {
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        const nickname = body.nickname.trim();
+        if (nickname === '') {
+            throw new ApiError(400, ErrorMessages.FRIENDSHIP.NICKNAME_EMPTY);
+        }
+
+        await this.friendshipRepo.setNickname(meId, friendId, nickname);
+
+        try {
+            this.wsServer.broadcastToUser(meId, {
+                type: 'friend_nickname_updated',
+                payload: { friendId, nickname },
+            });
+        } catch (err) {
+            this.logger.error(
+                'Failed to emit friend_nickname_updated event:',
+                err,
+            );
+        }
+
+        return { friendId, nickname };
+    }
+
+    @Delete(':friendId/nickname')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Clear the private local nickname for a friend' })
+    @ApiResponse({ status: 404, description: 'User Not Found' })
+    public async clearFriendNickname(
+        @Param('friendId') friendId: string,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<{ friendId: string; nickname: null }> {
+        const meId = req.user.id;
+
+        if (!(await this.friendshipRepo.areFriends(meId, friendId))) {
+            throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        await this.friendshipRepo.setNickname(meId, friendId, null);
+
+        try {
+            this.wsServer.broadcastToUser(meId, {
+                type: 'friend_nickname_updated',
+                payload: { friendId, nickname: null },
+            });
+        } catch (err) {
+            this.logger.error(
+                'Failed to emit friend_nickname_updated event:',
+                err,
+            );
+        }
+
+        return { friendId, nickname: null };
     }
 
     @Delete(':friendId')

@@ -17,6 +17,7 @@ interface IFriendship extends Document {
     friendId: string;
     createdAt: Date;
     isPinned?: boolean; // Whether this user has pinned the DM with friendId
+    nickname?: string;
 }
 
 // Friend Request interface
@@ -39,6 +40,7 @@ const friendshipSchema = new Schema<IFriendship>({
     friendId: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
     isPinned: { type: Boolean, default: false },
+    nickname: { type: String, required: false, maxlength: 32 },
 });
 friendshipSchema.plugin(mongooseIdPlugin);
 friendshipSchema.plugin(snowflakeIdPlugin);

@@ -66,3 +66,16 @@ export interface IFriendPinUpdatedEvent
             isPinned: boolean;
         }
     > {}
+
+/**
+ * Server -> Client (Unicast)
+ * Local nickname for a friend changed (private to the owning user).
+ */
+export interface IFriendNicknameUpdatedEvent
+    extends WsEvent<
+        'friend_nickname_updated',
+        {
+            friendId: string;
+            nickname: string | null;
+        }
+    > {}

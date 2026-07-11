@@ -93,6 +93,22 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
             .lean();
     }
 
+    public async setNickname(
+        userId: string,
+        friendId: string,
+        nickname: string | null,
+    ): Promise<IFriendship | null> {
+        return await this.friendshipModel
+            .findOneAndUpdate(
+                { userId, friendId },
+                nickname === null
+                    ? { $unset: { nickname: '' } }
+                    : { $set: { nickname } },
+                { new: true },
+            )
+            .lean();
+    }
+
     public async acceptRequest(
         requestId: string,
     ): Promise<IFriendRequest | null> {

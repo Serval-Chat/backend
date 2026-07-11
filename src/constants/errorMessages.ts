@@ -173,6 +173,7 @@ export const ErrorMessages = {
         REQUEST_NOT_PENDING: 'Request not pending',
         NOT_FRIENDS: 'Users are not friends',
         USERNAME_REQUIRED: 'Username is required',
+        NICKNAME_EMPTY: 'Nickname cannot be empty',
     },
 
     SYSTEM: {

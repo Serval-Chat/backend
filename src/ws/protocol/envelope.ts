@@ -114,6 +114,7 @@ import type {
     IFriendAddedEvent,
     IFriendRemovedEvent,
     IFriendPinUpdatedEvent,
+    IFriendNicknameUpdatedEvent,
 } from './events/friendship';
 import type { IExportCompletedEvent } from './events/export';
 import type { INotificationSoundsUpdatedEvent } from './events/notification_sounds';
@@ -217,6 +218,7 @@ export type AnyResponseWsEvent =
     | IFriendAddedEvent
     | IFriendRemovedEvent
     | IFriendPinUpdatedEvent
+    | IFriendNicknameUpdatedEvent
     // Presence & Status
     | IPresenceSyncEvent
     | IUserOnlineEvent

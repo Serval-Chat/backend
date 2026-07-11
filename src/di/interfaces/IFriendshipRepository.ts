@@ -13,6 +13,7 @@ export interface IFriendship {
     friendId: string;
     createdAt?: Date;
     isPinned?: boolean;
+    nickname?: string;
 }
 
 // Friend Request interface (domain model)
@@ -52,6 +53,13 @@ export interface IFriendshipRepository {
         userId: string,
         friendId: string,
         isPinned: boolean,
+    ): Promise<IFriendship | null>;
+
+    // Set/clear this user's private nickname for friendId
+    setNickname(
+        userId: string,
+        friendId: string,
+        nickname: string | null,
     ): Promise<IFriendship | null>;
 
     // Create friend request

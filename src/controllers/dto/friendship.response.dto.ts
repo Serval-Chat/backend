@@ -32,6 +32,9 @@ export class FriendResponseDTO {
 
     @ApiPropertyOptional()
     public isOnline?: boolean;
+
+    @ApiPropertyOptional({ nullable: true })
+    public nickname?: string | null;
 }
 
 export class IncomingFriendRequestResponseDTO {
