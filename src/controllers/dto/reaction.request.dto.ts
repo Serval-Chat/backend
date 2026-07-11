@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { IsEmojiId } from '@/validation/schemas/common';
+import { IsEmoji, IsEmojiId } from '@/validation/schemas/common';
 
 export enum EmojiTypeDTO {
     UNICODE = 'unicode',
@@ -14,7 +14,7 @@ export enum ReactionScopeDTO {
 
 export class AddUnicodeReactionRequestDTO {
     @ApiProperty({ example: '👍' })
-    @IsString()
+    @IsEmoji()
     public emoji!: string;
 
     @ApiProperty({ example: 'unicode', enum: [EmojiTypeDTO.UNICODE] })

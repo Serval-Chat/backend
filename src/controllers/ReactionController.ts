@@ -53,6 +53,14 @@ import type {
     IReactionRemovedEvent,
 } from '@/ws/protocol/events/reactions';
 
+const REACTION_VALIDATION_ERRORS: string[] = [
+    ErrorMessages.REACTION.EMOJI_ID_REQUIRED,
+    ErrorMessages.REACTION.CUSTOM_NOT_FOUND,
+    ErrorMessages.REACTION.ALREADY_REACTED,
+    ErrorMessages.REACTION.MAX_REACTIONS,
+    ErrorMessages.REACTION.INVALID_EMOJI,
+];
+
 @Controller('api/v1')
 @ApiTags('Reactions')
 @ApiBearerAuth()
@@ -187,10 +195,7 @@ export class ReactionController {
             );
         } catch (err: unknown) {
             const error = err as Error;
-            if (
-                error.message.includes('already reacted') ||
-                error.message.includes('Maximum')
-            ) {
+            if (REACTION_VALIDATION_ERRORS.includes(error.message)) {
                 throw new ApiError(400, error.message);
             }
             throw err;
@@ -406,10 +411,7 @@ export class ReactionController {
             );
         } catch (err: unknown) {
             const error = err as Error;
-            if (
-                error.message.includes('already reacted') ||
-                error.message.includes('Maximum')
-            ) {
+            if (REACTION_VALIDATION_ERRORS.includes(error.message)) {
                 throw new ApiError(400, error.message);
             }
             throw err;

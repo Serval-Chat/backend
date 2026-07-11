@@ -31,8 +31,8 @@ import type {
     IAuditLog,
 } from '@/di/interfaces/IAuditLogRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
-import type { IBanRepository } from '@/di/interfaces/IBanRepository';
-import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
+import type { IBanRepository, IBan } from '@/di/interfaces/IBanRepository';
+import type { IMuteRepository, IMute } from '@/di/interfaces/IMuteRepository';
 import type {
     IServerRepository,
     IServer,
@@ -59,6 +59,8 @@ import { Badge } from '@/models/Badge';
 type ApiUser = IUser & { id: string };
 import { Ban } from '@/models/Ban';
 import { ServerBan } from '@/models/Server';
+import { UserConnection } from '@/models/UserConnection';
+import { resolveSerializedCustomStatus } from '@/utils/status';
 import { IAdminNote, IAdminNoteHistory } from '@/models/AdminNote';
 import mongoose from 'mongoose';
 import {
@@ -75,7 +77,6 @@ import {
 import { AdminPermissions, ProfileFieldDTO } from './dto/common.request.dto';
 import {
     AdminUserListItemDTO,
-    AdminUserDetailsDTO,
     AdminExtendedUserDetailsDTO,
     AdminUserShortDTO,
 } from './dto/admin-users.response.dto';
@@ -102,13 +103,19 @@ import {
 import {
     AdminUserBanHistoryResponseDTO,
     AdminBanListResponseDTO,
+    AdminBanListItemDTO,
     AdminBansDiagnosticResponseDTO,
 } from './dto/admin-bans.response.dto';
 import {
     AdminUserWarningsResponseDTO,
     AdminWarningListResponseDTO,
 } from './dto/admin-warnings.response.dto';
-import { AdminAuditLogListResponseDTO } from './dto/admin-audit-logs.response.dto';
+import {
+    AdminAuditLogListResponseDTO,
+    AdminAuditLogListItemDTO,
+    AdminAuditLogChangeDTO,
+    AdminAuditLogJsonObject,
+} from './dto/admin-audit-logs.response.dto';
 import { AdminListAuditLogsRequestDTO } from './dto/admin-audit-logs.request.dto';
 import { AdminBanSampleDTO, AdminBanHistoryItemDTO } from './dto/types.dto';
 import {
@@ -376,67 +383,6 @@ export class AdminController {
                 user.displayName !== undefined ? user.displayName : null;
             return dto;
         });
-    }
-
-    @Get('users/:userId')
-    @Permissions('viewUsers')
-    @ApiOperation({
-        summary: 'Retrieve detailed information about a specific user',
-    })
-    @ApiResponse({ status: 200, type: AdminUserDetailsDTO })
-    @ApiResponse({ status: 403, description: 'Forbidden' })
-    @ApiResponse({ status: 404, description: 'User not found' })
-    public async getUserDetails(
-        @Path('userId') userId: string,
-        @Request() req: AuthenticatedRequest,
-    ): Promise<AdminUserDetailsDTO> {
-        const user = toApiId(
-            await this.userRepo.findById(userId),
-        ) as ApiUser | null;
-        if (user === null) {
-            this.logger.warn(
-                `Admin ${req.user.login} tried to view non-existent user ${userId}`,
-            );
-            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
-        }
-
-        this.logger.info(
-            `Admin ${req.user.login} viewed user details for ${userId}`,
-        );
-        const activeBan = await this.banRepo.findActiveByUserId(userId);
-        const activeMute = await this.muteRepo.findActiveByUserId(userId);
-        const warningCount = await this.warningRepo.countByUserId(userId);
-
-        let badges: unknown[] = [];
-        if (user.badges !== undefined && user.badges.length > 0) {
-            badges = await Badge.find({ id: { $in: user.badges } }).lean();
-        }
-
-        const details = new AdminUserDetailsDTO();
-        details.id = user.id;
-        details.username = user.username ?? '';
-        details.login = user.login ?? '';
-        details.displayName =
-            user.displayName !== undefined ? user.displayName : null;
-        details.profilePicture =
-            user.profilePicture !== undefined ? user.profilePicture : null;
-        details.permissions = user.permissions ?? '0';
-        details.createdAt = user.createdAt ?? new Date();
-        details.banExpiry = activeBan?.expirationTimestamp;
-        details.muteExpiry = activeMute?.expirationTimestamp;
-        details.muteActive = activeMute !== null;
-        details.muteReason = activeMute?.reason;
-        details.warningCount = warningCount;
-        details.bio = user.bio ?? '';
-        details.pronouns = user.pronouns ?? '';
-        details.badges = badges as string[];
-        details.banner =
-            user.banner !== undefined && user.banner !== ''
-                ? `/api/v1/profile/banner/${user.banner}`
-                : null;
-        details.deletedAt = user.deletedAt;
-        details.deletedReason = user.deletedReason;
-        return details;
     }
 
     @Post('users/:userId/reset')
@@ -1080,6 +1026,47 @@ export class AdminController {
         return historyWithStatus;
     }
 
+    private async mapBanOrMuteList(
+        records: (IBan | IMute)[],
+    ): Promise<AdminBanListItemDTO[]> {
+        const userIds = [
+            ...new Set(
+                records.flatMap((r) =>
+                    [r.userId, r.issuedBy].filter(
+                        (id): id is string => id !== undefined,
+                    ),
+                ),
+            ),
+        ];
+        const users =
+            userIds.length > 0 ? await this.userRepo.findByIds(userIds) : [];
+        const userById = new Map(users.map((u) => [u.snowflakeId, u]));
+
+        return records.map((r) => {
+            const item = new AdminBanListItemDTO();
+            item.id = r.snowflakeId;
+            item.userId = r.userId;
+            const user = userById.get(r.userId);
+            if (user) item.user = this.mapAdminInfo(r.userId, user);
+            item.reason = r.reason;
+            item.active = r.active;
+            item.expirationTimestamp = r.expirationTimestamp;
+            item.createdAt = r.createdAt;
+            item.timestamp = r.timestamp;
+            item.issuedBy = r.issuedBy;
+            if (r.issuedBy !== undefined) {
+                const issuedByUser = userById.get(r.issuedBy);
+                if (issuedByUser) {
+                    item.issuedByUser = this.mapAdminInfo(
+                        r.issuedBy,
+                        issuedByUser,
+                    );
+                }
+            }
+            return item;
+        });
+    }
+
     @Get('bans')
     @Permissions('viewBans')
     @ApiOperation({ summary: 'List all bans with pagination' })
@@ -1094,7 +1081,7 @@ export class AdminController {
             limit: safeLimit,
             offset: Number(offset),
         });
-        return bans;
+        return this.mapBanOrMuteList(bans);
     }
 
     @Get('bans/diagnostic')
@@ -1277,7 +1264,7 @@ export class AdminController {
             limit: safeLimit,
             offset: Number(offset),
         });
-        return mutes;
+        return this.mapBanOrMuteList(mutes);
     }
 
     @Post('users/:userId/warn')
@@ -1419,7 +1406,35 @@ export class AdminController {
                     ? new Date(query.endDate)
                     : undefined,
         });
-        return logs;
+        return logs.map((log) => {
+            const item = new AdminAuditLogListItemDTO();
+            item.id = log.snowflakeId;
+            item.serverId = log.serverId;
+            item.actorId = log.actorId;
+            if (log.actorIdUser) {
+                item.actorIdUser = this.mapAdminInfo(
+                    log.actorId,
+                    log.actorIdUser,
+                );
+            }
+            item.actionType = log.actionType;
+            item.targetId = log.targetId;
+            item.targetType = log.targetType;
+            item.targetUserId = log.targetUserId;
+            if (log.targetUserId !== undefined && log.targetUserIdUser) {
+                item.targetUserIdUser = this.mapAdminInfo(
+                    log.targetUserId,
+                    log.targetUserIdUser,
+                );
+            }
+            item.changes = log.changes as AdminAuditLogChangeDTO[] | undefined;
+            item.reason = log.reason;
+            item.additionalData = log.additionalData as
+                | AdminAuditLogJsonObject
+                | undefined;
+            item.timestamp = log.timestamp;
+            return item;
+        });
     }
 
     @Get('servers')
@@ -1689,6 +1704,38 @@ export class AdminController {
         response.deletedAt = user.deletedAt;
         response.deletedReason = user.deletedReason;
         response.servers = serverList;
+        response.decorationId = user.decorationId;
+        response.bannerColor = user.bannerColor;
+        response.profilePrimaryColor = user.profilePrimaryColor;
+        response.profileAccentColor = user.profileAccentColor;
+        response.usernameFont = user.usernameFont;
+        response.usernameGradient = user.usernameGradient;
+        response.usernameGlow = user.usernameGlow;
+        response.customStatus = resolveSerializedCustomStatus(
+            user.customStatus,
+        );
+        response.isPrivate = user.privacySettings?.privateProfile ?? false;
+        response.privacySettings = {
+            privateProfile: user.privacySettings?.privateProfile ?? false,
+            hideDisplayName: user.privacySettings?.hideDisplayName ?? false,
+            hidePronouns: user.privacySettings?.hidePronouns ?? false,
+            hideConnections: user.privacySettings?.hideConnections ?? false,
+            hideBio: user.privacySettings?.hideBio ?? false,
+            hideStatus: user.privacySettings?.hideStatus ?? false,
+        };
+
+        const connections = await UserConnection.find({
+            userId: user.id,
+            status: 'verified',
+        })
+            .sort({ verifiedAt: 1, createdAt: 1 })
+            .exec();
+        response.connections = connections.map((connection) => ({
+            id: connection.snowflakeId,
+            type: connection.type,
+            value: connection.value,
+            status: connection.status,
+        }));
 
         return response;
     }

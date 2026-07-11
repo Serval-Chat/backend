@@ -197,6 +197,7 @@ export const ErrorMessages = {
     REACTION: {
         EMOJI_ID_REQUIRED: 'emojiId is required for custom emojis',
         CUSTOM_NOT_FOUND: 'Custom emoji not found',
+        INVALID_EMOJI: 'Invalid emoji character',
         ALREADY_REACTED: 'User has already reacted with this emoji',
         MAX_REACTIONS: 'Maximum 20 reactions per message',
         EMOJI_OR_ID_REQUIRED: 'Either emoji or emojiId must be provided',

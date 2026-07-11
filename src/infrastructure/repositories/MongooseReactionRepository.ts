@@ -19,6 +19,14 @@ import { ErrorMessages } from '@/constants/errorMessages';
 export class MongooseReactionRepository implements IReactionRepository {
     private readonly MAX_REACTIONS_PER_MESSAGE = 20;
 
+    private isValidUnicodeEmoji(value: string): boolean {
+        const segmenter = new Intl.Segmenter('en', {
+            granularity: 'grapheme',
+        });
+        const graphemes = Array.from(segmenter.segment(value));
+        return graphemes.length === 1 && /\p{Emoji}/u.test(value);
+    }
+
     public async addReaction(
         messageId: string,
         messageType: 'dm' | 'server',
@@ -37,6 +45,8 @@ export class MongooseReactionRepository implements IReactionRepository {
             if (!customEmoji) {
                 throw new Error(ErrorMessages.REACTION.CUSTOM_NOT_FOUND);
             }
+        } else if (!this.isValidUnicodeEmoji(emoji)) {
+            throw new Error(ErrorMessages.REACTION.INVALID_EMOJI);
         }
 
         // Check if user already reacted with this emoji

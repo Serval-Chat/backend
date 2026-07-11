@@ -20,14 +20,18 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
             .lean();
         const userBySnowflakeId = new Map(users.map((u) => [u.snowflakeId, u]));
 
-        for (const note of notes) {
-            note.history = note.history.map((h) => ({
+        return notes.map((note) => {
+            const plain = (
+                typeof (note as { toObject?: unknown }).toObject === 'function'
+                    ? note.toObject({ virtuals: true })
+                    : note
+            ) as IAdminNote;
+            plain.history = plain.history.map((h) => ({
                 ...h,
                 editorIdUser: userBySnowflakeId.get(h.editorId),
             }));
-        }
-
-        return notes;
+            return plain;
+        });
     }
 
     public async create(data: {
