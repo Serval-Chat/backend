@@ -17,6 +17,7 @@ import {
 import type { ReactionData } from '@/di/interfaces/IReactionRepository';
 import type { IMessageAttachment } from '@/models/Attachment';
 import { isValidSnowflakeId } from '@/utils/snowflake';
+import { resolveMessageIdFilter } from '@/utils/messageId';
 
 type PopulatedServerMessageDoc = IServerMessage & {
     repliedToMessage?: PopulatedServerMessageDoc;
@@ -192,9 +193,8 @@ export class MongooseServerMessageRepository
         let messages: PopulatedServerMessageDoc[] = [];
 
         if (around !== undefined && around !== '') {
-            const targetFilter: QueryFilter<IServerMessage> = {
-                snowflakeId: around,
-            };
+            const targetFilter: QueryFilter<IServerMessage> =
+                resolveMessageIdFilter<IServerMessage>(around);
             if (includeDeleted !== true) {
                 targetFilter.deletedAt = { $exists: false };
             }

@@ -92,4 +92,76 @@ describe('MongooseServerMessageRepository', () => {
             expect(result.interaction).toEqual(mockInteraction);
         });
     });
+
+    describe('findByChannelId with `around`', () => {
+        const makeFindChain = (result: unknown[]) => ({
+            sort: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            populate: jest.fn().mockReturnThis(),
+            lean: jest.fn().mockResolvedValue(result),
+        });
+
+        it('resolves the target message by ObjectId as well as snowflakeId', async () => {
+            const oid = '6a3962aee1af8e04fc4f4e14';
+            const target = {
+                _id: new Types.ObjectId(oid),
+                snowflakeId: '0000000000000000001',
+                createdAt: new Date('2024-06-01T00:00:00Z'),
+            };
+            const older = {
+                _id: new Types.ObjectId(),
+                snowflakeId: '0000000000000000000',
+                createdAt: new Date('2024-05-31T00:00:00Z'),
+            };
+
+            (ServerMessage.findOne as jest.Mock) = jest.fn().mockReturnValue({
+                lean: jest.fn().mockResolvedValue(target),
+            });
+            (ServerMessage.find as jest.Mock) = jest
+                .fn()
+                .mockReturnValueOnce(makeFindChain([older])) // before
+                .mockReturnValueOnce(makeFindChain([target])); // after (>= target)
+
+            const result = await repository.findByChannelId(
+                'channel-1',
+                100,
+                undefined,
+                oid,
+            );
+
+            const filterArg = (ServerMessage.findOne as jest.Mock).mock
+                .calls[0][0];
+            expect(filterArg.$or).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ snowflakeId: oid }),
+                    expect.objectContaining({
+                        _id: expect.any(Types.ObjectId),
+                    }),
+                ]),
+            );
+            expect(result).toHaveLength(2);
+        });
+
+        it('looks up by snowflakeId only for a snowflake `around`', async () => {
+            const snowflake = '0246233124965449728';
+
+            (ServerMessage.findOne as jest.Mock) = jest.fn().mockReturnValue({
+                lean: jest.fn().mockResolvedValue(null),
+            });
+
+            const result = await repository.findByChannelId(
+                'channel-1',
+                100,
+                undefined,
+                snowflake,
+            );
+
+            const filterArg = (ServerMessage.findOne as jest.Mock).mock
+                .calls[0][0];
+            expect(filterArg.$or).toBeUndefined();
+            expect(filterArg.snowflakeId).toBe(snowflake);
+            // target not found -> empty window
+            expect(result).toEqual([]);
+        });
+    });
 });
