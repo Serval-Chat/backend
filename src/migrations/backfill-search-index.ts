@@ -16,6 +16,7 @@ import {
 
 interface RawDmMessage {
     _id: Types.ObjectId;
+    snowflakeId?: string;
     senderId?: Types.ObjectId;
     receiverId?: Types.ObjectId;
     text?: string;
@@ -29,6 +30,7 @@ interface RawDmMessage {
 
 interface RawChannelMessage {
     _id: Types.ObjectId;
+    snowflakeId?: string;
     senderId?: Types.ObjectId;
     serverId?: Types.ObjectId;
     channelId?: Types.ObjectId;
@@ -71,9 +73,14 @@ async function bulkIndexDm(
         (
             d,
         ): d is RawDmMessage & {
+            snowflakeId: string;
             senderId: Types.ObjectId;
             receiverId: Types.ObjectId;
-        } => d.senderId !== undefined && d.receiverId !== undefined,
+        } =>
+            d.snowflakeId !== undefined &&
+            d.snowflakeId !== '' &&
+            d.senderId !== undefined &&
+            d.receiverId !== undefined,
     );
     const skipped = docs.length - indexable.length;
     if (indexable.length === 0) return { ok: 0, err: 0, skipped };
@@ -81,9 +88,14 @@ async function bulkIndexDm(
     const operations = indexable.flatMap((doc) => {
         const text = doc.text ?? '';
         return [
-            { index: { _index: DM_MESSAGES_INDEX, _id: doc._id.toString() } },
             {
-                id: doc._id.toString(),
+                index: {
+                    _index: DM_MESSAGES_INDEX,
+                    _id: doc.snowflakeId,
+                },
+            },
+            {
+                id: doc.snowflakeId,
                 senderId: doc.senderId.toString(),
                 receiverId: doc.receiverId.toString(),
                 text,
@@ -122,10 +134,13 @@ async function bulkIndexChannel(
         (
             d,
         ): d is RawChannelMessage & {
+            snowflakeId: string;
             senderId: Types.ObjectId;
             channelId: Types.ObjectId;
             serverId: Types.ObjectId;
         } =>
+            d.snowflakeId !== undefined &&
+            d.snowflakeId !== '' &&
             d.senderId !== undefined &&
             d.channelId !== undefined &&
             d.serverId !== undefined,
@@ -139,11 +154,11 @@ async function bulkIndexChannel(
             {
                 index: {
                     _index: CHANNEL_MESSAGES_INDEX,
-                    _id: doc._id.toString(),
+                    _id: doc.snowflakeId,
                 },
             },
             {
-                id: doc._id.toString(),
+                id: doc.snowflakeId,
                 senderId: doc.senderId.toString(),
                 channelId: doc.channelId.toString(),
                 serverId: doc.serverId.toString(),

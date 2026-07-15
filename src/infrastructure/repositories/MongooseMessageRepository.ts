@@ -7,7 +7,6 @@ import { Message, type IPoll } from '@/models/Message';
 import { injectable } from 'inversify';
 import type { IMessageAttachment } from '@/models/Attachment';
 import { isValidSnowflakeId } from '@/utils/snowflake';
-import { resolveMessageIdFilter } from '@/utils/messageId';
 
 type PopulatedMessageDoc = IMessage & {
     repliedToMessage?: PopulatedMessageDoc;
@@ -100,7 +99,7 @@ export class MongooseMessageRepository implements IMessageRepository {
 
         if (around !== undefined && around !== '') {
             const targetMessage = (await this.messageModel
-                .findOne(resolveMessageIdFilter<IMessage>(around))
+                .findOne({ snowflakeId: around })
                 .lean()) as PopulatedMessageDoc | null;
             if (!targetMessage) return [];
 

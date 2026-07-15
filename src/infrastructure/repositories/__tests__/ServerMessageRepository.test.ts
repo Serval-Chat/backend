@@ -101,11 +101,11 @@ describe('MongooseServerMessageRepository', () => {
             lean: jest.fn().mockResolvedValue(result),
         });
 
-        it('resolves the target message by ObjectId as well as snowflakeId', async () => {
-            const oid = '6a3962aee1af8e04fc4f4e14';
+        it('resolves the context target by snowflake id only', async () => {
+            const snowflake = '0246233124965449728';
             const target = {
-                _id: new Types.ObjectId(oid),
-                snowflakeId: '0000000000000000001',
+                _id: new Types.ObjectId(),
+                snowflakeId: snowflake,
                 createdAt: new Date('2024-06-01T00:00:00Z'),
             };
             const older = {
@@ -126,25 +126,17 @@ describe('MongooseServerMessageRepository', () => {
                 'channel-1',
                 100,
                 undefined,
-                oid,
+                snowflake,
             );
 
             const filterArg = (ServerMessage.findOne as jest.Mock).mock
                 .calls[0][0];
-            expect(filterArg.$or).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({ snowflakeId: oid }),
-                    expect.objectContaining({
-                        _id: expect.any(Types.ObjectId),
-                    }),
-                ]),
-            );
+            expect(filterArg.$or).toBeUndefined();
+            expect(filterArg.snowflakeId).toBe(snowflake);
             expect(result).toHaveLength(2);
         });
 
-        it('looks up by snowflakeId only for a snowflake `around`', async () => {
-            const snowflake = '0246233124965449728';
-
+        it('returns an empty window when the target snowflake is unknown', async () => {
             (ServerMessage.findOne as jest.Mock) = jest.fn().mockReturnValue({
                 lean: jest.fn().mockResolvedValue(null),
             });
@@ -153,14 +145,9 @@ describe('MongooseServerMessageRepository', () => {
                 'channel-1',
                 100,
                 undefined,
-                snowflake,
+                '0246233124965449728',
             );
 
-            const filterArg = (ServerMessage.findOne as jest.Mock).mock
-                .calls[0][0];
-            expect(filterArg.$or).toBeUndefined();
-            expect(filterArg.snowflakeId).toBe(snowflake);
-            // target not found -> empty window
             expect(result).toEqual([]);
         });
     });
