@@ -1,10 +1,15 @@
 import { injectable, inject, postConstruct } from 'inversify';
 import { WsController, Event, NeedAuth, Validate } from '@/ws/decorators';
 import type { WebSocket } from 'ws';
-import { SetStatusSchema } from '@/validation/schemas/ws/messages.schema';
+import {
+    SetStatusSchema,
+    SetPresenceStatusSchema,
+} from '@/validation/schemas/ws/messages.schema';
 import type {
     ISetStatusEvent,
     IStatusUpdatedEvent,
+    ISetPresenceStatusEvent,
+    IPresenceStatusUpdatedEvent,
     IPresenceSyncEvent,
     IUserOnlineEvent,
     IUserOfflineEvent,
@@ -133,6 +138,47 @@ export class PresenceController {
     }
 
     /**
+     * Handles 'set_presence_status' event.
+     * Sets the user's manual presence status.
+     */
+    @Event('set_presence_status')
+    @NeedAuth()
+    @Validate(SetPresenceStatusSchema)
+    public async onSetPresenceStatus(
+        payload: ISetPresenceStatusEvent['payload'],
+        authenticatedUser?: IWsUser,
+        ws?: WebSocket,
+    ): Promise<{ success: boolean }> {
+        if (authenticatedUser === undefined) {
+            throw new Error('UNAUTHORIZED: Authentication required');
+        }
+
+        const userId = authenticatedUser.userId;
+        await this.userRepo.updatePresenceStatus(userId, payload.status);
+
+        logger.debug(
+            `[PresenceController] User ${userId} set presence status: ${payload.status}`,
+        );
+
+        const broadcastPayload: IPresenceStatusUpdatedEvent['payload'] = {
+            userId,
+            username: authenticatedUser.username,
+            presenceStatus: payload.status,
+        };
+
+        await this.broadcastToPresenceAudience(
+            userId,
+            {
+                type: 'presence_status_updated',
+                payload: broadcastPayload,
+            },
+            ws,
+        );
+
+        return { success: true };
+    }
+
+    /**
      * Sends initial presence sync after authentication.
      * Online list includes: online friends + online members from servers the user is in.
      */
@@ -198,20 +244,30 @@ export class PresenceController {
                 ? await this.userRepo.findByIds(onlineRelevantIds)
                 : [];
 
-        const online = onlineUsers.map((u) => ({
-            userId: u.snowflakeId,
-            username: u.username ?? '',
-            status: u.customStatus
-                ? {
-                      text: u.customStatus.text,
-                      emoji: u.customStatus.emoji ?? null,
-                      expiresAt: u.customStatus.expiresAt
-                          ? u.customStatus.expiresAt.toISOString()
-                          : null,
-                      updatedAt: u.customStatus.updatedAt.toISOString(),
-                  }
-                : null,
-        }));
+        const friendIdSet = new Set(friendIds);
+
+        const online = onlineUsers.map((u) => {
+            const hideStatusFromViewer =
+                u.privacySettings?.hideStatus === true &&
+                !friendIdSet.has(u.snowflakeId);
+
+            return {
+                userId: u.snowflakeId,
+                username: u.username ?? '',
+                status:
+                    u.customStatus && !hideStatusFromViewer
+                        ? {
+                              text: u.customStatus.text,
+                              emoji: u.customStatus.emoji ?? null,
+                              expiresAt: u.customStatus.expiresAt
+                                  ? u.customStatus.expiresAt.toISOString()
+                                  : null,
+                              updatedAt: u.customStatus.updatedAt.toISOString(),
+                          }
+                        : null,
+                presenceStatus: u.presenceStatus ?? 'online',
+            };
+        });
 
         const syncPayload: IPresenceSyncEvent['payload'] = {
             online,
@@ -250,12 +306,26 @@ export class PresenceController {
             userId,
             username,
             status,
+            presenceStatus: user?.presenceStatus ?? 'online',
         };
 
-        await this.broadcastToPresenceAudience(userId, {
-            type: 'user_online',
-            payload: onlinePayload,
-        });
+        if (user?.privacySettings?.hideStatus === true) {
+            // hideStatus: strip status for the server audience, keep it for friends
+            await this.broadcastToPresenceAudience(
+                userId,
+                { type: 'user_online', payload: onlinePayload },
+                undefined,
+                {
+                    type: 'user_online',
+                    payload: { ...onlinePayload, status: null },
+                },
+            );
+        } else {
+            await this.broadcastToPresenceAudience(userId, {
+                type: 'user_online',
+                payload: onlinePayload,
+            });
+        }
 
         logger.debug(`[PresenceController] User ${userId} is now online`);
     }
@@ -282,11 +352,13 @@ export class PresenceController {
 
     /**
      * Helper to broadcast an event to a user's presence audience (friends + mutual server subscribers).
+     * if serverEvent is given, friends get event and servers get serverEvent instead
      */
     private async broadcastToPresenceAudience(
         userId: string,
         event: AnyResponseWsEvent,
         excludeWs?: WebSocket,
+        serverEvent?: AnyResponseWsEvent,
     ): Promise<void> {
         const friendships = await this.friendshipRepo.findByUserId(userId);
         const friendIds = friendships.map((f) =>
@@ -324,6 +396,24 @@ export class PresenceController {
         const filteredFriendIds = onlineFriendIds.filter(
             (id: string) => !hideFromUserIds.includes(id),
         );
+
+        if (serverEvent !== undefined) {
+            this.wsServer.broadcastToPresenceAudience(
+                filteredFriendIds,
+                [],
+                event,
+                excludeWs,
+                hideFromUserIds,
+            );
+            this.wsServer.broadcastToPresenceAudience(
+                [],
+                serverIds,
+                serverEvent,
+                excludeWs,
+                hideFromUserIds,
+            );
+            return;
+        }
 
         this.wsServer.broadcastToPresenceAudience(
             filteredFriendIds,

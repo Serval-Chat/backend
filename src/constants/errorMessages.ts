@@ -94,9 +94,13 @@ export const ErrorMessages = {
         NOT_FOUND: 'Role not found',
         CANNOT_DELETE_EVERYONE: 'Cannot delete @everyone role',
         CANNOT_REMOVE_EVERYONE: 'Cannot remove @everyone role from a member',
+        CANNOT_ADD_EVERYONE:
+            'Cannot manually assign @everyone role to a member',
         NO_PERMISSION_MANAGE: 'No permission to manage roles',
         NOT_IN_SERVER: 'Role does not belong to this server',
         CANNOT_SET_EVERYONE_DEFAULT: 'Cannot set @everyone as default role',
+        CANNOT_ASSIGN_MANAGED:
+            'Cannot manually assign a managed role to a member',
     },
 
     MESSAGE: {

@@ -171,7 +171,11 @@ export class KlipyService {
                 return await this.klipyCacheModel.findOneAndUpdate(
                     { klipyId },
                     { $set: metadata },
-                    { upsert: true, new: true, setDefaultsOnInsert: true },
+                    {
+                        upsert: true,
+                        returnDocument: 'after',
+                        setDefaultsOnInsert: true,
+                    },
                 );
             } catch (innerError: unknown) {
                 if (

@@ -17,6 +17,7 @@ export interface IPresenceSyncEvent
                     expiresAt: string | null;
                     updatedAt: string;
                 } | null;
+                presenceStatus?: 'online' | 'idle' | 'dnd';
             }>;
         }
     > {}
@@ -37,6 +38,7 @@ export interface IUserOnlineEvent
                 expiresAt: string | null;
                 updatedAt: string;
             } | null;
+            presenceStatus?: 'online' | 'idle' | 'dnd';
         }
     > {}
 
@@ -81,6 +83,32 @@ export interface IStatusUpdatedEvent
                 expiresAt: string | null;
                 updatedAt: string;
             } | null;
+        }
+    > {}
+
+/**
+ * Client -> Server
+ * Set the user's manual presence status.
+ */
+export interface ISetPresenceStatusEvent
+    extends WsEvent<
+        'set_presence_status',
+        {
+            status: 'online' | 'idle' | 'dnd';
+        }
+    > {}
+
+/**
+ * Server -> Client (Broadcast)
+ * User's presence status was updated.
+ */
+export interface IPresenceStatusUpdatedEvent
+    extends WsEvent<
+        'presence_status_updated',
+        {
+            userId: string;
+            username: string;
+            presenceStatus: 'online' | 'idle' | 'dnd';
         }
     > {}
 

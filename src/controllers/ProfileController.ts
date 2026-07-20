@@ -195,16 +195,20 @@ export class ProfileController {
         const connections = await this.getVerifiedConnections(userId);
         const payload = { userId, connections };
 
-        const serverIds =
-            await this.serverMemberRepo.findServerIdsByUserId(userId);
+        const user = await this.userRepo.findById(userId);
         const friendships = await this.friendshipRepo.findAllByUserId(userId);
 
-        serverIds.forEach((serverId) => {
-            this.wsServer.broadcastToServer(serverId.toString(), {
-                type: 'user_updated',
-                payload,
+        // Emit to servers (unless the owner hides their connections from non-friends)
+        if (user?.privacySettings?.hideConnections !== true) {
+            const serverIds =
+                await this.serverMemberRepo.findServerIdsByUserId(userId);
+            serverIds.forEach((serverId) => {
+                this.wsServer.broadcastToServer(serverId.toString(), {
+                    type: 'user_updated',
+                    payload,
+                });
             });
-        });
+        }
 
         friendships.forEach((friendship) => {
             const friendId =
@@ -272,7 +276,12 @@ export class ProfileController {
             includeActiveMute?: boolean;
         } = {},
     ): Promise<UserProfileResponseDTO> {
-        const mapped = mapUser(user, options);
+        const isOwnProfile = options.viewerId === user.snowflakeId;
+
+        const mapped = mapUser(user, {
+            ...options,
+            includeSettings: isOwnProfile,
+        });
         if (mapped === null) {
             throw new Error('User not found');
         }
@@ -295,9 +304,9 @@ export class ProfileController {
             }
         }
 
-        mapped.serverSettings = user.serverSettings;
-
-        const isOwnProfile = options.viewerId === user.snowflakeId;
+        if (isOwnProfile) {
+            mapped.serverSettings = user.serverSettings;
+        }
 
         mapped.connections = isOwnProfile
             ? await this.getOwnConnections(user.snowflakeId)
@@ -482,7 +491,11 @@ export class ProfileController {
                 },
                 $unset: { verifiedAt: 1 },
             },
-            { new: true, upsert: true, setDefaultsOnInsert: true },
+            {
+                returnDocument: 'after',
+                upsert: true,
+                setDefaultsOnInsert: true,
+            },
         ).exec();
 
         return {
@@ -1249,13 +1262,11 @@ export class ProfileController {
         await assertHttpNotMuted(this.muteRepo, userId, 'change your bio');
         const { bio } = body;
 
-        await this.userRepo.update(userId, {
+        const updatedUser = await this.userRepo.update(userId, {
             bio: bio !== '' ? bio : '',
         });
 
         try {
-            const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
                 await this.friendshipRepo.findAllByUserId(userId);
 
@@ -1264,13 +1275,17 @@ export class ProfileController {
                 bio: bio !== '' ? bio : '',
             };
 
-            // Emit to servers
-            serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId.toString(), {
-                    type: 'user_updated',
-                    payload,
+            // Emit to servers (unless the owner hides their bio from non-friends)
+            if (updatedUser?.privacySettings?.hideBio !== true) {
+                const serverIds =
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                serverIds.forEach((serverId) => {
+                    this.wsServer.broadcastToServer(serverId.toString(), {
+                        type: 'user_updated',
+                        payload,
+                    });
                 });
-            });
+            }
 
             // Emit to friends
             friendships.forEach((friendship) => {
@@ -1316,13 +1331,11 @@ export class ProfileController {
         await assertHttpNotMuted(this.muteRepo, userId, 'change your pronouns');
         const { pronouns } = body;
 
-        await this.userRepo.update(userId, {
+        const updatedUser = await this.userRepo.update(userId, {
             pronouns: pronouns !== '' ? pronouns : '',
         });
 
         try {
-            const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
                 await this.friendshipRepo.findAllByUserId(userId);
 
@@ -1331,13 +1344,17 @@ export class ProfileController {
                 pronouns: pronouns !== '' ? pronouns : '',
             };
 
-            // Emit to servers
-            serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId.toString(), {
-                    type: 'user_updated',
-                    payload,
+            // Emit to servers (unless the owner hides their pronouns from non-friends)
+            if (updatedUser?.privacySettings?.hidePronouns !== true) {
+                const serverIds =
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                serverIds.forEach((serverId) => {
+                    this.wsServer.broadcastToServer(serverId.toString(), {
+                        type: 'user_updated',
+                        payload,
+                    });
                 });
-            });
+            }
 
             // Emit to friends
             friendships.forEach((friendship) => {
@@ -1395,8 +1412,6 @@ export class ProfileController {
         const updatedUser = await this.userRepo.findById(userId);
 
         try {
-            const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
                 await this.friendshipRepo.findAllByUserId(userId);
 
@@ -1408,13 +1423,17 @@ export class ProfileController {
                         : null,
             };
 
-            // Emit to servers
-            serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId.toString(), {
-                    type: 'display_name_updated',
-                    payload,
+            // Emit to servers (unless the owner hides their display name from non-friends)
+            if (updatedUser?.privacySettings?.hideDisplayName !== true) {
+                const serverIds =
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                serverIds.forEach((serverId) => {
+                    this.wsServer.broadcastToServer(serverId.toString(), {
+                        type: 'display_name_updated',
+                        payload,
+                    });
                 });
-            });
+            }
 
             // Emit to friends
             friendships.forEach((friendship) => {
@@ -1515,20 +1534,24 @@ export class ProfileController {
 
             try {
                 // Broadcast status clear to friends and server members
-                const serverIds =
-                    await this.serverMemberRepo.findServerIdsByUserId(userId);
                 const friendships =
                     await this.friendshipRepo.findAllByUserId(userId);
 
                 const payload = { username, status: null };
 
-                // Emit to servers
-                serverIds.forEach((serverId) => {
-                    this.wsServer.broadcastToServer(serverId.toString(), {
-                        type: 'status_update',
-                        payload,
+                // Emit to servers (unless the owner hides their status from non-friends)
+                if (user.privacySettings?.hideStatus !== true) {
+                    const serverIds =
+                        await this.serverMemberRepo.findServerIdsByUserId(
+                            userId,
+                        );
+                    serverIds.forEach((serverId) => {
+                        this.wsServer.broadcastToServer(serverId.toString(), {
+                            type: 'status_update',
+                            payload,
+                        });
                     });
-                });
+                }
 
                 // Emit to friends
                 friendships.forEach((friendship) => {
@@ -1597,20 +1620,22 @@ export class ProfileController {
 
         try {
             // Broadcast status update to friends and server members
-            const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
                 await this.friendshipRepo.findAllByUserId(userId);
 
             const payload = { username, status: serialized };
 
-            // Emit to servers
-            serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId.toString(), {
-                    type: 'status_update',
-                    payload,
+            // Emit to servers (unless the owner hides their status from non-friends)
+            if (updatedUser?.privacySettings?.hideStatus !== true) {
+                const serverIds =
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                serverIds.forEach((serverId) => {
+                    this.wsServer.broadcastToServer(serverId.toString(), {
+                        type: 'status_update',
+                        payload,
+                    });
                 });
-            });
+            }
 
             // Emit to friends
             friendships.forEach((friendship) => {
@@ -1655,20 +1680,22 @@ export class ProfileController {
 
         try {
             // Broadcast status clear to friends and server members
-            const serverIds =
-                await this.serverMemberRepo.findServerIdsByUserId(userId);
             const friendships =
                 await this.friendshipRepo.findAllByUserId(userId);
 
             const payload = { username, status: null };
 
-            // Emit to servers
-            serverIds.forEach((serverId) => {
-                this.wsServer.broadcastToServer(serverId.toString(), {
-                    type: 'status_update',
-                    payload,
+            // Emit to servers (unless the owner hides their status from non-friends)
+            if (user.privacySettings?.hideStatus !== true) {
+                const serverIds =
+                    await this.serverMemberRepo.findServerIdsByUserId(userId);
+                serverIds.forEach((serverId) => {
+                    this.wsServer.broadcastToServer(serverId.toString(), {
+                        type: 'status_update',
+                        payload,
+                    });
                 });
-            });
+            }
 
             // Emit to friends
             friendships.forEach((friendship) => {
@@ -1699,7 +1726,9 @@ export class ProfileController {
     @ApiBody({ type: BulkStatusRequestDTO })
     public async getBulkStatuses(
         @Body() body: BulkStatusRequestDTO,
+        @Req() req: AuthenticatedRequest,
     ): Promise<{ statuses: Record<string, SerializedCustomStatus | null> }> {
+        const viewerId = req.user.id;
         const { usernames } = body;
 
         if (Array.isArray(usernames) === false) {
@@ -1724,6 +1753,14 @@ export class ProfileController {
         }
 
         const users = await this.userRepo.findByUsernames(sanitized);
+        const friendships = await this.friendshipRepo.findByUserId(viewerId);
+        const friendIds = new Set(
+            friendships.map((f) =>
+                f.userId.toString() === viewerId
+                    ? f.friendId.toString()
+                    : f.userId.toString(),
+            ),
+        );
         const statuses: Record<string, SerializedCustomStatus | null> = {};
 
         for (const name of sanitized) {
@@ -1731,11 +1768,17 @@ export class ProfileController {
         }
 
         for (const user of users) {
-            if (user.username !== undefined) {
-                statuses[user.username] = resolveSerializedCustomStatus(
-                    user.customStatus,
-                );
-            }
+            if (user.username === undefined) continue;
+
+            const isFriend = friendIds.has(user.snowflakeId);
+            const hiddenFromViewer =
+                user.privacySettings?.hideStatus === true &&
+                user.snowflakeId !== viewerId &&
+                !isFriend;
+
+            statuses[user.username] = hiddenFromViewer
+                ? null
+                : resolveSerializedCustomStatus(user.customStatus);
         }
 
         return { statuses };

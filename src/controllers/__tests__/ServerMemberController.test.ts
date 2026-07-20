@@ -30,6 +30,7 @@ describe('ServerMemberController', () => {
     const mockServerMemberRepo = {
         findByServerAndUser: jest.fn(),
         remove: jest.fn(),
+        addRole: jest.fn(),
         removeRole: jest.fn(),
         update: jest.fn(),
         updateRoles: jest.fn(),
@@ -521,6 +522,223 @@ describe('ServerMemberController', () => {
                 targetIdStr,
                 serverIdStr,
             );
+        });
+    });
+
+    describe('addMemberRole', () => {
+        const req = {
+            user: { id: meIdStr } as JWTPayload,
+        } as Request;
+        const targetId = new Types.ObjectId();
+        const targetIdStr = targetId.toHexString();
+        const roleId = new Types.ObjectId();
+        const roleIdStr = roleId.toHexString();
+
+        it('should throw ForbiddenException if actor lacks manageRoles permission', async () => {
+            mockPermissionService.hasPermission.mockResolvedValueOnce(false);
+
+            await expect(
+                controller.addMemberRole(
+                    serverIdStr,
+                    targetIdStr,
+                    roleIdStr,
+                    req.user?.id as string,
+                ),
+            ).rejects.toThrow('No permission to manage roles');
+        });
+
+        it('should throw NotFoundException if target member is not found', async () => {
+            mockPermissionService.hasPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce(
+                null,
+            );
+
+            await expect(
+                controller.addMemberRole(
+                    serverIdStr,
+                    targetIdStr,
+                    roleIdStr,
+                    req.user?.id as string,
+                ),
+            ).rejects.toThrow('Member not found');
+        });
+
+        it('should throw NotFoundException if role is not found', async () => {
+            mockPermissionService.hasPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: targetId,
+                roles: [],
+            });
+            mockRoleRepo.findById.mockResolvedValueOnce(null);
+
+            await expect(
+                controller.addMemberRole(
+                    serverIdStr,
+                    targetIdStr,
+                    roleIdStr,
+                    req.user?.id as string,
+                ),
+            ).rejects.toThrow('Role not found');
+        });
+
+        it('should throw BadRequestException if trying to add @everyone role', async () => {
+            mockPermissionService.hasPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: targetId,
+                roles: [],
+            });
+            mockRoleRepo.findById.mockResolvedValueOnce({
+                _id: roleId,
+                serverId: serverIdStr,
+                name: '@everyone',
+            });
+
+            await expect(
+                controller.addMemberRole(
+                    serverIdStr,
+                    targetIdStr,
+                    roleIdStr,
+                    req.user?.id as string,
+                ),
+            ).rejects.toThrow(
+                'Cannot manually assign @everyone role to a member',
+            );
+
+            expect(mockServerMemberRepo.addRole).not.toHaveBeenCalled();
+        });
+
+        it('should throw ForbiddenException if role is managed (symmetric with removeMemberRole)', async () => {
+            mockPermissionService.hasPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: targetId,
+                roles: [],
+            });
+            mockRoleRepo.findById.mockResolvedValueOnce({
+                _id: roleId,
+                serverId: serverIdStr,
+                name: 'Managed Bot Role',
+                managed: true,
+            });
+
+            await expect(
+                controller.addMemberRole(
+                    serverIdStr,
+                    targetIdStr,
+                    roleIdStr,
+                    req.user?.id as string,
+                ),
+            ).rejects.toThrow(
+                'Cannot manually assign a managed role to a member',
+            );
+
+            expect(mockServerMemberRepo.addRole).not.toHaveBeenCalled();
+        });
+
+        it('should throw ForbiddenException if user is not owner and has equal/lower role than the target member', async () => {
+            mockPermissionService.hasPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: targetId,
+                roles: [],
+            });
+            mockRoleRepo.findById.mockResolvedValueOnce({
+                _id: roleId,
+                serverId: serverIdStr,
+                name: 'Mod Role',
+                position: 10,
+            });
+            mockServerRepo.findById.mockResolvedValueOnce({
+                ownerId: new Types.ObjectId(),
+            });
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                15,
+            );
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                15,
+            );
+
+            await expect(
+                controller.addMemberRole(
+                    serverIdStr,
+                    targetIdStr,
+                    roleIdStr,
+                    req.user?.id as string,
+                ),
+            ).rejects.toThrow(
+                'You cannot manage roles for a member with a role equal to or higher than your own',
+            );
+        });
+
+        it('should throw ForbiddenException if user is not owner and role position is higher or equal to actor highest role', async () => {
+            mockPermissionService.hasPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: targetId,
+                roles: [],
+            });
+            mockRoleRepo.findById.mockResolvedValueOnce({
+                _id: roleId,
+                serverId: serverIdStr,
+                name: 'Mod Role',
+                position: 10,
+            });
+            mockServerRepo.findById.mockResolvedValueOnce({
+                ownerId: new Types.ObjectId(),
+            });
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                8,
+            );
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                5,
+            );
+
+            await expect(
+                controller.addMemberRole(
+                    serverIdStr,
+                    targetIdStr,
+                    roleIdStr,
+                    req.user?.id as string,
+                ),
+            ).rejects.toThrow(
+                'You cannot assign a role equal to or higher than your own highest role',
+            );
+        });
+
+        it('should successfully add role if actor is the server owner', async () => {
+            mockPermissionService.hasPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: targetId,
+                roles: [],
+            });
+            mockRoleRepo.findById.mockResolvedValueOnce({
+                _id: roleId,
+                serverId: serverIdStr,
+                name: 'Mod Role',
+                position: 10,
+            });
+            mockServerRepo.findById.mockResolvedValueOnce({
+                ownerId: meId,
+            });
+
+            const mockUpdatedMember = {
+                userId: targetId,
+                roles: [roleIdStr],
+            };
+            mockServerMemberRepo.addRole.mockResolvedValueOnce(
+                mockUpdatedMember,
+            );
+
+            const result = await controller.addMemberRole(
+                serverIdStr,
+                targetIdStr,
+                roleIdStr,
+                req.user?.id as string,
+            );
+
+            expect(mockServerMemberRepo.addRole).toHaveBeenCalledWith(
+                serverIdStr,
+                targetIdStr,
+                roleIdStr,
+            );
+            expect(result).toEqual(mockUpdatedMember);
         });
     });
 

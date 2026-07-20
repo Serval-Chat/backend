@@ -50,7 +50,7 @@ export class MongooseExportJobRepository implements IExportJobRepository {
         data: Partial<IExportJob>,
     ): Promise<IExportJob | null> {
         return await ExportJob.findOneAndUpdate({ snowflakeId: id }, data, {
-            new: true,
+            returnDocument: 'after',
         });
     }
 

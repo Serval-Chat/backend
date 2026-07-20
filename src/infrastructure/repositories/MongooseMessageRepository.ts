@@ -203,7 +203,7 @@ export class MongooseMessageRepository implements IMessageRepository {
                     editedAt: new Date(),
                     isEdited: true,
                 },
-                { new: true },
+                { returnDocument: 'after' },
             )
             .populate({
                 path: 'repliedToMessage',
@@ -218,7 +218,9 @@ export class MongooseMessageRepository implements IMessageRepository {
         data: Partial<IMessage>,
     ): Promise<IMessage | null> {
         const msg = (await this.messageModel
-            .findOneAndUpdate({ snowflakeId: id }, data, { new: true })
+            .findOneAndUpdate({ snowflakeId: id }, data, {
+                returnDocument: 'after',
+            })
             .populate({
                 path: 'repliedToMessage',
                 populate: { path: 'repliedToMessage' },

@@ -24,6 +24,9 @@ describe('ProfileController mute restrictions', () => {
     const serverMemberRepo = {
         findServerIdsByUserId: jest.fn(),
     };
+    const friendshipRepo = {
+        areFriends: jest.fn().mockResolvedValue(false),
+    };
     const blockRepo = {
         getActiveBlockFlags: jest.fn(),
     };
@@ -42,7 +45,7 @@ describe('ProfileController mute restrictions', () => {
             userRepo as never,
             logger as never,
             serverMemberRepo as never,
-            {} as never,
+            friendshipRepo as never,
             {} as never,
             {} as never,
             blockRepo as never,
@@ -54,6 +57,7 @@ describe('ProfileController mute restrictions', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         blockRepo.getActiveBlockFlags.mockResolvedValue(0);
+        friendshipRepo.areFriends.mockResolvedValue(false);
         (UserConnection.find as jest.Mock).mockReturnValue({
             sort: jest.fn().mockReturnValue({
                 exec: jest.fn().mockResolvedValue([]),

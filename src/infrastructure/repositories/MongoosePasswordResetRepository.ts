@@ -43,7 +43,7 @@ export class MongoosePasswordResetRepository
                 expiresAt: { $gt: new Date() },
             },
             { $set: { usedAt: new Date() } },
-            { new: true },
+            { returnDocument: 'after' },
         );
     }
 

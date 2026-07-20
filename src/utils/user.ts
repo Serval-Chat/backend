@@ -59,6 +59,7 @@ export interface DBUser {
         expiresAt: Date | null;
         updatedAt: Date;
     } | null;
+    presenceStatus?: 'online' | 'idle' | 'dnd';
     createdAt: Date;
     bio?: string;
     pronouns?: string;
@@ -107,6 +108,7 @@ export interface MappedUser {
     usernameGradient: { enabled: boolean; colors: string[]; angle: number };
     usernameGlow: { enabled: boolean; color: string; intensity: number };
     customStatus: SerializedCustomStatus | null;
+    presenceStatus: 'online' | 'idle' | 'dnd';
     createdAt: Date;
     bio: string;
     pronouns: string;
@@ -128,6 +130,7 @@ export interface MappedUser {
 export interface MapUserOptions {
     includePermissions?: boolean;
     includeTotp?: boolean;
+    includeSettings?: boolean;
 }
 
 export function mapUser(user: DBUser, options?: MapUserOptions): MappedUser;
@@ -172,6 +175,7 @@ export function mapUser(
             intensity: 5,
         },
         customStatus: resolveSerializedCustomStatus(u.customStatus),
+        presenceStatus: u.presenceStatus ?? 'online',
         createdAt: u.createdAt,
         bio: u.bio ?? '',
         pronouns: u.pronouns ?? '',
@@ -189,11 +193,12 @@ export function mapUser(
         ...(options.includePermissions === true && {
             permissions: u.permissions ?? DEFAULT_PERMISSIONS,
         }),
-        settings: u.settings,
+        ...(options.includeSettings === true && {
+            settings: u.settings,
+        }),
         ...(options.includeTotp === true && {
             totpEnabled: u.totpEnabled ?? false,
         }),
-        serverSettings: u.serverSettings,
         connections: u.connections,
     };
 }

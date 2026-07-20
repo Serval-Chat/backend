@@ -105,7 +105,7 @@ export class MongooseChannelRepository implements IChannelRepository {
         const result = await Channel.findOneAndUpdate(
             { snowflakeId: id },
             updateOp,
-            { new: true },
+            { returnDocument: 'after' },
         ).lean();
         return transformChannel(result);
     }
@@ -122,7 +122,7 @@ export class MongooseChannelRepository implements IChannelRepository {
         const result = await Channel.findOneAndUpdate(
             { snowflakeId: id },
             { position },
-            { new: true },
+            { returnDocument: 'after' },
         ).lean();
         return transformChannel(result);
     }
@@ -135,7 +135,7 @@ export class MongooseChannelRepository implements IChannelRepository {
         const result = await Channel.findOneAndUpdate(
             { snowflakeId: id },
             { lastMessageAt: date },
-            { new: true, session },
+            { returnDocument: 'after', session },
         ).lean();
         return transformChannel(result);
     }

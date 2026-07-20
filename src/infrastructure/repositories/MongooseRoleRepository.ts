@@ -64,7 +64,7 @@ export class MongooseRoleRepository implements IRoleRepository {
         data: Partial<IRole>,
     ): Promise<IRole | null> {
         return await Role.findOneAndUpdate({ snowflakeId: id }, data, {
-            new: true,
+            returnDocument: 'after',
         }).lean();
     }
 
@@ -84,7 +84,7 @@ export class MongooseRoleRepository implements IRoleRepository {
         return await Role.findOneAndUpdate(
             { snowflakeId: id },
             { position },
-            { new: true },
+            { returnDocument: 'after' },
         ).lean();
     }
 

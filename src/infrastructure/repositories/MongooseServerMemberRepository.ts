@@ -54,7 +54,11 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         roles: string[],
     ): Promise<IServerMember | null> {
         return await this.serverMemberModel
-            .findOneAndUpdate({ serverId, userId }, { roles }, { new: true })
+            .findOneAndUpdate(
+                { serverId, userId },
+                { roles },
+                { returnDocument: 'after' },
+            )
             .lean();
     }
 
@@ -64,7 +68,9 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         data: Partial<IServerMember>,
     ): Promise<IServerMember | null> {
         return await this.serverMemberModel
-            .findOneAndUpdate({ serverId, userId }, data, { new: true })
+            .findOneAndUpdate({ serverId, userId }, data, {
+                returnDocument: 'after',
+            })
             .lean();
     }
 
@@ -77,7 +83,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .findOneAndUpdate(
                 { serverId, userId },
                 { communicationDisabledUntil: until },
-                { new: true },
+                { returnDocument: 'after' },
             )
             .lean();
     }
@@ -163,7 +169,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .findOneAndUpdate(
                 { snowflakeId: memberId },
                 { $pull: { roles: roleId } },
-                { new: true },
+                { returnDocument: 'after' },
             )
             .lean();
     }
@@ -267,7 +273,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .findOneAndUpdate(
                 { serverId, userId },
                 { $addToSet: { roles: roleId } },
-                { new: true },
+                { returnDocument: 'after' },
             )
             .lean();
         if (!member) throw new Error(ErrorMessages.MEMBER.NOT_FOUND);
@@ -283,7 +289,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             .findOneAndUpdate(
                 { serverId, userId },
                 { $pull: { roles: roleId } },
-                { new: true },
+                { returnDocument: 'after' },
             )
             .lean();
         if (!member) throw new Error(ErrorMessages.MEMBER.NOT_FOUND);

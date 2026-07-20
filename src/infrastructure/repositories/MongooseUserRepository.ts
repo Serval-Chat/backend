@@ -64,7 +64,7 @@ export class MongooseUserRepository implements IUserRepository {
             await this.userModel
                 .find({ snowflakeId: { $in: ids } })
                 .select(
-                    'snowflakeId username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
+                    'snowflakeId username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus presenceStatus',
                 )
                 .lean(),
         );
@@ -82,7 +82,9 @@ export class MongooseUserRepository implements IUserRepository {
         return this.toDomainList(
             await this.userModel
                 .find({ username: { $in: usernames } })
-                .select('username displayName customStatus')
+                .select(
+                    'snowflakeId username displayName customStatus privacySettings',
+                )
                 .lean(),
         );
     }
@@ -102,7 +104,7 @@ export class MongooseUserRepository implements IUserRepository {
                     username: { $regex: `^${safePrefix}`, $options: 'i' },
                 })
                 .select(
-                    'snowflakeId username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus',
+                    'snowflakeId username displayName deletedAt anonymizedUsername profilePicture usernameFont usernameGradient usernameGlow customStatus presenceStatus',
                 )
                 .limit(limit)
                 .lean(),
@@ -120,7 +122,9 @@ export class MongooseUserRepository implements IUserRepository {
     ): Promise<IUser | null> {
         return this.toDomain(
             await this.userModel
-                .findOneAndUpdate({ snowflakeId: id }, data, { new: true })
+                .findOneAndUpdate({ snowflakeId: id }, data, {
+                    returnDocument: 'after',
+                })
                 .lean(),
         );
     }
@@ -169,6 +173,16 @@ export class MongooseUserRepository implements IUserRepository {
         await this.userModel.findOneAndUpdate(
             { snowflakeId: id },
             { customStatus: status },
+        );
+    }
+
+    public async updatePresenceStatus(
+        id: string,
+        status: 'online' | 'idle' | 'dnd',
+    ): Promise<void> {
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { presenceStatus: status },
         );
     }
 

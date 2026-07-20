@@ -32,7 +32,10 @@ describe('FriendshipController', () => {
     const mockMessageRepo = {
         findByConversation: jest.fn(),
     };
-    const mockWsServer = { broadcastToUser: jest.fn() };
+    const mockWsServer = {
+        broadcastToUser: jest.fn(),
+        isUserOnline: jest.fn().mockResolvedValue(false),
+    };
     const mockLogger = { error: jest.fn() };
     const mockBlockRepo = { getActiveBlockFlags: jest.fn() };
     const mockPingService = { clearPingsBetweenUsers: jest.fn() };

@@ -111,7 +111,7 @@ export class MongooseAdminNoteRepository implements IAdminNoteRepository {
                 deletedBy: data.deletedBy,
                 deleteReason: data.deleteReason,
             },
-            { new: true },
+            { returnDocument: 'after' },
         )
             .populate('adminIdUser', USER_REF_SELECT)
             .populate('deletedByUser', USER_REF_SELECT)

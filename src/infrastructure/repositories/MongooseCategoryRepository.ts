@@ -70,7 +70,7 @@ export class MongooseCategoryRepository implements ICategoryRepository {
         const result = await Category.findOneAndUpdate(
             { snowflakeId: id },
             data,
-            { new: true },
+            { returnDocument: 'after' },
         ).lean();
         return transformCategory(result);
     }
@@ -87,7 +87,7 @@ export class MongooseCategoryRepository implements ICategoryRepository {
         const result = await Category.findOneAndUpdate(
             { snowflakeId: id },
             { position },
-            { new: true },
+            { returnDocument: 'after' },
         ).lean();
         return transformCategory(result);
     }

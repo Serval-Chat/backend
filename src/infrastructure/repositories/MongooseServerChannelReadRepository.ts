@@ -44,7 +44,7 @@ export class MongooseServerChannelReadRepository
                 userId,
             },
             { lastReadAt: new Date() },
-            { new: true, upsert: true, session },
+            { returnDocument: 'after', upsert: true, session },
         ).lean()) as IServerChannelRead | null;
 
         if (result === null) {

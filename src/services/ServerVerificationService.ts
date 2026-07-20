@@ -236,7 +236,7 @@ export class ServerVerificationService
             await ServerVerificationStats.findOneAndUpdate(
                 { key: STATS_KEY },
                 { $set: { key: STATS_KEY, ...stats } },
-                { upsert: true, new: true },
+                { upsert: true, returnDocument: 'after' },
             );
 
             return stats;

@@ -66,6 +66,7 @@ describe('Advanced Blocking - Profiles CRUD', () => {
         const loginRes = await request(app).post('/api/v1/auth/login').send({
             login: user.login,
             password: 'password123',
+            cfTurnstileResponse: 'test-turnstile-token',
         });
         userToken = loginRes.body.token;
     });
@@ -159,10 +160,10 @@ describe('Advanced Blocking - Block Lifecycle', () => {
         blocker = await createTestUser();
         blocked = await createTestUser();
 
-        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123' });
+        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockerToken = r1.body.token;
 
-        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123' });
+        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockedToken = r2.body.token;
     });
 
@@ -213,11 +214,11 @@ describe('Advanced Blocking - Flag 1: BLOCK_REACTIONS (HTTP)', () => {
         blocked = await createTestUser();
         otherUser = await createTestUser();
 
-        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123' });
+        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockerToken = r1.body.token;
-        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123' });
+        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockedToken = r2.body.token;
-        const r3 = await request(app).post('/api/v1/auth/login').send({ login: otherUser.login, password: 'password123' });
+        const r3 = await request(app).post('/api/v1/auth/login').send({ login: otherUser.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         otherToken = r3.body.token;
 
         const serverRes = await api(app, blockerToken).post('/api/v1/servers', { name: 'Reaction Test Server' });
@@ -300,9 +301,9 @@ describe('Advanced Blocking - Flag 3: HIDE_FROM_MEMBER_LIST', () => {
         blocker = await createTestUser();
         blocked = await createTestUser();
 
-        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123' });
+        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockerToken = r1.body.token;
-        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123' });
+        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockedToken = r2.body.token;
 
         const serverRes = await api(app, blockerToken).post('/api/v1/servers', { name: 'Member List Server' });
@@ -355,9 +356,9 @@ describe('Advanced Blocking - Flags 12a-12d: Profile Field Visibility', () => {
         blocker = await createTestUser();
         blocked = await createTestUser();
 
-        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123' });
+        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockerToken = r1.body.token;
-        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123' });
+        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockedToken = r2.body.token;
     });
 
@@ -406,7 +407,7 @@ describe('Advanced Blocking - Flags 12a-12d: Profile Field Visibility', () => {
 
     it('Bio remains visible to non-blocked users', async () => {
         const other = await createTestUser();
-        const otherRes = await request(app).post('/api/v1/auth/login').send({ login: other.login, password: 'password123' });
+        const otherRes = await request(app).post('/api/v1/auth/login').send({ login: other.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         const otherToken = otherRes.body.token;
 
         await api(app, blockerToken).patch('/api/v1/profile/bio', { bio: 'Public bio' });
@@ -450,9 +451,9 @@ describe('Advanced Blocking - General Opacity Guarantees', () => {
         blocker = await createTestUser();
         blocked = await createTestUser();
 
-        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123' });
+        const r1 = await request(app).post('/api/v1/auth/login').send({ login: blocker.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockerToken = r1.body.token;
-        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123' });
+        const r2 = await request(app).post('/api/v1/auth/login').send({ login: blocked.login, password: 'password123', cfTurnstileResponse: 'test-turnstile-token' });
         blockedToken = r2.body.token;
     });
 

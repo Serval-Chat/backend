@@ -20,7 +20,7 @@ export class SlashCommandRepository implements ISlashCommandRepository {
         data: Partial<ISlashCommand>,
     ): Promise<ISlashCommand | null> {
         return SlashCommand.findOneAndUpdate({ snowflakeId: id }, data, {
-            new: true,
+            returnDocument: 'after',
         }).exec();
     }
 

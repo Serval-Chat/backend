@@ -39,7 +39,7 @@ export class MongooseBlockRepository implements IBlockRepository {
         return await BlockProfile.findOneAndUpdate(
             { snowflakeId: profileId, ownerId },
             { $set: updates },
-            { new: true },
+            { returnDocument: 'after' },
         ).exec();
     }
 
@@ -69,7 +69,7 @@ export class MongooseBlockRepository implements IBlockRepository {
         return await UserBlock.findOneAndUpdate(
             { blockerId, targetId },
             { $set: { profileId } },
-            { upsert: true, new: true },
+            { upsert: true, returnDocument: 'after' },
         ).exec();
     }
 

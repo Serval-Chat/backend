@@ -88,7 +88,7 @@ export class MongooseServerRepository implements IServerRepository {
                         deletedAt: { $exists: false },
                     },
                     toDatabaseId(data),
-                    { new: true },
+                    { returnDocument: 'after' },
                 )
                 .lean(),
         );

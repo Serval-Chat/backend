@@ -41,6 +41,7 @@ export interface IUser extends Document {
         expiresAt: Date | null;
         updatedAt: Date;
     } | null;
+    presenceStatus?: 'online' | 'idle' | 'dnd';
     createdAt: Date;
     permissions?: AdminPermissions;
     deletedAt?: Date;
@@ -171,6 +172,11 @@ const schema = new Schema<IUser>(
                 { _id: false },
             ),
             default: null,
+        },
+        presenceStatus: {
+            type: String,
+            enum: ['online', 'idle', 'dnd'],
+            default: 'online',
         },
         createdAt: { type: Date, default: Date.now },
         permissions: {

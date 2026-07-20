@@ -115,7 +115,10 @@ const OWNER_ID = new Types.ObjectId().toHexString();
 const BOT_USER_ID = new Types.ObjectId().toHexString();
 const SERVER_ID = generateSnowflakeId();
 
-const mockWsServer = { broadcastToServer: jest.fn() };
+const mockWsServer = {
+    broadcastToServer: jest.fn(),
+    subscribeUserToServer: jest.fn(),
+};
 const mockSlashCommandRepo = {
     create: jest.fn(),
     update: jest.fn(),

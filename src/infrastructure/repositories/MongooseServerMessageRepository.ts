@@ -292,7 +292,7 @@ export class MongooseServerMessageRepository
         const updated = (await ServerMessage.findOneAndUpdate(
             { snowflakeId: id },
             data,
-            { new: true },
+            { returnDocument: 'after' },
         )
             .populate({
                 path: 'repliedToMessage',

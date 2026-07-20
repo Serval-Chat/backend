@@ -41,7 +41,7 @@ export class MongooseWarningRepository implements IWarningRepository {
                     acknowledged: true,
                     acknowledgedAt: new Date(),
                 },
-                { new: true },
+                { returnDocument: 'after' },
             )
             .lean();
     }

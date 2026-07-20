@@ -46,7 +46,7 @@ export class MongooseWebhookRepository implements IWebhookRepository {
         data: Partial<IWebhook>,
     ): Promise<IWebhook | null> {
         return await Webhook.findOneAndUpdate({ snowflakeId: id }, data, {
-            new: true,
+            returnDocument: 'after',
         }).lean();
     }
 

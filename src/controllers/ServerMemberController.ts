@@ -979,6 +979,16 @@ export class ServerMemberController {
         if (role === null || role.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
+        if (role.name.trim().toLowerCase() === '@everyone') {
+            throw new BadRequestException(
+                ErrorMessages.ROLE.CANNOT_ADD_EVERYONE,
+            );
+        }
+        if (role.managed === true) {
+            throw new ForbiddenException(
+                ErrorMessages.ROLE.CANNOT_ASSIGN_MANAGED,
+            );
+        }
 
         const server = await this.serverRepo.findById(serverId);
         const isOwner =

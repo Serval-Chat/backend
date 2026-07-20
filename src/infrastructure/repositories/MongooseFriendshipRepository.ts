@@ -88,7 +88,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
             .findOneAndUpdate(
                 { userId, friendId },
                 { $set: { isPinned } },
-                { new: true },
+                { returnDocument: 'after' },
             )
             .lean();
     }
@@ -104,7 +104,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
                 nickname === null
                     ? { $unset: { nickname: '' } }
                     : { $set: { nickname } },
-                { new: true },
+                { returnDocument: 'after' },
             )
             .lean();
     }
@@ -116,7 +116,7 @@ export class MongooseFriendshipRepository implements IFriendshipRepository {
             .findOneAndUpdate(
                 { snowflakeId: requestId },
                 { status: 'accepted' },
-                { new: true },
+                { returnDocument: 'after' },
             )
             .lean();
     }

@@ -211,6 +211,10 @@ export const SetStatusSchema = z.object({
     status: z.string().max(100, 'Status text too long (max 100 characters)'),
 });
 
+export const SetPresenceStatusSchema = z.object({
+    status: z.enum(['online', 'idle', 'dnd']),
+});
+
 export const AddReactionSchema = z
     .object({
         messageId: z.string().min(1, 'Message ID is required'),

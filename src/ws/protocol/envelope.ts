@@ -63,6 +63,8 @@ import type {
     IUserOfflineEvent,
     ISetStatusEvent,
     IStatusUpdatedEvent,
+    ISetPresenceStatusEvent,
+    IPresenceStatusUpdatedEvent,
     IUserUpdatedEvent,
     IUserBannerUpdatedEvent,
     IDisplayNameUpdatedEvent,
@@ -143,6 +145,7 @@ export type AnyMessageWsEvent =
     | IUpdateVoiceStateEvent
     // Presence & Status
     | ISetStatusEvent
+    | ISetPresenceStatusEvent
     // Reactions
     | IAddReactionEvent
     | IRemoveReactionEvent;
@@ -224,6 +227,7 @@ export type AnyResponseWsEvent =
     | IUserOnlineEvent
     | IUserOfflineEvent
     | IStatusUpdatedEvent
+    | IPresenceStatusUpdatedEvent
     | IUserUpdatedEvent
     | IUserBannerUpdatedEvent
     | IDisplayNameUpdatedEvent

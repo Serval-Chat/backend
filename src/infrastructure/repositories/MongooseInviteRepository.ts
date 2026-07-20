@@ -100,7 +100,7 @@ export class MongooseInviteRepository implements IInviteRepository {
         return await Invite.findOneAndUpdate(
             { snowflakeId: id },
             { $inc: { uses: 1 } },
-            { new: true },
+            { returnDocument: 'after' },
         ).lean();
     }
 
@@ -115,7 +115,7 @@ export class MongooseInviteRepository implements IInviteRepository {
                 ],
             },
             { $inc: { uses: 1 } },
-            { new: true },
+            { returnDocument: 'after' },
         ).lean();
     }
 
@@ -123,7 +123,7 @@ export class MongooseInviteRepository implements IInviteRepository {
         return await Invite.findOneAndUpdate(
             { snowflakeId: id, uses: { $gt: 0 } },
             { $inc: { uses: -1 } },
-            { new: true },
+            { returnDocument: 'after' },
         ).lean();
     }
 

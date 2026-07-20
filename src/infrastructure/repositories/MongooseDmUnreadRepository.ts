@@ -36,7 +36,12 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
         const result = await DmUnread.findOneAndUpdate(
             { user: userId, peer: peerId },
             { $inc: { count: 1 } },
-            { upsert: true, new: true, projection: { count: 1 }, session },
+            {
+                upsert: true,
+                returnDocument: 'after',
+                projection: { count: 1 },
+                session,
+            },
         );
         return result.count;
     }
@@ -46,7 +51,7 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
         await DmUnread.findOneAndUpdate(
             { user: userId, peer: peerId },
             { $set: { count: 0 } },
-            { upsert: true, new: true, session: undefined },
+            { upsert: true, returnDocument: 'after', session: undefined },
         );
     }
 

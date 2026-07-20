@@ -46,6 +46,7 @@ export interface IUser {
         expiresAt: Date | null;
         updatedAt: Date;
     } | null;
+    presenceStatus?: 'online' | 'idle' | 'dnd';
     // Version of the user's authentication token
     // Incremented to invalidate all existing JWTs (global logout)
     tokenVersion?: number;
@@ -170,6 +171,12 @@ export interface IUserRepository {
             expiresAt: Date | null;
             updatedAt: Date;
         } | null,
+    ): Promise<void>;
+
+    // Update user's presence status
+    updatePresenceStatus(
+        id: string,
+        status: 'online' | 'idle' | 'dnd',
     ): Promise<void>;
 
     // Update user's profile picture

@@ -79,7 +79,7 @@ export class MongoosePingRepository implements IPingRepository {
             },
             {
                 upsert: true,
-                new: true,
+                returnDocument: 'after',
                 lean: true,
             },
         );
