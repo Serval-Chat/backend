@@ -15,7 +15,6 @@ import { initWebPush } from '@/services/PushService';
 import {
     cleanupOrphanedPings,
     cleanupDeadPings,
-    repairEveryoneRoles,
     flushAllCaches,
 } from '@/utils/startup-tasks';
 import { KlipyCache } from '@/models/KlipyCache';
@@ -51,7 +50,6 @@ async function bootstrap() {
 
     await cleanupOrphanedPings();
     await cleanupDeadPings();
-    await repairEveryoneRoles();
 
     const redisService = container.get<IRedisService>(TYPES.RedisService);
     await flushAllCaches(redisService, KlipyCache);
