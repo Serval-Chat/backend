@@ -1,4 +1,5 @@
 import type { WsEvent } from '@/ws/protocol/event';
+import type { PresenceStatus } from '@/types/presence';
 
 /**
  * Server -> Client (Automatic on authentication)
@@ -17,7 +18,7 @@ export interface IPresenceSyncEvent
                     expiresAt: string | null;
                     updatedAt: string;
                 } | null;
-                presenceStatus?: 'online' | 'idle' | 'dnd';
+                presenceStatus?: PresenceStatus;
             }>;
         }
     > {}
@@ -38,7 +39,7 @@ export interface IUserOnlineEvent
                 expiresAt: string | null;
                 updatedAt: string;
             } | null;
-            presenceStatus?: 'online' | 'idle' | 'dnd';
+            presenceStatus?: PresenceStatus;
         }
     > {}
 
@@ -94,7 +95,7 @@ export interface ISetPresenceStatusEvent
     extends WsEvent<
         'set_presence_status',
         {
-            status: 'online' | 'idle' | 'dnd';
+            status: PresenceStatus;
         }
     > {}
 
@@ -108,7 +109,7 @@ export interface IPresenceStatusUpdatedEvent
         {
             userId: string;
             username: string;
-            presenceStatus: 'online' | 'idle' | 'dnd';
+            presenceStatus: PresenceStatus;
         }
     > {}
 

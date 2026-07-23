@@ -1,6 +1,7 @@
 import type { Types } from 'mongoose';
 import type { AdminPermissions } from '@/permissions/AdminPermissions';
 import type { NonEmptyString } from '@/types/branded';
+import type { PresenceStatus } from '@/types/presence';
 
 // User DTO for creation
 export interface CreateUserDTO {
@@ -46,7 +47,7 @@ export interface IUser {
         expiresAt: Date | null;
         updatedAt: Date;
     } | null;
-    presenceStatus?: 'online' | 'idle' | 'dnd';
+    presenceStatus?: PresenceStatus;
     // Version of the user's authentication token
     // Incremented to invalidate all existing JWTs (global logout)
     tokenVersion?: number;
@@ -174,10 +175,7 @@ export interface IUserRepository {
     ): Promise<void>;
 
     // Update user's presence status
-    updatePresenceStatus(
-        id: string,
-        status: 'online' | 'idle' | 'dnd',
-    ): Promise<void>;
+    updatePresenceStatus(id: string, status: PresenceStatus): Promise<void>;
 
     // Update user's profile picture
     updateProfilePicture(id: string, filename: string): Promise<void>;

@@ -173,26 +173,79 @@ export class PresenceController {
         }
 
         const userId = authenticatedUser.userId;
+        const previousUser = await this.userRepo.findById(userId);
+        const wasOffline = previousUser?.presenceStatus === 'offline';
+        const isNowOffline = payload.status === 'offline';
+
         await this.userRepo.updatePresenceStatus(userId, payload.status);
 
         logger.debug(
             `[PresenceController] User ${userId} set presence status: ${payload.status}`,
         );
 
-        const broadcastPayload: IPresenceStatusUpdatedEvent['payload'] = {
-            userId,
-            username: authenticatedUser.username,
-            presenceStatus: payload.status,
-        };
+        if (!wasOffline && isNowOffline) {
+            const offlinePayload: IUserOfflineEvent['payload'] = {
+                userId,
+                username: authenticatedUser.username,
+            };
+            await this.broadcastToPresenceAudience(
+                userId,
+                { type: 'user_offline', payload: offlinePayload },
+                ws,
+            );
+        } else if (wasOffline && !isNowOffline) {
+            const status = previousUser?.customStatus
+                ? {
+                      text: previousUser.customStatus.text,
+                      emoji: previousUser.customStatus.emoji ?? null,
+                      expiresAt: previousUser.customStatus.expiresAt
+                          ? previousUser.customStatus.expiresAt.toISOString()
+                          : null,
+                      updatedAt:
+                          previousUser.customStatus.updatedAt.toISOString(),
+                  }
+                : null;
 
-        await this.broadcastToPresenceAudience(
-            userId,
-            {
-                type: 'presence_status_updated',
-                payload: broadcastPayload,
-            },
-            ws,
-        );
+            const onlinePayload: IUserOnlineEvent['payload'] = {
+                userId,
+                username: authenticatedUser.username,
+                status,
+                presenceStatus: payload.status,
+            };
+
+            if (previousUser?.privacySettings?.hideStatus === true) {
+                await this.broadcastToPresenceAudience(
+                    userId,
+                    { type: 'user_online', payload: onlinePayload },
+                    ws,
+                    {
+                        type: 'user_online',
+                        payload: { ...onlinePayload, status: null },
+                    },
+                );
+            } else {
+                await this.broadcastToPresenceAudience(
+                    userId,
+                    { type: 'user_online', payload: onlinePayload },
+                    ws,
+                );
+            }
+        } else if (!isNowOffline) {
+            const broadcastPayload: IPresenceStatusUpdatedEvent['payload'] = {
+                userId,
+                username: authenticatedUser.username,
+                presenceStatus: payload.status,
+            };
+
+            await this.broadcastToPresenceAudience(
+                userId,
+                {
+                    type: 'presence_status_updated',
+                    payload: broadcastPayload,
+                },
+                ws,
+            );
+        }
 
         return { success: true };
     }
@@ -265,28 +318,31 @@ export class PresenceController {
 
         const friendIdSet = new Set(friendIds);
 
-        const online = onlineUsers.map((u) => {
-            const hideStatusFromViewer =
-                u.privacySettings?.hideStatus === true &&
-                !friendIdSet.has(u.snowflakeId);
+        const online = onlineUsers
+            .filter((u) => u.presenceStatus !== 'offline')
+            .map((u) => {
+                const hideStatusFromViewer =
+                    u.privacySettings?.hideStatus === true &&
+                    !friendIdSet.has(u.snowflakeId);
 
-            return {
-                userId: u.snowflakeId,
-                username: u.username ?? '',
-                status:
-                    u.customStatus && !hideStatusFromViewer
-                        ? {
-                              text: u.customStatus.text,
-                              emoji: u.customStatus.emoji ?? null,
-                              expiresAt: u.customStatus.expiresAt
-                                  ? u.customStatus.expiresAt.toISOString()
-                                  : null,
-                              updatedAt: u.customStatus.updatedAt.toISOString(),
-                          }
-                        : null,
-                presenceStatus: u.presenceStatus ?? 'online',
-            };
-        });
+                return {
+                    userId: u.snowflakeId,
+                    username: u.username ?? '',
+                    status:
+                        u.customStatus && !hideStatusFromViewer
+                            ? {
+                                  text: u.customStatus.text,
+                                  emoji: u.customStatus.emoji ?? null,
+                                  expiresAt: u.customStatus.expiresAt
+                                      ? u.customStatus.expiresAt.toISOString()
+                                      : null,
+                                  updatedAt:
+                                      u.customStatus.updatedAt.toISOString(),
+                              }
+                            : null,
+                    presenceStatus: u.presenceStatus ?? 'online',
+                };
+            });
 
         const syncPayload: IPresenceSyncEvent['payload'] = {
             online,
@@ -310,6 +366,11 @@ export class PresenceController {
         username: string,
     ): Promise<void> {
         const user = await this.userRepo.findById(userId);
+
+        if (user?.presenceStatus === 'offline') {
+            return;
+        }
+
         const status = user?.customStatus
             ? {
                   text: user.customStatus.text,

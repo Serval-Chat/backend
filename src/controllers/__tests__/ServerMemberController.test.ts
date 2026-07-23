@@ -34,6 +34,8 @@ describe('ServerMemberController', () => {
         removeRole: jest.fn(),
         update: jest.fn(),
         updateRoles: jest.fn(),
+        findByServerIdWithUserInfo: jest.fn(),
+        searchMembers: jest.fn(),
     };
     const mockServerRepo = {
         findById: jest.fn(),
@@ -74,6 +76,7 @@ describe('ServerMemberController', () => {
     const mockWsServer = {
         broadcastToServer: jest.fn(),
         broadcastToUser: jest.fn(),
+        isUserOnline: jest.fn(),
     };
     const mockServerAuditLogService = {
         createAndBroadcast: jest.fn(),
@@ -302,6 +305,79 @@ describe('ServerMemberController', () => {
             });
             expect(mockWsServer.broadcastToServer).not.toHaveBeenCalled();
             expect(result).toBe(updatedMember);
+        });
+    });
+
+    describe('getServerMembers', () => {
+        it('reports a member who set themselves to offline/invisible as online: false, even though they are actually connected', async () => {
+            const invisibleUserId = new Types.ObjectId();
+
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockServerMemberRepo.findByServerIdWithUserInfo.mockResolvedValueOnce(
+                [
+                    {
+                        userId: invisibleUserId,
+                        serverId,
+                        roles: [],
+                        user: {
+                            id: invisibleUserId.toHexString(),
+                            username: 'invisible-member',
+                            presenceStatus: 'offline',
+                        },
+                    },
+                ],
+            );
+            mockBlockRepo.findBlocksByBlocker.mockResolvedValueOnce([]);
+            mockBlockRepo.findBlocksByTarget.mockResolvedValueOnce([]);
+            mockWsServer.isUserOnline.mockResolvedValueOnce(true);
+
+            const result = await controller.getServerMembers(
+                serverIdStr,
+                meIdStr,
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result[0]?.online).toBe(false);
+        });
+    });
+
+    describe('searchMembers', () => {
+        it('reports a member who set themselves to offline/invisible as online: false, even though they are actually connected', async () => {
+            const invisibleUserId = new Types.ObjectId();
+
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockServerMemberRepo.searchMembers.mockResolvedValueOnce([
+                {
+                    userId: invisibleUserId,
+                    serverId,
+                    roles: [],
+                    user: {
+                        id: invisibleUserId.toHexString(),
+                        username: 'invisible-member',
+                        presenceStatus: 'offline',
+                    },
+                },
+            ]);
+            mockBlockRepo.findBlocksByBlocker.mockResolvedValueOnce([]);
+            mockBlockRepo.findBlocksByTarget.mockResolvedValueOnce([]);
+            mockWsServer.isUserOnline.mockResolvedValueOnce(true);
+
+            const result = await controller.searchMembers(
+                serverIdStr,
+                'invisible',
+                meIdStr,
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result[0]?.online).toBe(false);
         });
     });
 

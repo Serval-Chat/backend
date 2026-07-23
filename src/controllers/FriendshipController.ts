@@ -239,7 +239,8 @@ export class FriendshipController {
                         }
 
                         payload.isOnline =
-                            friend.snowflakeId !== ''
+                            friend.snowflakeId !== '' &&
+                            friend.presenceStatus !== 'offline'
                                 ? await this.wsServer.isUserOnline(
                                       friend.snowflakeId,
                                   )

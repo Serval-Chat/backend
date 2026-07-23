@@ -429,11 +429,14 @@ export class ServerMemberController {
                     hidePresenceByA.has(targetUserIdStr) ||
                     hidePresenceAgainstA.has(targetUserIdStr);
 
+                const isInvisible = m.user?.presenceStatus === 'offline';
+
                 return {
                     ...m,
-                    online: shouldHidePresence
-                        ? false
-                        : await this.wsServer.isUserOnline(targetUserIdStr),
+                    online:
+                        shouldHidePresence || isInvisible
+                            ? false
+                            : await this.wsServer.isUserOnline(targetUserIdStr),
                 };
             }),
         );
@@ -497,11 +500,14 @@ export class ServerMemberController {
                     hidePresenceByA.has(targetUserIdStr) ||
                     hidePresenceAgainstA.has(targetUserIdStr);
 
+                const isInvisible = m.user?.presenceStatus === 'offline';
+
                 return {
                     ...m,
-                    online: shouldHidePresence
-                        ? false
-                        : await this.wsServer.isUserOnline(targetUserIdStr),
+                    online:
+                        shouldHidePresence || isInvisible
+                            ? false
+                            : await this.wsServer.isUserOnline(targetUserIdStr),
                 };
             }),
         );

@@ -9,6 +9,7 @@ import { User, IUser as IUserModel } from '@/models/User';
 import { Friendship, FriendRequest } from '@/models/Friendship';
 import { Ban } from '@/models/Ban';
 import { ErrorMessages } from '@/constants/errorMessages';
+import type { PresenceStatus } from '@/types/presence';
 
 import { injectable } from 'inversify';
 
@@ -178,7 +179,7 @@ export class MongooseUserRepository implements IUserRepository {
 
     public async updatePresenceStatus(
         id: string,
-        status: 'online' | 'idle' | 'dnd',
+        status: PresenceStatus,
     ): Promise<void> {
         await this.userModel.findOneAndUpdate(
             { snowflakeId: id },

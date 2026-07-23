@@ -97,6 +97,46 @@ describe('FriendshipController', () => {
     });
 
     describe('getFriends', () => {
+        it('reports a friend who set themselves to offline/invisible as isOnline: false, even though they are actually connected', async () => {
+            const invisibleFriendId = new Types.ObjectId();
+
+            mockUserRepo.findById.mockImplementation(async (idStr: string) => {
+                if (idStr === meId.toHexString()) {
+                    return { _id: meId, snowflakeId: idStr, username: 'alice' };
+                }
+                if (idStr === invisibleFriendId.toHexString()) {
+                    return {
+                        _id: invisibleFriendId,
+                        snowflakeId: idStr,
+                        username: 'invisible-friend',
+                        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                        profilePicture: null,
+                        customStatus: null,
+                        presenceStatus: 'offline',
+                    };
+                }
+                return null;
+            });
+            mockFriendshipRepo.findByUserId.mockResolvedValue([
+                {
+                    _id: new Types.ObjectId(),
+                    userId: meId,
+                    friendId: invisibleFriendId,
+                    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                },
+            ]);
+            mockMessageRepo.findByConversation.mockResolvedValue([]);
+            mockWsServer.isUserOnline.mockResolvedValue(true);
+
+            const result = await controller.getFriends(req);
+
+            const invisibleFriend = result.find(
+                (friend) => friend.username === 'invisible-friend',
+            );
+            expect(invisibleFriend).toBeDefined();
+            expect(invisibleFriend?.isOnline).toBe(false);
+        });
+
         it('puts a newly accepted friend without messages above older friends', async () => {
             const olderFriendId = new Types.ObjectId();
             const newerFriendId = new Types.ObjectId();

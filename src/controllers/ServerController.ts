@@ -667,7 +667,9 @@ export class ServerController {
         let onlineCount = 0;
         for (const m of members) {
             const userIdStr = m.userId.toString();
-            if (await this.wsServer.isUserOnline(userIdStr)) {
+            const isInvisible =
+                userMap.get(userIdStr)?.presenceStatus === 'offline';
+            if (!isInvisible && (await this.wsServer.isUserOnline(userIdStr))) {
                 onlineCount++;
             }
         }

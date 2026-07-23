@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
+import { PRESENCE_STATUSES } from '@/types/presence';
 
 const MessageAttachmentSchema = z
     .object({
@@ -212,7 +213,7 @@ export const SetStatusSchema = z.object({
 });
 
 export const SetPresenceStatusSchema = z.object({
-    status: z.enum(['online', 'idle', 'dnd']),
+    status: z.enum(PRESENCE_STATUSES),
 });
 
 export const AddReactionSchema = z

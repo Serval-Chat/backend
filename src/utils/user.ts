@@ -6,6 +6,7 @@ import {
     type AdminPermissions,
     DEFAULT_PERMISSIONS,
 } from '@/permissions/AdminPermissions';
+import type { PresenceStatus } from '@/types/presence';
 
 export interface Badge {
     id: string;
@@ -59,7 +60,7 @@ export interface DBUser {
         expiresAt: Date | null;
         updatedAt: Date;
     } | null;
-    presenceStatus?: 'online' | 'idle' | 'dnd';
+    presenceStatus?: PresenceStatus;
     createdAt: Date;
     bio?: string;
     pronouns?: string;
@@ -108,7 +109,7 @@ export interface MappedUser {
     usernameGradient: { enabled: boolean; colors: string[]; angle: number };
     usernameGlow: { enabled: boolean; color: string; intensity: number };
     customStatus: SerializedCustomStatus | null;
-    presenceStatus: 'online' | 'idle' | 'dnd';
+    presenceStatus: PresenceStatus;
     createdAt: Date;
     bio: string;
     pronouns: string;

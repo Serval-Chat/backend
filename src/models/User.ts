@@ -4,6 +4,7 @@ import type { Document, Types } from 'mongoose';
 import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
 import type { AdminPermissions } from '@/permissions/AdminPermissions';
+import { PRESENCE_STATUSES, type PresenceStatus } from '@/types/presence';
 
 export enum MessageAlignment {
     LEFT = 'left',
@@ -41,7 +42,7 @@ export interface IUser extends Document {
         expiresAt: Date | null;
         updatedAt: Date;
     } | null;
-    presenceStatus?: 'online' | 'idle' | 'dnd';
+    presenceStatus?: PresenceStatus;
     createdAt: Date;
     permissions?: AdminPermissions;
     deletedAt?: Date;
@@ -175,7 +176,7 @@ const schema = new Schema<IUser>(
         },
         presenceStatus: {
             type: String,
-            enum: ['online', 'idle', 'dnd'],
+            enum: PRESENCE_STATUSES,
             default: 'online',
         },
         createdAt: { type: Date, default: Date.now },
