@@ -24,6 +24,8 @@ import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
 import { assertWsNotMuted } from '@/utils/mute';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertWsNotWarned } from '@/utils/warning';
 import logger from '@/utils/logger';
 
 /**
@@ -46,6 +48,8 @@ export class ReactionController {
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @inject(TYPES.BlockRepository) private blockRepo: IBlockRepository,
         @inject(TYPES.MuteRepository) private muteRepo: IMuteRepository,
+        @inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {}
 
     /**
@@ -67,6 +71,7 @@ export class ReactionController {
         const { messageId, emoji, emojiType, emojiId, messageType } = payload;
         const userId = authenticatedUser.userId;
         await assertWsNotMuted(this.muteRepo, userId, 'add reactions');
+        await assertWsNotWarned(this.warningRepo, userId, 'add reactions');
 
         if (messageType === 'dm') {
             const message = await this.messageRepo.findById(messageId);
@@ -333,6 +338,7 @@ export class ReactionController {
         const { messageId, emoji, emojiType, emojiId, messageType } = payload;
         const userId = authenticatedUser.userId;
         await assertWsNotMuted(this.muteRepo, userId, 'remove reactions');
+        await assertWsNotWarned(this.warningRepo, userId, 'remove reactions');
 
         // Validate message exists and get context
         if (messageType === 'dm') {

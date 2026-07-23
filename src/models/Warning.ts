@@ -15,6 +15,13 @@ export interface IWarning extends Document {
     acknowledged: boolean;
     acknowledgedAt?: Date;
     timestamp: Date;
+    // Minutes after acknowledgment before the warning's record expires.
+    // Undefined/null means it never expires once acknowledged.
+    expiryDurationMinutes?: number;
+    // Computed from expiryDurationMinutes at the moment the user
+    // acknowledges; stays unset while the warning is still unacknowledged,
+    // since the record only starts expiring once it's been acted on.
+    expiresAt?: Date;
 }
 
 const schema = new Schema<IWarning>({
@@ -24,6 +31,8 @@ const schema = new Schema<IWarning>({
     acknowledged: { type: Boolean, default: false },
     acknowledgedAt: { type: Date },
     timestamp: { type: Date, default: Date.now },
+    expiryDurationMinutes: { type: Number },
+    expiresAt: { type: Date },
 });
 
 schema.plugin(mongooseIdPlugin);

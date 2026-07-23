@@ -12,6 +12,9 @@ describe('PresenceController mute restrictions', () => {
         checkExpired: jest.fn().mockResolvedValue(undefined),
         findActiveByUserId: jest.fn(),
     };
+    const warningRepo = {
+        hasUnacknowledged: jest.fn().mockResolvedValue(false),
+    };
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -30,6 +33,31 @@ describe('PresenceController mute restrictions', () => {
             serverMemberRepo as never,
             blockRepo as never,
             muteRepo as never,
+            warningRepo as never,
+        );
+
+        await expect(
+            controller.onSetStatus({ status: 'quiet mode' }, {
+                userId,
+                username: 'alice',
+            } as never),
+        ).rejects.toThrow('FORBIDDEN');
+
+        expect(userRepo.updateCustomStatus).not.toHaveBeenCalled();
+    });
+
+    it('rejects users with an unacknowledged warning before changing websocket status', async () => {
+        const userId = new Types.ObjectId().toHexString();
+        muteRepo.findActiveByUserId.mockResolvedValue(null);
+        warningRepo.hasUnacknowledged.mockResolvedValue(true);
+
+        const controller = new PresenceController(
+            userRepo as never,
+            friendshipRepo as never,
+            serverMemberRepo as never,
+            blockRepo as never,
+            muteRepo as never,
+            warningRepo as never,
         );
 
         await expect(

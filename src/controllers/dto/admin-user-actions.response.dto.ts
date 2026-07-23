@@ -90,6 +90,10 @@ export class AdminWarnUserResponseDTO {
     public acknowledged!: boolean;
     @ApiPropertyOptional()
     public acknowledgedAt?: Date;
+    @ApiPropertyOptional()
+    public expiryDurationMinutes?: number;
+    @ApiPropertyOptional()
+    public expiresAt?: Date;
 }
 
 export class AdminMuteUserResponseDTO {

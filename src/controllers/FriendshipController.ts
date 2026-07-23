@@ -32,6 +32,8 @@ import type { AuthenticatedRequest } from '@/middleware/auth';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { notifyUser } from '@/services/PushService';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertHttpNotWarned } from '@/utils/warning';
 import {
     SendFriendRequestDTO,
     SetFriendNicknameDTO,
@@ -69,6 +71,8 @@ export class FriendshipController {
         private pingService: PingService,
         @Inject(TYPES.DmUnreadRepository)
         private dmUnreadRepo: IDmUnreadRepository,
+        @Inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {}
 
     private mapUserToFriendPayload(user: unknown): FriendResponseDTO | null {
@@ -403,6 +407,11 @@ export class FriendshipController {
         @Body() body: SendFriendRequestDTO,
     ): Promise<SendFriendRequestResponseDTO> {
         const meId = req.user.id;
+        await assertHttpNotWarned(
+            this.warningRepo,
+            meId,
+            'send friend requests',
+        );
         const meUser = await this.userRepo.findById(meId);
         if (meUser === null) {
             throw new ApiError(401, ErrorMessages.AUTH.UNAUTHORIZED);

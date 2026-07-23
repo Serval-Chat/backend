@@ -114,6 +114,8 @@ import {
     getImageMetadata,
 } from '@/utils/imageProcessing';
 import { assertHttpNotMuted } from '@/utils/mute';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertHttpNotWarned } from '@/utils/warning';
 
 @ApiTags('Profile')
 @Controller('api/v1/profile')
@@ -137,6 +139,8 @@ export class ProfileController {
         private scraperService: ScraperService,
         @Inject(TYPES.MuteRepository)
         private muteRepo: IMuteRepository,
+        @Inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {}
 
     private mapConnection(connection: IUserConnection) {
@@ -437,6 +441,11 @@ export class ProfileController {
             userId,
             'change profile connections',
         );
+        await assertHttpNotWarned(
+            this.warningRepo,
+            userId,
+            'change profile connections',
+        );
         let website: ReturnType<typeof normalizeWebsite>;
         try {
             website = normalizeWebsite(body.website);
@@ -534,6 +543,11 @@ export class ProfileController {
             userId,
             'change profile connections',
         );
+        await assertHttpNotWarned(
+            this.warningRepo,
+            userId,
+            'change profile connections',
+        );
         const connection = await UserConnection.findOne({
             snowflakeId: params.connectionId,
             userId: userId,
@@ -624,6 +638,11 @@ export class ProfileController {
         const userId = req.user.id;
         await assertHttpNotMuted(
             this.muteRepo,
+            userId,
+            'change profile connections',
+        );
+        await assertHttpNotWarned(
+            this.warningRepo,
             userId,
             'change profile connections',
         );
@@ -833,6 +852,11 @@ export class ProfileController {
             const userId = userPayload.id;
             await assertHttpNotMuted(
                 this.muteRepo,
+                userId,
+                'change your profile picture',
+            );
+            await assertHttpNotWarned(
+                this.warningRepo,
                 userId,
                 'change your profile picture',
             );
@@ -1048,6 +1072,11 @@ export class ProfileController {
                 userId,
                 'change your profile banner',
             );
+            await assertHttpNotWarned(
+                this.warningRepo,
+                userId,
+                'change your profile banner',
+            );
 
             if (banner === undefined) {
                 throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
@@ -1260,6 +1289,7 @@ export class ProfileController {
     ): Promise<{ message: string; bio: string }> {
         const userId = req.user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your bio');
+        await assertHttpNotWarned(this.warningRepo, userId, 'change your bio');
         const { bio } = body;
 
         const updatedUser = await this.userRepo.update(userId, {
@@ -1329,6 +1359,11 @@ export class ProfileController {
     ): Promise<{ message: string; pronouns: string }> {
         const userId = req.user.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your pronouns');
+        await assertHttpNotWarned(
+            this.warningRepo,
+            userId,
+            'change your pronouns',
+        );
         const { pronouns } = body;
 
         const updatedUser = await this.userRepo.update(userId, {
@@ -1402,6 +1437,11 @@ export class ProfileController {
         const username = userPayload.username;
         await assertHttpNotMuted(
             this.muteRepo,
+            userId,
+            'change your display name',
+        );
+        await assertHttpNotWarned(
+            this.warningRepo,
             userId,
             'change your display name',
         );
@@ -1518,6 +1558,11 @@ export class ProfileController {
         const userId = userPayload.id;
         const username = userPayload.username;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your status');
+        await assertHttpNotWarned(
+            this.warningRepo,
+            userId,
+            'change your status',
+        );
         const { text, emoji, expiresAt, expiresInMinutes, clear } = body;
 
         const user = await this.userRepo.findById(userId);
@@ -1670,6 +1715,11 @@ export class ProfileController {
         const userId = userPayload.id;
         const username = userPayload.username;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your status');
+        await assertHttpNotWarned(
+            this.warningRepo,
+            userId,
+            'change your status',
+        );
 
         const user = await this.userRepo.findById(userId);
         if (user === null) {
@@ -1817,6 +1867,11 @@ export class ProfileController {
             userId,
             'change your profile style',
         );
+        await assertHttpNotWarned(
+            this.warningRepo,
+            userId,
+            'change your profile style',
+        );
 
         const { usernameFont, usernameGradient, usernameGlow } = body;
 
@@ -1894,6 +1949,11 @@ export class ProfileController {
         const userId = req.user.id;
         await assertHttpNotMuted(
             this.muteRepo,
+            userId,
+            'change your profile appearance',
+        );
+        await assertHttpNotWarned(
+            this.warningRepo,
             userId,
             'change your profile appearance',
         );
@@ -2033,6 +2093,11 @@ export class ProfileController {
         const userPayload = req.user;
         const userId = userPayload.id;
         await assertHttpNotMuted(this.muteRepo, userId, 'change your username');
+        await assertHttpNotWarned(
+            this.warningRepo,
+            userId,
+            'change your username',
+        );
         const { newUsername } = body;
 
         const existingUser = await this.userRepo.findByUsername(newUsername);

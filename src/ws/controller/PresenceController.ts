@@ -25,6 +25,8 @@ import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
 import { assertWsNotMuted } from '@/utils/mute';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertWsNotWarned } from '@/utils/warning';
 import logger from '@/utils/logger';
 
 /**
@@ -46,6 +48,8 @@ export class PresenceController {
         private blockRepo: IBlockRepository,
         @inject(TYPES.MuteRepository)
         private muteRepo: IMuteRepository,
+        @inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {}
 
     @postConstruct()
@@ -94,6 +98,7 @@ export class PresenceController {
         const { status: statusText } = payload;
         const userId = authenticatedUser.userId;
         await assertWsNotMuted(this.muteRepo, userId, 'change your status');
+        await assertWsNotWarned(this.warningRepo, userId, 'change your status');
 
         const newStatus = {
             text: statusText,
@@ -125,14 +130,28 @@ export class PresenceController {
                     : null,
         };
 
-        await this.broadcastToPresenceAudience(
-            userId,
-            {
-                type: 'status_updated',
-                payload: broadcastPayload,
-            },
-            ws,
-        );
+        const user = await this.userRepo.findById(userId);
+
+        if (user?.privacySettings?.hideStatus === true) {
+            await this.broadcastToPresenceAudience(
+                userId,
+                { type: 'status_updated', payload: broadcastPayload },
+                ws,
+                {
+                    type: 'status_updated',
+                    payload: { ...broadcastPayload, status: null },
+                },
+            );
+        } else {
+            await this.broadcastToPresenceAudience(
+                userId,
+                {
+                    type: 'status_updated',
+                    payload: broadcastPayload,
+                },
+                ws,
+            );
+        }
 
         return { success: true };
     }
@@ -310,7 +329,6 @@ export class PresenceController {
         };
 
         if (user?.privacySettings?.hideStatus === true) {
-            // hideStatus: strip status for the server audience, keep it for friends
             await this.broadcastToPresenceAudience(
                 userId,
                 { type: 'user_online', payload: onlinePayload },

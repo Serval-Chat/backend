@@ -49,6 +49,8 @@ import { UploadStickerRequestDTO } from './dto/sticker.request.dto';
 import { StickerValidationPipe } from '@/validation/StickerValidationPipe';
 import { isAnimatedImage, processAndSaveImage } from '@/utils/imageProcessing';
 import { assertHttpNotMuted } from '@/utils/mute';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertHttpNotWarned } from '@/utils/warning';
 
 @Controller('api/v1/servers/:serverId/stickers')
 @ApiTags('Server Stickers')
@@ -78,6 +80,8 @@ export class ServerStickerController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.MuteRepository)
         private muteRepo: IMuteRepository,
+        @Inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {
         // Ensure sticker upload directory exists at startup to avoid runtime write failures
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -161,6 +165,7 @@ export class ServerStickerController {
     ): Promise<StickerResponseDTO> {
         const { name } = body;
         await assertHttpNotMuted(this.muteRepo, userId, 'upload stickers');
+        await assertHttpNotWarned(this.warningRepo, userId, 'upload stickers');
 
         const server = await this.serverRepo.findById(serverId);
         if (server === null) {
@@ -318,6 +323,7 @@ export class ServerStickerController {
         @CurrentUser('id') userId: string,
     ): Promise<void> {
         await assertHttpNotMuted(this.muteRepo, userId, 'delete stickers');
+        await assertHttpNotWarned(this.warningRepo, userId, 'delete stickers');
 
         const server = await this.serverRepo.findById(serverId);
         if (server === null) {

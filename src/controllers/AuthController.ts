@@ -359,14 +359,6 @@ export class AuthController {
             return;
         }
 
-        if (login.includes('+')) {
-            registrationAttemptsCounter.labels('failure').inc();
-            res.status(HttpStatus.BAD_REQUEST).json({
-                error: 'Subaddresses are not allowed.',
-            });
-            return;
-        }
-
         // Normalize email (lowercase and trim)
         const normalizedLogin = normalizeEmail(login);
 
@@ -472,10 +464,6 @@ export class AuthController {
     ): Promise<ChangeLoginResponseDTO> {
         const userId = req.user.id;
         const { newLogin, password } = body;
-
-        if (newLogin.includes('+')) {
-            throw new ApiError(400, 'Subaddresses are not allowed.');
-        }
 
         const normalizedNewLogin = normalizeEmail(newLogin);
 

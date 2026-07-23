@@ -40,6 +40,7 @@ describe('ChatController search indexing', () => {
         removeDmMessage: jest.Mock;
     };
     let redisService: { getClient: jest.Mock };
+    let warningRepo: { hasUnacknowledged: jest.Mock };
     let chatController: ChatController;
 
     beforeEach(() => {
@@ -73,6 +74,9 @@ describe('ChatController search indexing', () => {
                 setex: jest.fn().mockResolvedValue('OK'),
             }),
         };
+        warningRepo = {
+            hasUnacknowledged: jest.fn().mockResolvedValue(false),
+        };
 
         chatController = new ChatController(
             userRepo as any,
@@ -84,6 +88,7 @@ describe('ChatController search indexing', () => {
             {} as any, // EmbedService
             redisService as any,
             searchService as any,
+            warningRepo as any,
         );
         (chatController as any).wsServer = wsServer as any;
     });

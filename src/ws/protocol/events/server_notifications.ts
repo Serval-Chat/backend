@@ -320,6 +320,8 @@ export interface IWarningEvent
             timestamp: Date;
             acknowledged: boolean;
             acknowledgedAt?: Date;
+            expiryDurationMinutes?: number;
+            expiresAt?: Date;
         }
     > {}
 export interface IAuditLogEntryCreatedEvent

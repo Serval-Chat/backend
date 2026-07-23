@@ -47,6 +47,8 @@ import { buildAttachmentMetadata } from '@/utils/attachments';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import { assertHttpNotMuted } from '@/utils/mute';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertHttpNotWarned } from '@/utils/warning';
 
 @ApiTags('Files')
 @Controller('api/v1/files')
@@ -64,6 +66,8 @@ export class FileController {
         private imageDeliveryService: ImageDeliveryService,
         @Inject(TYPES.MuteRepository)
         private muteRepo: IMuteRepository,
+        @Inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {}
 
     @Post('upload')
@@ -94,6 +98,7 @@ export class FileController {
         @CurrentUser('id') userId: string,
     ): Promise<FileUploadResponseDTO> {
         await assertHttpNotMuted(this.muteRepo, userId, 'upload files');
+        await assertHttpNotWarned(this.warningRepo, userId, 'upload files');
 
         if (file === undefined) {
             throw new BadRequestException(ErrorMessages.FILE.NO_FILE_UPLOADED);

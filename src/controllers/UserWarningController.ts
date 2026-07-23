@@ -49,6 +49,8 @@ export class UserWarningController {
             acknowledged: warning.acknowledged,
             acknowledgedAt: warning.acknowledgedAt,
             timestamp: warning.timestamp,
+            expiryDurationMinutes: warning.expiryDurationMinutes,
+            expiresAt: warning.expiresAt,
         };
     }
 

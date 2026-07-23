@@ -38,6 +38,9 @@ describe('ProfileController privacy-aware broadcasts', () => {
         checkExpired: jest.fn().mockResolvedValue(undefined),
         findActiveByUserId: jest.fn().mockResolvedValue(null),
     };
+    const warningRepo = {
+        hasUnacknowledged: jest.fn().mockResolvedValue(false),
+    };
 
     function createController(): ProfileController {
         return new ProfileController(
@@ -50,6 +53,7 @@ describe('ProfileController privacy-aware broadcasts', () => {
             blockRepo as never,
             {} as never,
             muteRepo as never,
+            warningRepo as never,
         );
     }
 
@@ -57,6 +61,7 @@ describe('ProfileController privacy-aware broadcasts', () => {
         jest.clearAllMocks();
         muteRepo.checkExpired.mockResolvedValue(undefined);
         muteRepo.findActiveByUserId.mockResolvedValue(null);
+        warningRepo.hasUnacknowledged.mockResolvedValue(false);
         friendshipRepo.findAllByUserId.mockResolvedValue([]);
         serverMemberRepo.findServerIdsByUserId.mockResolvedValue(['server-1']);
     });

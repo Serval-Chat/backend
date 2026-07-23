@@ -54,6 +54,8 @@ import {
     isInviteMaxedOut,
     isInviteUsable,
 } from '@/utils/invite';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertHttpNotWarned } from '@/utils/warning';
 
 @Controller('api/v1')
 @ApiTags('Server Invites')
@@ -83,6 +85,8 @@ export class ServerInviteController {
         private userRepo: IUserRepository,
         @Inject(TYPES.ServerDiscoveryService)
         private discoveryService: ServerDiscoveryService,
+        @Inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {}
 
     @Get('servers/:serverId/invites')
@@ -152,6 +156,8 @@ export class ServerInviteController {
         @CurrentUser('username') username: string,
         @Body() body: CreateInviteRequestDTO,
     ): Promise<IInvite & { id: string; createdByUsername?: string }> {
+        await assertHttpNotWarned(this.warningRepo, userId, 'create invites');
+
         const { maxUses, expiresIn, customPath } = body;
 
         let code = customPath;

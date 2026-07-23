@@ -45,6 +45,12 @@ export class AdminWarnUserRequestDTO {
     @ApiProperty()
     @IsMessageContent()
     public message!: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsInt()
+    @IsPositive()
+    public duration?: number; // minutes after acknowledgment until the warning record expires; omitted means it never expires
 }
 
 export class AdminMuteUserRequestDTO {

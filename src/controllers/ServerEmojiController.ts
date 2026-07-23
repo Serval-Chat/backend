@@ -55,6 +55,8 @@ import { UploadEmojiRequestDTO } from './dto/emoji.request.dto';
 import { EmojiResponseDTO } from './dto/emoji.response.dto';
 import { EmojiValidationPipe } from '@/validation/EmojiValidationPipe';
 import { assertHttpNotMuted } from '@/utils/mute';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertHttpNotWarned } from '@/utils/warning';
 
 @Controller('api/v1/servers/:serverId/emojis')
 @ApiTags('Server Emojis')
@@ -84,6 +86,8 @@ export class ServerEmojiController {
         private serverAuditLogService: IServerAuditLogService,
         @Inject(TYPES.MuteRepository)
         private muteRepo: IMuteRepository,
+        @Inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {
         // Ensure emoji upload directory exists at startup to avoid runtime write failures
         if (!fs.existsSync(this.UPLOADS_DIR)) {
@@ -155,6 +159,7 @@ export class ServerEmojiController {
     ): Promise<IEmoji> {
         const { name } = body;
         await assertHttpNotMuted(this.muteRepo, userId, 'upload emojis');
+        await assertHttpNotWarned(this.warningRepo, userId, 'upload emojis');
 
         const server = await this.serverRepo.findById(serverId);
         if (server === null || String(server.ownerId) !== userId) {
@@ -290,6 +295,7 @@ export class ServerEmojiController {
         @CurrentUser('id') userId: string,
     ): Promise<void> {
         await assertHttpNotMuted(this.muteRepo, userId, 'delete emojis');
+        await assertHttpNotWarned(this.warningRepo, userId, 'delete emojis');
 
         const server = await this.serverRepo.findById(serverId);
         if (server === null) {

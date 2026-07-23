@@ -39,6 +39,9 @@ describe('ProfileController mute restrictions', () => {
         checkExpired: jest.fn().mockResolvedValue(undefined),
         findActiveByUserId: jest.fn(),
     };
+    const warningRepo = {
+        hasUnacknowledged: jest.fn().mockResolvedValue(false),
+    };
 
     function createController() {
         return new ProfileController(
@@ -51,6 +54,7 @@ describe('ProfileController mute restrictions', () => {
             blockRepo as never,
             {} as never,
             muteRepo as never,
+            warningRepo as never,
         );
     }
 
@@ -58,6 +62,7 @@ describe('ProfileController mute restrictions', () => {
         jest.clearAllMocks();
         blockRepo.getActiveBlockFlags.mockResolvedValue(0);
         friendshipRepo.areFriends.mockResolvedValue(false);
+        warningRepo.hasUnacknowledged.mockResolvedValue(false);
         (UserConnection.find as jest.Mock).mockReturnValue({
             sort: jest.fn().mockReturnValue({
                 exec: jest.fn().mockResolvedValue([]),
@@ -71,6 +76,24 @@ describe('ProfileController mute restrictions', () => {
             _id: new Types.ObjectId(),
             userId: new Types.ObjectId(userId),
         });
+
+        await expect(
+            createController().updateCustomStatus(
+                {
+                    user: { id: userId, username: 'alice' },
+                } as never,
+                { text: 'busy' },
+            ),
+        ).rejects.toThrow(ForbiddenException);
+
+        expect(userRepo.findById).not.toHaveBeenCalled();
+        expect(userRepo.updateCustomStatus).not.toHaveBeenCalled();
+    });
+
+    it('rejects users with an unacknowledged warning before changing custom status', async () => {
+        const userId = new Types.ObjectId().toHexString();
+        muteRepo.findActiveByUserId.mockResolvedValue(null);
+        warningRepo.hasUnacknowledged.mockResolvedValue(true);
 
         await expect(
             createController().updateCustomStatus(

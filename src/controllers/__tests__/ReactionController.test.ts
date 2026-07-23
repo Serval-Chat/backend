@@ -62,6 +62,9 @@ describe('ReactionController', () => {
         checkExpired: jest.fn().mockResolvedValue(undefined),
         findActiveByUserId: jest.fn().mockResolvedValue(null),
     } as any;
+    const mockWarningRepo = {
+        hasUnacknowledged: jest.fn().mockResolvedValue(false),
+    } as any;
 
     beforeEach(() => {
         controller = new ReactionController(
@@ -77,9 +80,13 @@ describe('ReactionController', () => {
             {} as IServerAuditLogService, // serverAuditLogService
             mockBlockRepo,
             mockMuteRepo,
+            mockWarningRepo,
         );
         jest.clearAllMocks();
         (mockMuteRepo.findActiveByUserId as jest.Mock).mockResolvedValue(null);
+        (mockWarningRepo.hasUnacknowledged as jest.Mock).mockResolvedValue(
+            false,
+        );
     });
 
     describe('addServerReaction', () => {

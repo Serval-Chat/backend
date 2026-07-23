@@ -14,6 +14,8 @@ export interface IWarning {
     acknowledged: boolean;
     acknowledgedAt?: Date;
     timestamp: Date;
+    expiryDurationMinutes?: number;
+    expiresAt?: Date;
 }
 
 // Warning Repository Interface
@@ -32,11 +34,15 @@ export interface IWarningRepository {
     // Count warnings for a user
     countByUserId(userId: string): Promise<number>;
 
-    // Create a new warning
+    // Whether the user has any unacknowledged warning
+    hasUnacknowledged(userId: string): Promise<boolean>;
+
+    // Create a new warning.
     create(data: {
         userId: string;
         message: string;
         issuedBy: string;
+        expiryDurationMinutes?: number;
     }): Promise<IWarning>;
 
     // Delete all warnings for a user (for hard delete)

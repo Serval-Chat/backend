@@ -69,7 +69,7 @@ describe('Authentication Integration Tests', () => {
             assert.equal(res.status, 400);
         });
 
-        test('should fail to register with subaddressing', async () => {
+        test('should register successfully with a plus-addressed email', async () => {
             const login = `user+sub@example.com`;
             const username = `subaddress_user`;
             const req = {
@@ -83,8 +83,25 @@ describe('Authentication Integration Tests', () => {
                 .post('/api/v1/auth/register')
                 .send(req);
 
+            assert.equal(res.status, 200);
+            assert.ok(res.body.token);
+        });
+
+        test('should treat a plus-addressed email as a duplicate of the base account', async () => {
+            await createTestUser({ login: 'existing@example.com' });
+
+            const userData = {
+                username: 'subaddress_dupe',
+                login: 'existing+sub@example.com',
+                password: 'password123',
+                invite: 'beta',
+            };
+
+            const res = await request(app)
+                .post('/api/v1/auth/register')
+                .send(userData);
+
             assert.equal(res.status, 400);
-            assert.equal(res.body.error, 'Subaddresses are not allowed.');
         });
 
         test('should fail with invalid data', async () => {

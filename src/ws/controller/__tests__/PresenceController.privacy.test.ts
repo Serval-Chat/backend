@@ -4,6 +4,7 @@ describe('PresenceController hideStatus privacy', () => {
     const userRepo = {
         findById: jest.fn(),
         findByIds: jest.fn(),
+        updateCustomStatus: jest.fn(),
     };
     const friendshipRepo = {
         findByUserId: jest.fn(),
@@ -16,7 +17,13 @@ describe('PresenceController hideStatus privacy', () => {
         findBlocksByBlocker: jest.fn().mockResolvedValue([]),
         findBlocksByTarget: jest.fn().mockResolvedValue([]),
     };
-    const muteRepo = {};
+    const muteRepo = {
+        checkExpired: jest.fn().mockResolvedValue(undefined),
+        findActiveByUserId: jest.fn().mockResolvedValue(null),
+    };
+    const warningRepo = {
+        hasUnacknowledged: jest.fn().mockResolvedValue(false),
+    };
     const wsServer = {
         isUserOnline: jest.fn().mockResolvedValue(true),
         broadcastToUser: jest.fn(),
@@ -30,6 +37,7 @@ describe('PresenceController hideStatus privacy', () => {
             serverMemberRepo as never,
             blockRepo as never,
             muteRepo as never,
+            warningRepo as never,
         );
         (controller as unknown as { wsServer: typeof wsServer }).wsServer =
             wsServer;
@@ -127,6 +135,77 @@ describe('PresenceController hideStatus privacy', () => {
                 (serverCall?.[2] as { payload: { status: unknown } }).payload
                     .status,
             ).toBeNull();
+        });
+    });
+
+    describe('onSetStatus', () => {
+        it('reveals the new status to friends but hides it from non-friend server members', async () => {
+            userRepo.updateCustomStatus.mockResolvedValue(undefined);
+            userRepo.findById.mockResolvedValue({
+                privacySettings: { hideStatus: true },
+            });
+            friendshipRepo.findByUserId.mockResolvedValue([
+                { userId: 'actor', friendId: 'friend-1' },
+            ]);
+            serverMemberRepo.findServerIdsByUserId.mockResolvedValue([
+                'server-1',
+            ]);
+
+            const controller = createController();
+            await controller.onSetStatus({ status: 'secret status' }, {
+                userId: 'actor',
+                username: 'actorUsername',
+            } as never);
+
+            const calls = wsServer.broadcastToPresenceAudience.mock.calls;
+
+            const friendCall = calls.find((c) =>
+                (c[0] as string[]).includes('friend-1'),
+            );
+            expect(friendCall).toBeDefined();
+            expect(
+                (friendCall?.[2] as { payload: { status: unknown } }).payload
+                    .status,
+            ).not.toBeNull();
+
+            const serverCall = calls.find((c) =>
+                (c[1] as string[]).includes('server-1'),
+            );
+            expect(serverCall).toBeDefined();
+            expect(
+                (serverCall?.[2] as { payload: { status: unknown } }).payload
+                    .status,
+            ).toBeNull();
+        });
+
+        it('reveals the new status to everyone when hideStatus is not set', async () => {
+            userRepo.updateCustomStatus.mockResolvedValue(undefined);
+            userRepo.findById.mockResolvedValue({ privacySettings: {} });
+            friendshipRepo.findByUserId.mockResolvedValue([
+                { userId: 'actor', friendId: 'friend-1' },
+            ]);
+            serverMemberRepo.findServerIdsByUserId.mockResolvedValue([
+                'server-1',
+            ]);
+
+            const controller = createController();
+            await controller.onSetStatus({ status: 'public status' }, {
+                userId: 'actor',
+                username: 'actorUsername',
+            } as never);
+
+            const calls = wsServer.broadcastToPresenceAudience.mock.calls;
+            expect(calls).toHaveLength(1);
+            expect(
+                (calls[0]?.[0] as string[] | undefined)?.includes('friend-1'),
+            ).toBe(true);
+            expect(
+                (calls[0]?.[1] as string[] | undefined)?.includes('server-1'),
+            ).toBe(true);
+            expect(
+                (calls[0]?.[2] as { payload: { status: unknown } }).payload
+                    .status,
+            ).not.toBeNull();
         });
     });
 });

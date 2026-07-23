@@ -44,6 +44,8 @@ import { generateSnowflakeId } from '@/utils/snowflake';
 import { notifyUser } from '@/services/PushService';
 import { EmbedService } from '@/services/EmbedService';
 import { assertWsNotMuted } from '@/utils/mute';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertWsNotWarned } from '@/utils/warning';
 
 /**
  * Controller for handling direct message events
@@ -71,6 +73,8 @@ export class ChatController {
         private redisService: IRedisService,
         @inject(TYPES.MessageSearchService)
         private searchService: IMessageSearchService,
+        @inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {}
 
     /**
@@ -103,6 +107,7 @@ export class ChatController {
         const senderId = authenticatedUser.userId;
 
         await assertWsNotMuted(this.muteRepo, senderId, 'send messages');
+        await assertWsNotWarned(this.warningRepo, senderId, 'send messages');
 
         const receiverUser = await this.userRepo.findById(receiverId);
         if (!receiverUser) {
@@ -320,6 +325,7 @@ export class ChatController {
         const userId = authenticatedUser.userId;
 
         await assertWsNotMuted(this.muteRepo, userId, 'edit messages');
+        await assertWsNotWarned(this.warningRepo, userId, 'edit messages');
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
@@ -523,6 +529,11 @@ export class ChatController {
         const senderId = authenticatedUser.userId;
         await assertWsNotMuted(
             this.muteRepo,
+            senderId,
+            'send typing indicators',
+        );
+        await assertWsNotWarned(
+            this.warningRepo,
             senderId,
             'send typing indicators',
         );

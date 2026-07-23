@@ -31,4 +31,10 @@ export class UserWarningResponseDTO {
 
     @ApiProperty()
     public timestamp!: Date;
+
+    @ApiPropertyOptional()
+    public expiryDurationMinutes?: number;
+
+    @ApiPropertyOptional()
+    public expiresAt?: Date;
 }

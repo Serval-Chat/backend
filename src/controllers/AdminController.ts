@@ -1288,7 +1288,7 @@ export class AdminController {
         @Body() body: AdminWarnUserRequestDTO,
         @Request() req: AuthenticatedRequest,
     ): Promise<AdminWarnUserResponseDTO> {
-        const { message } = body;
+        const { message, duration } = body;
         const issuedByIdStr = req.user.id;
         if (issuedByIdStr === '') {
             throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
@@ -1298,6 +1298,7 @@ export class AdminController {
             userId: userId,
             issuedBy: issuedByIdStr,
             message,
+            expiryDurationMinutes: duration,
         });
 
         await this.logAdminAction(req, 'warn_user', userId, {
@@ -1319,6 +1320,8 @@ export class AdminController {
                     timestamp: warning.timestamp,
                     acknowledged: warning.acknowledged,
                     acknowledgedAt: warning.acknowledgedAt,
+                    expiryDurationMinutes: warning.expiryDurationMinutes,
+                    expiresAt: warning.expiresAt,
                 },
             };
             this.wsServer.broadcastToUser(userId, event);
@@ -1330,6 +1333,8 @@ export class AdminController {
         response.issuedBy = warning.issuedBy.toString();
         response.message = warning.message;
         response.timestamp = warning.timestamp;
+        response.expiryDurationMinutes = warning.expiryDurationMinutes;
+        response.expiresAt = warning.expiresAt;
         return response;
     }
 
@@ -1351,6 +1356,8 @@ export class AdminController {
             dto.timestamp = w.timestamp;
             dto.acknowledged = w.acknowledged;
             dto.acknowledgedAt = w.acknowledgedAt;
+            dto.expiryDurationMinutes = w.expiryDurationMinutes;
+            dto.expiresAt = w.expiresAt;
             return dto;
         });
     }
@@ -1378,6 +1385,8 @@ export class AdminController {
             dto.timestamp = w.timestamp;
             dto.acknowledged = w.acknowledged;
             dto.acknowledgedAt = w.acknowledgedAt;
+            dto.expiryDurationMinutes = w.expiryDurationMinutes;
+            dto.expiresAt = w.expiresAt;
             return dto;
         });
     }

@@ -32,28 +32,46 @@ export class MongooseWarningRepository implements IWarningRepository {
         return await this.warningModel.findOne({ snowflakeId: id }).lean();
     }
 
-    // Mark a warning as acknowledged by the user */
     public async acknowledge(id: string): Promise<IWarning | null> {
-        return await this.warningModel
-            .findOneAndUpdate(
-                { snowflakeId: id },
-                {
-                    acknowledged: true,
-                    acknowledgedAt: new Date(),
-                },
-                { returnDocument: 'after' },
-            )
-            .lean();
+        const warning = await this.warningModel.findOne({ snowflakeId: id });
+        if (!warning) return null;
+
+        const acknowledgedAt = new Date();
+        warning.acknowledged = true;
+        warning.acknowledgedAt = acknowledgedAt;
+        if (
+            warning.expiryDurationMinutes !== undefined &&
+            warning.expiryDurationMinutes > 0
+        ) {
+            const expiresAt = new Date(acknowledgedAt);
+            expiresAt.setMinutes(
+                expiresAt.getMinutes() + warning.expiryDurationMinutes,
+            );
+            warning.expiresAt = expiresAt;
+        }
+
+        await warning.save();
+        return warning.toObject();
     }
 
     public async countByUserId(userId: string): Promise<number> {
         return await this.warningModel.countDocuments({ userId });
     }
 
+    public async hasUnacknowledged(userId: string): Promise<boolean> {
+        return (
+            (await this.warningModel.exists({
+                userId,
+                acknowledged: false,
+            })) !== null
+        );
+    }
+
     public async create(data: {
         userId: string;
         message: string;
         issuedBy: string;
+        expiryDurationMinutes?: number;
     }): Promise<IWarning> {
         const warning = new this.warningModel({
             userId: data.userId,
@@ -61,6 +79,7 @@ export class MongooseWarningRepository implements IWarningRepository {
             issuedBy: data.issuedBy,
             acknowledged: false,
             timestamp: new Date(),
+            expiryDurationMinutes: data.expiryDurationMinutes,
         });
 
         return await warning.save();

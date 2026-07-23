@@ -40,6 +40,9 @@ describe('FriendshipController', () => {
     const mockBlockRepo = { getActiveBlockFlags: jest.fn() };
     const mockPingService = { clearPingsBetweenUsers: jest.fn() };
     const mockDmUnreadRepo = { delete: jest.fn() };
+    const mockWarningRepo = {
+        hasUnacknowledged: jest.fn().mockResolvedValue(false),
+    };
 
     let controller: FriendshipController;
 
@@ -54,6 +57,7 @@ describe('FriendshipController', () => {
             mockBlockRepo as never,
             mockPingService as never,
             mockDmUnreadRepo as never,
+            mockWarningRepo as never,
         );
     });
 

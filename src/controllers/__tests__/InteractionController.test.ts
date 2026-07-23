@@ -79,6 +79,10 @@ const muteRepo = {
     findActiveByUserId: jest.fn().mockResolvedValue(null),
 };
 
+const warningRepo = {
+    hasUnacknowledged: jest.fn().mockResolvedValue(false),
+};
+
 const req = {
     user: {
         id: new Types.ObjectId().toHexString(),
@@ -105,8 +109,10 @@ describe('InteractionController', () => {
             permissionService as never,
             serverMemberRepo as never,
             muteRepo as never,
+            warningRepo as never,
         );
         muteRepo.findActiveByUserId.mockResolvedValue(null);
+        warningRepo.hasUnacknowledged.mockResolvedValue(false);
     });
 
     it('marks interaction creation as human-only', () => {

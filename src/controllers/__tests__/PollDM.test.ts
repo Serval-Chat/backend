@@ -175,6 +175,7 @@ describe('DM Polls', () => {
                 indexDmMessage: jest.fn().mockResolvedValue(undefined),
                 removeDmMessage: jest.fn().mockResolvedValue(undefined),
             } as any,
+            { hasUnacknowledged: jest.fn().mockResolvedValue(false) } as any, // WarningRepository
         );
         (chatController as any).wsServer = wsServer;
     });

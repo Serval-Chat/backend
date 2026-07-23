@@ -74,6 +74,8 @@ import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { notifyUser } from '@/services/PushService';
 import { EmbedService } from '@/services/EmbedService';
 import { assertWsNotMuted } from '@/utils/mute';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertWsNotWarned } from '@/utils/warning';
 
 /**
  * Controller for handling server/channel message events.
@@ -103,6 +105,8 @@ export class ServerController {
         private transactionManager: TransactionManager,
         @inject(TYPES.RedisService) private redisService: IRedisService,
         @inject(TYPES.EmbedService) private embedService: EmbedService,
+        @inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {}
 
     @postConstruct()
@@ -481,6 +485,12 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
 
+        await assertWsNotWarned(
+            this.warningRepo,
+            userId,
+            'join voice channels',
+        );
+
         await this.requireVoiceAccess(serverId, channelId, userId);
 
         const redis = this.redisService.getClient();
@@ -655,6 +665,7 @@ export class ServerController {
         const userId = authenticatedUser.userId;
 
         await assertWsNotMuted(this.muteRepo, userId, 'send messages');
+        await assertWsNotWarned(this.warningRepo, userId, 'send messages');
 
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -997,6 +1008,7 @@ export class ServerController {
         const userId = authenticatedUser.userId;
 
         await assertWsNotMuted(this.muteRepo, userId, 'edit messages');
+        await assertWsNotWarned(this.warningRepo, userId, 'edit messages');
 
         const message = await this.serverMessageRepo.findById(messageId);
 
@@ -1255,6 +1267,11 @@ export class ServerController {
         const { serverId, channelId } = payload;
         const userId = authenticatedUser.userId;
         await assertWsNotMuted(this.muteRepo, userId, 'send typing indicators');
+        await assertWsNotWarned(
+            this.warningRepo,
+            userId,
+            'send typing indicators',
+        );
 
         const canSend = await this.permissionService.hasChannelPermission(
             serverId,

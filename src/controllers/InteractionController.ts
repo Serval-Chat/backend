@@ -56,6 +56,8 @@ import {
 import { InteractionOptionValue } from './dto/types.dto';
 import { SlashCommandOptionType } from '@/types/interactions';
 import { assertHttpNotMuted } from '@/utils/mute';
+import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
+import { assertHttpNotWarned } from '@/utils/warning';
 import { mapPublicServerMember } from '@/utils/serverMember';
 import type { IEmbed, IEmbedButton } from '@/models/Embed';
 
@@ -192,6 +194,8 @@ export class InteractionController {
         private serverMemberRepo: IServerMemberRepository,
         @Inject(TYPES.MuteRepository)
         private muteRepo: IMuteRepository,
+        @Inject(TYPES.WarningRepository)
+        private warningRepo: IWarningRepository,
     ) {}
 
     @UseGuards(JwtAuthGuard)
@@ -266,6 +270,11 @@ export class InteractionController {
 
         await assertHttpNotMuted(
             this.muteRepo,
+            req.user.id,
+            'use slash commands',
+        );
+        await assertHttpNotWarned(
+            this.warningRepo,
             req.user.id,
             'use slash commands',
         );
@@ -500,6 +509,11 @@ export class InteractionController {
 
         await assertHttpNotMuted(
             this.muteRepo,
+            req.user.id,
+            'use message components',
+        );
+        await assertHttpNotWarned(
+            this.warningRepo,
             req.user.id,
             'use message components',
         );
