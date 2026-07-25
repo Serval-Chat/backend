@@ -119,7 +119,9 @@ describe('AdminBadgeController', () => {
 
             const result = await controller.deleteBadge('b1');
             expect(result.message).toContain('successfully');
-            expect(Badge.deleteOne).toHaveBeenCalledWith({ id: 'b1' });
+            expect(Badge.deleteOne).toHaveBeenCalledWith({
+                $or: [{ id: 'b1' }, { snowflakeId: 'b1' }],
+            });
             expect(mockUserRepo.removeBadgeFromAllUsers).toHaveBeenCalledWith(
                 'b1',
             );

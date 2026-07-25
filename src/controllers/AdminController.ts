@@ -1696,7 +1696,12 @@ export class AdminController {
 
         let badges: unknown[] = [];
         if (user.badges && user.badges.length > 0) {
-            badges = await Badge.find({ id: { $in: user.badges } }).lean();
+            badges = await Badge.find({
+                $or: [
+                    { id: { $in: user.badges } },
+                    { snowflakeId: { $in: user.badges } },
+                ],
+            }).lean();
         }
 
         const response = new AdminExtendedUserDetailsDTO();
@@ -2198,9 +2203,9 @@ export class AdminController {
                 : null;
             item.serverCount = serverCountByUserId.get(bot.userId) ?? 0;
             item.createdAt = bot.createdAt;
-            item.verified = bot.verified ?? false;
+            item.verified = bot.verified;
             item.verificationOverride = bot.verificationOverride ?? null;
-            item.verificationRequested = bot.verificationRequested ?? false;
+            item.verificationRequested = bot.verificationRequested;
             return item;
         });
     }
@@ -2329,7 +2334,7 @@ export class AdminController {
                 ? true
                 : override === 'unverified'
                   ? false
-                  : (bot.verified ?? false);
+                  : bot.verified;
 
         await Promise.all([
             Bot.updateOne(
@@ -2338,9 +2343,7 @@ export class AdminController {
                     verified,
                     verificationOverride: override,
                     verificationRequested:
-                        override === null
-                            ? (bot.verificationRequested ?? false)
-                            : false,
+                        override === null ? bot.verificationRequested : false,
                 },
             ),
             this.userRepo.update(bot.userId, { botVerified: verified }),

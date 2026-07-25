@@ -12,6 +12,7 @@ export interface IBadge extends Document {
     description: string; // Hover tooltip description
     icon: string; // Icon name
     color: string; // Badge color theme
+    snowflakeId?: string;
     createdAt: Date;
 }
 

@@ -292,7 +292,12 @@ export class ProfileController {
 
         if (user.badges !== undefined && user.badges.length > 0) {
             try {
-                const badgeDocs = await Badge.find({ id: { $in: user.badges } })
+                const badgeDocs = await Badge.find({
+                    $or: [
+                        { id: { $in: user.badges } },
+                        { snowflakeId: { $in: user.badges } },
+                    ],
+                })
                     .lean()
                     .exec();
                 mapped.badges = badgeDocs.map((doc) => ({
@@ -759,12 +764,20 @@ export class ProfileController {
             }
 
             const validBadges = await Badge.find({
-                id: { $in: request.badgeIds },
+                $or: [
+                    { id: { $in: request.badgeIds } },
+                    { snowflakeId: { $in: request.badgeIds } },
+                ],
             })
                 .lean()
                 .exec();
 
-            const validBadgeIds = validBadges.map((b) => b.id);
+            const validBadgeIds = validBadges.flatMap((b) =>
+                [b.id, b.snowflakeId].filter(
+                    (val): val is string =>
+                        typeof val === 'string' && val.length > 0,
+                ),
+            );
             const invalidBadgeIds = request.badgeIds.filter(
                 (badgeId: string) => !validBadgeIds.includes(badgeId),
             );
@@ -776,15 +789,28 @@ export class ProfileController {
                 );
             }
 
+            const resolvedBadgeIds = request.badgeIds.map((badgeId) => {
+                const badge = validBadges.find(
+                    (b) => b.id === badgeId || b.snowflakeId === badgeId,
+                );
+                if (badge !== undefined) {
+                    return typeof badge.snowflakeId === 'string' &&
+                        badge.snowflakeId.length > 0
+                        ? badge.snowflakeId
+                        : badge.id;
+                }
+                return badgeId;
+            });
+
             await this.userRepo.update(user.snowflakeId, {
-                badges: validBadgeIds,
+                badges: resolvedBadgeIds,
             });
 
             this.wsServer.broadcastToUser(user.snowflakeId, {
                 type: 'user_updated',
                 payload: {
                     userId: user.snowflakeId,
-                    badges: validBadgeIds,
+                    badges: resolvedBadgeIds,
                 },
             });
 
@@ -1979,9 +2005,12 @@ export class ProfileController {
                     : currentUser?.profileAccentColor;
 
             if (
-                resultingAccent != null &&
+                resultingAccent !== undefined &&
+                resultingAccent !== null &&
                 resultingAccent !== '' &&
-                (resultingPrimary == null || resultingPrimary === '')
+                (resultingPrimary === undefined ||
+                    resultingPrimary === null ||
+                    resultingPrimary === '')
             ) {
                 throw new ApiError(
                     400,

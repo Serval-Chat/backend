@@ -61,7 +61,9 @@ export class AdminBadgeController {
     public async createBadge(
         @Body() data: CreateBadgeRequestDTO,
     ): Promise<BadgeResponseDTO> {
-        const existingBadge = await Badge.findOne({ id: data.id });
+        const existingBadge = await Badge.findOne({
+            $or: [{ id: data.id }, { snowflakeId: data.id }],
+        });
         if (existingBadge) {
             throw new ConflictException('Badge ID already exists');
         }
@@ -84,7 +86,9 @@ export class AdminBadgeController {
         @Path('badgeId') badgeId: string,
         @Body() data: UpdateBadgeRequestDTO,
     ): Promise<BadgeResponseDTO> {
-        const badge = await Badge.findOne({ id: badgeId });
+        const badge = await Badge.findOne({
+            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
+        });
         if (!badge) {
             throw new NotFoundException('Badge not found');
         }
@@ -111,13 +115,23 @@ export class AdminBadgeController {
     public async deleteBadge(
         @Path('badgeId') badgeId: string,
     ): Promise<{ message: string }> {
-        const badge = await Badge.findOne({ id: badgeId });
+        const badge = await Badge.findOne({
+            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
+        });
         if (!badge) {
             throw new NotFoundException('Badge not found');
         }
 
-        await Badge.deleteOne({ id: badgeId });
-        await this.userRepo.removeBadgeFromAllUsers(badgeId);
+        await Badge.deleteOne({
+            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
+        });
+        await this.userRepo.removeBadgeFromAllUsers(badge.id);
+        if (
+            typeof badge.snowflakeId === 'string' &&
+            badge.snowflakeId.length > 0
+        ) {
+            await this.userRepo.removeBadgeFromAllUsers(badge.snowflakeId);
+        }
 
         return { message: 'Badge deleted successfully' };
     }
@@ -136,7 +150,12 @@ export class AdminBadgeController {
         }
 
         const badgeIds = user.badges || [];
-        const badges = await Badge.find({ id: { $in: badgeIds } }).lean();
+        const badges = await Badge.find({
+            $or: [
+                { id: { $in: badgeIds } },
+                { snowflakeId: { $in: badgeIds } },
+            ],
+        }).lean();
         return badges;
     }
 
@@ -158,17 +177,26 @@ export class AdminBadgeController {
             throw new NotFoundException('User not found');
         }
 
-        const badge = await Badge.findOne({ id: badgeId });
+        const badge = await Badge.findOne({
+            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
+        });
         if (!badge) {
             throw new NotFoundException('Badge not found');
         }
 
         const badges = user.badges || [];
-        if (badges.includes(badgeId)) {
+        const snowflakeId = badge.snowflakeId;
+        const hasSnowflake =
+            typeof snowflakeId === 'string' && snowflakeId.length > 0;
+
+        if (
+            badges.includes(badge.id) ||
+            (hasSnowflake && badges.includes(snowflakeId))
+        ) {
             throw new ConflictException('User already has this badge');
         }
 
-        badges.push(badgeId);
+        badges.push(hasSnowflake ? snowflakeId : badge.id);
         await this.userRepo.update(user.snowflakeId, { badges });
 
         return { message: 'Badge added successfully', badges };
@@ -194,8 +222,19 @@ export class AdminBadgeController {
             throw new NotFoundException('User not found');
         }
 
+        const badge = await Badge.findOne({
+            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
+        });
+        const snowflakeId =
+            typeof badge?.snowflakeId === 'string'
+                ? badge.snowflakeId
+                : badgeId;
+        const targetId = badge !== null ? badge.id : badgeId;
+
         const badges = user.badges || [];
-        const index = badges.indexOf(badgeId);
+        let index = badges.indexOf(snowflakeId);
+        if (index === -1) index = badges.indexOf(targetId);
+
         if (index === -1) {
             throw new NotFoundException('User does not have this badge');
         }
