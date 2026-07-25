@@ -55,7 +55,7 @@ describe('AdminBadgeController', () => {
                     id: 'existing',
                     name: 'N',
                     description: 'D',
-                    icon: 'I',
+                    icon: 'bug',
                 }),
             ).rejects.toThrow(ConflictException);
         });
@@ -72,7 +72,7 @@ describe('AdminBadgeController', () => {
                 id: 'new',
                 name: 'N',
                 description: 'D',
-                icon: 'I',
+                icon: 'bug',
             });
             expect(result).toEqual({ id: 'new' });
             expect(mockBadgeInstance.save).toHaveBeenCalled();

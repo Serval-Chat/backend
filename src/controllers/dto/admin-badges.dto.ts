@@ -1,5 +1,12 @@
+import { BADGE_ICONS, BadgeIcon } from '@/models/Badge';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsHexColor } from 'class-validator';
+import {
+    IsString,
+    IsNotEmpty,
+    IsOptional,
+    IsHexColor,
+    IsIn,
+} from 'class-validator';
 
 export class CreateBadgeRequestDTO {
     @ApiProperty()
@@ -17,10 +24,11 @@ export class CreateBadgeRequestDTO {
     @IsNotEmpty()
     public description!: string;
 
-    @ApiProperty()
+    @ApiProperty({ enum: BADGE_ICONS })
     @IsString()
     @IsNotEmpty()
-    public icon!: string;
+    @IsIn(BADGE_ICONS)
+    public icon!: BadgeIcon;
 
     @ApiPropertyOptional()
     @IsOptional()
@@ -41,11 +49,12 @@ export class UpdateBadgeRequestDTO {
     @IsNotEmpty()
     public description?: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ enum: BADGE_ICONS })
     @IsOptional()
     @IsString()
     @IsNotEmpty()
-    public icon?: string;
+    @IsIn(BADGE_ICONS)
+    public icon?: BadgeIcon;
 
     @ApiPropertyOptional()
     @IsOptional()
@@ -63,8 +72,8 @@ export class BadgeResponseDTO {
     @ApiProperty()
     public description!: string;
 
-    @ApiProperty()
-    public icon!: string;
+    @ApiProperty({ enum: BADGE_ICONS })
+    public icon!: BadgeIcon;
 
     @ApiProperty()
     public color!: string;
