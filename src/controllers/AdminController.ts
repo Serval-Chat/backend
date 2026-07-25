@@ -2203,9 +2203,9 @@ export class AdminController {
                 : null;
             item.serverCount = serverCountByUserId.get(bot.userId) ?? 0;
             item.createdAt = bot.createdAt;
-            item.verified = bot.verified;
+            item.verified = bot.verified ?? false;
             item.verificationOverride = bot.verificationOverride ?? null;
-            item.verificationRequested = bot.verificationRequested;
+            item.verificationRequested = bot.verificationRequested ?? false;
             return item;
         });
     }

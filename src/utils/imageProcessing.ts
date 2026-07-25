@@ -27,12 +27,13 @@ export interface ImageProcessingOptions {
 }
 
 export const ImagePresets = {
-    serverIcon: (_input: string | Buffer): ImageProcessingOptions => ({
+    serverIcon: (isGif: boolean = false): ImageProcessingOptions => ({
         width: 256,
         height: 256,
         fit: 'cover',
-        format: 'png',
+        format: isGif ? 'gif' : 'png',
         quality: 90,
+        animated: isGif,
         stripMetadata: true,
     }),
 

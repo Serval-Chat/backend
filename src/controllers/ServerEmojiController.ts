@@ -162,7 +162,7 @@ export class ServerEmojiController {
         await assertHttpNotWarned(this.warningRepo, userId, 'upload emojis');
 
         const server = await this.serverRepo.findById(serverId);
-        if (server === null || String(server.ownerId) !== userId) {
+        if (server === null) {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
@@ -229,6 +229,16 @@ export class ServerEmojiController {
                     ErrorMessages.EMOJI.NOT_FOUND,
                 );
             }
+
+            this.wsServer.broadcastToServer(serverId, {
+                type: 'emoji_created',
+                payload: {
+                    serverId,
+                    emojiId: newEmoji.snowflakeId,
+                    emoji: populatedEmoji,
+                    senderId: userId,
+                },
+            });
 
             this.wsServer.broadcastToServer(serverId, {
                 type: 'emoji_updated',
@@ -319,6 +329,11 @@ export class ServerEmojiController {
         }
 
         await this.emojiRepo.delete(emojiId);
+
+        this.wsServer.broadcastToServer(serverId, {
+            type: 'emoji_deleted',
+            payload: { serverId, emojiId, senderId: userId },
+        });
 
         this.wsServer.broadcastToServer(serverId, {
             type: 'emoji_updated',

@@ -1100,7 +1100,8 @@ export class ServerController {
             throw new ApiError(400, ErrorMessages.FILE.NO_FILE_UPLOADED);
         }
 
-        const filename = `${serverId}-${Date.now()}.png`;
+        const ext = icon.mimetype === 'image/gif' ? 'gif' : 'png';
+        const filename = `${serverId}-${Date.now()}.${ext}`;
         const filepath = path.join(this.UPLOADS_DIR, filename);
 
         try {
@@ -1112,7 +1113,7 @@ export class ServerController {
             await processAndSaveImage(
                 input,
                 filepath,
-                ImagePresets.serverIcon(input),
+                ImagePresets.serverIcon(ext === 'gif'),
             );
 
             const iconUrl = `/api/v1/servers/icon/${filename}`;

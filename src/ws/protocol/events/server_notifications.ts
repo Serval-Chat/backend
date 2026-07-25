@@ -287,6 +287,27 @@ export interface IRolesReorderedEvent
 // Emoji Events
 // ============================================================================
 
+export interface IEmojiCreatedEvent
+    extends WsEvent<
+        'emoji_created',
+        {
+            serverId: string;
+            emojiId?: string;
+            emoji?: unknown;
+            senderId?: string;
+        }
+    > {}
+
+export interface IEmojiDeletedEvent
+    extends WsEvent<
+        'emoji_deleted',
+        {
+            serverId: string;
+            emojiId: string;
+            senderId?: string;
+        }
+    > {}
+
 export interface IEmojiUpdatedEvent
     extends WsEvent<
         'emoji_updated',

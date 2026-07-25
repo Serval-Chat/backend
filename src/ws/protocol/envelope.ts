@@ -103,6 +103,8 @@ import type {
     IRoleUpdatedEvent,
     IRoleDeletedEvent,
     IRolesReorderedEvent,
+    IEmojiCreatedEvent,
+    IEmojiDeletedEvent,
     IEmojiUpdatedEvent,
     IStickerUpdatedEvent,
     IAuditLogEntryCreatedEvent,
@@ -209,6 +211,8 @@ export type AnyResponseWsEvent =
     | IRoleUpdatedEvent
     | IRoleDeletedEvent
     | IRolesReorderedEvent
+    | IEmojiCreatedEvent
+    | IEmojiDeletedEvent
     | IEmojiUpdatedEvent
     | IStickerUpdatedEvent
     | IAuditLogEntryCreatedEvent
