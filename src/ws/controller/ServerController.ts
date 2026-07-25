@@ -1280,8 +1280,27 @@ export class ServerController {
             'sendMessages',
         );
         if (canSend !== true) {
-            return; // Silently ignore
+            return;
         }
+
+        const TYPING_TTL_SECONDS = 10;
+        const expiresAt = new Date(
+            Date.now() + TYPING_TTL_SECONDS * 1000,
+        ).toISOString();
+        const redisKey = `typing:channel:${channelId}:${userId}`;
+        const redisValue = JSON.stringify({
+            username: authenticatedUser.username,
+            expiresAt,
+        });
+
+        const redis = this.redisService.getClient();
+        redis
+            .setex(redisKey, TYPING_TTL_SECONDS, redisValue)
+            .catch((err: unknown) => {
+                logger.warn(
+                    `[ServerController] Failed to cache typing indicator: ${(err as Error).message}`,
+                );
+            });
 
         const typingPayload: ITypingServerBroadcastEvent['payload'] = {
             channelId,

@@ -61,6 +61,7 @@ import {
     MessageResponseDTO,
     ReorderResponseDTO,
     PermissionsResponseDTO,
+    TypingIndicatorsResponseDTO,
 } from './dto/server-channel.response.dto';
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Channels')
@@ -480,6 +481,83 @@ export class ServerChannelController {
             createdAt: channel.createdAt.toISOString(),
             messageCount,
         };
+    }
+
+    /**
+     * Returns all currently active typing indicators for a channel.
+     */
+    @Get('channels/:channelId/typing-indicators')
+    @ApiOperation({ summary: 'Get active typing indicators for a channel' })
+    @ApiResponse({ status: 200, type: TypingIndicatorsResponseDTO })
+    @ApiResponse({
+        status: 403,
+        description: 'Forbidden! Not a server member or cannot view channel',
+    })
+    public async getTypingIndicators(
+        @Param('serverId') serverId: string,
+        @Param('channelId') channelId: string,
+        @CurrentUser('id') userId: string,
+    ): Promise<TypingIndicatorsResponseDTO> {
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            serverId,
+            userId,
+        );
+        if (member === null) {
+            throw new ApiError(403, ErrorMessages.SERVER.NOT_MEMBER);
+        }
+
+        const canView = await this.permissionService.hasChannelPermission(
+            serverId,
+            userId,
+            channelId,
+            'viewChannels',
+        );
+        if (canView !== true) {
+            throw new ApiError(403, ErrorMessages.CHANNEL.NOT_FOUND);
+        }
+
+        const redis = this.redisService.getClient();
+        const pattern = `typing:channel:${channelId}:*`;
+        const keys = await redis.keys(pattern);
+
+        if (keys.length === 0) {
+            return { typingUsers: [] };
+        }
+
+        const values = await redis.mget(...keys);
+        const now = new Date().toISOString();
+        const typingUsers: TypingIndicatorsResponseDTO['typingUsers'] = [];
+
+        for (let i = 0; i < keys.length; i++) {
+            const raw = values[i];
+            if (raw === null || raw === undefined) continue;
+
+            const key = keys[i];
+            if (key === undefined) continue;
+
+            // typing:channel:{channelId}:{userId}
+            const parts = key.split(':');
+            const typerUserId = parts[parts.length - 1];
+            if (typerUserId === undefined || typerUserId === '') continue;
+
+            try {
+                const payload = JSON.parse(raw) as {
+                    username: string;
+                    expiresAt: string;
+                };
+                if (payload.expiresAt <= now) continue;
+
+                typingUsers.push({
+                    userId: typerUserId,
+                    username: payload.username,
+                    expiresAt: payload.expiresAt,
+                });
+            } catch {
+                console.error('Failed to parse typing payload for key', key);
+            }
+        }
+
+        return { typingUsers };
     }
 
     @Patch('channels/:channelId')

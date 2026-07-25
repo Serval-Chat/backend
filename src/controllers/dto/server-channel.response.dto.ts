@@ -153,3 +153,19 @@ export class VoiceTokenResponseDTO {
     @ApiProperty()
     public roomName!: string;
 }
+
+export class TypingIndicatorUserDTO {
+    @ApiProperty()
+    public userId!: string;
+
+    @ApiProperty()
+    public username!: string;
+
+    @ApiProperty()
+    public expiresAt!: string;
+}
+
+export class TypingIndicatorsResponseDTO {
+    @ApiProperty({ type: [TypingIndicatorUserDTO] })
+    public typingUsers!: TypingIndicatorUserDTO[];
+}
