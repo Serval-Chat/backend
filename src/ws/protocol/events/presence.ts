@@ -1,5 +1,6 @@
 import type { WsEvent } from '@/ws/protocol/event';
 import type { PresenceStatus } from '@/types/presence';
+import type { FrequentlyUsedEmojiEntry } from '@/di/interfaces/IUserRepository';
 
 /**
  * Server -> Client (Automatic on authentication)
@@ -169,6 +170,7 @@ export interface IUserUpdatedEvent
                 reason: string;
                 expirationTimestamp?: Date | string | null;
             } | null;
+            frequentlyUsedEmojis?: FrequentlyUsedEmojiEntry[];
         }
     > {}
 

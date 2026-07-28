@@ -3,6 +3,7 @@ import {
     IUserRepository,
     IUser,
     CreateUserDTO,
+    FrequentlyUsedEmojiEntry,
 } from '@/di/interfaces/IUserRepository';
 import { AdminPermissions } from '@/permissions/AdminPermissions';
 import { User, IUser as IUserModel } from '@/models/User';
@@ -461,6 +462,17 @@ export class MongooseUserRepository implements IUserRepository {
             decorationId === null
                 ? { $unset: { decorationId: '' } }
                 : { decorationId },
+        );
+    }
+
+    public async updateFrequentlyUsedEmojis(
+        id: string,
+        emojis: FrequentlyUsedEmojiEntry[],
+    ): Promise<void> {
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { frequentlyUsedEmojis: emojis },
+            { runValidators: true, context: 'query' },
         );
     }
 

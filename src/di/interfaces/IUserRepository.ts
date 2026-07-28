@@ -118,11 +118,17 @@ export interface IUser {
         hideBio?: boolean;
         hideStatus?: boolean;
     };
+    frequentlyUsedEmojis?: FrequentlyUsedEmojiEntry[];
 }
 
-// User Repository Interface
-//
-// Encapsulates all user-related database operations
+export interface FrequentlyUsedEmojiEntry {
+    emoji: string;
+    emojiType: 'unicode' | 'custom';
+    emojiId?: string;
+    count: number;
+    lastUsedAt: Date;
+}
+
 export interface IUserRepository {
     // Find user by ID (lean)
     findById(id: string): Promise<IUser | null>;
@@ -289,6 +295,12 @@ export interface IUserRepository {
 
     // Update user's decoration
     updateDecoration(id: string, decorationId: string | null): Promise<void>;
+
+    // Replace a user's entire frequently-used emoji list
+    updateFrequentlyUsedEmojis(
+        id: string,
+        emojis: FrequentlyUsedEmojiEntry[],
+    ): Promise<void>;
 
     // Verify if user is currently banned
     isBanned(userId: string): Promise<boolean>;

@@ -1,0 +1,1 @@
+export const MAX_FREQUENTLY_USED_EMOJIS = 40;

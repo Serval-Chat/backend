@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Put,
     Body,
     UseGuards,
     Inject,
@@ -20,8 +21,16 @@ import {
     UpdateSettingsResponseDTO,
     UpdateServerSettingsResponseDTO,
 } from './dto/settings.response.dto';
+import {
+    FrequentlyUsedEmojisResponseDTO,
+    UpdateFrequentlyUsedEmojisRequestDTO,
+    UpdateFrequentlyUsedEmojisResponseDTO,
+} from './dto/frequently-used-emoji.dto';
 import { TYPES } from '@/di/types';
-import type { IUserRepository } from '@/di/interfaces/IUserRepository';
+import type {
+    IUserRepository,
+    FrequentlyUsedEmojiEntry,
+} from '@/di/interfaces/IUserRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
@@ -215,6 +224,68 @@ export class SettingsController {
         return {
             message: 'Server settings updated successfully',
             serverSettings: { order: body.order },
+        };
+    }
+
+    @Get('frequently-used-emojis')
+    @ApiOperation({ summary: 'Get frequently used emojis' })
+    @ApiOkResponse({
+        type: FrequentlyUsedEmojisResponseDTO,
+        description: 'Frequently used emojis retrieved',
+    })
+    @ApiResponse({
+        status: 404,
+        description: ErrorMessages.AUTH.USER_NOT_FOUND,
+    })
+    public async getFrequentlyUsedEmojis(
+        @CurrentUser('id') userId: string,
+    ): Promise<{ emojis: FrequentlyUsedEmojiEntry[] }> {
+        const user = await this.userRepo.findById(userId);
+        if (user === null) {
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        return { emojis: user.frequentlyUsedEmojis ?? [] };
+    }
+
+    @Put('frequently-used-emojis')
+    @ApiOperation({
+        summary:
+            'Replace the frequently used emoji list (full sync from client)',
+    })
+    @ApiOkResponse({
+        type: UpdateFrequentlyUsedEmojisResponseDTO,
+        description: 'Frequently used emojis updated',
+    })
+    public async updateFrequentlyUsedEmojis(
+        @CurrentUser('id') userId: string,
+        @Body() body: UpdateFrequentlyUsedEmojisRequestDTO,
+    ): Promise<{ message: string; emojis: FrequentlyUsedEmojiEntry[] }> {
+        const emojis: FrequentlyUsedEmojiEntry[] = body.emojis.map((e) => ({
+            emoji: e.emoji,
+            emojiType: e.emojiType,
+            emojiId: e.emojiId,
+            count: e.count,
+            lastUsedAt: new Date(e.lastUsedAt),
+        }));
+
+        await this.userRepo.updateFrequentlyUsedEmojis(userId, emojis);
+
+        try {
+            this.wsServer.broadcastToUser(userId, {
+                type: 'user_updated',
+                payload: { userId, frequentlyUsedEmojis: emojis },
+            });
+        } catch (err) {
+            this.logger.error(
+                'Failed to broadcast frequently used emojis update:',
+                err,
+            );
+        }
+
+        return {
+            message: 'Frequently used emojis updated successfully',
+            emojis,
         };
     }
 }

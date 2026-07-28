@@ -5,6 +5,7 @@ import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
 import type { AdminPermissions } from '@/permissions/AdminPermissions';
 import { PRESENCE_STATUSES, type PresenceStatus } from '@/types/presence';
+import { MAX_FREQUENTLY_USED_EMOJIS } from '@/constants/frequentlyUsedEmoji';
 
 export enum MessageAlignment {
     LEFT = 'left',
@@ -119,6 +120,13 @@ export interface IUser extends Document {
         hideBio?: boolean;
         hideStatus?: boolean;
     };
+    frequentlyUsedEmojis?: {
+        emoji: string;
+        emojiType: 'unicode' | 'custom';
+        emojiId?: string;
+        count: number;
+        lastUsedAt: Date;
+    }[];
     comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -279,6 +287,30 @@ const schema = new Schema<IUser>(
             hideConnections: { type: Boolean, default: false },
             hideBio: { type: Boolean, default: false },
             hideStatus: { type: Boolean, default: false },
+        },
+        frequentlyUsedEmojis: {
+            type: [
+                new Schema(
+                    {
+                        emoji: { type: String, required: true, maxlength: 100 },
+                        emojiType: {
+                            type: String,
+                            enum: ['unicode', 'custom'],
+                            required: true,
+                        },
+                        emojiId: { type: String, required: false },
+                        count: { type: Number, required: true, min: 1 },
+                        lastUsedAt: { type: Date, required: true },
+                    },
+                    { _id: false },
+                ),
+            ],
+            default: [],
+            validate: {
+                validator: (arr: unknown[]): boolean =>
+                    arr.length <= MAX_FREQUENTLY_USED_EMOJIS,
+                message: `frequentlyUsedEmojis cannot exceed ${MAX_FREQUENTLY_USED_EMOJIS} entries`,
+            },
         },
     },
     {
