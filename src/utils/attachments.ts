@@ -3,8 +3,9 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 
-import { isText } from 'istextorbinary';
+import { getEncoding } from 'istextorbinary';
 import mime from 'mime-types';
+import sharp from 'sharp';
 
 import { extractOriginalFilename } from '@/config/multer';
 import type {
@@ -12,6 +13,8 @@ import type {
     MessageAttachmentType,
 } from '@/models/Attachment';
 import { getImageMetadata } from '@/utils/imageProcessing';
+import logger from '@/utils/logger';
+import { sanitizeSvg } from '@/utils/svgSanitizer';
 
 const execFileAsync = promisify(execFile);
 const ffprobeStatic = require('ffprobe-static') as { path: string };
@@ -25,6 +28,8 @@ const KNOWN_ATTACHMENT_HOSTS = new Set([
 ]);
 
 const FILE_MARKER_RE = /\[%file%\]\(([^)]*)\)/g;
+
+const TYPESCRIPT_EXTENSIONS = new Set(['ts', 'mts', 'cts']);
 
 interface VideoProbeResult {
     streams?: {
@@ -102,7 +107,6 @@ function getOriginalFilename(storedFilename: string): string {
 
 function getAttachmentType(
     mimeType: string,
-    filename: string,
     sample: Buffer,
 ): MessageAttachmentType {
     if (mimeType.startsWith('image/')) return 'image';
@@ -110,7 +114,7 @@ function getAttachmentType(
     if (mimeType.startsWith('audio/')) return 'audio';
     if (mimeType.startsWith('text/')) return 'text';
     if (mimeType === 'application/json') return 'text';
-    return isText(filename, sample) === true ? 'text' : 'file';
+    return getEncoding(sample) === 'utf8' ? 'text' : 'file';
 }
 
 async function getVideoDimensions(
@@ -153,8 +157,15 @@ export async function buildAttachmentMetadata(
     }
 
     const filePath = path.join(getUploadsDir(), safeFilename);
-    const stats = await fsPromises.stat(filePath);
     const originalName = getOriginalFilename(safeFilename);
+    const extension = originalName.split('.').pop()?.toLowerCase();
+
+    if (extension === 'svg') {
+        const raw = await fsPromises.readFile(filePath, 'utf8');
+        await fsPromises.writeFile(filePath, sanitizeSvg(raw), 'utf8');
+    }
+
+    let stats = await fsPromises.stat(filePath);
     const originalMimeType = mime.lookup(originalName);
     const storedMimeType = mime.lookup(safeFilename);
     const detectedMimeType =
@@ -162,7 +173,11 @@ export async function buildAttachmentMetadata(
     const trimmedMimeType =
         detectedMimeType !== false ? detectedMimeType.trim() : '';
     const mimeType =
-        trimmedMimeType !== '' ? trimmedMimeType : 'application/octet-stream';
+        extension !== undefined && TYPESCRIPT_EXTENSIONS.has(extension)
+            ? 'text/typescript'
+            : trimmedMimeType !== ''
+              ? trimmedMimeType
+              : 'application/octet-stream';
     const sampleSize = Math.min(4096, stats.size);
     const handle = await fsPromises.open(filePath, 'r');
     const sample = Buffer.alloc(sampleSize);
@@ -172,7 +187,7 @@ export async function buildAttachmentMetadata(
         await handle.close();
     }
 
-    const type = getAttachmentType(mimeType, originalName, sample);
+    const type = getAttachmentType(mimeType, sample);
     const attachment: IMessageAttachment = {
         attachmentId: safeFilename,
         type,
@@ -183,20 +198,33 @@ export async function buildAttachmentMetadata(
     };
 
     if (type === 'image') {
-        const metadata = (await getImageMetadata(filePath)) as {
-            width?: number;
-            height?: number;
-        };
-        if (
-            metadata.width === undefined ||
-            metadata.height === undefined ||
-            metadata.width <= 0 ||
-            metadata.height <= 0
-        ) {
-            throw new Error(`Could not read image dimensions for ${filePath}`);
+        try {
+            const metadata = (await getImageMetadata(filePath)) as {
+                width?: number;
+                height?: number;
+            };
+            if (
+                metadata.width !== undefined &&
+                metadata.height !== undefined &&
+                metadata.width > 0 &&
+                metadata.height > 0
+            ) {
+                attachment.width = metadata.width;
+                attachment.height = metadata.height;
+            }
+
+            if (extension !== 'svg') {
+                const stripped = await sharp(filePath).toBuffer();
+                await fsPromises.writeFile(filePath, stripped);
+                stats = await fsPromises.stat(filePath);
+                attachment.size = stats.size;
+            }
+        } catch (error) {
+            logger.error(
+                `Failed to read image metadata or strip EXIF data for attachment: ${safeFilename}`,
+                error,
+            );
         }
-        attachment.width = metadata.width;
-        attachment.height = metadata.height;
     }
 
     if (type === 'video') {

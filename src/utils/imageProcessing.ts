@@ -170,10 +170,8 @@ export async function processImage(
             break;
     }
 
-    if (stripMetadata === true) {
-        pipeline = pipeline.withMetadata({
-            exif: {},
-        });
+    if (stripMetadata !== true) {
+        pipeline = pipeline.withMetadata();
     }
 
     const buffer = await pipeline.toBuffer({ resolveWithObject: true });
@@ -225,9 +223,7 @@ export async function stripMetadata(
     input: string | Buffer,
     outputPath?: string,
 ): Promise<Buffer | void> {
-    const pipeline = sharp(input).withMetadata({
-        exif: {},
-    });
+    const pipeline = sharp(input);
 
     if (outputPath !== undefined) {
         await pipeline.toFile(outputPath);

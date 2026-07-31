@@ -42,7 +42,7 @@ import {
     FileUploadResponseDTO,
     FileMetadataResponseDTO,
 } from './dto/file.response.dto';
-import { isText } from 'istextorbinary';
+import { getEncoding } from 'istextorbinary';
 import { buildAttachmentMetadata } from '@/utils/attachments';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
@@ -151,7 +151,7 @@ export class FileController {
             const handle = await fsPromises.open(filePath, 'r');
             await handle.read(buffer, 0, buffer.length, 0);
             await handle.close();
-            isBinary = isText(filename, buffer) === false;
+            isBinary = getEncoding(buffer) !== 'utf8';
         } catch (err: unknown) {
             this.logger.error('Error detecting binary:', err);
             isBinary = true;
@@ -266,7 +266,7 @@ export class FileController {
             await handle.read(buffer, 0, buffer.length, 0);
             await handle.close();
 
-            return isText(filename, buffer) === true
+            return getEncoding(buffer) === 'utf8'
                 ? 'text/plain'
                 : 'application/octet-stream';
         } catch (err: unknown) {

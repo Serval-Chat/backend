@@ -7,4 +7,7 @@ declare module 'istextorbinary' {
         filename?: string | null,
         buffer?: Buffer | null,
     ): boolean | null;
+    export function getEncoding(
+        buffer: Buffer | null,
+    ): 'utf8' | 'binary' | null;
 }
