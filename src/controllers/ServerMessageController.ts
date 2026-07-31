@@ -55,6 +55,7 @@ import type {
     IMessageServerPinUpdatedEvent,
 } from '@/ws/protocol/events/messages';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
+import { embedAttachmentContentForMessages } from '@/utils/attachments';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -149,6 +150,11 @@ export class ServerMessageController {
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'before', required: false, type: String })
     @ApiQuery({ name: 'around', required: false, type: String })
+    @ApiQuery({
+        name: 'includeAttachmentContent',
+        required: false,
+        type: Boolean,
+    })
     @ApiOkResponse({
         type: [ServerMessageResponseDTO],
         description: 'Messages retrieved',
@@ -162,6 +168,7 @@ export class ServerMessageController {
         @Query('before') before?: string,
         @Query('around') around?: string,
         @Query('after') after?: string,
+        @Query('includeAttachmentContent') includeAttachmentContent?: string,
     ): Promise<IServerMessage[]> {
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -214,6 +221,10 @@ export class ServerMessageController {
         );
 
         this.allowlistProxyUrls(msgs);
+
+        if (includeAttachmentContent === 'true') {
+            await embedAttachmentContentForMessages(msgs);
+        }
 
         return msgs.map((msg) => {
             const msgUnknown: unknown = msg;

@@ -4,6 +4,7 @@ import {
     IsUserId,
     IsLimit,
     IsMessageId,
+    IsBooleanQuery,
 } from '@/validation/schemas/common';
 import { IsOptional } from 'class-validator';
 
@@ -36,6 +37,13 @@ export class GetMessagesQueryDTO {
     @IsOptional()
     @IsMessageId()
     public after?: string;
+
+    @ApiPropertyOptional({
+        description:
+            'When true, small text attachments include their content inline so clients can skip a separate download request',
+    })
+    @IsBooleanQuery()
+    public includeAttachmentContent?: boolean;
 }
 
 export class MessageIdParamDTO {

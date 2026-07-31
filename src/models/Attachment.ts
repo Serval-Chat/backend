@@ -16,6 +16,7 @@ export interface IMessageAttachment {
     width?: number;
     height?: number;
     spoiler?: boolean;
+    content?: string;
 }
 
 export const messageAttachmentSchema = new Schema<IMessageAttachment>(

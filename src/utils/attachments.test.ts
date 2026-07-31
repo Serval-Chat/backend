@@ -24,11 +24,15 @@ jest.mock('child_process', () => ({
     ),
 }));
 
+import type { IMessageAttachment } from '@/models/Attachment';
+
 import {
     buildAttachmentMetadata,
     buildAttachmentMetadataFromUrl,
+    embedAttachmentContentForMessages,
     extractLegacyFileMarkers,
     getUploadsDir,
+    MAX_INLINE_ATTACHMENT_CONTENT_BYTES,
 } from './attachments';
 
 const mockedExecFile = jest.mocked(execFile);
@@ -237,5 +241,185 @@ describe('attachment metadata helpers', () => {
             type: 'file',
             name: filename,
         });
+    });
+});
+
+describe('embedAttachmentContentForMessages', () => {
+    const uploadsDir = getUploadsDir();
+    const createdFiles: string[] = [];
+
+    beforeEach(async () => {
+        createdFiles.length = 0;
+        await fsPromises.mkdir(uploadsDir, { recursive: true });
+    });
+
+    afterEach(async () => {
+        await Promise.all(
+            createdFiles.map((filename) =>
+                fsPromises.rm(path.join(uploadsDir, filename), {
+                    force: true,
+                }),
+            ),
+        );
+    });
+
+    it('embeds content for every qualifying attachment across multiple messages, not just the last one', async () => {
+        const files = ['multi-a.txt', 'multi-b.txt', 'multi-c.txt'];
+        for (const filename of files) {
+            createdFiles.push(filename);
+            await fsPromises.writeFile(
+                path.join(uploadsDir, filename),
+                `content of ${filename}`,
+            );
+        }
+
+        const attachmentsByFile = new Map<string, IMessageAttachment>(
+            files.map((filename) => [
+                filename,
+                {
+                    attachmentId: filename,
+                    type: 'text',
+                    mimeType: 'text/plain',
+                    name: filename,
+                    size: 20,
+                },
+            ]),
+        );
+        const messages = files.map((filename) => {
+            const attachment = attachmentsByFile.get(filename);
+            if (!attachment) throw new Error('unreachable');
+            return { attachments: [attachment] };
+        });
+
+        await embedAttachmentContentForMessages(messages);
+
+        for (const filename of files) {
+            expect(attachmentsByFile.get(filename)?.content).toBe(
+                `content of ${filename}`,
+            );
+        }
+    });
+
+    it('embeds content for multiple attachments within the same message', async () => {
+        const filenameA = 'same-msg-a.txt';
+        const filenameB = 'same-msg-b.txt';
+        createdFiles.push(filenameA, filenameB);
+        await fsPromises.writeFile(
+            path.join(uploadsDir, filenameA),
+            'content of same-msg-a.txt',
+        );
+        await fsPromises.writeFile(
+            path.join(uploadsDir, filenameB),
+            'content of same-msg-b.txt',
+        );
+
+        const attachmentA: IMessageAttachment = {
+            attachmentId: filenameA,
+            type: 'text',
+            mimeType: 'text/plain',
+            name: filenameA,
+            size: 20,
+        };
+        const attachmentB: IMessageAttachment = {
+            attachmentId: filenameB,
+            type: 'text',
+            mimeType: 'text/plain',
+            name: filenameB,
+            size: 20,
+        };
+
+        await embedAttachmentContentForMessages([
+            { attachments: [attachmentA, attachmentB] },
+        ]);
+
+        expect(attachmentA.content).toBe('content of same-msg-a.txt');
+        expect(attachmentB.content).toBe('content of same-msg-b.txt');
+    });
+
+    it('embeds content for a small text attachment', async () => {
+        const filename = 'small.txt';
+        createdFiles.push(filename);
+        await fsPromises.writeFile(
+            path.join(uploadsDir, filename),
+            'hello world',
+        );
+
+        const attachment: IMessageAttachment = {
+            attachmentId: filename,
+            type: 'text',
+            mimeType: 'text/plain',
+            name: filename,
+            size: 11,
+        };
+
+        await embedAttachmentContentForMessages([
+            { attachments: [attachment] },
+        ]);
+
+        expect(attachment.content).toBe('hello world');
+    });
+
+    it('does not embed content for non-text attachments', async () => {
+        const filename = 'image.png';
+        createdFiles.push(filename);
+        await fsPromises.writeFile(
+            path.join(uploadsDir, filename),
+            'not actually a png',
+        );
+
+        const attachment: IMessageAttachment = {
+            attachmentId: filename,
+            type: 'image',
+            mimeType: 'image/png',
+            name: filename,
+            size: 18,
+        };
+
+        await embedAttachmentContentForMessages([
+            { attachments: [attachment] },
+        ]);
+
+        expect(attachment.content).toBeUndefined();
+    });
+
+    it('does not embed content for text attachments at or over the size threshold', async () => {
+        const filename = 'big.txt';
+        createdFiles.push(filename);
+        await fsPromises.writeFile(path.join(uploadsDir, filename), 'x');
+
+        const attachment: IMessageAttachment = {
+            attachmentId: filename,
+            type: 'text',
+            mimeType: 'text/plain',
+            name: filename,
+            size: MAX_INLINE_ATTACHMENT_CONTENT_BYTES,
+        };
+
+        await embedAttachmentContentForMessages([
+            { attachments: [attachment] },
+        ]);
+
+        expect(attachment.content).toBeUndefined();
+    });
+
+    it('leaves content undefined without throwing when the underlying file is missing', async () => {
+        const attachment: IMessageAttachment = {
+            attachmentId: 'does-not-exist.txt',
+            type: 'text',
+            mimeType: 'text/plain',
+            name: 'does-not-exist.txt',
+            size: 10,
+        };
+
+        await expect(
+            embedAttachmentContentForMessages([{ attachments: [attachment] }]),
+        ).resolves.toBeUndefined();
+        expect(attachment.content).toBeUndefined();
+    });
+
+    it('handles messages with no attachments', async () => {
+        await expect(
+            embedAttachmentContentForMessages([{ attachments: undefined }, {}]),
+        ).resolves.toBeUndefined();
     });
 });

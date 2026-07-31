@@ -55,6 +55,7 @@ import {
 } from './dto/user-message.request.dto';
 import { PollVoteRequestDTO } from './dto/poll-vote.request.dto';
 import { BadRequestException } from '@nestjs/common';
+import { embedAttachmentContentForMessages } from '@/utils/attachments';
 
 interface UnreadCountsResponse {
     counts: Record<string, number>;
@@ -137,6 +138,11 @@ export class UserMessageController {
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'before', required: false, type: String })
     @ApiQuery({ name: 'around', required: false, type: String })
+    @ApiQuery({
+        name: 'includeAttachmentContent',
+        required: false,
+        type: Boolean,
+    })
     @ApiOkResponse({
         type: DmMessageListResponseDTO,
         description: 'Messages retrieved',
@@ -154,7 +160,14 @@ export class UserMessageController {
         @CurrentUser('id') meId: string,
         @Query() query: GetMessagesQueryDTO,
     ): Promise<MessageWithReactions[]> {
-        const { userId, limit, before, around, after } = query;
+        const {
+            userId,
+            limit,
+            before,
+            around,
+            after,
+            includeAttachmentContent,
+        } = query;
 
         const userDoc = await this.userRepo.findById(userId);
         if (userDoc === null) {
@@ -195,6 +208,10 @@ export class UserMessageController {
                         ] || [],
                 }) as MessageWithReactions,
         );
+
+        if (includeAttachmentContent === true) {
+            await embedAttachmentContentForMessages(messagesWithReactions);
+        }
 
         return messagesWithReactions;
     }

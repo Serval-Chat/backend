@@ -42,6 +42,38 @@ export function getUploadsDir(): string {
     return path.join(process.cwd(), 'uploads', 'uploads');
 }
 
+export const MAX_INLINE_ATTACHMENT_CONTENT_BYTES = 50 * 1024;
+
+async function embedAttachmentContent(
+    attachment: IMessageAttachment,
+): Promise<void> {
+    if (
+        attachment.type !== 'text' ||
+        attachment.size >= MAX_INLINE_ATTACHMENT_CONTENT_BYTES
+    ) {
+        return;
+    }
+
+    try {
+        const filePath = path.join(getUploadsDir(), attachment.attachmentId);
+        attachment.content = await fsPromises.readFile(filePath, 'utf8');
+    } catch (error) {
+        logger.error(
+            `Failed to embed inline content for attachment: ${attachment.attachmentId}`,
+            error,
+        );
+    }
+}
+
+export async function embedAttachmentContentForMessages(
+    messages: { attachments?: IMessageAttachment[] }[],
+): Promise<void> {
+    const attachments = messages.flatMap(
+        (message) => message.attachments ?? [],
+    );
+    await Promise.all(attachments.map(embedAttachmentContent));
+}
+
 export function getStoredFilenameFromUrl(rawUrl: string): string {
     const withoutSpoiler = rawUrl.endsWith('#spoiler')
         ? rawUrl.slice(0, -'#spoiler'.length)
