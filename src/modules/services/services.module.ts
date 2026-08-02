@@ -7,6 +7,7 @@ import { PingService } from '@/services/PingService';
 import { MailService } from '@/services/MailService';
 import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
+import { GifTagService } from '@/services/GifTagService';
 import { MetricsService } from '@/services/MetricsService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
@@ -63,6 +64,10 @@ const esConfig = elasticsearchConfig as {
             useClass: KlipyService,
         },
         {
+            provide: TYPES.GifTagService,
+            useClass: GifTagService,
+        },
+        {
             provide: TYPES.ServerAuditLogService,
             useClass: ServerAuditLogService,
         },
@@ -108,6 +113,7 @@ const esConfig = elasticsearchConfig as {
         TYPES.MetricsService,
         TYPES.ExportService,
         TYPES.KlipyService,
+        TYPES.GifTagService,
         TYPES.ServerAuditLogService,
         TYPES.ImageDeliveryService,
         TYPES.RegistrationInviteService,

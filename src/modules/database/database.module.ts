@@ -24,6 +24,7 @@ import { AuditLog } from '@/models/AuditLog';
 import { DmUnread } from '@/models/DmUnread';
 import { KlipyCache } from '@/models/KlipyCache';
 import { FavoriteGif } from '@/models/FavoriteGif';
+import { GifTag } from '@/models/GifTag';
 
 @Global()
 @Module({
@@ -51,6 +52,7 @@ import { FavoriteGif } from '@/models/FavoriteGif';
             { name: 'DmUnread', schema: DmUnread.schema },
             { name: 'KlipyCache', schema: KlipyCache.schema },
             { name: 'FavoriteGif', schema: FavoriteGif.schema },
+            { name: 'GifTag', schema: GifTag.schema },
         ]),
     ],
     exports: [MongooseModule],

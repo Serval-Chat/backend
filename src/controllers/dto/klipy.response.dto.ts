@@ -52,6 +52,13 @@ export class FavoriteGifResponseDTO {
         enum: ['gif', 'sticker'],
     })
     public contentType!: 'gif' | 'sticker';
+
+    @ApiProperty({
+        description: 'Ids of tags applied to this GIF',
+        type: [String],
+        required: false,
+    })
+    public tagIds?: string[];
 }
 
 export class ToggleFavoriteResponseDTO {

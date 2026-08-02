@@ -207,6 +207,42 @@ function authenticatedUserKey(req: Request): string {
     return ipKeyGenerator(req.ip ?? 'unknown');
 }
 
+export const gifTagCreateLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:gif-tag:create:') }
+        : {}),
+    windowMs: 60_000,
+    max: 20,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many tags created, please try again later.',
+});
+
+export const gifTagBulkLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:gif-tag:bulk:') }
+        : {}),
+    windowMs: 60_000,
+    max: 60,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many tag updates, please try again later.',
+});
+
+export const gifTagSearchLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:gif-tag:search:') }
+        : {}),
+    windowMs: 60_000,
+    max: 30,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many tag searches, please try again later.',
+});
+
 export const websiteConnectionCreateLimiter = rateLimit({
     ...(process.env.NODE_ENV !== 'test'
         ? { store: getStore('rl:website-connection:create:') }

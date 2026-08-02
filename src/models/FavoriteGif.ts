@@ -13,6 +13,7 @@ export interface IFavoriteGif extends Document {
     width: number;
     height: number;
     contentType: 'gif' | 'sticker';
+    tagIds: string[];
 }
 
 const schema = new Schema<IFavoriteGif>(
@@ -29,6 +30,7 @@ const schema = new Schema<IFavoriteGif>(
         width: { type: Number, required: true },
         height: { type: Number, required: true },
         contentType: { type: String, enum: ['gif', 'sticker'], default: 'gif' },
+        tagIds: { type: [String], default: [] },
     },
     { timestamps: true },
 );
@@ -37,6 +39,7 @@ schema.plugin(mongooseIdPlugin);
 
 schema.plugin(snowflakeIdPlugin);
 schema.index({ userId: 1, klipyId: 1 }, { unique: true });
+schema.index({ userId: 1, tagIds: 1 });
 
 export const FavoriteGif = {
     schema,

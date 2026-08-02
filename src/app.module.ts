@@ -48,6 +48,7 @@ import { UserMessageController } from './controllers/UserMessageController';
 import { SettingsController } from './controllers/SettingsController';
 import { PushController } from './controllers/PushController';
 import { KlipyController } from './controllers/KlipyController';
+import { GifTagController } from './controllers/GifTagController';
 import { ServerAuditLogController } from './controllers/ServerAuditLogController';
 import { BotController } from './controllers/BotController';
 import { WebhookController } from './controllers/WebhookController';
@@ -59,6 +60,9 @@ import {
     botTokenLimiter,
     discoverySearchLimiter,
     discoverySettingsLimiter,
+    gifTagBulkLimiter,
+    gifTagCreateLimiter,
+    gifTagSearchLimiter,
     loginLimiter,
     messageSearchLimiter,
     passwordResetLimiter,
@@ -167,6 +171,7 @@ import {
         PushController,
         ExportController,
         KlipyController,
+        GifTagController,
         ServerAuditLogController,
         BotController,
         WebhookController,
@@ -232,6 +237,27 @@ export class AppModule {
         consumer.apply(discoverySettingsLimiter).forRoutes({
             path: 'api/v1/servers/:serverId',
             method: RequestMethod.PATCH,
+        });
+
+        consumer.apply(gifTagCreateLimiter).forRoutes({
+            path: 'api/v1/gif-tags',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(gifTagBulkLimiter).forRoutes(
+            {
+                path: 'api/v1/gif-tags/gifs/:klipyId',
+                method: RequestMethod.POST,
+            },
+            {
+                path: 'api/v1/gif-tags/gifs/:klipyId',
+                method: RequestMethod.DELETE,
+            },
+        );
+
+        consumer.apply(gifTagSearchLimiter).forRoutes({
+            path: 'api/v1/gif-tags/search',
+            method: RequestMethod.GET,
         });
 
         consumer.apply(websiteConnectionCreateLimiter).forRoutes({

@@ -265,4 +265,13 @@ export const ErrorMessages = {
             'Sticker dimensions must be between 64x64 and 512x512',
         SIZE_TOO_LARGE: 'Sticker size exceeds 10MB limit',
     },
+    GIF_TAG: {
+        NOT_FOUND: 'Tag not found',
+        NAME_EXISTS: 'A tag with this name already exists',
+        MAX_TAGS_REACHED: 'Maximum number of tags reached',
+        MAX_TAGS_PER_GIF_REACHED: 'Maximum number of tags for this GIF reached',
+        GIF_NOT_FOUND: 'Favorited GIF not found',
+        INVALID_TAG_IDS: 'One or more tag ids are invalid or not owned by you',
+        EMPTY_TAG_LIST: 'At least one tag id is required',
+    },
 } as const;

@@ -19,6 +19,12 @@ import type { ValidationOptions } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
 import { isValidSnowflakeId } from '@/utils/snowflake';
+import {
+    MAX_EXPRESSION_LENGTH,
+    TAG_NAME_MAX_LENGTH,
+    TAG_NAME_MIN_LENGTH,
+    TAG_NAME_REGEX,
+} from '@/constants/gifTags';
 
 // --- ID Validations ---
 
@@ -382,6 +388,44 @@ export function IsFilename(validationOptions?: ValidationOptions) {
         },
     );
 }
+
+export function IsTagName(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        Transform(({ value }) =>
+            typeof value === 'string' ? value.trim() : value,
+        ),
+        MinLength(TAG_NAME_MIN_LENGTH, {
+            ...validationOptions,
+            message: 'Tag name is required',
+        }),
+        MaxLength(TAG_NAME_MAX_LENGTH, {
+            ...validationOptions,
+            message: `Tag name must be at most ${TAG_NAME_MAX_LENGTH} characters`,
+        }),
+        Matches(TAG_NAME_REGEX, {
+            ...validationOptions,
+            message:
+                'Tag name may only contain letters, numbers, underscores, and hyphens',
+        }),
+    );
+}
+
+export function IsTagExpression(validationOptions?: ValidationOptions) {
+    return applyDecorators(
+        IsString(validationOptions),
+        MinLength(1, {
+            ...validationOptions,
+            message: 'Expression must not be empty',
+        }),
+        MaxLength(MAX_EXPRESSION_LENGTH, {
+            ...validationOptions,
+            message: `Expression exceeds maximum length of ${MAX_EXPRESSION_LENGTH} characters`,
+        }),
+    );
+}
+
+export const IsGifTagId = IsSnowflakeId;
 
 // --- Legacy Zod Schemas (Required by regional validation files) ---
 
