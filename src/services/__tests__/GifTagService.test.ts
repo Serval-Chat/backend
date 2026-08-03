@@ -264,7 +264,7 @@ describe('GifTagService', () => {
 
             const result = await service.searchFavorites(
                 'user1',
-                'funny && silly',
+                'funny & silly',
             );
 
             expect(result).toBe(favorites);

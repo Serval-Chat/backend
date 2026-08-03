@@ -28,8 +28,8 @@ export class GifTagIdsRequestDTO {
 
 export class SearchFavoriteGifsByTagRequestDTO {
     @ApiProperty({
-        description: 'Boolean tag expression, e.g. (funny && silly) || cats',
-        example: '(funny && silly) || (cats || servals)',
+        description: 'Boolean tag expression, e.g. (funny & silly) | cats',
+        example: '(funny & silly) | (cats | servals)',
     })
     @IsTagExpression()
     public expression!: string;

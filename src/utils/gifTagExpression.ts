@@ -16,10 +16,20 @@ export class GifTagExpressionError extends Error {
 
 export type TagExprNode =
     | { type: 'tag'; name: string }
+    | { type: 'not'; expr: TagExprNode }
     | { type: 'and'; left: TagExprNode; right: TagExprNode }
-    | { type: 'or'; left: TagExprNode; right: TagExprNode };
+    | { type: 'or'; left: TagExprNode; right: TagExprNode }
+    | { type: 'xor'; left: TagExprNode; right: TagExprNode };
 
-type TokenType = 'AND' | 'OR' | 'LPAREN' | 'RPAREN' | 'IDENT' | 'EOF';
+type TokenType =
+    | 'AND'
+    | 'OR'
+    | 'XOR'
+    | 'NOT'
+    | 'LPAREN'
+    | 'RPAREN'
+    | 'IDENT'
+    | 'EOF';
 
 interface Token {
     type: TokenType;
@@ -54,26 +64,36 @@ function tokenize(expression: string): Token[] {
             continue;
         }
 
+        if (ch === '!') {
+            tokens.push({ type: 'NOT', pos: i });
+            i++;
+            continue;
+        }
+
+        if (ch === '^') {
+            tokens.push({ type: 'XOR', pos: i });
+            i++;
+            continue;
+        }
+
         if (ch === '&') {
+            tokens.push({ type: 'AND', pos: i });
             if (expression.charAt(i + 1) === '&') {
-                tokens.push({ type: 'AND', pos: i });
                 i += 2;
-                continue;
+            } else {
+                i += 1;
             }
-            throw new GifTagExpressionError(
-                `Unexpected character '&' at position ${i}; did you mean '&&'?`,
-            );
+            continue;
         }
 
         if (ch === '|') {
+            tokens.push({ type: 'OR', pos: i });
             if (expression.charAt(i + 1) === '|') {
-                tokens.push({ type: 'OR', pos: i });
                 i += 2;
-                continue;
+            } else {
+                i += 1;
             }
-            throw new GifTagExpressionError(
-                `Unexpected character '|' at position ${i}; did you mean '||'?`,
-            );
+            continue;
         }
 
         if (IDENT_CHAR.test(ch)) {
@@ -98,8 +118,10 @@ function tokenize(expression: string): Token[] {
     return tokens;
 }
 
-// recursive descent: orExpr := andExpr ('||' andExpr)*
-//                     andExpr := primary ('&&' primary)*
+// recursive descent: orExpr  := xorExpr ('|' xorExpr)*
+//                     xorExpr := andExpr ('^' andExpr)*
+//                     andExpr := notExpr ('&' notExpr)*
+//                     notExpr := '!' notExpr | primary
 //                     primary := IDENT | '(' orExpr ')'
 class Parser {
     private pos = 0;
@@ -133,23 +155,42 @@ class Parser {
     }
 
     private parseOr(depth: number): TagExprNode {
-        let left = this.parseAnd(depth);
+        let left = this.parseXor(depth);
         while (this.peek().type === 'OR') {
             this.advance();
-            const right = this.parseAnd(depth);
+            const right = this.parseXor(depth);
             left = { type: 'or', left, right };
         }
         return left;
     }
 
+    private parseXor(depth: number): TagExprNode {
+        let left = this.parseAnd(depth);
+        while (this.peek().type === 'XOR') {
+            this.advance();
+            const right = this.parseAnd(depth);
+            left = { type: 'xor', left, right };
+        }
+        return left;
+    }
+
     private parseAnd(depth: number): TagExprNode {
-        let left = this.parsePrimary(depth);
+        let left = this.parseNot(depth);
         while (this.peek().type === 'AND') {
             this.advance();
-            const right = this.parsePrimary(depth);
+            const right = this.parseNot(depth);
             left = { type: 'and', left, right };
         }
         return left;
+    }
+
+    private parseNot(depth: number): TagExprNode {
+        if (this.peek().type === 'NOT') {
+            this.advance();
+            const expr = this.parseNot(depth);
+            return { type: 'not', expr };
+        }
+        return this.parsePrimary(depth);
     }
 
     private parsePrimary(depth: number): TagExprNode {
@@ -228,6 +269,10 @@ export function collectTagNames(node: TagExprNode): Set<string> {
             names.add(n.name.toLowerCase());
             return;
         }
+        if (n.type === 'not') {
+            visit(n.expr);
+            return;
+        }
         visit(n.left);
         visit(n.right);
     };
@@ -249,11 +294,50 @@ export function compileTagExpression(
         return { tagIds: id };
     }
 
+    if (node.type === 'not') {
+        const inner = compileTagExpression(node.expr, nameToId);
+        if (inner === ALWAYS_FALSE) {
+            return {};
+        }
+        if (
+            typeof inner === 'object' &&
+            inner !== null &&
+            'tagIds' in inner &&
+            typeof inner.tagIds === 'string'
+        ) {
+            return { tagIds: { $ne: inner.tagIds } };
+        }
+        if (Object.keys(inner).length === 0) {
+            return ALWAYS_FALSE;
+        }
+        return { $nor: [inner] };
+    }
+
+    if (node.type === 'xor') {
+        const equivalentAst: TagExprNode = {
+            type: 'or',
+            left: {
+                type: 'and',
+                left: node.left,
+                right: { type: 'not', expr: node.right },
+            },
+            right: {
+                type: 'and',
+                left: { type: 'not', expr: node.left },
+                right: node.right,
+            },
+        };
+        return compileTagExpression(equivalentAst, nameToId);
+    }
+
     if (node.type === 'and') {
         const left = compileTagExpression(node.left, nameToId);
         if (left === ALWAYS_FALSE) return ALWAYS_FALSE;
         const right = compileTagExpression(node.right, nameToId);
         if (right === ALWAYS_FALSE) return ALWAYS_FALSE;
+
+        if (Object.keys(left).length === 0) return right;
+        if (Object.keys(right).length === 0) return left;
         return { $and: [left, right] };
     }
 
@@ -261,5 +345,9 @@ export function compileTagExpression(
     const right = compileTagExpression(node.right, nameToId);
     if (left === ALWAYS_FALSE) return right;
     if (right === ALWAYS_FALSE) return left;
+
+    if (Object.keys(left).length === 0 || Object.keys(right).length === 0) {
+        return {};
+    }
     return { $or: [left, right] };
 }

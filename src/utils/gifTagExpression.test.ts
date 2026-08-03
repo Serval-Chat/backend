@@ -20,7 +20,7 @@ describe('parseTagExpression', () => {
     });
 
     it('parses AND', () => {
-        expect(parseTagExpression('funny && silly')).toEqual({
+        expect(parseTagExpression('funny & silly')).toEqual({
             type: 'and',
             left: tag('funny'),
             right: tag('silly'),
@@ -28,15 +28,15 @@ describe('parseTagExpression', () => {
     });
 
     it('parses OR', () => {
-        expect(parseTagExpression('cats || servals')).toEqual({
+        expect(parseTagExpression('cats | servals')).toEqual({
             type: 'or',
             left: tag('cats'),
             right: tag('servals'),
         });
     });
 
-    it('gives && higher precedence than ||', () => {
-        expect(parseTagExpression('a && b || c')).toEqual({
+    it('gives & higher precedence than |', () => {
+        expect(parseTagExpression('a & b | c')).toEqual({
             type: 'or',
             left: { type: 'and', left: tag('a'), right: tag('b') },
             right: tag('c'),
@@ -45,7 +45,7 @@ describe('parseTagExpression', () => {
 
     it('respects parentheses', () => {
         expect(
-            parseTagExpression('(funny && silly) || (cats || servals)'),
+            parseTagExpression('(funny & silly) | (cats | servals)'),
         ).toEqual({
             type: 'or',
             left: { type: 'and', left: tag('funny'), right: tag('silly') },
@@ -64,7 +64,7 @@ describe('parseTagExpression', () => {
     });
 
     it('is tolerant of surrounding and internal whitespace', () => {
-        expect(parseTagExpression('  a   &&    b  ')).toEqual({
+        expect(parseTagExpression('  a   &    b  ')).toEqual({
             type: 'and',
             left: tag('a'),
             right: tag('b'),
@@ -74,23 +74,21 @@ describe('parseTagExpression', () => {
     it.each([
         ['', 'empty expression'],
         ['   ', 'blank expression'],
-        ['funny &&', 'dangling operator'],
-        ['&& funny', 'leading operator'],
-        ['funny || || silly', 'double operator'],
+        ['funny &', 'dangling operator'],
+        ['& funny', 'leading operator'],
+        ['funny | | silly', 'double operator'],
         ['(funny', 'unbalanced open paren'],
         ['funny)', 'unbalanced close paren'],
         ['()', 'empty group'],
-        ['(funny && )', 'empty group with operator'],
-        ['funny & silly', 'single ampersand'],
-        ['funny | silly', 'single pipe'],
+        ['(funny & )', 'empty group with operator'],
         ['funny AND silly', 'word operators not supported'],
-        ['funny && silly extra', 'trailing garbage'],
+        ['funny & silly extra', 'trailing garbage'],
         ['funny$where', 'dollar sign'],
         [
             'tag with spaces',
             'unquoted spaces mid-identifier are two terms with no operator',
         ],
-        ["funny' || 'x'=='x", 'quote characters'],
+        ["funny' | 'x'=='x", 'quote characters'],
         ['{"$ne": null}', 'raw JSON operator injection'],
         ['funny; DROP TABLE tags;', 'semicolon injection attempt'],
     ])('rejects malformed expression: %s (%s)', (expr) => {
@@ -181,6 +179,89 @@ describe('compileTagExpression', () => {
         const ast = parseTagExpression('unknown1 || unknown2');
         const map = new Map<string, string>();
         expect(compileTagExpression(ast, map)).toBe(ALWAYS_FALSE);
+    });
+
+    it('parses NOT operator', () => {
+        expect(parseTagExpression('!funny')).toEqual({
+            type: 'not',
+            expr: tag('funny'),
+        });
+    });
+
+    it('handles NOT precedence correctly', () => {
+        expect(parseTagExpression('!a & b')).toEqual({
+            type: 'and',
+            left: { type: 'not', expr: tag('a') },
+            right: tag('b'),
+        });
+        expect(parseTagExpression('!(a | b)')).toEqual({
+            type: 'not',
+            expr: { type: 'or', left: tag('a'), right: tag('b') },
+        });
+    });
+
+    it('collects tag names from NOT expressions', () => {
+        const ast = parseTagExpression('!Funny & (funny | !Cats)');
+        expect(collectTagNames(ast)).toEqual(new Set(['funny', 'cats']));
+    });
+
+    it('compiles NOT into $ne for single tag', () => {
+        const ast = parseTagExpression('!funny');
+        const map = new Map([['funny', 'tag-id-1']]);
+        expect(compileTagExpression(ast, map)).toEqual({
+            tagIds: { $ne: 'tag-id-1' },
+        });
+    });
+
+    it('compiles AND with NOT tag', () => {
+        const ast = parseTagExpression('a & !b');
+        const map = new Map([
+            ['a', 'id-a'],
+            ['b', 'id-b'],
+        ]);
+        expect(compileTagExpression(ast, map)).toEqual({
+            $and: [{ tagIds: 'id-a' }, { tagIds: { $ne: 'id-b' } }],
+        });
+    });
+
+    it('compiles NOT unknown tag to empty filter', () => {
+        const ast = parseTagExpression('!unknown');
+        const map = new Map<string, string>();
+        expect(compileTagExpression(ast, map)).toEqual({});
+    });
+
+    it('parses XOR operator', () => {
+        expect(parseTagExpression('funny ^ silly')).toEqual({
+            type: 'xor',
+            left: tag('funny'),
+            right: tag('silly'),
+        });
+    });
+
+    it('respects XOR operator precedence (below AND, above OR)', () => {
+        expect(parseTagExpression('a | b ^ c & d')).toEqual({
+            type: 'or',
+            left: tag('a'),
+            right: {
+                type: 'xor',
+                left: tag('b'),
+                right: { type: 'and', left: tag('c'), right: tag('d') },
+            },
+        });
+    });
+
+    it('compiles XOR to $or of ($and with $ne)', () => {
+        const ast = parseTagExpression('a ^ b');
+        const map = new Map([
+            ['a', 'id-a'],
+            ['b', 'id-b'],
+        ]);
+        expect(compileTagExpression(ast, map)).toEqual({
+            $or: [
+                { $and: [{ tagIds: 'id-a' }, { tagIds: { $ne: 'id-b' } }] },
+                { $and: [{ tagIds: { $ne: 'id-a' } }, { tagIds: 'id-b' }] },
+            ],
+        });
     });
 
     it('never uses a tag name as an object key, only as a scalar value', () => {
