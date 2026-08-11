@@ -53,6 +53,10 @@ export class AuthController {
             throw new Error('WebSocket connection required for authentication');
         }
 
+        if (this.wsServer.getAuthenticatedUser(ws) !== undefined) {
+            throw new Error('AUTHENTICATION_FAILED: Already authenticated');
+        }
+
         const { token } = payload;
 
         let decoded: JWTPayload | null = null;

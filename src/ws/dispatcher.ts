@@ -70,6 +70,12 @@ const MAX_DEDUP_CACHE_SIZE = 1000;
  */
 const DEDUP_TTL_MS = 60000; // 1 minute
 
+function describeEventName(type: unknown): string {
+    return String(type)
+        .replace(/[^\w.:-]/g, '?')
+        .slice(0, 32);
+}
+
 /**
  * Manages WebSocket event dispatching and decorator execution.
  */
@@ -187,6 +193,13 @@ export class WsDispatcher {
     }
 
     /**
+     * Whether an event name resolves to a registered handler.
+     */
+    public hasHandler(type: string): boolean {
+        return this.handlers.has(type);
+    }
+
+    /**
      * Dispatches an incoming WebSocket message to the appropriate handler.
      */
     public async dispatch(
@@ -195,15 +208,17 @@ export class WsDispatcher {
         authenticatedUser?: IWsUser,
     ) {
         this.metrics.messagesProcessed++;
+
+        const handlerInfo = this.handlers.get(envelope.event.type);
+
         websocketMessagesCounter.inc({
-            event: envelope.event.type,
+            event: handlerInfo === undefined ? 'unknown' : envelope.event.type,
             direction: 'inbound',
         });
 
-        const handlerInfo = this.handlers.get(envelope.event.type);
         if (handlerInfo === undefined) {
-            this.logger.warn(
-                `[WsDispatcher] No handler for event: ${envelope.event.type}`,
+            this.logger.debug(
+                `[WsDispatcher] No handler for event: ${describeEventName(envelope.event.type)}`,
             );
             return;
         }

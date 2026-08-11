@@ -27,7 +27,11 @@ interface UpgradeAttempt {
     closedByServer: boolean;
 }
 
-function attemptUpgrade(port: number, path: string): Promise<UpgradeAttempt> {
+function attemptUpgrade(
+    port: number,
+    path: string,
+    host?: string,
+): Promise<UpgradeAttempt> {
     return new Promise((resolve, reject) => {
         const socket = connect(port, '127.0.0.1');
         let response = '';
@@ -56,7 +60,7 @@ function attemptUpgrade(port: number, path: string): Promise<UpgradeAttempt> {
 
         socket.write(
             `GET ${path} HTTP/1.1\r\n` +
-                `Host: 127.0.0.1:${port}\r\n` +
+                `Host: ${host ?? `127.0.0.1:${port}`}\r\n` +
                 'Upgrade: websocket\r\n' +
                 'Connection: Upgrade\r\n' +
                 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n' +
@@ -114,7 +118,65 @@ describe('WsServer upgrade handling', () => {
         expect(dispatcher.registerConnection).not.toHaveBeenCalled();
     }, 10000);
 
+    it.each([
+        ['an empty Host', ''],
+        ['an unbracketed Host', '['],
+        ['a Host with a bad port', '127.0.0.1:notaport'],
+    ])(
+        'survives %s and still rejects the path',
+        async (_label, host) => {
+            const { response, closedByServer } = await attemptUpgrade(
+                port,
+                '/nope',
+                host,
+            );
+
+            expect(closedByServer).toBe(true);
+            expect(response).toMatch(/^HTTP\/1\.1 400 Bad Request\r\n/);
+        },
+        10000,
+    );
+
+    it.each(['//[', '//]:x'])(
+        'rejects the unparseable request target %s without throwing',
+        async (target) => {
+            const { closedByServer } = await attemptUpgrade(port, target);
+
+            expect(closedByServer).toBe(true);
+        },
+        10000,
+    );
+
+    it('accepts /ws even when the Host header is malformed', async () => {
+        const client = new WsClient(`ws://127.0.0.1:${port}/ws`, {
+            headers: { Host: '[' },
+        });
+
+        await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(
+                () => reject(new Error('/ws did not connect')),
+                REJECT_TIMEOUT_MS,
+            );
+            client.on('open', () => {
+                clearTimeout(timer);
+                resolve();
+            });
+            client.on('error', (err) => {
+                clearTimeout(timer);
+                reject(err);
+            });
+        });
+
+        expect(client.readyState).toBe(WsClient.OPEN);
+
+        await new Promise<void>((resolve) => {
+            client.on('close', () => resolve());
+            client.close();
+        });
+    }, 10000);
+
     it('still accepts a genuine upgrade to /ws', async () => {
+        dispatcher.registerConnection.mockClear();
         const client = new WsClient(`ws://127.0.0.1:${port}/ws`);
 
         await new Promise<void>((resolve, reject) => {

@@ -124,6 +124,8 @@ export class WsServer extends EventEmitter implements IWsServer {
     private socketRateLimitKeys = new WeakMap<WebSocket, Set<string>>();
 
     private authTimeouts = new WeakMap<WebSocket, NodeJS.Timeout>();
+    private authAttempts = new WeakMap<WebSocket, number>();
+    private static readonly MAX_AUTH_ATTEMPTS = 3;
     private readonly AUTH_TIMEOUT_MS = WS_AUTH_TIMEOUT;
     private readonly AUTH_IN_PROGRESS_TIMEOUT_MS = Math.max(
         WS_AUTH_TIMEOUT * 3,
@@ -343,10 +345,13 @@ export class WsServer extends EventEmitter implements IWsServer {
         this.startSocketHeartbeat();
 
         server.on('upgrade', (request, socket, head) => {
-            const pathname = new URL(
-                request.url ?? '',
-                `http://${request.headers.host}`,
-            ).pathname;
+            let pathname = '';
+            try {
+                pathname = new URL(request.url ?? '/', 'http://localhost')
+                    .pathname;
+            } catch {
+                pathname = '';
+            }
 
             if (pathname === '/ws' && this.wss !== undefined) {
                 const wss = this.wss;
@@ -402,19 +407,32 @@ export class WsServer extends EventEmitter implements IWsServer {
                                     (message.event as { type?: string }).type ??
                                     'unknown';
 
+                                const metricType =
+                                    this.dispatcher.hasHandler(msgType) === true
+                                        ? msgType
+                                        : 'unknown';
+
                                 if (
                                     msgType === 'authenticate' &&
                                     this.socketToUser.has(ws) === false
                                 ) {
-                                    this.armAuthTimeout(
-                                        ws,
-                                        this.AUTH_IN_PROGRESS_TIMEOUT_MS,
-                                    );
+                                    const attempts =
+                                        (this.authAttempts.get(ws) ?? 0) + 1;
+                                    this.authAttempts.set(ws, attempts);
+
+                                    if (
+                                        attempts <= WsServer.MAX_AUTH_ATTEMPTS
+                                    ) {
+                                        this.armAuthTimeout(
+                                            ws,
+                                            this.AUTH_IN_PROGRESS_TIMEOUT_MS,
+                                        );
+                                    }
                                 }
 
-                                wsMsgTotalCounter.inc({ type: msgType });
+                                wsMsgTotalCounter.inc({ type: metricType });
                                 wsMsgSizeBytesHistogram.observe(
-                                    { type: msgType },
+                                    { type: metricType },
                                     sizeBytes,
                                 );
 
