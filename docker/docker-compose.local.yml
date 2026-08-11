@@ -1,0 +1,79 @@
+# Local dev dependencies. Run from backend/ (--env-file is required, Compose
+# resolves .env relative to this file's directory):
+#   docker compose --env-file .env -f docker/docker-compose.local.yml up -d --wait
+
+name: serchat-local
+
+services:
+  # Single-node replica set, not standalone: the app writes inside
+  # session.withTransaction(), which a standalone mongod rejects.
+  mongo:
+    image: mongo:7
+    container_name: serchat-mongo-local
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'rs.status().ok || rs.initiate({_id:\"rs0\",members:[{_id:0,host:\"127.0.0.1:27017\"}]}).ok' | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: serchat-redis-local
+    ports:
+      - "127.0.0.1:6379:6379"
+    command:
+      - redis-server
+      - --requirepass
+      - "${REDIS_PASSWORD:?REDIS_PASSWORD is unset - run compose with --env-file .env}"
+      - --appendonly
+      - "yes"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.1
+    container_name: serchat-elasticsearch-local
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "127.0.0.1:19200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: serchat-nginx-local
+    network_mode: host
+    volumes:
+      - ./nginx.local.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  redis_data:
+  elasticsearch_data:

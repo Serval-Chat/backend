@@ -12,3 +12,6 @@ scrape_configs:
           - "host.docker.internal:4003"
           - "host.docker.internal:4004"
     metrics_path: /metrics
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/metrics_token

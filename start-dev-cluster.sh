@@ -36,6 +36,10 @@ if [ ! -f docker/nginx.dev.conf.template ]; then
     exit 1
 fi
 
+env_val() { grep -E "^${1}=" .env | head -1 | cut -d= -f2- || true; }
+printf '%s' "$(env_val METRICS_TOKEN)" > docker/metrics_token
+chmod 600 docker/metrics_token
+
 UPSTREAM_SERVERS_FILE=$(mktemp)
 for (( i=1; i<=REPLICAS; i++ )); do
     echo "        server host.docker.internal:$((4000 + i));" >> "$UPSTREAM_SERVERS_FILE"
@@ -51,19 +55,19 @@ done
 
 if [ "$FULL_STACK" = true ]; then
     echo "Starting full stack with docker/docker-compose.dev.yml..."
-    docker compose -f docker/docker-compose.dev.yml up -d --wait
+    docker compose --env-file .env -f docker/docker-compose.dev.yml up -d --wait
 else
-    echo "Starting infrastructure (Redis, Elasticsearch, Nginx)..."
-    docker compose -f docker/docker-compose.dev.yml up -d --wait redis elasticsearch nginx
+    echo "Starting infrastructure (MongoDB, Redis, Elasticsearch, Nginx)..."
+    docker compose --env-file .env -f docker/docker-compose.dev.yml up -d --wait mongo redis elasticsearch nginx
 fi
 echo "All services healthy."
 
 echo "Starting $REPLICAS backend instances..."
 for (( i=1; i<=REPLICAS; i++ )); do
-    # Dev Redis is intentionally passwordless
     CHAT_PORT=$((4000 + i)) \
     INSTANCE_NAME="node-$i" \
     LOG_LEVEL=warn \
+    MONGO_URI="mongodb://127.0.0.1:17017/chatapp?directConnection=true" \
     REDIS_URL="redis://localhost:16379" \
     ELASTICSEARCH_URL="http://localhost:19200" \
     LOKI_HOST="http://localhost:13100" \

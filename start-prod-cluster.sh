@@ -12,7 +12,11 @@ if ! docker network ls | grep -q "$NETWORK_NAME"; then
     docker network create "$NETWORK_NAME"
 fi
 
-docker compose -f docker/docker-compose.prod.yml -f docker/docker-compose.nginx.prod.yml up -d
+env_val() { grep -E "^${1}=" .env | head -1 | cut -d= -f2- || true; }
+printf '%s' "$(env_val METRICS_TOKEN)" > docker/metrics_token
+chmod 600 docker/metrics_token
+
+docker compose --env-file .env -f docker/docker-compose.prod.yml -f docker/docker-compose.nginx.prod.yml up -d
 
 echo ""
 echo "Production cluster started successfully."

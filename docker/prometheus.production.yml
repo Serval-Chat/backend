@@ -7,5 +7,8 @@ scrape_configs:
     scrape_interval: 5s
     static_configs:
       - targets:
-          - "chat-backend:3000"
+          - "chat-backend:8000"
     metrics_path: /metrics
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/metrics_token

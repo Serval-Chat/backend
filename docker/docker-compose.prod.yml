@@ -5,8 +5,22 @@ services:
       dockerfile: docker/Dockerfile
     container_name: chat-backend
     env_file: ../.env
+    environment:
+      # .env points these at localhost, which in a container is the container.
+      MONGO_URI: "mongodb://mongo:27017/${MONGO_DB_NAME:-chatapp}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379"
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "grpc://otel-collector:4317"
+      LOKI_HOST: "http://loki:3100"
+      CHAT_PORT: "8000"
+      TRUST_PROXY: "1"
     depends_on:
-      - redis
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_started
     restart: unless-stopped
     volumes:
       - backend_uploads:/app/uploads
@@ -25,51 +39,85 @@ services:
         max_attempts: 3
         window: 120s
 
-  livekit:
-    image: livekit/livekit-server:v1.8.0
-    container_name: chat-livekit
-    ports:
-      - "127.0.0.1:7880:7880"
-      - "7881:7881"
-      - "7882:7882/udp"
+  mongo:
+    image: mongo:7
+    container_name: chat-mongo
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     volumes:
-      - ./livekit.prod.yaml:/etc/livekit.yaml
-    command: --config /etc/livekit.yaml
-    environment:
-      - LIVEKIT_KEYS=${LIVEKIT_API_KEY}:${LIVEKIT_API_SECRET}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - mongo_data:/data/db
     restart: unless-stopped
-    depends_on:
-      - redis
     networks:
       - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'rs.status().ok || rs.initiate({_id:\"rs0\",members:[{_id:0,host:\"mongo:27017\"}]}).ok' | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     deploy:
       resources:
         limits:
           memory: 1G
-          cpus: "0.5"
+          cpus: "1.0"
 
   redis:
     image: redis:7-alpine@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065
     container_name: chat-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    command:
+      - redis-server
+      - --requirepass
+      - "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}"
+      - --appendonly
+      - "yes"
     volumes:
       - redis_data:/data
     restart: unless-stopped
     networks:
       - app_network
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     deploy:
       resources:
         limits:
           memory: 256M
           cpus: "0.2"
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.1
+    container_name: chat-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.96.0
     container_name: chat-otel-collector
     command: ["--config=/etc/otel-collector.yml"]
     volumes:
-      - ./otel-collector.yml:/etc/otel-collector.yml
+      - ./otel-collector.yml:/etc/otel-collector.yml:ro
     ports:
       - "127.0.0.1:4317:4317"
       - "127.0.0.1:4318:4318"
@@ -91,14 +139,15 @@ services:
     image: prom/prometheus:v2.51.0
     container_name: chat-prometheus
     volumes:
-      - ./prometheus.production.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.production.yml:/etc/prometheus/prometheus.yml:ro
+      - ./metrics_token:/etc/prometheus/metrics_token:ro
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--web.console.libraries=/usr/share/prometheus/console_libraries"
       - "--web.console.templates=/usr/share/prometheus/consoles"
-      - "--web.listen-address=127.0.0.1:9090"
+      - "--web.listen-address=0.0.0.0:9090"
     ports:
       - "127.0.0.1:9090:9090"
     restart: unless-stopped
@@ -115,7 +164,7 @@ services:
     container_name: chat-tempo
     command: ["-config.file=/etc/tempo.yml"]
     volumes:
-      - ./tempo.yml:/etc/tempo.yml
+      - ./tempo.yml:/etc/tempo.yml:ro
       - tempo_data:/var/tempo
     ports:
       - "127.0.0.1:3200:3200"
@@ -151,7 +200,7 @@ services:
     container_name: chat-promtail
     volumes:
       - /var/log:/var/log:ro
-      - ./promtail.yml:/etc/promtail/config.yml
+      - ./promtail.yml:/etc/promtail/config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/config.yml
     depends_on:
@@ -170,14 +219,15 @@ services:
     container_name: chat-grafana
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=false
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_AUTH_DISABLE_LOGIN_FORM=false
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL}
-      - GF_SERVER_ENFORCE_DOMAIN=true
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?GRAFANA_PASSWORD must be set in .env}
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3001}
+      - GF_SERVER_ENFORCE_DOMAIN=${GRAFANA_ENFORCE_DOMAIN:-false}
       - GF_SECURITY_COOKIE_SECURE=true
       - GF_SECURITY_COOKIE_SAMESITE=strict
       - GF_SECURITY_STRICT_TRANSPORT_SECURITY=true
@@ -201,7 +251,9 @@ services:
           cpus: "0.5"
 
 volumes:
+  mongo_data:
   redis_data:
+  elasticsearch_data:
   prometheus_data:
   grafana_data:
   tempo_data:
