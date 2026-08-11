@@ -31,19 +31,31 @@ const TAURI_ALLOWED_ORIGINS = [
     'tauri://localhost',
 ];
 
+/**
+ * Resolves the Express `trust proxy` setting.
+ */
+export function resolveTrustProxy(
+    value: string | undefined,
+): boolean | number | string {
+    if (value === undefined || value === '') return false;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    if (/^\d+$/.test(value)) return parseInt(value, 10);
+    return value;
+}
+
 // Configures an existing Express application with standard middleware and routes
 export function setupExpressApp(app: Application): Application {
     const logger = container.get<ILogger>(TYPES.Logger);
 
-    const trustProxy = process.env.TRUST_PROXY;
-    if (trustProxy === undefined || trustProxy === '') {
-        app.set('trust proxy', true);
-    } else if (trustProxy === 'true' || trustProxy === 'false') {
-        app.set('trust proxy', trustProxy === 'true');
-    } else if (/^\d+$/.test(trustProxy)) {
-        app.set('trust proxy', parseInt(trustProxy, 10));
-    } else {
-        app.set('trust proxy', trustProxy);
+    app.set('trust proxy', resolveTrustProxy(process.env.TRUST_PROXY));
+    if (
+        process.env.TRUST_PROXY === undefined ||
+        process.env.TRUST_PROXY === ''
+    ) {
+        logger.warn(
+            'TRUST_PROXY is not set, so req.ip is the socket address. Behind a reverse proxy every client shares one rate-limit bucket; set TRUST_PROXY to the number of proxy hops (1 for a single nginx).',
+        );
     }
     app.disable('x-powered-by');
 

@@ -13,7 +13,10 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "grpc://otel-collector:4317"
       LOKI_HOST: "http://loki:3100"
       CHAT_PORT: "8000"
-      TRUST_PROXY: "1"
+      # client -> Cloudflare -> nginx -> app. Two trusted hops, so req.ip is
+      # the address Cloudflare recorded. 1 would key every user behind a
+      # Cloudflare datacentre into one rate-limit bucket.
+      TRUST_PROXY: "2"
     depends_on:
       mongo:
         condition: service_healthy
