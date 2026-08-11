@@ -206,10 +206,16 @@ export class AppModule {
             method: RequestMethod.POST,
         });
 
-        consumer.apply(botTokenLimiter).forRoutes({
-            path: 'api/v1/bots/token',
-            method: RequestMethod.POST,
-        });
+        consumer.apply(botTokenLimiter).forRoutes(
+            {
+                path: 'api/v1/bots/:clientId/reset-token',
+                method: RequestMethod.POST,
+            },
+            {
+                path: 'api/v1/bots',
+                method: RequestMethod.POST,
+            },
+        );
 
         consumer.apply(webhookExecutionLimiter).forRoutes({
             path: 'api/v1/webhooks/:token',

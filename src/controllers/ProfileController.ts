@@ -68,7 +68,7 @@ import {
 } from './dto/profile.request.dto';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
-import { hasPermission } from '@/utils/jwt';
+import { Permissions } from '@/modules/auth/permissions.decorator';
 import { mapUser } from '@/utils/user';
 import {
     resolveSerializedCustomStatus,
@@ -722,6 +722,7 @@ export class ProfileController {
     @Post(':id/badges')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard)
+    @Permissions('manageUsers')
     @ApiOperation({ summary: 'Update user badges' })
     @ApiResponse({ status: 200, type: BadgeOperationResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid badge IDs' })
@@ -734,13 +735,6 @@ export class ProfileController {
     ): Promise<BadgeOperationResponseDTO> {
         const adminUser = req.user;
         try {
-            if (hasPermission(adminUser, 'manageUsers') !== true) {
-                throw new ApiError(
-                    403,
-                    ErrorMessages.SERVER.INSUFFICIENT_PERMISSIONS,
-                );
-            }
-
             const user = await this.userRepo.findById(id);
             if (user === null) {
                 throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);

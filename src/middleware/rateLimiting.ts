@@ -48,21 +48,13 @@ export const loginLimiter = rateLimit({
 
 // Rate limiter for registration attempts.
 //
-// Limits to 3 attempts per minute per IP+login+invite combination.
+// Limits to 3 attempts per minute per IP.
 export const registrationLimiter = rateLimit({
     ...(process.env.NODE_ENV !== 'test' ? { store: getStore('rl:reg:') } : {}),
     windowMs: 60_000, // 1 minute
     max: 3,
-    keyGenerator: (req: Request) => {
-        const login =
-            typeof req.body?.login === 'string'
-                ? req.body.login.toLowerCase()
-                : '';
-        const inviteCode =
-            typeof req.body?.inviteCode === 'string' ? req.body.inviteCode : '';
-        const ip = ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip');
-        return `${ip}:${login}:${inviteCode}`;
-    },
+    keyGenerator: (req: Request) =>
+        ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip'),
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: 'Too many registration attempts, please wait and try again.',
@@ -105,9 +97,9 @@ export const passwordResetLimiter = rateLimit({
     message: 'Too many password reset attempts, please try again later.',
 });
 
-// Rate limiter for bot client-credentials exchanges.
+// Rate limiter for bot token creation and rotation.
 //
-// Limits to 10 attempts per minute per IP+client_id combination.
+// Limits to 10 attempts per minute per IP+clientId combination.
 export const botTokenLimiter = rateLimit({
     ...(process.env.NODE_ENV !== 'test'
         ? { store: getStore('rl:bot-token:') }
@@ -116,7 +108,7 @@ export const botTokenLimiter = rateLimit({
     max: 10,
     keyGenerator: (req: Request) => {
         const clientId =
-            typeof req.body?.client_id === 'string' ? req.body.client_id : '';
+            typeof req.params.clientId === 'string' ? req.params.clientId : '';
         const ip = ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip');
         return `${ip}:${clientId}`;
     },

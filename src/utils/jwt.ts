@@ -15,17 +15,6 @@ export interface JWTPayload {
     isBot?: boolean;
 }
 
-export function hasPermission(
-    user: JWTPayload | undefined,
-    permission: keyof AdminPermissions,
-): boolean {
-    if (!user?.permissions) return false;
-    return (
-        user.permissions.adminAccess === true ||
-        user.permissions[permission] === true
-    );
-}
-
 // Generate a JWT for authenticated users
 export const generateJWT = (payload: JWTPayload) =>
     jwt.sign({ ...payload, type: 'access' }, JWT_SECRET, { expiresIn: '7d' });
