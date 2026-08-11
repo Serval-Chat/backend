@@ -27,7 +27,6 @@ import { FileCompatibilityController } from './controllers/FileCompatibilityCont
 import { NotificationSoundController } from './controllers/NotificationSoundController';
 
 import { FriendshipController } from './controllers/FriendshipController';
-import { MetricsController } from './controllers/MetricsController';
 import { ProfileController } from './controllers/ProfileController';
 import { ReactionController } from './controllers/ReactionController';
 import { ServerChannelController } from './controllers/ServerChannelController';
@@ -149,7 +148,6 @@ import {
         NotificationSoundController,
 
         FriendshipController,
-        MetricsController,
         ProfileController,
         ReactionController,
         ServerChannelController,

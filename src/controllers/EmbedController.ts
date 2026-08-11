@@ -14,6 +14,16 @@ import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { ScraperService } from '@/services/ScraperService';
 import crypto from 'crypto';
 
+const CACHE_FILE_RE = /^[a-f0-9]{32}\.webp$/;
+const CACHE_CONTENT_TYPE = 'image/webp';
+
+function setImageHeaders(res: Response): void {
+    res.setHeader('Content-Type', CACHE_CONTENT_TYPE);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline; filename="image.webp"');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+}
+
 @ApiTags('Embed')
 @Controller('api/v1/embed')
 export class EmbedController {
@@ -38,8 +48,7 @@ export class EmbedController {
             return;
         }
 
-        const fileRegex = /^[a-f0-9]{32}\.webp$/;
-        if (!fileRegex.test(file)) {
+        if (!CACHE_FILE_RE.test(file)) {
             this.logger.warn(
                 `Blocked invalid embed proxy request for file: ${file}`,
             );
@@ -59,10 +68,7 @@ export class EmbedController {
                 return;
             }
 
-            const contentType =
-                response.headers.get('content-type') ?? 'image/webp';
-            res.setHeader('Content-Type', contentType);
-            res.setHeader('Cache-Control', 'public, max-age=86400');
+            setImageHeaders(res);
 
             const body = response.body;
             if (body) {
@@ -114,6 +120,14 @@ export class EmbedController {
                 return;
             }
 
+            if (!CACHE_FILE_RE.test(scrapeResult.image)) {
+                this.logger.error(
+                    `Scraper returned an unexpected cache filename for URL: ${url}`,
+                );
+                res.status(502).send('Upstream processing failed');
+                return;
+            }
+
             const internalUrl = `http://${SCRAPER_HOST}:${SCRAPER_PORT}/cache/${scrapeResult.image}`;
             const response = await fetch(internalUrl);
 
@@ -125,11 +139,7 @@ export class EmbedController {
                 return;
             }
 
-            const rawContentType = response.headers.get('content-type') ?? '';
-            const contentType = rawContentType.split(';')[0]?.trim() ?? '';
-
-            res.setHeader('Content-Type', contentType || 'image/webp');
-            res.setHeader('Cache-Control', 'public, max-age=86400');
+            setImageHeaders(res);
 
             const body = response.body;
             if (body) {
