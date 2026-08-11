@@ -67,6 +67,8 @@ import {
     passwordResetLimiter,
     registrationLimiter,
     sensitiveOperationLimiter,
+    twoFactorVerifyLimiter,
+    passwordResetConfirmLimiter,
     websiteConnectionCreateLimiter,
     websiteConnectionRemoveLimiter,
     websiteConnectionVerifyLimiter,
@@ -206,6 +208,11 @@ export class AppModule {
             method: RequestMethod.POST,
         });
 
+        consumer.apply(passwordResetConfirmLimiter).forRoutes({
+            path: 'api/v1/auth/password/reset/confirm',
+            method: RequestMethod.POST,
+        });
+
         consumer.apply(botTokenLimiter).forRoutes(
             {
                 path: 'api/v1/bots/:clientId/reset-token',
@@ -289,10 +296,6 @@ export class AppModule {
                 method: RequestMethod.PATCH,
             },
             {
-                path: 'api/v1/auth/2fa/verify',
-                method: RequestMethod.POST,
-            },
-            {
                 path: 'api/v1/auth/2fa/backup-codes/regenerate',
                 method: RequestMethod.POST,
             },
@@ -301,5 +304,10 @@ export class AppModule {
                 method: RequestMethod.POST,
             },
         );
+
+        consumer.apply(twoFactorVerifyLimiter).forRoutes({
+            path: 'api/v1/auth/2fa/verify',
+            method: RequestMethod.POST,
+        });
     }
 }

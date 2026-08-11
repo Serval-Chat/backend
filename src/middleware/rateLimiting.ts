@@ -65,14 +65,25 @@ export const sensitiveOperationLimiter = rateLimit({
     ...(process.env.NODE_ENV !== 'test' ? { store: getStore('rl:sens:') } : {}),
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3,
-    keyGenerator: (req: Request) => {
-        const userId = (req as Request & { user?: JWTPayload }).user?.id;
-        return userId ?? ipKeyGenerator(req.ip ?? 'unknown');
-    },
+    keyGenerator: authenticatedUserKey,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: 'Too many password change attempts, please try again later.',
     skipSuccessfulRequests: true, // Don't count successful operations
+});
+
+// Rate limiter for TOTP verification.
+export const twoFactorVerifyLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:2fa-verify:') }
+        : {}),
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    keyGenerator: twoFactorSubjectKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many verification attempts, please try again later.',
+    skipSuccessfulRequests: true,
 });
 
 // Rate limiter for password reset email requests.
@@ -175,6 +186,48 @@ export const discoverySettingsLimiter = rateLimit({
     legacyHeaders: false,
     message: 'Too many discovery setting updates, please try again later.',
 });
+
+// Rate limiter for password reset confirmations.
+export const passwordResetConfirmLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:password-reset-confirm:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    keyGenerator: (req: Request) =>
+        ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip'),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many password reset attempts, please try again later.',
+});
+
+/**
+ * Bucket key for TOTP verification: the account named by the temp token.
+ *
+ * Falls back to the IP when the token is missing, malformed or not a temp
+ * token, so a client cannot escape the limit by omitting it.
+ */
+function twoFactorSubjectKey(req: Request): string {
+    const tempToken = req.body?.tempToken;
+    if (typeof tempToken === 'string' && tempToken !== '') {
+        try {
+            const payload = jwt.verify(tempToken, JWT_SECRET, {
+                algorithms: ['HS256'],
+            }) as JWTPayload;
+            if (
+                payload.type === '2fa_temp' &&
+                payload.scope === 'auth:2fa:verify' &&
+                typeof payload.id === 'string'
+            ) {
+                return `2fa:${payload.id}`;
+            }
+        } catch {
+            // Fall through to the IP.
+        }
+    }
+
+    return ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip');
+}
 
 function authenticatedUserKey(req: Request): string {
     const guardedUserId = (req as Request & { user?: JWTPayload }).user?.id;
