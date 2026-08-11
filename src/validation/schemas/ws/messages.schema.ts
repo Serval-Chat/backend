@@ -4,10 +4,10 @@ import { PRESENCE_STATUSES } from '@/types/presence';
 
 const MessageAttachmentSchema = z
     .object({
-        attachmentId: z.string().min(1),
+        attachmentId: z.string().min(1).max(255),
         type: z.enum(['image', 'video', 'audio', 'text', 'file']),
-        mimeType: z.string().min(1),
-        name: z.string().min(1),
+        mimeType: z.string().min(1).max(255),
+        name: z.string().min(1).max(255),
         size: z.number().nonnegative(),
         width: z.number().positive().optional(),
         height: z.number().positive().optional(),
@@ -45,7 +45,11 @@ export const SendMessageDmSchema = z
             .default(''),
         replyToId: z.string().optional(),
         stickerId: z.string().optional(),
-        attachments: z.array(MessageAttachmentSchema).optional().default([]),
+        attachments: z
+            .array(MessageAttachmentSchema)
+            .max(10, 'Too many attachments (max 10)')
+            .optional()
+            .default([]),
         poll: z
             .object({
                 title: z.string().min(1).max(192),
@@ -149,7 +153,11 @@ export const SendMessageServerSchema = z
             .default(''),
         replyToId: z.string().optional(),
         stickerId: z.string().optional(),
-        attachments: z.array(MessageAttachmentSchema).optional().default([]),
+        attachments: z
+            .array(MessageAttachmentSchema)
+            .max(10, 'Too many attachments (max 10)')
+            .optional()
+            .default([]),
         poll: z
             .object({
                 title: z.string().min(1).max(192),
@@ -219,7 +227,10 @@ export const SetPresenceStatusSchema = z.object({
 export const AddReactionSchema = z
     .object({
         messageId: z.string().min(1, 'Message ID is required'),
-        emoji: z.string().min(1, 'Emoji is required'),
+        emoji: z
+            .string()
+            .min(1, 'Emoji is required')
+            .max(100, 'Emoji too long'),
         emojiType: z.enum(['unicode', 'custom']).default('unicode'),
         emojiId: z.string().optional(),
         messageType: z.enum(['dm', 'server']),
@@ -242,7 +253,7 @@ export const AddReactionSchema = z
 
 export const RemoveReactionSchema = z.object({
     messageId: z.string().min(1, 'Message ID is required'),
-    emoji: z.string().min(1, 'Emoji is required'),
+    emoji: z.string().min(1, 'Emoji is required').max(100, 'Emoji too long'),
     emojiType: z.enum(['unicode', 'custom']).default('unicode'),
     emojiId: z.string().optional(),
     messageType: z.enum(['dm', 'server']),

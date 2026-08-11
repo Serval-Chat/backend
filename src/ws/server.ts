@@ -353,6 +353,11 @@ export class WsServer extends EventEmitter implements IWsServer {
                 wss.handleUpgrade(request, socket, head, (ws) => {
                     wss.emit('connection', ws, request);
                 });
+            } else {
+                socket.write(
+                    'HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n',
+                );
+                socket.destroy();
             }
         });
 
