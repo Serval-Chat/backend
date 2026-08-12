@@ -1,4 +1,5 @@
 import { Inject } from '@nestjs/common';
+import bcrypt from 'bcrypt';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { IUser, IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -62,6 +63,9 @@ import { injectable, inject } from 'inversify';
 //
 // Handles user authentication, password validation, and ban checking.
 // Uses dependency injection for better testability.
+const DUMMY_PASSWORD_HASH =
+    '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
+
 @injectable()
 export class AuthService {
     private readonly issuer = 'Serchat';
@@ -99,6 +103,7 @@ export class AuthService {
         const user = await this.userRepo.findByLogin(normalizedLogin);
 
         if (!user) {
+            await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
             this.logger.warn(
                 `Login failed: User not found - ${normalizedLogin}`,
             );
@@ -529,21 +534,20 @@ export class AuthService {
             throw new ApiError(400, ErrorMessages.AUTH.INVALID_RESET_TOKEN);
         }
 
-        // Prevent password reuse
-        const isSamePassword = await this.userRepo.comparePassword(
-            user.snowflakeId,
-            newPassword,
-        );
-        if (isSamePassword) {
-            throw new ApiError(400, ErrorMessages.AUTH.INVALID_RESET_TOKEN);
-        }
-
         const marked = await this.passwordResetRepo.markAsUsed(hashedToken);
         if (!marked) {
             this.logger.warn(
                 `[${requestId}] Failed password reset: Token already used`,
             );
             throw new ApiError(400, ErrorMessages.AUTH.INVALID_RESET_TOKEN);
+        }
+
+        const isSamePassword = await this.userRepo.comparePassword(
+            user.snowflakeId,
+            newPassword,
+        );
+        if (isSamePassword) {
+            throw new ApiError(400, ErrorMessages.AUTH.NEW_PASSWORD_SAME);
         }
 
         this.logger.info(

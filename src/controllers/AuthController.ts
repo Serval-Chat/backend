@@ -204,6 +204,7 @@ export class AuthController {
 
     @Post('2fa/setup/confirm')
     @UseGuards(JwtAuthGuard)
+    @NoBot()
     @ApiSecurity('jwt')
     @ApiResponse({ status: 200, type: TotpSetupConfirmResponseDTO })
     public async confirmTwoFactorSetup(
@@ -306,6 +307,13 @@ export class AuthController {
         @Req() req: AuthenticatedRequest,
         @Body() body: TotpSensitiveActionRequestDTO,
     ): Promise<{ message: string; token: string }> {
+        const hasCode = body.code !== undefined && body.code !== '';
+        const hasBackupCode =
+            body.backupCode !== undefined && body.backupCode !== '';
+        if (!hasCode && !hasBackupCode) {
+            throw new ApiError(400, ErrorMessages.AUTH.INVALID_TOTP_CODE);
+        }
+
         const user = req.user;
         await this.authService.disableTwoFactor(
             user.id,
