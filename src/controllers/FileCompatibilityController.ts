@@ -82,25 +82,4 @@ export class FileCompatibilityController {
 
         res.send(buffer);
     }
-
-    private getMimeType(ext: string): string {
-        const mimeTypes: { [key: string]: string } = {
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.gif': 'image/gif',
-            '.webp': 'image/webp',
-            '.svg': 'image/svg+xml',
-            '.mp4': 'video/mp4',
-            '.webm': 'video/webm',
-            '.mp3': 'audio/mpeg',
-            '.wav': 'audio/wav',
-            '.pdf': 'application/pdf',
-            '.txt': 'text/plain',
-        };
-        const mime = mimeTypes[ext];
-        return mime !== undefined && mime !== ''
-            ? mime
-            : 'application/octet-stream';
-    }
 }

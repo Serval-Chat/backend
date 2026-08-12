@@ -433,14 +433,6 @@ export class WsDispatcher {
                     'UNAUTHORIZED',
                     details || 'Authentication failed',
                 );
-            } else if (err.message.startsWith('VALIDATION_FAILED')) {
-                const details = err.message.replace('VALIDATION_FAILED: ', '');
-                this.sendError(
-                    ws,
-                    envelope,
-                    'BAD_REQUEST',
-                    details || 'Validation failed',
-                );
             } else {
                 this.sendError(
                     ws,

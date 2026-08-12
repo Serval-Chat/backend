@@ -13,11 +13,6 @@ import { METRICS_TOKEN, PROJECT_LEVEL, FRONTEND_URL } from '@/config/env';
 import routes from '@/routes/index';
 import { toApiId } from '@/utils/mongooseId';
 
-interface ValidateError {
-    name: 'ValidateError';
-    fields: Record<string, unknown>;
-}
-
 interface ResponseWithLocals extends Response {
     locals: {
         cspNonce?: string;
@@ -336,22 +331,6 @@ export function setupExpressApp(app: Application): Application {
 
     // Error handler
     app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
-        if (
-            typeof err === 'object' &&
-            err !== null &&
-            'name' in err &&
-            err.name === 'ValidateError'
-        ) {
-            logger.warn(
-                `Validation error for ${req.method} ${req.url}:`,
-                (err as ValidateError).fields,
-            );
-            return res.status(400).json({
-                error: 'Validation Failed',
-                details: (err as ValidateError).fields,
-            });
-        }
-
         logger.error('Unhandled error:', err);
 
         if (res.headersSent) {

@@ -1,7 +1,6 @@
 import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
-import fs from 'fs';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import type { Request as ExpressRequest } from 'express';
 
@@ -67,21 +66,6 @@ export const upload = multer({
     fileFilter,
 });
 
-const profileStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path.join(process.cwd(), 'uploads', 'profiles');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        const randomName = crypto.randomBytes(16).toString('hex');
-        cb(null, `${randomName}${ext}`);
-    },
-});
-
 export const imageFileFilter: NonNullable<MulterOptions['fileFilter']> = (
     req,
     file,
@@ -105,17 +89,3 @@ export const imageFileFilter: NonNullable<MulterOptions['fileFilter']> = (
         );
     }
 };
-
-export const profilePictureUpload = multer({
-    storage: profileStorage,
-    fileFilter: imageFileFilter as multer.Options['fileFilter'],
-    limits: {
-        fileSize: 10 * 1024 * 1024,
-        files: 1,
-    },
-});
-
-export const memoryUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: genericFileUploadLimits,
-});

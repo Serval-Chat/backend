@@ -339,7 +339,6 @@ export class WsServer extends EventEmitter implements IWsServer {
 
         this.wss = new WebSocketServer({
             noServer: true,
-            path: '/ws',
             maxPayload: 1024 * 1024, // 1MB limit
         });
         this.startSocketHeartbeat();
