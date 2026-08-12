@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 
 import { JWT_SECRET } from '@/config/env';
@@ -12,6 +12,7 @@ function signToken(overrides: Record<string, unknown> = {}): string {
             login: 'testuser',
             username: 'testuser',
             tokenVersion: 0,
+            type: 'access',
             ...overrides,
         },
         JWT_SECRET,
@@ -60,6 +61,36 @@ describe('JwtAuthGuard', () => {
             mockUserRepo as never,
             mockBanRepo as never,
             mockReflector as never,
+        );
+    });
+
+    it.each([
+        ['no type claim at all', {}],
+        ['a 2fa_temp token', { type: '2fa_temp', scope: 'auth:2fa:verify' }],
+        ['an unrecognised type', { type: 'refresh' }],
+    ])('refuses %s', async (_label, overrides) => {
+        mockUserRepo.findById.mockResolvedValue({
+            snowflakeId: 'user-1',
+            tokenVersion: 0,
+            permissions: { adminAccess: true },
+        });
+
+        const context = makeContext(
+            jwt.sign(
+                {
+                    id: 'user-1',
+                    login: 'testuser',
+                    username: 'testuser',
+                    tokenVersion: 0,
+                    ...overrides,
+                },
+                JWT_SECRET,
+                { algorithm: 'HS256' },
+            ),
+        );
+
+        await expect(guard.canActivate(context as never)).rejects.toThrow(
+            UnauthorizedException,
         );
     });
 

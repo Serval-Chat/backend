@@ -74,6 +74,15 @@ if (process.env.NODE_ENV !== 'test') {
         throw new Error('APP_ENCRYPTION_KEY not set.');
     if (APP_ENCRYPTION_KEY === JWT_SECRET)
         throw new Error('APP_ENCRYPTION_KEY cannot be the same as JWT_SECRET.');
+    const MIN_SECRET_LENGTH = 32;
+    if (JWT_SECRET.length < MIN_SECRET_LENGTH)
+        throw new Error(
+            `JWT_SECRET must be at least ${MIN_SECRET_LENGTH} characters (got ${JWT_SECRET.length}). Generate one with: openssl rand -base64 48`,
+        );
+    if (APP_ENCRYPTION_KEY.length < MIN_SECRET_LENGTH)
+        throw new Error(
+            `APP_ENCRYPTION_KEY must be at least ${MIN_SECRET_LENGTH} characters (got ${APP_ENCRYPTION_KEY.length}). Generate one with: openssl rand -base64 48`,
+        );
     if (MONGO_URI === '') throw new Error('MONGO_URI not set.');
     if (PROJECT_LEVEL === '') throw new Error('PROJ_LEVEL not set.');
     if (LOGS_PATH === '') throw new Error('LOGS_PATH not set.');

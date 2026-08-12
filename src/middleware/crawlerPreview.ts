@@ -67,10 +67,11 @@ export const discordCrawlerPreview = async (
             const description = escapeHtml(
                 `You've been invited to join ${server.name} on Serchat. Current members: ${memberCount}.`,
             );
-            const imageUrl =
+            const imageUrl = escapeHtml(
                 server.icon !== undefined && server.icon !== ''
                     ? server.icon
-                    : `${SERVER_URL}/logo.png`;
+                    : `${SERVER_URL}/logo.png`,
+            );
             const url = escapeHtml(`${SERVER_URL}/invite/${inviteCode}`);
             const themeColor = '#5865F2';
 

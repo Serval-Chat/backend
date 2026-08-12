@@ -241,7 +241,7 @@ function authenticatedUserKey(req: Request): string {
                 JWT_SECRET,
                 { algorithms: ['HS256'] },
             ) as JWTPayload;
-            if (payload.type === undefined || payload.type === 'access') {
+            if (payload.type === 'access') {
                 return payload.id;
             }
         } catch {

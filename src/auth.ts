@@ -32,7 +32,7 @@ export async function expressAuthentication(
                 algorithms: ['HS256'],
             }) as JWTPayload;
 
-            if (decoded.type !== undefined && decoded.type !== 'access') {
+            if (decoded.type !== 'access') {
                 return Promise.reject(new Error('Invalid token'));
             }
 

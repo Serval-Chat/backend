@@ -18,6 +18,7 @@ import { JWTPayload } from '@/utils/jwt';
 import { PERMISSIONS_KEY } from './permissions.decorator';
 import { IUser } from '@/models/User';
 import { resolveBotAuthPayload } from '@/utils/botAuth';
+import logger from '@/utils/logger';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -57,9 +58,14 @@ export class JwtAuthGuard implements CanActivate {
             const verified = jwt.verify(token, JWT_SECRET, {
                 algorithms: ['HS256'],
             }) as JWTPayload;
-            if (!verified.type || verified.type === 'access')
-                decoded = verified;
-        } catch {}
+            if (verified.type === 'access') decoded = verified;
+        } catch (err) {
+            logger.debug(
+                `[JwtAuthGuard] JWT verification failed: ${
+                    err instanceof Error ? err.message : String(err)
+                }`,
+            );
+        }
 
         try {
             if (decoded !== null) {

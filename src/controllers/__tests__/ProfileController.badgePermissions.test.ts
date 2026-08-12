@@ -16,6 +16,7 @@ function signToken(permissions?: Record<string, boolean>): string {
             login: 'admin',
             username: 'admin',
             tokenVersion: 0,
+            type: 'access',
             ...(permissions === undefined ? {} : { permissions }),
         },
         JWT_SECRET,
