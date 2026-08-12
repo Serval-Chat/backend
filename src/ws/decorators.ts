@@ -63,7 +63,7 @@ export function Dedup(): MethodDecorator {
 /**
  * Applies rate limiting to an event handler.
  * @param points Maximum number of events allowed.
- * @param duration Duration in seconds.
+ * @param duration Window in milliseconds.
  */
 export function RateLimit(points: number, duration: number): MethodDecorator {
     return (target, propertyKey) => {
