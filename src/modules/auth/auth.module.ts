@@ -127,6 +127,13 @@ export class JwtAuthGuard implements CanActivate {
             if (botPayload === null)
                 throw new UnauthorizedException('Invalid token');
 
+            if (
+                requiredPermissions !== undefined &&
+                requiredPermissions.length > 0
+            ) {
+                throw new ForbiddenException('Insufficient permissions');
+            }
+
             if (request.user === undefined) request.user = botPayload;
             return true;
         } catch (err: unknown) {

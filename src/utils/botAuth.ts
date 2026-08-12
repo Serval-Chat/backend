@@ -1,3 +1,4 @@
+import { Ban } from '@/models/Ban';
 import { Bot } from '@/models/Bot';
 import type { JWTPayload } from '@/utils/jwt';
 
@@ -39,6 +40,15 @@ export async function resolveBotAuthPayload(
     }
 
     if (bot.userIdUser.deletedAt !== undefined) {
+        return null;
+    }
+
+    await Ban.checkExpired(bot.userIdUser.snowflakeId);
+    const activeBan = await Ban.findOne({
+        userId: bot.userIdUser.snowflakeId,
+        active: true,
+    }).lean();
+    if (activeBan !== null) {
         return null;
     }
 
