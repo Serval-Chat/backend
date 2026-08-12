@@ -312,6 +312,7 @@ export class ServerController {
     @Event('join_server')
     @NeedAuth()
     @Validate(JoinServerSchema)
+    @RateLimit(10, 1000)
     public async onJoinServer(
         payload: IJoinServerEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -403,6 +404,7 @@ export class ServerController {
     @Event('leave_server')
     @NeedAuth()
     @Validate(LeaveServerSchema)
+    @RateLimit(10, 1000)
     public async onLeaveServer(
         payload: ILeaveServerEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -426,6 +428,7 @@ export class ServerController {
     @Event('join_channel')
     @NeedAuth()
     @Validate(JoinChannelSchema)
+    @RateLimit(20, 1000)
     public async onJoinChannel(
         payload: IJoinChannelEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -455,6 +458,7 @@ export class ServerController {
     @Event('leave_channel')
     @NeedAuth()
     @Validate(LeaveChannelSchema)
+    @RateLimit(20, 1000)
     public async onLeaveChannel(
         payload: ILeaveChannelEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -474,6 +478,7 @@ export class ServerController {
     @Event('join_voice')
     @NeedAuth()
     @Validate(JoinVoiceSchema)
+    @RateLimit(5, 1000)
     public async onJoinVoice(
         payload: IJoinVoiceEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -574,6 +579,7 @@ export class ServerController {
     @Event('leave_voice')
     @NeedAuth()
     @Validate(LeaveVoiceSchema)
+    @RateLimit(5, 1000)
     public async onLeaveVoice(
         payload: ILeaveVoiceEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -597,6 +603,7 @@ export class ServerController {
     @Event('update_voice_state')
     @NeedAuth()
     @Validate(UpdateVoiceStateSchema)
+    @RateLimit(5, 1000)
     public async onUpdateVoiceState(
         payload: IUpdateVoiceStateEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -995,6 +1002,7 @@ export class ServerController {
     @Event('edit_message_server')
     @NeedAuth()
     @Validate(EditMessageServerSchema)
+    @RateLimit(5, 1000)
     public async onEditMessageServer(
         payload: IEditMessageServerEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -1090,6 +1098,7 @@ export class ServerController {
     @Event('delete_message_server')
     @NeedAuth()
     @Validate(DeleteMessageServerSchema)
+    @RateLimit(5, 1000)
     public async onDeleteMessageServer(
         payload: IDeleteMessageServerEvent['payload'],
         authenticatedUser?: IWsUser,

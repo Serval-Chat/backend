@@ -1,5 +1,11 @@
 import { injectable, inject } from 'inversify';
-import { WsController, Event, NeedAuth, Validate } from '@/ws/decorators';
+import {
+    WsController,
+    Event,
+    NeedAuth,
+    Validate,
+    RateLimit,
+} from '@/ws/decorators';
 import type { WebSocket } from 'ws';
 import {
     AddReactionSchema,
@@ -59,6 +65,7 @@ export class ReactionController {
     @Event('add_reaction')
     @NeedAuth()
     @Validate(AddReactionSchema)
+    @RateLimit(5, 1000)
     public async onAddReaction(
         payload: IAddReactionEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -326,6 +333,7 @@ export class ReactionController {
     @Event('remove_reaction')
     @NeedAuth()
     @Validate(RemoveReactionSchema)
+    @RateLimit(5, 1000)
     public async onRemoveReaction(
         payload: IRemoveReactionEvent['payload'],
         authenticatedUser?: IWsUser,

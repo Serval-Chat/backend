@@ -312,6 +312,7 @@ export class ChatController {
     @Event('edit_message_dm')
     @NeedAuth()
     @Validate(EditMessageDmSchema)
+    @RateLimit(5, 1000)
     public async onEditMessageDm(
         payload: IEditMessageDmEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -391,6 +392,7 @@ export class ChatController {
     @Event('delete_message_dm')
     @NeedAuth()
     @Validate(DeleteMessageDmSchema)
+    @RateLimit(5, 1000)
     public async onDeleteMessageDm(
         payload: IDeleteMessageDmEvent['payload'],
         authenticatedUser?: IWsUser,

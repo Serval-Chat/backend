@@ -1,5 +1,11 @@
 import { injectable, inject, postConstruct } from 'inversify';
-import { WsController, Event, NeedAuth, Validate } from '@/ws/decorators';
+import {
+    WsController,
+    Event,
+    NeedAuth,
+    Validate,
+    RateLimit,
+} from '@/ws/decorators';
 import type { WebSocket } from 'ws';
 import {
     SetStatusSchema,
@@ -86,6 +92,7 @@ export class PresenceController {
     @Event('set_status')
     @NeedAuth()
     @Validate(SetStatusSchema)
+    @RateLimit(5, 10000)
     public async onSetStatus(
         payload: ISetStatusEvent['payload'],
         authenticatedUser?: IWsUser,
@@ -163,6 +170,7 @@ export class PresenceController {
     @Event('set_presence_status')
     @NeedAuth()
     @Validate(SetPresenceStatusSchema)
+    @RateLimit(5, 10000)
     public async onSetPresenceStatus(
         payload: ISetPresenceStatusEvent['payload'],
         authenticatedUser?: IWsUser,
