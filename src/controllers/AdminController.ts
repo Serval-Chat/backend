@@ -46,6 +46,10 @@ import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
 import type { IAdminNoteRepository } from '@/di/interfaces/IAdminNoteRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
+import {
+    AdminStatsRequestDTO,
+    AdminStatsRangeDTO,
+} from './dto/admin-stats.request.dto';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import crypto from 'crypto';
 import type { IUserUpdatedEvent } from '@/ws/protocol/events/presence';
@@ -215,8 +219,9 @@ export class AdminController {
     @ApiResponse({ status: 200, type: DashBoardStatsDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getStats(
-        @Query('range') range: '24h' | '7d' | '30d' | 'all' = '24h',
+        @Query() query: AdminStatsRequestDTO,
     ): Promise<DashBoardStatsDTO> {
+        const range = query.range ?? AdminStatsRangeDTO.Day;
         const now = new Date();
 
         const isHourly = range === '24h';
@@ -880,7 +885,15 @@ export class AdminController {
             }
         }
 
-        await this.userRepo.updatePermissions(userId, permissions);
+        const updated = await this.userRepo.updatePermissions(
+            userId,
+            permissions,
+        );
+        if (!updated) {
+            throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        await this.userRepo.incrementTokenVersion(userId);
         await this.logAdminAction(req, 'update_permissions', userId, {
             permissions,
         });
@@ -1449,8 +1462,7 @@ export class AdminController {
             item.changes = log.changes as AdminAuditLogChangeDTO[] | undefined;
             item.reason = log.reason;
             item.additionalData = log.additionalData as
-                | AdminAuditLogJsonObject
-                | undefined;
+                AdminAuditLogJsonObject | undefined;
             item.timestamp = log.timestamp;
             return item;
         });

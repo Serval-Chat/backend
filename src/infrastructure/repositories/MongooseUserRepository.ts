@@ -361,11 +361,12 @@ export class MongooseUserRepository implements IUserRepository {
     public async updatePermissions(
         id: string,
         permissions: AdminPermissions,
-    ): Promise<void> {
-        await this.userModel.findOneAndUpdate(
+    ): Promise<boolean> {
+        const result = await this.userModel.findOneAndUpdate(
             { snowflakeId: id },
             { permissions },
         );
+        return result !== null;
     }
 
     public async incrementTokenVersion(id: string): Promise<void> {

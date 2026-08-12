@@ -1,5 +1,12 @@
 import { injectable, inject } from 'inversify';
-import { WsController, Event, NeedAuth, Dedup } from '@/ws/decorators';
+import {
+    WsController,
+    Event,
+    NeedAuth,
+    Dedup,
+    Validate,
+    RateLimit,
+} from '@/ws/decorators';
 import type { WebSocket } from 'ws';
 import type {
     IWsPingMessageEvent,
@@ -7,6 +14,7 @@ import type {
 } from '@/ws/protocol/events/ping';
 import { TYPES } from '@/di/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
+import { PingSchema } from '@/validation/schemas/ws/messages.schema';
 
 /**
  * Controller for handling ping/pong events.
@@ -24,6 +32,8 @@ export class PingController {
      */
     @Event('ping')
     @NeedAuth()
+    @Validate(PingSchema)
+    @RateLimit(4, 1000)
     @Dedup()
     public async onPing(
         _payload: IWsPingMessageEvent['payload'],

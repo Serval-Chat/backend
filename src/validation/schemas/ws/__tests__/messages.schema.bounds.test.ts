@@ -139,3 +139,45 @@ describe.each([
         expect(result.success).toBe(true);
     });
 });
+
+describe.each([
+    ['send_message_dm', SendMessageDmSchema, dm],
+    ['send_message_server', SendMessageServerSchema, server],
+] as const)('%s poll expiry', (_name, schema, payload) => {
+    function withPoll(expiresAt: string) {
+        return {
+            ...payload([]),
+            poll: {
+                title: 'Lunch?',
+                options: [{ text: 'yes' }, { text: 'no' }],
+                multiSelect: false,
+                expiresAt,
+            },
+        };
+    }
+
+    it('rejects an expiry in the past', () => {
+        const past = new Date(Date.now() - 60_000).toISOString();
+        const result = schema.safeParse(withPoll(past));
+
+        expect(result.success).toBe(false);
+        expect(JSON.stringify(result.error?.issues)).toContain(
+            'Poll expiry must be in the future',
+        );
+    });
+
+    it('accepts an expiry in the future', () => {
+        const future = new Date(Date.now() + 3_600_000).toISOString();
+
+        expect(schema.safeParse(withPoll(future)).success).toBe(true);
+    });
+
+    it('still accepts a poll with no expiry', () => {
+        const { poll, ...rest } = withPoll(new Date().toISOString());
+        const { expiresAt, ...pollWithout } = poll;
+
+        expect(schema.safeParse({ ...rest, poll: pollWithout }).success).toBe(
+            true,
+        );
+    });
+});

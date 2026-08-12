@@ -65,7 +65,13 @@ export const SendMessageDmSchema = z
                     .min(1)
                     .max(10),
                 multiSelect: z.boolean(),
-                expiresAt: z.string().datetime().optional(),
+                expiresAt: z
+                    .string()
+                    .datetime()
+                    .refine((value) => new Date(value).getTime() > Date.now(), {
+                        message: 'Poll expiry must be in the future',
+                    })
+                    .optional(),
             })
             .optional(),
         noEmbeds: z.boolean().optional(),
@@ -173,7 +179,13 @@ export const SendMessageServerSchema = z
                     .min(1)
                     .max(10),
                 multiSelect: z.boolean(),
-                expiresAt: z.string().datetime().optional(),
+                expiresAt: z
+                    .string()
+                    .datetime()
+                    .refine((value) => new Date(value).getTime() > Date.now(), {
+                        message: 'Poll expiry must be in the future',
+                    })
+                    .optional(),
             })
             .optional(),
         noEmbeds: z.boolean().optional(),
@@ -258,3 +270,5 @@ export const RemoveReactionSchema = z.object({
     emojiId: z.string().optional(),
     messageType: z.enum(['dm', 'server']),
 });
+
+export const PingSchema = z.object({}).optional();

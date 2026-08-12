@@ -238,7 +238,10 @@ export interface IUserRepository {
     hardDelete(id: string): Promise<boolean>;
 
     // Update userPermissions
-    updatePermissions(id: string, permissions: AdminPermissions): Promise<void>;
+    updatePermissions(
+        id: string,
+        permissions: AdminPermissions,
+    ): Promise<boolean>;
 
     // Increment token version
     incrementTokenVersion(id: string): Promise<void>;
