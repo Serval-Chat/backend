@@ -22,6 +22,7 @@ import { container } from '@/di/container';
 import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { WsErrorCode } from '@/ws/protocol/error';
+import { send } from '@/ws/utils/broadcast';
 import { ApiError } from '@/utils/ApiError';
 import {
     websocketMessagesCounter,
@@ -121,11 +122,20 @@ export class WsDispatcher {
                 WS_CONTROLLER_METADATA,
                 ctrl.constructor,
             );
-            if (isController === false) continue;
+            if (isController !== true) continue;
 
             const events =
                 Reflect.getMetadata(WS_EVENT_METADATA, ctrl.constructor) ?? [];
             for (const { type, method } of events) {
+                const existing = this.handlers.get(type);
+                if (existing !== undefined) {
+                    throw new Error(
+                        `[WsDispatcher] Duplicate handler for '${type}': ` +
+                            `${existing.instance.constructor.name}.${existing.method} ` +
+                            `and ${ctrl.constructor.name}.${method as string}`,
+                    );
+                }
+
                 this.handlers.set(type, {
                     instance: ctrl,
                     method: method as string,
@@ -158,6 +168,12 @@ export class WsDispatcher {
         for (const [key, entry] of this.responseCache.entries()) {
             if (now > entry.expiresAt) {
                 this.responseCache.delete(key);
+            }
+        }
+
+        for (const [key, entry] of this.rateLimitCache.entries()) {
+            if (now > entry.resetAt) {
+                this.rateLimitCache.delete(key);
             }
         }
 
@@ -469,17 +485,20 @@ export class WsDispatcher {
                 }, timeoutMs);
             });
 
+            const handlerPromise = Promise.resolve(
+                handlerMethod.call(
+                    instance,
+                    envelope.event.payload,
+                    authenticatedUser,
+                    ws,
+                    abortController.signal,
+                ),
+            );
+
+            handlerPromise.catch(() => undefined);
+
             try {
-                return await Promise.race([
-                    handlerMethod.call(
-                        instance,
-                        envelope.event.payload,
-                        authenticatedUser,
-                        ws,
-                        abortController.signal,
-                    ),
-                    timeoutPromise,
-                ]);
+                return await Promise.race([handlerPromise, timeoutPromise]);
             } finally {
                 if (timeoutTimer !== undefined) {
                     clearTimeout(timeoutTimer);
@@ -632,19 +651,11 @@ export class WsDispatcher {
     ) {
         const responseType = this.getResponseType(requestEnvelope.event.type);
 
-        const response = {
-            id: crypto.randomUUID(),
-            event: {
-                type: responseType,
-                payload,
-            },
-            meta: {
-                replyTo: requestEnvelope.id,
-                ts: Date.now(),
-            },
-        };
-
-        ws.send(JSON.stringify(response));
+        send(
+            ws,
+            { type: responseType, payload } as AnyResponseWsEvent,
+            requestEnvelope.id,
+        );
         websocketMessagesCounter.inc({
             event: responseType,
             direction: 'outbound',
@@ -709,16 +720,7 @@ export class WsDispatcher {
             },
         };
 
-        const response = {
-            id: crypto.randomUUID(),
-            event: errorEvent,
-            meta: {
-                replyTo: requestEnvelope.id,
-                ts: Date.now(),
-            },
-        };
-
-        ws.send(JSON.stringify(response));
+        send(ws, errorEvent, requestEnvelope.id);
         websocketMessagesCounter.inc({ event: 'error', direction: 'outbound' });
     }
 
