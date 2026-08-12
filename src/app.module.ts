@@ -20,7 +20,6 @@ import { UserPingController } from './controllers/UserPingController';
 import { ExportController } from './controllers/ExportController';
 import { UserWarningController } from './controllers/UserWarningController';
 import { ApiErrorFilter } from './filters/ApiErrorFilter';
-import { IdResponseInterceptor } from './interceptors/IdResponseInterceptor';
 import { EmojiController } from './controllers/EmojiController';
 import { FileController } from './controllers/FileController';
 import { FileCompatibilityController } from './controllers/FileCompatibilityController';
@@ -184,10 +183,6 @@ import {
         {
             provide: APP_FILTER,
             useClass: ApiErrorFilter,
-        },
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: IdResponseInterceptor,
         },
     ],
 })

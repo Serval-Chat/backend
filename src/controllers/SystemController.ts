@@ -16,11 +16,10 @@ export class SystemController {
     })
     public async getSystemInfo(): Promise<SystemInfoResponseDTO> {
         const version = getVersion();
-        const { commit, short } = getGitCommitHash();
+        const { short } = getGitCommitHash();
 
         return {
             version,
-            commitHash: commit,
             partialCommitHash: short,
         };
     }

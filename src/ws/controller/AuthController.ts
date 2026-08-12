@@ -16,6 +16,7 @@ import { z } from 'zod';
 import type { IWsUser } from '@/ws/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { resolveBotAuthPayload } from '@/utils/botAuth';
+import logger from '@/utils/logger';
 
 const AuthenticateSchema = z.object({
     token: z.string().min(1, 'Token is required'),
@@ -67,8 +68,12 @@ export class AuthController {
             if (verified.type === 'access') {
                 decoded = verified;
             }
-        } catch {
-            console.error('Failed to verify token.');
+        } catch (err) {
+            logger.debug(
+                `[WsAuth] Token verification failed: ${
+                    err instanceof Error ? err.message : String(err)
+                }`,
+            );
         }
 
         if (decoded === null) {

@@ -202,9 +202,6 @@ export function setupExpressApp(app: Application): Application {
             'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
         );
 
-        res.setHeader('Connection', 'keep-alive');
-        res.setHeader('Keep-Alive', 'timeout=30, max=1000');
-
         next();
     });
 
@@ -240,11 +237,8 @@ export function setupExpressApp(app: Application): Application {
     const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
     const PROD_ALLOWED_ORIGINS = [
         'https://ser.chat',
-        'wss://ser.chat',
         'https://catfla.re',
         'https://rolling.catfla.re',
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
         FRONTEND_URL.replace(/\/$/, ''),
         ...TAURI_ALLOWED_ORIGINS,
     ];

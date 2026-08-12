@@ -3,9 +3,10 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { PORT, USE_HTTPS, CERTS_PATH } from '@/config/env';
+import { PORT, USE_HTTPS, CERTS_PATH, PROJECT_LEVEL } from '@/config/env';
 import * as fs from 'fs';
 import * as path from 'path';
+import { UPLOAD_DIRS } from '@/config/uploads';
 import type { HttpsOptions } from '@nestjs/common/interfaces/external/https-options.interface';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { setupExpressApp } from './server';
@@ -26,15 +27,7 @@ import * as YAML from 'yaml';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
-    const uploadDirs = [
-        'uploads',
-        'uploads/uploads',
-        'uploads/servers',
-        'uploads/webhooks',
-        'uploads/emojis',
-        'uploads/sounds',
-    ];
-    for (const dir of uploadDirs) {
+    for (const dir of UPLOAD_DIRS) {
         const fullPath = path.join(process.cwd(), dir);
         if (!fs.existsSync(fullPath)) {
             fs.mkdirSync(fullPath, { recursive: true });
@@ -108,19 +101,23 @@ async function bootstrap() {
         .setVersion('1.0')
         .addBearerAuth()
         .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('/api/docs', app, document);
+    if (PROJECT_LEVEL !== 'production') {
+        const document = SwaggerModule.createDocument(app, config);
+        SwaggerModule.setup('/api/docs', app, document);
 
-    // Generate openapi.yaml
-    try {
-        const yamlString = YAML.stringify(document);
-        fs.writeFileSync(path.join(process.cwd(), 'openapi.yaml'), yamlString);
-        Logger.log(
-            'OpenAPI documentation generated to openapi.yaml',
-            'Bootstrap',
-        );
-    } catch (err) {
-        Logger.error('Failed to generate OpenAPI YAML', err, 'Bootstrap');
+        try {
+            const yamlString = YAML.stringify(document);
+            fs.writeFileSync(
+                path.join(process.cwd(), 'openapi.yaml'),
+                yamlString,
+            );
+            Logger.log(
+                'OpenAPI documentation generated to openapi.yaml',
+                'Bootstrap',
+            );
+        } catch (err) {
+            Logger.error('Failed to generate OpenAPI YAML', err, 'Bootstrap');
+        }
     }
 
     startMetricsUpdater(60000);

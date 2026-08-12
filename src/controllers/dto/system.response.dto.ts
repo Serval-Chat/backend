@@ -5,8 +5,5 @@ export class SystemInfoResponseDTO {
     public version!: string;
 
     @ApiProperty()
-    public commitHash!: string;
-
-    @ApiProperty()
     public partialCommitHash!: string;
 }

@@ -10,7 +10,7 @@ import {
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import path from 'path';
-import fs from 'fs';
+import fsPromises from 'fs/promises';
 import { extractOriginalFilename } from '@/config/multer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
@@ -47,13 +47,17 @@ export class FileCompatibilityController {
         const uploadsDir = path.join(process.cwd(), 'uploads', 'uploads');
         const filePath = path.join(uploadsDir, safeFilename);
 
-        if (!fs.existsSync(filePath)) {
+        try {
+            await fsPromises.access(filePath);
+        } catch {
             throw new ApiError(404, ErrorMessages.FILE.NOT_FOUND);
         }
 
         // Verify the resolved path is still within uploads directory
-        const realPath = fs.realpathSync(filePath);
-        const realUploadsDir = fs.realpathSync(uploadsDir);
+        const [realPath, realUploadsDir] = await Promise.all([
+            fsPromises.realpath(filePath),
+            fsPromises.realpath(uploadsDir),
+        ]);
 
         if (!realPath.startsWith(realUploadsDir)) {
             throw new ApiError(400, ErrorMessages.FILE.INVALID_PATH);
