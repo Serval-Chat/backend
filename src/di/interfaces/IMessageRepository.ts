@@ -36,6 +36,8 @@ export interface IMessage {
 export interface IMessageRepository {
     findById(id: string): Promise<IMessage | null>;
 
+    conversationExists(user1Id: string, user2Id: string): Promise<boolean>;
+
     findByConversation(
         user1Id: string,
         user2Id: string,

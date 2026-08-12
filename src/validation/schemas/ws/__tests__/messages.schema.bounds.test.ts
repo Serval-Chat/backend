@@ -17,13 +17,13 @@ function attachment(overrides: Record<string, unknown> = {}) {
 }
 
 function dm(attachments: unknown[]) {
-    return { receiverId: 'user-1', text: 'hi', attachments };
+    return { receiverId: '0254710804526399488', text: 'hi', attachments };
 }
 
 function server(attachments: unknown[]) {
     return {
-        serverId: 'server-1',
-        channelId: 'channel-1',
+        serverId: '0254710804526399489',
+        channelId: '0254710804526399490',
         text: 'hi',
         attachments,
     };
@@ -94,7 +94,10 @@ describe.each([
     ['AddReactionSchema', AddReactionSchema],
     ['RemoveReactionSchema', RemoveReactionSchema],
 ] as const)('%s emoji bounds', (_name, schema) => {
-    const base = { messageId: 'message-1', messageType: 'dm' as const };
+    const base = {
+        messageId: '0254710804526399491',
+        messageType: 'dm' as const,
+    };
 
     it('rejects an emoji longer than 100 characters', () => {
         const result = schema.safeParse({
@@ -134,7 +137,7 @@ describe.each([
             ...base,
             emoji: 'S'.repeat(32),
             emojiType: 'custom',
-            emojiId: 'emoji-1',
+            emojiId: '0254710804526399492',
         });
         expect(result.success).toBe(true);
     });
@@ -174,7 +177,7 @@ describe.each([
 
     it('still accepts a poll with no expiry', () => {
         const { poll, ...rest } = withPoll(new Date().toISOString());
-        const { expiresAt, ...pollWithout } = poll;
+        const { expiresAt: _expiresAt, ...pollWithout } = poll;
 
         expect(schema.safeParse({ ...rest, poll: pollWithout }).success).toBe(
             true,

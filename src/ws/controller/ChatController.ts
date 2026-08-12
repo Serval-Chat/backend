@@ -484,6 +484,13 @@ export class ChatController {
             return { success: true };
         }
 
+        if (
+            latestTs === null &&
+            !(await this.messageRepo.conversationExists(userId, peerId))
+        ) {
+            return { success: true };
+        }
+
         // Reset unread count
         await this.dmUnreadRepo.reset(userId, peerId);
 

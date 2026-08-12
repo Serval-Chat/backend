@@ -81,6 +81,19 @@ export class MongooseMessageRepository implements IMessageRepository {
         return msg ? this.transformMessage(msg) : null;
     }
 
+    public async conversationExists(
+        user1Id: string,
+        user2Id: string,
+    ): Promise<boolean> {
+        const existing = await this.messageModel.exists({
+            $or: [
+                { senderId: user1Id, receiverId: user2Id },
+                { senderId: user2Id, receiverId: user1Id },
+            ],
+        });
+        return existing !== null;
+    }
+
     // Find messages between two users with pagination
     public async findByConversation(
         user1Id: string,

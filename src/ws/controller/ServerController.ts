@@ -206,9 +206,6 @@ export class ServerController {
         serverOid: string;
         userOid: string;
     }> {
-        if (!isValidSnowflakeId(serverId)) {
-            throw new Error('BAD_REQUEST: Invalid serverId');
-        }
         const serverOid = serverId;
         const userOid = userId;
 
@@ -238,9 +235,6 @@ export class ServerController {
             serverId,
             userId,
         );
-        if (!isValidSnowflakeId(channelId)) {
-            throw new Error('BAD_REQUEST: Invalid channelId');
-        }
         const channelOid = channelId;
         const channel = await this.channelRepo.findByIdAndServer(
             channelOid,
