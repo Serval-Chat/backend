@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
 import { io as Client } from 'socket.io-client';
 import { User } from '../../src/models/User';
+import { generateJWT } from '../../src/utils/jwt';
 import type { IUser } from '../../src/models/User';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -20,16 +20,13 @@ export async function createTestUser(overrides: Record<string, unknown> = {}) {
 }
 
 export function generateAuthToken(user: IUser) {
-    return jwt.sign(
-        {
-            id: user.snowflakeId,
-            username: user.username,
-            tokenVersion: user.tokenVersion,
-            isBot: user.isBot
-        },
-        (process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET !== '') ? process.env.JWT_SECRET : 'test-jwt-secret',
-        { expiresIn: '1h' }
-    );
+    return generateJWT({
+        id: user.snowflakeId,
+        login: user.login,
+        username: user.username,
+        tokenVersion: user.tokenVersion ?? 0,
+        isBot: user.isBot === true
+    });
 }
 
 export function createSocketClient(server: Server, token: string) {

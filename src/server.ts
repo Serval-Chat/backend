@@ -11,6 +11,7 @@ import cors from 'cors';
 import compression from 'compression';
 import { METRICS_TOKEN, PROJECT_LEVEL, FRONTEND_URL } from '@/config/env';
 import routes from '@/routes/index';
+import { apiFloorLimiter } from '@/middleware/rateLimiting';
 import { toApiId } from '@/utils/mongooseId';
 
 interface ResponseWithLocals extends Response {
@@ -315,6 +316,8 @@ export function setupExpressApp(app: Application): Application {
             res.status(500).end(String(err));
         }
     });
+
+    app.use('/api', apiFloorLimiter);
 
     app.use('/', routes);
 

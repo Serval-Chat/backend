@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '@/config/env';
-import type { AdminPermissions } from '@/permissions/AdminPermissions';
 
 // JWT payload structure for user authentication
 export interface JWTPayload {
@@ -11,7 +10,6 @@ export interface JWTPayload {
     username: string;
     profilePicture?: string;
     tokenVersion: number; // For token invalidation (like when you change password or login tokenVersion changes).
-    permissions?: AdminPermissions;
     isBot?: boolean;
 }
 

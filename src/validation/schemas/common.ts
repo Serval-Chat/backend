@@ -429,10 +429,6 @@ export const IsGifTagId = IsSnowflakeId;
 
 // --- Legacy Zod Schemas (Required by regional validation files) ---
 
-export const objectIdSchema = z
-    .string()
-    .regex(/^[a-f\d]{24}$/i, 'Invalid ObjectId format');
-
 export const usernameSchema = z
     .string()
     .min(3, 'Username must be at least 3 characters')

@@ -180,7 +180,6 @@ export class AuthController {
             login: login,
             username: user.username as string,
             tokenVersion: user.tokenVersion ?? 0,
-            permissions: user.permissions,
             isBot: user.isBot ?? false,
         });
 
@@ -231,7 +230,6 @@ export class AuthController {
                 login: updatedUser.login ?? user.login,
                 username: updatedUser.username ?? user.username,
                 tokenVersion: updatedUser.tokenVersion ?? 0,
-                permissions: updatedUser.permissions,
                 isBot: updatedUser.isBot ?? false,
             }),
         };
@@ -272,7 +270,6 @@ export class AuthController {
             login: user.login ?? payload.login,
             username: user.username ?? payload.username,
             tokenVersion: user.tokenVersion ?? 0,
-            permissions: user.permissions,
             isBot: user.isBot ?? false,
         });
 
@@ -336,7 +333,6 @@ export class AuthController {
                 login: updatedUser.login ?? user.login,
                 username: updatedUser.username ?? user.username,
                 tokenVersion: updatedUser.tokenVersion ?? 0,
-                permissions: updatedUser.permissions,
                 isBot: updatedUser.isBot ?? false,
             }),
         };
@@ -448,7 +444,6 @@ export class AuthController {
                 login: newUser.login ?? '',
                 username: newUser.username ?? '',
                 tokenVersion: newUser.tokenVersion ?? 0,
-                permissions: newUser.permissions,
                 isBot: newUser.isBot ?? false,
             });
 
@@ -514,7 +509,6 @@ export class AuthController {
             login: updatedUser.login ?? '',
             username: updatedUser.username ?? '',
             tokenVersion: updatedUser.tokenVersion ?? 0,
-            permissions: updatedUser.permissions,
             isBot: updatedUser.isBot ?? false,
         });
 
@@ -573,7 +567,6 @@ export class AuthController {
             login: updatedUser.login ?? '',
             username: updatedUser.username ?? '',
             tokenVersion: updatedUser.tokenVersion ?? 0,
-            permissions: updatedUser.permissions,
             isBot: updatedUser.isBot ?? false,
         });
 

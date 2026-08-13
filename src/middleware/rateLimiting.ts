@@ -324,3 +324,18 @@ export const websiteConnectionRemoveLimiter = rateLimit({
     message:
         'Too many website connection removal requests, please try again later.',
 });
+
+export const API_FLOOR_WINDOW_MS = 60_000;
+export const API_FLOOR_MAX = 600;
+
+export const apiFloorLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:api-floor:') }
+        : {}),
+    windowMs: API_FLOOR_WINDOW_MS,
+    max: API_FLOOR_MAX,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many requests, please slow down.',
+});
