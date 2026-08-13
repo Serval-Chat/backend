@@ -605,7 +605,7 @@ describe('AdminController', () => {
             expect(result.userId).toBe(moderatorUser.snowflakeId);
         });
 
-        it('should prevent Admin from promoting target to a rank equal or higher than their own', async () => {
+        it('should prevent Admin from granting a permission they do not hold', async () => {
             mockUserRepo.findById = jest.fn().mockImplementation(async (id: string) => {
                 if (id === adminUser.snowflakeId) return adminUser;
                 if (id === moderatorUser.snowflakeId) return moderatorUser;
@@ -624,7 +624,7 @@ describe('AdminController', () => {
                     },
                     mockReq,
                 ),
-            ).rejects.toThrow('Insufficient permissions: Cannot promote a user to a rank equal or higher than your own');
+            ).rejects.toThrow('Insufficient permissions: Cannot grant permissions you do not hold (adminAccess)');
         });
     });
 });

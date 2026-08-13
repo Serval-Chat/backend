@@ -34,6 +34,21 @@ function makeController(overrides: Partial<Record<string, unknown>>) {
 const TARGET = 'target-user';
 const CALLER = 'caller-admin';
 
+function userRepoWithPermissions(
+    callerPerms: Record<string, boolean>,
+    targetPerms: Record<string, boolean>,
+) {
+    return {
+        findById: jest.fn(async (id: string) =>
+            id === CALLER
+                ? { snowflakeId: CALLER, permissions: callerPerms }
+                : { snowflakeId: TARGET, permissions: targetPerms },
+        ),
+        updatePermissions: jest.fn().mockResolvedValue(true),
+        incrementTokenVersion: jest.fn().mockResolvedValue(undefined),
+    };
+}
+
 function userRepoWith(updateResult: boolean) {
     return {
         findById: jest.fn(async (id: string) =>
@@ -105,5 +120,95 @@ describe('updateUserPermissions', () => {
 
         expect(userRepo.incrementTokenVersion).not.toHaveBeenCalled();
         expect(auditLogRepo.create).not.toHaveBeenCalled();
+    });
+});
+
+describe('privilege escalation through updateUserPermissions', () => {
+    const logger = {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+    };
+
+    function controllerFor(
+        callerPerms: Record<string, boolean>,
+        targetPerms: Record<string, boolean> = { ...DEFAULT_PERMISSIONS },
+    ) {
+        const userRepo = userRepoWithPermissions(callerPerms, targetPerms);
+        const controller = makeController({
+            userRepo,
+            auditLogRepo: { create: jest.fn().mockResolvedValue(undefined) },
+            logger,
+        });
+        return { controller, userRepo };
+    }
+
+    it('refuses the banUsers-only escalation from the audit', async () => {
+        const { controller, userRepo } = controllerFor({
+            ...DEFAULT_PERMISSIONS,
+            banUsers: true,
+        });
+
+        await expect(
+            controller.updateUserPermissions(
+                TARGET,
+                {
+                    permissions: {
+                        ...DEFAULT_PERMISSIONS,
+                        manageUsers: true,
+                        manageServer: true,
+                        manageInvites: true,
+                    },
+                },
+                request as never,
+            ),
+        ).rejects.toThrow(/Cannot grant permissions you do not hold/);
+
+        expect(userRepo.updatePermissions).not.toHaveBeenCalled();
+    });
+
+    it('allows granting a permission the caller holds', async () => {
+        const { controller, userRepo } = controllerFor({
+            ...DEFAULT_PERMISSIONS,
+            banUsers: true,
+            warnUsers: true,
+        });
+
+        await controller.updateUserPermissions(
+            TARGET,
+            { permissions: { ...DEFAULT_PERMISSIONS, warnUsers: true } },
+            request as never,
+        );
+
+        expect(userRepo.updatePermissions).toHaveBeenCalled();
+    });
+
+    it('refuses to act on a peer holding the same permissions', async () => {
+        const peer = { ...DEFAULT_PERMISSIONS, banUsers: true };
+        const { controller } = controllerFor(peer, peer);
+
+        await expect(
+            controller.updateUserPermissions(
+                TARGET,
+                { permissions: { ...DEFAULT_PERMISSIONS } },
+                request as never,
+            ),
+        ).rejects.toThrow(/not a subset of your own/);
+    });
+
+    it('lets a super admin grant a permission it does not itself list', async () => {
+        const { controller, userRepo } = controllerFor({
+            ...DEFAULT_PERMISSIONS,
+            adminAccess: true,
+        });
+
+        await controller.updateUserPermissions(
+            TARGET,
+            { permissions: { ...DEFAULT_PERMISSIONS, manageBots: true } },
+            request as never,
+        );
+
+        expect(userRepo.updatePermissions).toHaveBeenCalled();
     });
 });

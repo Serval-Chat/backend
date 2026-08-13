@@ -160,13 +160,7 @@ import { Permissions } from '@/modules/auth/permissions.decorator';
 import { AuthenticatedRequest } from '@/middleware/auth';
 
 import { NoBot } from '@/modules/auth/bot.decorator';
-
-export enum AdminRank {
-    REGULAR_USER = 0,
-    MODERATOR = 1,
-    ADMIN = 2,
-    SUPER_ADMIN = 3,
-}
+import { grantsBeyond, outranks } from '@/permissions/adminHierarchy';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -487,21 +481,6 @@ export class AdminController {
         return response;
     }
 
-    private getAdminRank(permissions: AdminPermissions | undefined): AdminRank {
-        if (permissions === undefined) return AdminRank.REGULAR_USER;
-        if (permissions.adminAccess === true) return AdminRank.SUPER_ADMIN;
-        if (permissions.banUsers === true) return AdminRank.ADMIN;
-        const permsRecord = permissions as Record<string, unknown>;
-        const hasModPermissions = Object.keys(permsRecord).some(
-            (key) =>
-                key !== 'adminAccess' &&
-                key !== 'banUsers' &&
-                permsRecord[key] === true,
-        );
-        if (hasModPermissions) return AdminRank.MODERATOR;
-        return AdminRank.REGULAR_USER;
-    }
-
     private async checkHierarchy(
         callerId: string,
         targetUserId: string,
@@ -516,12 +495,9 @@ export class AdminController {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        const callerRank = this.getAdminRank(caller.permissions);
-        const targetRank = this.getAdminRank(target.permissions);
-
-        if (callerRank <= targetRank) {
+        if (!outranks(caller.permissions, target.permissions)) {
             throw new ForbiddenException(
-                'Insufficient permissions: Cannot manage a user with an equal or higher rank',
+                'Insufficient permissions: Cannot manage a user whose permissions are not a subset of your own',
             );
         }
     }
@@ -875,14 +851,15 @@ export class AdminController {
         await this.checkHierarchy(req.user.id, userId);
 
         const caller = await this.userRepo.findById(req.user.id);
-        if (caller !== null) {
-            const callerRank = this.getAdminRank(caller.permissions);
-            const newTargetRank = this.getAdminRank(permissions);
-            if (callerRank <= newTargetRank) {
-                throw new ForbiddenException(
-                    'Insufficient permissions: Cannot promote a user to a rank equal or higher than your own',
-                );
-            }
+        if (caller === null) {
+            throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
+        }
+
+        const beyond = grantsBeyond(caller.permissions, permissions);
+        if (beyond.length > 0) {
+            throw new ForbiddenException(
+                `Insufficient permissions: Cannot grant permissions you do not hold (${beyond.join(', ')})`,
+            );
         }
 
         const updated = await this.userRepo.updatePermissions(

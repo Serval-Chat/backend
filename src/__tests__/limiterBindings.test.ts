@@ -1,6 +1,7 @@
 import { RequestMethod, type MiddlewareConsumer } from '@nestjs/common';
 
 import { AppModule } from '@/app.module';
+import { loginBackoff } from '@/middleware/loginBackoff';
 import {
     embedProxyLimiter,
     loginLimiter,
@@ -70,6 +71,10 @@ describe('rate limiter route bindings', () => {
         for (const route of routes) {
             expect(route.method).toBe(RequestMethod.GET);
         }
+    });
+
+    it('binds the login backoff alongside the login limiter', () => {
+        expect(paths(loginBackoff)).toEqual(['api/v1/auth/login']);
     });
 
     it('leaves no limiter declared but unbound', () => {

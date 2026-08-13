@@ -54,6 +54,7 @@ import { EmbedController } from './controllers/EmbedController';
 import { InteractionController } from './controllers/InteractionController';
 import { ApplicationController } from './controllers/ApplicationController';
 import { DecorationController } from './controllers/DecorationController';
+import { loginBackoff } from '@/middleware/loginBackoff';
 import {
     botTokenLimiter,
     embedProxyLimiter,
@@ -189,7 +190,7 @@ import {
 })
 export class AppModule {
     public configure(consumer: MiddlewareConsumer) {
-        consumer.apply(loginLimiter).forRoutes({
+        consumer.apply(loginLimiter, loginBackoff).forRoutes({
             path: 'api/v1/auth/login',
             method: RequestMethod.POST,
         });

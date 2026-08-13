@@ -115,7 +115,7 @@ describe('AuthService', () => {
         expect(result.user).toBeUndefined();
     });
 
-    it('login with invalid password increments failed attempt counter', async () => {
+    it('login with invalid password no longer touches the user record', async () => {
         const testUser = createTestUser({ failedLoginAttempts: 2 });
 
         (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
@@ -125,14 +125,11 @@ describe('AuthService', () => {
 
         expect(result.success).toBe(false);
         expect(result.error).toBe('Invalid credentials');
-        expect(mockUserRepo.update).toHaveBeenCalledWith(testUser.snowflakeId, {
-            failedLoginAttempts: 3,
-            loginLockedUntil: null
-        });
+        expect(mockUserRepo.update).not.toHaveBeenCalled();
     });
 
-    it('login locks account after too many failed attempts', async () => {
-        const testUser = createTestUser({ failedLoginAttempts: 4 });
+    it('login never locks the account, however many failures precede it', async () => {
+        const testUser = createTestUser({ failedLoginAttempts: 99 });
 
         (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
         (mockUserRepo.comparePassword as jest.Mock).mockResolvedValue(false);
@@ -140,32 +137,14 @@ describe('AuthService', () => {
         const result = await authService.login('testuser', 'wrongpassword');
 
         expect(result.success).toBe(false);
-        expect(result.error).toBe(
-            'Too many failed login attempts. This account is temporarily locked, try again later.'
-        );
-        expect(result.locked?.lockedUntil).toBeInstanceOf(Date);
-        expect(mockUserRepo.update).toHaveBeenCalledWith(testUser.snowflakeId, {
-            failedLoginAttempts: 0,
-            loginLockedUntil: expect.any(Date)
-        });
+        expect(result.error).toBe('Invalid credentials');
+        expect(result).not.toHaveProperty('locked');
     });
 
-    it('login rejects while account is locked out, without comparing password', async () => {
+    it('login still succeeds for an account that was previously locked', async () => {
         const testUser = createTestUser({
             loginLockedUntil: new Date(Date.now() + 60_000)
         });
-
-        (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
-
-        const result = await authService.login('testuser', 'anypassword');
-
-        expect(result.success).toBe(false);
-        expect(result.locked).toBeDefined();
-        expect(mockUserRepo.comparePassword).not.toHaveBeenCalled();
-    });
-
-    it('login clears failed attempt counter on success', async () => {
-        const testUser = createTestUser({ failedLoginAttempts: 3 });
 
         (mockUserRepo.findByLogin as jest.Mock).mockResolvedValue(testUser);
         (mockUserRepo.comparePassword as jest.Mock).mockResolvedValue(true);
@@ -173,10 +152,7 @@ describe('AuthService', () => {
         const result = await authService.login('testuser', 'correctpassword');
 
         expect(result.success).toBe(true);
-        expect(mockUserRepo.update).toHaveBeenCalledWith(testUser.snowflakeId, {
-            failedLoginAttempts: 0,
-            loginLockedUntil: null
-        });
+        expect(mockUserRepo.comparePassword).toHaveBeenCalled();
     });
 
     it('login with non-existent user', async () => {
