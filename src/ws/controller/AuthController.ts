@@ -17,6 +17,7 @@ import type { IWsUser } from '@/ws/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { resolveBotAuthPayload } from '@/utils/botAuth';
 import logger from '@/utils/logger';
+import { ApiError } from '@/utils/ApiError';
 
 const AuthenticateSchema = z.object({
     token: z.string().min(1, 'Token is required'),
@@ -51,11 +52,14 @@ export class AuthController {
         ws?: WebSocket,
     ): Promise<IWsAuthenticatedEvent['payload']> {
         if (!ws) {
-            throw new Error('WebSocket connection required for authentication');
+            throw new ApiError(
+                400,
+                'WebSocket connection required for authentication',
+            );
         }
 
         if (this.wsServer.getAuthenticatedUser(ws) !== undefined) {
-            throw new Error('AUTHENTICATION_FAILED: Already authenticated');
+            throw new ApiError(401, 'Already authenticated');
         }
 
         const { token } = payload;
@@ -84,9 +88,7 @@ export class AuthController {
             const botPayload = await resolveBotAuthPayload(tokenHash);
 
             if (botPayload === null)
-                throw new Error(
-                    'AUTHENTICATION_FAILED: Invalid or expired token',
-                );
+                throw new ApiError(401, 'Invalid or expired token');
 
             decoded = botPayload;
         }
@@ -94,23 +96,19 @@ export class AuthController {
         const user = await this.userRepo.findById(decoded.id);
 
         if (!user) {
-            throw new Error(
-                'AUTHENTICATION_FAILED: Account deleted or not found',
-            );
+            throw new ApiError(401, 'Account deleted or not found');
         }
 
         if (user.deletedAt) {
-            throw new Error(
-                'AUTHENTICATION_FAILED: Account deleted or not found',
-            );
+            throw new ApiError(401, 'Account deleted or not found');
         }
 
         if (Number(user.tokenVersion ?? 0) !== Number(decoded.tokenVersion)) {
-            throw new Error('AUTHENTICATION_FAILED: Token expired');
+            throw new ApiError(401, 'Token expired');
         }
 
         if (await this.userRepo.isBanned(decoded.id)) {
-            throw new Error('AUTHENTICATION_FAILED: Account banned');
+            throw new ApiError(401, 'Account banned');
         }
 
         const wsUser: IWsUser = {

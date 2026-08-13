@@ -214,7 +214,7 @@ export class ServerController {
             userOid,
         );
         if (!member) {
-            throw new Error('FORBIDDEN: Not a member of this server');
+            throw new ApiError(403, 'Not a member of this server');
         }
 
         return { serverOid, userOid };
@@ -242,11 +242,11 @@ export class ServerController {
         );
 
         if (channel === null) {
-            throw new Error('NOT_FOUND: Channel not found');
+            throw new ApiError(404, 'Channel not found');
         }
 
         if (channel.type === 'link') {
-            throw new Error('FORBIDDEN: Cannot join a link channel');
+            throw new ApiError(403, 'Cannot join a link channel');
         }
 
         const allowed = await this.permissionService.hasChannelPermission(
@@ -256,8 +256,9 @@ export class ServerController {
             permission,
         );
         if (!allowed) {
-            throw new Error(
-                `FORBIDDEN: Missing ${permission} permission for this channel`,
+            throw new ApiError(
+                403,
+                `Missing ${permission} permission for this channel`,
             );
         }
 
@@ -274,7 +275,7 @@ export class ServerController {
             await this.requireAccessibleChannel(serverId, channelId, userId);
 
         if (channel.type !== 'voice') {
-            throw new Error('FORBIDDEN: Channel is not a voice channel');
+            throw new ApiError(403, 'Channel is not a voice channel');
         }
 
         const canConnect = await this.permissionService.hasChannelPermission(
@@ -284,9 +285,7 @@ export class ServerController {
             'connect',
         );
         if (!canConnect) {
-            throw new Error(
-                'FORBIDDEN: No permission to join this voice channel',
-            );
+            throw new ApiError(403, 'No permission to join this voice channel');
         }
 
         if (options.requireCurrentRoom === true) {
@@ -294,7 +293,7 @@ export class ServerController {
                 .getClient()
                 .get(`user_voice:${userId}`);
             if (currentRoom !== `${serverId}:${channelId}`) {
-                throw new Error('FORBIDDEN: Not in this voice channel');
+                throw new ApiError(403, 'Not in this voice channel');
             }
         }
     }
@@ -313,7 +312,7 @@ export class ServerController {
         ws?: WebSocket,
     ): Promise<IServerJoinedEvent['payload']> {
         if (authenticatedUser === undefined || ws === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { serverId } = payload;
@@ -332,7 +331,7 @@ export class ServerController {
             server.ownerId.toString() === userId;
 
         if (member === null && isOwner === false) {
-            throw new Error('FORBIDDEN: Not a member of this server');
+            throw new ApiError(403, 'Not a member of this server');
         }
 
         this.wsServer.subscribeToServer(ws, serverId);
@@ -429,7 +428,7 @@ export class ServerController {
         ws?: WebSocket,
     ): Promise<IChannelJoinedEvent['payload']> {
         if (!authenticatedUser || !ws) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { serverId, channelId } = payload;
@@ -478,7 +477,7 @@ export class ServerController {
         authenticatedUser?: IWsUser,
     ): Promise<IJoinVoiceEvent['response']> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { serverId, channelId } = payload;
@@ -603,7 +602,7 @@ export class ServerController {
         authenticatedUser?: IWsUser,
     ): Promise<{ success: boolean }> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { serverId, channelId, isMuted, isDeafened } = payload;
@@ -650,7 +649,7 @@ export class ServerController {
         ws?: WebSocket,
     ): Promise<IMessageServerSentEvent['payload']> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const {
@@ -673,14 +672,12 @@ export class ServerController {
             userId,
         );
         if (!member) {
-            throw new Error('FORBIDDEN: Not a member of this server');
+            throw new ApiError(403, 'Not a member of this server');
         }
 
         const channel = await this.channelRepo.findById(channelId);
         if (channel?.type === 'link') {
-            throw new Error(
-                'FORBIDDEN: Cannot send messages to a link channel',
-            );
+            throw new ApiError(403, 'Cannot send messages to a link channel');
         }
 
         const canSend = await this.permissionService.hasChannelPermission(
@@ -690,8 +687,9 @@ export class ServerController {
             'sendMessages',
         );
         if (canSend === false) {
-            throw new Error(
-                'FORBIDDEN: No permission to send messages in this channel',
+            throw new ApiError(
+                403,
+                'No permission to send messages in this channel',
             );
         }
 
@@ -742,7 +740,7 @@ export class ServerController {
                 'pingRolesAndEveryone',
             );
             if (!canPingEveryone) {
-                throw new Error('FORBIDDEN: No permission to ping @everyone');
+                throw new ApiError(403, 'No permission to ping @everyone');
             }
         }
 
@@ -753,7 +751,7 @@ export class ServerController {
                 'pingRolesAndEveryone',
             );
             if (!canPingRoles) {
-                throw new Error('FORBIDDEN: No permission to ping roles');
+                throw new ApiError(403, 'No permission to ping roles');
             }
         }
 
@@ -1003,7 +1001,7 @@ export class ServerController {
         ws?: WebSocket,
     ): Promise<IMessageServerEditedEvent['payload']> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { messageId, text } = payload;
@@ -1015,11 +1013,11 @@ export class ServerController {
         const message = await this.serverMessageRepo.findById(messageId);
 
         if (message === null) {
-            throw new Error('NOT_FOUND: Message not found');
+            throw new ApiError(404, 'Message not found');
         }
 
         if (message.senderId.toString() !== userId) {
-            throw new Error('FORBIDDEN: Can only edit your own messages');
+            throw new ApiError(403, 'Can only edit your own messages');
         }
 
         const updated = await this.serverMessageRepo.update(messageId, {
@@ -1028,7 +1026,7 @@ export class ServerController {
             isEdited: true,
         });
         if (!updated) {
-            throw new Error('INTERNAL_ERROR: Failed to update message');
+            throw new ApiError(500, 'Failed to update message');
         }
 
         logger.info(
@@ -1099,7 +1097,7 @@ export class ServerController {
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
         if (!authenticatedUser) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { serverId, messageId } = payload;
@@ -1108,7 +1106,7 @@ export class ServerController {
         const message = await this.serverMessageRepo.findById(messageId);
 
         if (message === null) {
-            throw new Error('NOT_FOUND: Message not found');
+            throw new ApiError(404, 'Message not found');
         }
 
         const isAuthor = message.senderId.toString() === userId;
@@ -1127,7 +1125,7 @@ export class ServerController {
             );
 
         if (!isAuthor && !canManage && !canDeleteOthers) {
-            throw new Error('FORBIDDEN: No permission to delete this message');
+            throw new ApiError(403, 'No permission to delete this message');
         }
 
         await this.serverMessageRepo.delete(messageId);
@@ -1186,7 +1184,7 @@ export class ServerController {
         authenticatedUser?: IWsUser,
     ): Promise<{ success: boolean }> {
         if (!authenticatedUser) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { serverId, channelId } = payload;
@@ -1197,7 +1195,7 @@ export class ServerController {
             userId,
         );
         if (!member) {
-            throw new Error('FORBIDDEN: Not a member of this server');
+            throw new ApiError(403, 'Not a member of this server');
         }
 
         const redis = this.redisService.getClient();

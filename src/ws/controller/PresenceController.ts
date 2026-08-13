@@ -34,6 +34,7 @@ import { assertWsNotMuted } from '@/utils/mute';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertWsNotWarned } from '@/utils/warning';
 import logger from '@/utils/logger';
+import { ApiError } from '@/utils/ApiError';
 
 /**
  * Controller for handling presence and status events.
@@ -99,7 +100,7 @@ export class PresenceController {
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { status: statusText } = payload;
@@ -177,7 +178,7 @@ export class PresenceController {
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const userId = authenticatedUser.userId;

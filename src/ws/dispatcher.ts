@@ -21,6 +21,7 @@ import type { IWsUser } from '@/ws/types';
 import { container } from '@/di/container';
 import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
+import { wsErrorCodeForStatus } from '@/ws/protocol/error';
 import type { WsErrorCode } from '@/ws/protocol/error';
 import { send } from '@/ws/utils/broadcast';
 import { ApiError } from '@/utils/ApiError';
@@ -385,11 +386,16 @@ export class WsDispatcher {
         } catch (error: unknown) {
             const err = error as Error;
 
-            this.logger.error(
+            const clientFault =
+                err instanceof ApiError &&
+                err.status >= 400 &&
+                err.status < 500;
+
+            this.logger[clientFault ? 'debug' : 'error'](
                 `[WsDispatcher] Error handling ${envelope.event.type}:`,
                 {
                     error: err.message,
-                    stack: err.stack,
+                    stack: clientFault ? undefined : err.stack,
                     eventType: envelope.event.type,
                     userId: authenticatedUser?.userId,
                 },
@@ -411,28 +417,15 @@ export class WsDispatcher {
 
             // Send sanitized error to client
             if (err instanceof ApiError) {
-                let code: WsErrorCode = 'INTERNAL_ERROR';
-                if (err.status === 400) code = 'BAD_REQUEST';
-                else if (err.status === 401) code = 'UNAUTHORIZED';
-                else if (err.status === 403) code = 'FORBIDDEN';
-                else if (err.status === 404) code = 'NOT_FOUND';
-                else if (err.status === 409) code = 'CONFLICT';
-                else if (err.status === 429) code = 'RATE_LIMIT';
-
-                this.sendError(ws, envelope, code, err.message, err.details);
-            } else if (err.message === 'TIMEOUT') {
-                this.sendError(ws, envelope, 'TIMEOUT', 'Request timed out');
-            } else if (err.message.startsWith('AUTHENTICATION_FAILED')) {
-                const details = err.message.replace(
-                    'AUTHENTICATION_FAILED: ',
-                    '',
-                );
                 this.sendError(
                     ws,
                     envelope,
-                    'UNAUTHORIZED',
-                    details || 'Authentication failed',
+                    wsErrorCodeForStatus(err.status),
+                    err.message,
+                    err.details,
                 );
+            } else if (err.message === 'TIMEOUT') {
+                this.sendError(ws, envelope, 'TIMEOUT', 'Request timed out');
             } else {
                 this.sendError(
                     ws,

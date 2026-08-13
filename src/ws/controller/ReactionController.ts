@@ -33,6 +33,7 @@ import { assertWsNotMuted } from '@/utils/mute';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertWsNotWarned } from '@/utils/warning';
 import logger from '@/utils/logger';
+import { ApiError } from '@/utils/ApiError';
 
 /**
  * Controller for handling message reaction events.
@@ -72,7 +73,7 @@ export class ReactionController {
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { messageId, emoji, emojiType, emojiId, messageType } = payload;
@@ -83,7 +84,7 @@ export class ReactionController {
         if (messageType === 'dm') {
             const message = await this.messageRepo.findById(messageId);
             if (message === null) {
-                throw new Error('NOT_FOUND: Message not found');
+                throw new ApiError(404, 'Message not found');
             }
 
             const isParticipant =
@@ -91,7 +92,7 @@ export class ReactionController {
                 message.receiverId.toString() === userId;
 
             if (!isParticipant) {
-                throw new Error('FORBIDDEN: Not part of this conversation');
+                throw new ApiError(403, 'Not part of this conversation');
             }
 
             const receiverId =
@@ -200,7 +201,7 @@ export class ReactionController {
         } else {
             const message = await this.serverMessageRepo.findById(messageId);
             if (message === null) {
-                throw new Error('NOT_FOUND: Message not found');
+                throw new ApiError(404, 'Message not found');
             }
 
             // Check if user has access to the channel
@@ -215,7 +216,7 @@ export class ReactionController {
             );
 
             if (!canReact) {
-                throw new Error('FORBIDDEN: No permission to add reactions');
+                throw new ApiError(403, 'No permission to add reactions');
             }
 
             const serverBlockFlags = await this.blockRepo.getActiveBlockFlags(
@@ -340,7 +341,7 @@ export class ReactionController {
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { messageId, emoji, emojiType, emojiId, messageType } = payload;
@@ -352,7 +353,7 @@ export class ReactionController {
         if (messageType === 'dm') {
             const message = await this.messageRepo.findById(messageId);
             if (message === null) {
-                throw new Error('NOT_FOUND: Message not found');
+                throw new ApiError(404, 'Message not found');
             }
 
             // Validate user is part of the conversation
@@ -361,7 +362,7 @@ export class ReactionController {
                 message.receiverId.toString() === userId;
 
             if (!isParticipant) {
-                throw new Error('FORBIDDEN: Not part of this conversation');
+                throw new ApiError(403, 'Not part of this conversation');
             }
 
             // Remove reaction
@@ -409,7 +410,7 @@ export class ReactionController {
         } else {
             const message = await this.serverMessageRepo.findById(messageId);
             if (message === null) {
-                throw new Error('NOT_FOUND: Message not found');
+                throw new ApiError(404, 'Message not found');
             }
 
             const channelId = message.channelId.toString();

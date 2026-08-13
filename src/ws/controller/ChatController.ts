@@ -46,6 +46,7 @@ import { EmbedService } from '@/services/EmbedService';
 import { assertWsNotMuted } from '@/utils/mute';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertWsNotWarned } from '@/utils/warning';
+import { ApiError } from '@/utils/ApiError';
 
 /**
  * Controller for handling direct message events
@@ -92,7 +93,7 @@ export class ChatController {
         ws?: WebSocket,
     ): Promise<IMessageDmSentEvent['payload']> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const {
@@ -111,7 +112,7 @@ export class ChatController {
 
         const receiverUser = await this.userRepo.findById(receiverId);
         if (!receiverUser) {
-            throw new Error('NOT_FOUND: Receiver not found');
+            throw new ApiError(404, 'Receiver not found');
         }
 
         const receiverUsername = receiverUser.username ?? '';
@@ -120,11 +121,11 @@ export class ChatController {
             (await this.friendshipRepo.areFriends(senderId, receiverId)) ===
             false
         ) {
-            throw new Error('FORBIDDEN: Not friends with receiver');
+            throw new ApiError(403, 'Not friends with receiver');
         }
 
         if (senderId === receiverId) {
-            throw new Error('FORBIDDEN: Cannot message yourself');
+            throw new ApiError(403, 'Cannot message yourself');
         }
 
         let repliedToMessage = null;
@@ -319,7 +320,7 @@ export class ChatController {
         ws?: WebSocket,
     ): Promise<IMessageDmEditedEvent['payload']> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { messageId, text } = payload;
@@ -330,16 +331,16 @@ export class ChatController {
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
-            throw new Error('NOT_FOUND: Message not found');
+            throw new ApiError(404, 'Message not found');
         }
 
         if (message.senderId.toString() !== userId) {
-            throw new Error('FORBIDDEN: Can only edit your own messages');
+            throw new ApiError(403, 'Can only edit your own messages');
         }
 
         const updated = await this.messageRepo.update(messageId, text);
         if (!updated) {
-            throw new Error('INTERNAL_ERROR: Failed to update message');
+            throw new ApiError(500, 'Failed to update message');
         }
 
         logger.info(
@@ -399,7 +400,7 @@ export class ChatController {
         ws?: WebSocket,
     ): Promise<{ success: boolean }> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { messageId } = payload;
@@ -407,11 +408,11 @@ export class ChatController {
 
         const message = await this.messageRepo.findById(messageId);
         if (!message) {
-            throw new Error('NOT_FOUND: Message not found');
+            throw new ApiError(404, 'Message not found');
         }
 
         if (message.senderId.toString() !== userId) {
-            throw new Error('FORBIDDEN: Can only delete your own messages');
+            throw new ApiError(403, 'Can only delete your own messages');
         }
 
         await this.messageRepo.delete(messageId);
@@ -462,7 +463,7 @@ export class ChatController {
         authenticatedUser?: IWsUser,
     ): Promise<{ success: boolean }> {
         if (authenticatedUser === undefined) {
-            throw new Error('UNAUTHORIZED: Authentication required');
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { peerId } = payload;

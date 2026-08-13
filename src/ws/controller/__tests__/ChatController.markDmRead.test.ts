@@ -107,6 +107,9 @@ describe('mark_dm_read requires a real conversation', () => {
     it('rejects an unauthenticated caller', async () => {
         await expect(
             controller.onMarkDmRead({ peerId: PEER_ID }, undefined),
-        ).rejects.toThrow('UNAUTHORIZED');
+        ).rejects.toMatchObject({
+            status: 401,
+            message: 'Authentication required',
+        });
     });
 });

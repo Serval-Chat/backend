@@ -41,7 +41,10 @@ describe('AuthController re-authentication', () => {
                 undefined,
                 socket,
             ),
-        ).rejects.toThrow('AUTHENTICATION_FAILED: Already authenticated');
+        ).rejects.toMatchObject({
+            status: 401,
+            message: 'Already authenticated',
+        });
     });
 
     it('does not touch connection state when it rejects', async () => {
@@ -72,6 +75,9 @@ describe('AuthController re-authentication', () => {
                 undefined,
                 socket,
             ),
-        ).rejects.toThrow('AUTHENTICATION_FAILED: Invalid or expired token');
+        ).rejects.toMatchObject({
+            status: 401,
+            message: 'Invalid or expired token',
+        });
     });
 });
