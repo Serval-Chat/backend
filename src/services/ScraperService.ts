@@ -14,6 +14,8 @@ import {
     ScraperSuccessResult,
 } from '@/types/scraper';
 
+const SCRAPER_JOB_TIMEOUT_MS = 10_000;
+
 @injectable()
 export class ScraperService implements OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(ScraperService.name);
@@ -34,6 +36,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
         {
             resolve: (value: ScraperSuccessResult) => void;
             reject: (reason?: unknown) => void;
+            timer: NodeJS.Timeout;
         }
     >();
 
@@ -135,9 +138,20 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
         const envelope: IWsEnvelope<TEvent> = { id, event };
 
         return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                this.pendingRequests.delete(id);
+                reject(
+                    new Error(
+                        `Scraper job timed out after ${SCRAPER_JOB_TIMEOUT_MS}ms`,
+                    ),
+                );
+            }, SCRAPER_JOB_TIMEOUT_MS);
+            timer.unref();
+
             this.pendingRequests.set(id, {
                 resolve: (value) => resolve(value as TResult),
                 reject,
+                timer,
             });
 
             try {
@@ -145,6 +159,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
                     this.ws.send(JSON.stringify(envelope));
                 }
             } catch (err) {
+                clearTimeout(timer);
                 this.pendingRequests.delete(id);
                 reject(err);
             }
@@ -182,6 +197,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
         }
 
         this.pendingRequests.delete(replyTo);
+        clearTimeout(pending.timer);
 
         if (envelope.event.type === 'JobSuccess') {
             this.logger.debug(
@@ -226,6 +242,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
 
     private rejectAllPending(error: Error): void {
         for (const pending of this.pendingRequests.values()) {
+            clearTimeout(pending.timer);
             pending.reject(error);
         }
         this.pendingRequests.clear();

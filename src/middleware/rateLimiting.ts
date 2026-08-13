@@ -339,3 +339,19 @@ export const apiFloorLimiter = rateLimit({
     legacyHeaders: false,
     message: 'Too many requests, please slow down.',
 });
+
+export const EMBED_PROXY_WINDOW_MS = 60_000;
+export const EMBED_PROXY_MAX = 200;
+
+export const embedProxyLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:embed-proxy:') }
+        : {}),
+    windowMs: EMBED_PROXY_WINDOW_MS,
+    max: EMBED_PROXY_MAX,
+    keyGenerator: (req: Request) =>
+        ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip'),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many embed proxy requests, please slow down.',
+});

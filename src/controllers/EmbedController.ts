@@ -13,15 +13,57 @@ import {
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { ScraperService } from '@/services/ScraperService';
 import crypto from 'crypto';
+import { pipeline } from 'node:stream/promises';
+import { Readable } from 'node:stream';
 
 const CACHE_FILE_RE = /^[a-f0-9]{32}\.webp$/;
 const CACHE_CONTENT_TYPE = 'image/webp';
+const UPSTREAM_TIMEOUT_MS = 5_000;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const RESOLVED_IMAGE_TTL_SECONDS = 60 * 60 * 24;
 
 function setImageHeaders(res: Response): void {
     res.setHeader('Content-Type', CACHE_CONTENT_TYPE);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Disposition', 'inline; filename="image.webp"');
     res.setHeader('Cache-Control', 'public, max-age=86400');
+}
+
+function oversized(response: {
+    headers: { get: (name: string) => string | null };
+}): boolean {
+    const declared = Number(response.headers.get('content-length'));
+    return Number.isFinite(declared) && declared > MAX_IMAGE_BYTES;
+}
+
+async function streamImage(
+    body: NonNullable<Awaited<ReturnType<typeof fetch>>['body']>,
+    res: Response,
+): Promise<void> {
+    let written = 0;
+    const capped = new Readable({
+        read() {},
+    });
+
+    const pump = (async () => {
+        try {
+            for await (const chunk of body) {
+                written += chunk.length;
+                if (written > MAX_IMAGE_BYTES) {
+                    capped.destroy(
+                        new Error('Upstream image exceeded the size limit'),
+                    );
+                    return;
+                }
+                capped.push(chunk);
+            }
+            capped.push(null);
+        } catch (err) {
+            capped.destroy(err as Error);
+        }
+    })();
+
+    await Promise.all([pipeline(capped, res), pump]);
 }
 
 @ApiTags('Embed')
@@ -59,7 +101,9 @@ export class EmbedController {
         const internalUrl = `http://${SCRAPER_HOST}:${SCRAPER_PORT}/cache/${file}`;
 
         try {
-            const response = await fetch(internalUrl);
+            const response = await fetch(internalUrl, {
+                signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+            });
             if (!response.ok) {
                 this.logger.error(
                     `Failed to fetch image from scraper (${internalUrl}): ${response.status}`,
@@ -68,18 +112,28 @@ export class EmbedController {
                 return;
             }
 
+            if (oversized(response)) {
+                this.logger.error(
+                    `Scraper cache image exceeds the size limit: ${file}`,
+                );
+                res.status(502).send('Upstream image too large');
+                return;
+            }
+
             setImageHeaders(res);
 
-            const body = response.body;
-            if (body) {
-                for await (const chunk of body) {
-                    res.write(chunk);
-                }
+            if (response.body) {
+                await streamImage(response.body, res);
+            } else {
+                res.end();
             }
-            res.end();
         } catch (err) {
             this.logger.error(`Failed to proxy embed image: ${file}`, err);
-            res.status(500).send('Internal Server Error');
+            if (!res.headersSent) {
+                res.status(500).send('Internal Server Error');
+            } else {
+                res.destroy();
+            }
         }
     }
 
@@ -109,7 +163,17 @@ export class EmbedController {
             return;
         }
 
+        const redis = this.redisService.getClient();
+        const resolvedKey = `proxy:image:${hash}`;
+
         try {
+            const cachedFile = await redis.get(resolvedKey);
+            if (cachedFile !== null && CACHE_FILE_RE.test(cachedFile)) {
+                const served = await this.serveCacheFile(cachedFile, res);
+                if (served) return;
+                await redis.del(resolvedKey);
+            }
+
             const scrapeResult = await this.scraperService.scrape(url);
 
             if (scrapeResult.image === undefined || scrapeResult.image === '') {
@@ -128,29 +192,57 @@ export class EmbedController {
                 return;
             }
 
-            const internalUrl = `http://${SCRAPER_HOST}:${SCRAPER_PORT}/cache/${scrapeResult.image}`;
-            const response = await fetch(internalUrl);
+            await redis.set(
+                resolvedKey,
+                scrapeResult.image,
+                'EX',
+                RESOLVED_IMAGE_TTL_SECONDS,
+            );
 
-            if (!response.ok) {
-                this.logger.error(
-                    `Failed to fetch image from scraper cache (${internalUrl}): ${response.status}`,
-                );
-                res.status(response.status).send('Image not found in cache');
-                return;
+            if (!(await this.serveCacheFile(scrapeResult.image, res))) {
+                res.status(502).send('Image not found in cache');
             }
-
-            setImageHeaders(res);
-
-            const body = response.body;
-            if (body) {
-                for await (const chunk of body) {
-                    res.write(chunk);
-                }
-            }
-            res.end();
         } catch (err) {
             this.logger.error(`Failed to proxy URL: ${url}`, err);
-            res.status(500).send('Internal Server Error');
+            if (!res.headersSent) {
+                res.status(500).send('Internal Server Error');
+            } else {
+                res.destroy();
+            }
         }
+    }
+
+    private async serveCacheFile(
+        file: string,
+        res: Response,
+    ): Promise<boolean> {
+        const internalUrl = `http://${SCRAPER_HOST}:${SCRAPER_PORT}/cache/${file}`;
+        const response = await fetch(internalUrl, {
+            signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        });
+
+        if (!response.ok) {
+            this.logger.error(
+                `Failed to fetch image from scraper cache (${internalUrl}): ${response.status}`,
+            );
+            return false;
+        }
+
+        if (oversized(response)) {
+            this.logger.error(
+                `Scraper cache image exceeds the size limit: ${file}`,
+            );
+            res.status(502).send('Upstream image too large');
+            return true;
+        }
+
+        setImageHeaders(res);
+
+        if (response.body) {
+            await streamImage(response.body, res);
+        } else {
+            res.end();
+        }
+        return true;
     }
 }

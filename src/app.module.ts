@@ -56,6 +56,7 @@ import { ApplicationController } from './controllers/ApplicationController';
 import { DecorationController } from './controllers/DecorationController';
 import {
     botTokenLimiter,
+    embedProxyLimiter,
     discoverySearchLimiter,
     discoverySettingsLimiter,
     gifTagBulkLimiter,
@@ -234,6 +235,13 @@ export class AppModule {
                 method: RequestMethod.GET,
             },
         );
+
+        consumer
+            .apply(embedProxyLimiter)
+            .forRoutes(
+                { path: 'api/v1/embed/proxy', method: RequestMethod.GET },
+                { path: 'api/v1/embed/proxy-image', method: RequestMethod.GET },
+            );
 
         consumer.apply(discoverySearchLimiter).forRoutes({
             path: 'api/v1/discovery/servers',
