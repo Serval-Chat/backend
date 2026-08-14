@@ -158,17 +158,9 @@ export class ServerController {
     ) {
         const redis = this.redisService.getClient();
 
-        // use both scoped and legacy keys for cleanup during transition.
-        const scopedVoiceKey = `voice_channel:${serverId}:${channelId}`;
-        const legacyVoiceKey = `voice_channel:${channelId}`;
-        const scopedHkey = `voice_states:${serverId}:${channelId}`;
-        const legacyHkey = `voice_states:${channelId}`;
-
         await Promise.all([
-            redis.srem(scopedVoiceKey, userId),
-            redis.srem(legacyVoiceKey, userId),
-            redis.hdel(scopedHkey, userId),
-            redis.hdel(legacyHkey, userId),
+            redis.srem(`voice_channel:${serverId}:${channelId}`, userId),
+            redis.hdel(`voice_states:${serverId}:${channelId}`, userId),
             redis.del(`user_voice:${userId}`),
         ]);
 
@@ -177,26 +169,59 @@ export class ServerController {
             payload: { serverId, channelId, userId },
         });
 
-        // cleanup empty keys.
-        const [remScoped, remLegacy] = await Promise.all([
-            redis.scard(scopedVoiceKey),
-            redis.scard(legacyVoiceKey),
-        ]);
-
-        if (remScoped === 0) await redis.del(scopedVoiceKey);
-        if (remLegacy === 0) await redis.del(legacyVoiceKey);
-
-        const [remHScoped, remHLegacy] = await Promise.all([
-            redis.hlen(scopedHkey),
-            redis.hlen(legacyHkey),
-        ]);
-
-        if (remHScoped === 0) await redis.del(scopedHkey);
-        if (remHLegacy === 0) await redis.del(legacyHkey);
-
         logger.debug(
             `[ServerController] User ${userId} left voice channel ${channelId} (Server: ${serverId})`,
         );
+    }
+
+    private slowModeRejection(remainingMs: number): ApiError {
+        const remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
+        return new ApiError(
+            403,
+            ErrorMessages.MESSAGE.SLOW_MODE.replace(
+                '%s',
+                `${remainingSeconds}s`,
+            ),
+        );
+    }
+
+    private async assertSlowModeAllows(
+        channelId: string,
+        userId: string,
+        cooldownMs: number,
+    ): Promise<void> {
+        if (cooldownMs <= 0) return;
+
+        const key = `slowmode:${channelId}:${userId}`;
+
+        try {
+            const redis = this.redisService.getClient();
+            const claimed = await redis.set(key, '1', 'PX', cooldownMs, 'NX');
+            if (claimed !== null) return;
+
+            const remainingMs = await redis.pttl(key);
+            throw this.slowModeRejection(
+                remainingMs > 0 ? remainingMs : cooldownMs,
+            );
+        } catch (err) {
+            if (err instanceof ApiError) throw err;
+
+            logger.error(
+                `[ServerController] Slow-mode claim failed, falling back to the message history: ${(err as Error).message}`,
+            );
+
+            const lastMessage =
+                await this.serverMessageRepo.findLastByChannelAndUser(
+                    channelId,
+                    userId,
+                );
+            if (!lastMessage) return;
+
+            const elapsed = Date.now() - lastMessage.createdAt.getTime();
+            if (elapsed < cooldownMs) {
+                throw this.slowModeRejection(cooldownMs - elapsed);
+            }
+        }
     }
 
     private async requireServerMember(
@@ -702,28 +727,11 @@ export class ServerController {
             );
 
             if (!hasBypass) {
-                const lastMessage =
-                    await this.serverMessageRepo.findLastByChannelAndUser(
-                        channelId,
-                        userId,
-                    );
-
-                if (lastMessage) {
-                    const cooldownMs = (channel.slowMode ?? 0) * 1000;
-                    const timeSinceLastMessage =
-                        Date.now() - lastMessage.createdAt.getTime();
-
-                    if (timeSinceLastMessage < cooldownMs) {
-                        const remainingSeconds = Math.ceil(
-                            (cooldownMs - timeSinceLastMessage) / 1000,
-                        );
-                        const message = ErrorMessages.MESSAGE.SLOW_MODE.replace(
-                            '%s',
-                            `${remainingSeconds}s`,
-                        );
-                        throw new ApiError(403, message);
-                    }
-                }
+                await this.assertSlowModeAllows(
+                    channelId,
+                    userId,
+                    (channel.slowMode ?? 0) * 1000,
+                );
             }
         }
 
