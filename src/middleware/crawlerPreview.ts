@@ -5,6 +5,8 @@ import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { SERVER_URL } from '@/config/env';
+import { isInviteUsable } from '@/utils/invite';
+import { crawlerPreviewLimiter } from '@/middleware/rateLimiting';
 
 /**
  * Middleware to detect Discord crawlers and serve a invite link preview.
@@ -38,44 +40,63 @@ export const discordCrawlerPreview = async (
             return next();
         }
 
-        try {
-            const inviteRepo = container.get<IInviteRepository>(
-                TYPES.InviteRepository,
-            );
-            const serverRepo = container.get<IServerRepository>(
-                TYPES.ServerRepository,
-            );
-            const memberRepo = container.get<IServerMemberRepository>(
-                TYPES.ServerMemberRepository,
-            );
-
-            const invite = await inviteRepo.findByCodeOrCustomPath(inviteCode);
-            if (!invite) {
-                return next();
+        return crawlerPreviewLimiter(req, res, (err?: unknown) => {
+            if (err !== undefined) {
+                next(err);
+                return;
             }
+            void renderInvitePreview(res, next, inviteCode);
+        });
+    }
 
-            const server = await serverRepo.findById(invite.serverId);
-            if (!server) {
-                return next();
-            }
+    next();
+};
 
-            const memberCount = await memberRepo.countByServerId(
-                invite.serverId,
-            );
+async function renderInvitePreview(
+    res: Response,
+    next: NextFunction,
+    inviteCode: string,
+): Promise<void> {
+    try {
+        const inviteRepo = container.get<IInviteRepository>(
+            TYPES.InviteRepository,
+        );
+        const serverRepo = container.get<IServerRepository>(
+            TYPES.ServerRepository,
+        );
+        const memberRepo = container.get<IServerMemberRepository>(
+            TYPES.ServerMemberRepository,
+        );
 
-            const title = escapeHtml(`Join ${server.name}`);
-            const description = escapeHtml(
-                `You've been invited to join ${server.name} on Serchat. Current members: ${memberCount}.`,
-            );
-            const imageUrl = escapeHtml(
-                server.icon !== undefined && server.icon !== ''
-                    ? server.icon
-                    : `${SERVER_URL}/logo.png`,
-            );
-            const url = escapeHtml(`${SERVER_URL}/invite/${inviteCode}`);
-            const themeColor = '#5865F2';
+        const invite = await inviteRepo.findByCodeOrCustomPath(inviteCode);
+        if (!invite) {
+            return next();
+        }
 
-            const html = `<!DOCTYPE html>
+        if (!isInviteUsable(invite)) {
+            return next();
+        }
+
+        const server = await serverRepo.findById(invite.serverId);
+        if (!server) {
+            return next();
+        }
+
+        const memberCount = await memberRepo.countByServerId(invite.serverId);
+
+        const title = escapeHtml(`Join ${server.name}`);
+        const description = escapeHtml(
+            `You've been invited to join ${server.name} on Serchat. Current members: ${memberCount}.`,
+        );
+        const imageUrl = escapeHtml(
+            server.icon !== undefined && server.icon !== ''
+                ? server.icon
+                : `${SERVER_URL}/logo.png`,
+        );
+        const url = escapeHtml(`${SERVER_URL}/invite/${inviteCode}`);
+        const themeColor = '#5865F2';
+
+        const html = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -96,12 +117,10 @@ export const discordCrawlerPreview = async (
 </body>
 </html>`;
 
-            return res.status(200).send(html);
-        } catch (error) {
-            console.error('Crawler preview middleware error:', error);
-            return next();
-        }
+        res.status(200).send(html);
+        return;
+    } catch (error) {
+        console.error('Crawler preview middleware error:', error);
+        return next();
     }
-
-    next();
-};
+}

@@ -77,10 +77,6 @@ export function setupExpressApp(app: Application): Application {
                     defaultSrc: ["'self'"],
                     scriptSrc: [
                         "'self'",
-                        'https://cdn.jsdelivr.net',
-                        'https://cdnjs.cloudflare.com',
-                        'https://unpkg.com',
-                        'https://ajax.googleapis.com',
                         'https://static.cloudflareinsights.com',
                         'https://challenges.cloudflare.com',
                         (_req, res) =>

@@ -97,6 +97,12 @@ export const websocketHandshakesRejectedCounter = new Counter({
     registers: [register],
 });
 
+export const websocketBackpressureDropsCounter = new Counter({
+    name: 'websocket_backpressure_drops_total',
+    help: 'Sockets terminated for exceeding the outbound backpressure threshold',
+    registers: [register],
+});
+
 export const websocketMessagesCounter = new Counter({
     name: 'websocket_messages_total',
     help: 'Total number of WebSocket messages',

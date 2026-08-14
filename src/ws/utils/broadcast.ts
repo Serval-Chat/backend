@@ -3,6 +3,25 @@ import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { IWsEnvelope } from '@/ws/protocol/envelope';
 import * as crypto from 'node:crypto';
 import logger from '@/utils/logger';
+import { websocketBackpressureDropsCounter } from '@/utils/metrics';
+
+export const BACKPRESSURE_THRESHOLD_BYTES = 4 * 1024 * 1024;
+
+function isBackedUp(ws: WebSocket): boolean {
+    if (
+        typeof ws.bufferedAmount !== 'number' ||
+        ws.bufferedAmount <= BACKPRESSURE_THRESHOLD_BYTES
+    ) {
+        return false;
+    }
+
+    logger.warn(
+        `[WsServer] Terminating socket: ${ws.bufferedAmount} bytes buffered, exceeding the ${BACKPRESSURE_THRESHOLD_BYTES} byte threshold`,
+    );
+    websocketBackpressureDropsCounter.inc();
+    ws.terminate();
+    return true;
+}
 
 /**
  * Creates an envelope for a WebSocket message.
@@ -36,6 +55,7 @@ export function send(
     replyTo?: string,
 ): void {
     if (ws.readyState !== ws.OPEN) return;
+    if (isBackedUp(ws)) return;
 
     const envelope = createEnvelope(event, replyTo);
     ws.send(JSON.stringify(envelope), (err) => {
@@ -62,7 +82,7 @@ export function sendToMany(
     const message = JSON.stringify(envelope);
 
     for (const ws of sockets) {
-        if (ws.readyState === ws.OPEN) {
+        if (ws.readyState === ws.OPEN && !isBackedUp(ws)) {
             ws.send(message, (err) => {
                 if (err) {
                     logger.warn(

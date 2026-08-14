@@ -355,3 +355,19 @@ export const embedProxyLimiter = rateLimit({
     legacyHeaders: false,
     message: 'Too many embed proxy requests, please slow down.',
 });
+
+export const CRAWLER_PREVIEW_WINDOW_MS = 60_000;
+export const CRAWLER_PREVIEW_MAX = 30;
+
+export const crawlerPreviewLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:crawler-preview:') }
+        : {}),
+    windowMs: CRAWLER_PREVIEW_WINDOW_MS,
+    max: CRAWLER_PREVIEW_MAX,
+    keyGenerator: (req: Request) =>
+        ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip'),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many invite preview requests, please slow down.',
+});
