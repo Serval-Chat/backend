@@ -1,12 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
     IsArray,
+    IsBoolean,
     IsEnum,
-    IsOptional,
     IsObject,
+    IsOptional,
     IsInt,
     IsPositive,
+    ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { AdminPermissions, ProfileFieldDTO } from './common.request.dto';
 import { IsReason, IsMessageContent } from '@/validation/schemas/common';
 
@@ -24,10 +27,60 @@ export class AdminSoftDeleteUserRequestDTO {
     public reason?: string;
 }
 
-export class AdminUpdateUserPermissionsRequestDTO {
+export class AdminPermissionsDTO implements AdminPermissions {
+    [key: string]: boolean;
+
     @ApiProperty()
+    @IsBoolean()
+    public adminAccess!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public viewUsers!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public manageUsers!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public manageBadges!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public banUsers!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public viewBans!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public warnUsers!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public viewLogs!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public manageServer!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public manageInvites!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
+    public manageBots!: boolean;
+}
+
+export class AdminUpdateUserPermissionsRequestDTO {
+    @ApiProperty({ type: AdminPermissionsDTO })
     @IsObject()
-    public permissions!: AdminPermissions;
+    @ValidateNested()
+    @Type(() => AdminPermissionsDTO)
+    public permissions!: AdminPermissionsDTO;
 }
 
 export class AdminBanUserRequestDTO {

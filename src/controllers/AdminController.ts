@@ -877,6 +877,7 @@ export class AdminController {
 
         const response = new AdminUpdateUserPermissionsResponseDTO();
         response.message = 'Permissions updated';
+        response.permissions = permissions;
         return response;
     }
 

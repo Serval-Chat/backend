@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsMongoId, IsString } from 'class-validator';
 import { AdminBanHistoryItemDTO } from './types.dto';
+import { AdminPermissionsDTO } from './admin-user-actions.request.dto';
 
 export class AdminResetProfileResponseDTO {
     @ApiProperty()
@@ -39,6 +40,9 @@ export class AdminHardDeleteUserResponseDTO {
 export class AdminUpdateUserPermissionsResponseDTO {
     @ApiProperty()
     public message!: string;
+
+    @ApiProperty({ type: AdminPermissionsDTO })
+    public permissions!: AdminPermissionsDTO;
 }
 
 export class AdminBanUserResponseDTO {
