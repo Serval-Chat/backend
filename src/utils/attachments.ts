@@ -137,6 +137,31 @@ function getOriginalFilename(storedFilename: string): string {
         : storedFilename;
 }
 
+const SVG_MIME_TYPE = 'image/svg+xml';
+const SVG_SNIFF_BYTES = 4096;
+
+async function readSample(filePath: string, size: number): Promise<Buffer> {
+    const sampleSize = Math.min(SVG_SNIFF_BYTES, size);
+    const handle = await fsPromises.open(filePath, 'r');
+    const sample = Buffer.alloc(sampleSize);
+    try {
+        await handle.read(sample, 0, sampleSize, 0);
+    } finally {
+        await handle.close();
+    }
+    return sample;
+}
+
+export function containsSvgMarkup(sample: Buffer): boolean {
+    const head = sample
+        .toString('utf8')
+        .replace(/^\uFEFF/, '')
+        .slice(0, SVG_SNIFF_BYTES);
+
+    if (/<svg[\s/>]/i.test(head)) return true;
+    return /<\?xml[\s\S]*?<svg[\s/>]/i.test(head);
+}
+
 function getAttachmentType(
     mimeType: string,
     sample: Buffer,
@@ -192,32 +217,31 @@ export async function buildAttachmentMetadata(
     const originalName = getOriginalFilename(safeFilename);
     const extension = originalName.split('.').pop()?.toLowerCase();
 
-    if (extension === 'svg') {
+    let stats = await fsPromises.stat(filePath);
+    let sample = await readSample(filePath, stats.size);
+
+    if (containsSvgMarkup(sample)) {
         const raw = await fsPromises.readFile(filePath, 'utf8');
         await fsPromises.writeFile(filePath, sanitizeSvg(raw), 'utf8');
+        stats = await fsPromises.stat(filePath);
+        sample = await readSample(filePath, stats.size);
     }
 
-    let stats = await fsPromises.stat(filePath);
     const originalMimeType = mime.lookup(originalName);
     const storedMimeType = mime.lookup(safeFilename);
     const detectedMimeType =
         originalMimeType !== false ? originalMimeType : storedMimeType;
     const trimmedMimeType =
         detectedMimeType !== false ? detectedMimeType.trim() : '';
-    const mimeType =
+    const declaredMimeType =
         extension !== undefined && TYPESCRIPT_EXTENSIONS.has(extension)
             ? 'text/typescript'
             : trimmedMimeType !== ''
               ? trimmedMimeType
               : 'application/octet-stream';
-    const sampleSize = Math.min(4096, stats.size);
-    const handle = await fsPromises.open(filePath, 'r');
-    const sample = Buffer.alloc(sampleSize);
-    try {
-        await handle.read(sample, 0, sampleSize, 0);
-    } finally {
-        await handle.close();
-    }
+    const mimeType = containsSvgMarkup(sample)
+        ? SVG_MIME_TYPE
+        : declaredMimeType;
 
     const type = getAttachmentType(mimeType, sample);
     const attachment: IMessageAttachment = {

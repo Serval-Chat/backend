@@ -2,7 +2,6 @@ import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
-import type { Request as ExpressRequest } from 'express';
 
 export const genericFileUploadLimits: NonNullable<MulterOptions['limits']> = {
     fileSize: 60 * 1024 * 1024 + 1, // +1 to avoid edge-case rejection at exactly 60MiB
@@ -50,20 +49,6 @@ export const storage = multer.diskStorage({
         const secureFilename = generateSecureFilename(file.originalname);
         cb(null, secureFilename);
     },
-});
-
-function fileFilter(
-    req: ExpressRequest,
-    file: Express.Multer.File,
-    cb: multer.FileFilterCallback,
-) {
-    cb(null, true);
-}
-
-export const upload = multer({
-    storage,
-    limits: genericFileUploadLimits,
-    fileFilter,
 });
 
 export const imageFileFilter: NonNullable<MulterOptions['fileFilter']> = (
