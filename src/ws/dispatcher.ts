@@ -326,7 +326,7 @@ export class WsDispatcher {
                         envelope,
                         'MALFORMED_MESSAGE',
                         'Validation failed',
-                        result.error.issues,
+                        { issues: result.error.issues },
                     );
                     return;
                 }
@@ -708,7 +708,10 @@ export class WsDispatcher {
             type: 'error',
             payload: {
                 code: code as WsErrorCode,
-                details: { message, ...(details as object) },
+                details:
+                    details === undefined
+                        ? { message }
+                        : { message, data: details },
             },
         };
 
