@@ -13,6 +13,7 @@ import { METRICS_TOKEN, PROJECT_LEVEL, FRONTEND_URL } from '@/config/env';
 import routes from '@/routes/index';
 import { apiFloorLimiter } from '@/middleware/rateLimiting';
 import { toApiId } from '@/utils/mongooseId';
+import { resolveTrustProxy } from '@/config/trustProxy';
 
 interface ResponseWithLocals extends Response {
     locals: {
@@ -30,15 +31,7 @@ const TAURI_ALLOWED_ORIGINS = [
 /**
  * Resolves the Express `trust proxy` setting.
  */
-export function resolveTrustProxy(
-    value: string | undefined,
-): boolean | number | string {
-    if (value === undefined || value === '') return false;
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    if (/^\d+$/.test(value)) return parseInt(value, 10);
-    return value;
-}
+export { resolveTrustProxy } from '@/config/trustProxy';
 
 // Configures an existing Express application with standard middleware and routes
 export function setupExpressApp(app: Application): Application {

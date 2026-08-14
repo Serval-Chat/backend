@@ -91,6 +91,12 @@ export const websocketConnectionsGauge = new Gauge({
     registers: [register],
 });
 
+export const websocketHandshakesRejectedCounter = new Counter({
+    name: 'websocket_handshakes_rejected_total',
+    help: 'WebSocket upgrade requests refused by the per-source handshake limit',
+    registers: [register],
+});
+
 export const websocketMessagesCounter = new Counter({
     name: 'websocket_messages_total',
     help: 'Total number of WebSocket messages',

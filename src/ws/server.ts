@@ -13,6 +13,7 @@ import {
     wsMsgSizeBytesHistogram,
     wsErrorsTotalCounter,
     chatRoomsActiveGauge,
+    websocketHandshakesRejectedCounter,
 } from '@/utils/metrics';
 import type { IWsEnvelope, AnyResponseWsEvent } from './protocol/envelope';
 import { send, sendToMany } from './utils/broadcast';
@@ -23,6 +24,8 @@ import type { PermissionService } from '@/permissions/PermissionService';
 import { isPermissionKey } from '@/permissions/types';
 
 import type { IWsServer } from './interfaces/IWsServer';
+import { sourceAddress } from './upgradeSource';
+import { resolveTrustProxy } from '@/config/trustProxy';
 
 const wsTracer = trace.getTracer('serval-ws-gateway');
 
@@ -126,6 +129,14 @@ export class WsServer extends EventEmitter implements IWsServer {
     private authTimeouts = new WeakMap<WebSocket, NodeJS.Timeout>();
     private authAttempts = new WeakMap<WebSocket, number>();
     private static readonly MAX_AUTH_ATTEMPTS = 3;
+
+    private socketSources = new WeakMap<WebSocket, string>();
+    private handshakeFallback = new Map<
+        string,
+        { count: number; resetAt: number }
+    >();
+    private static readonly MAX_HANDSHAKES_PER_SOURCE = 30;
+    private static readonly HANDSHAKE_WINDOW_MS = 60_000;
     private readonly AUTH_TIMEOUT_MS = WS_AUTH_TIMEOUT;
     private readonly AUTH_IN_PROGRESS_TIMEOUT_MS = Math.max(
         WS_AUTH_TIMEOUT * 3,
@@ -343,6 +354,8 @@ export class WsServer extends EventEmitter implements IWsServer {
         });
         this.startSocketHeartbeat();
 
+        const trustProxy = resolveTrustProxy(process.env.TRUST_PROXY);
+
         server.on('upgrade', (request, socket, head) => {
             let pathname = '';
             try {
@@ -352,17 +365,32 @@ export class WsServer extends EventEmitter implements IWsServer {
                 pathname = '';
             }
 
-            if (pathname === '/ws' && this.wss !== undefined) {
-                const wss = this.wss;
-                wss.handleUpgrade(request, socket, head, (ws) => {
-                    wss.emit('connection', ws, request);
-                });
-            } else {
+            if (pathname !== '/ws' || this.wss === undefined) {
                 socket.write(
                     'HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n',
                 );
                 socket.destroy();
+                return;
             }
+
+            const source = sourceAddress(request, trustProxy);
+            const wss = this.wss;
+
+            void this.allowHandshake(source).then((allowed) => {
+                if (!allowed) {
+                    websocketHandshakesRejectedCounter.inc();
+                    socket.write(
+                        'HTTP/1.1 429 Too Many Requests\r\nRetry-After: 60\r\nConnection: close\r\n\r\n',
+                    );
+                    socket.destroy();
+                    return;
+                }
+
+                wss.handleUpgrade(request, socket, head, (ws) => {
+                    this.socketSources.set(ws, source);
+                    wss.emit('connection', ws, request);
+                });
+            });
         });
 
         this.wss.on('connection', (ws: WebSocket) => {
@@ -372,7 +400,7 @@ export class WsServer extends EventEmitter implements IWsServer {
             websocketConnectionsGauge.inc();
 
             // Register connection with dispatcher for unique ID assignment
-            this.dispatcher.registerConnection(ws);
+            this.dispatcher.registerConnection(ws, this.socketSources.get(ws));
             const socketId = this.assignSocketId(ws);
             this.socketsById.set(socketId, ws);
 
@@ -485,6 +513,46 @@ export class WsServer extends EventEmitter implements IWsServer {
         });
 
         logger.info('[WsServer] WebSocket server initialized on /ws');
+    }
+
+    public getSocketSource(ws: WebSocket): string | undefined {
+        return this.socketSources.get(ws);
+    }
+
+    private async allowHandshake(source: string): Promise<boolean> {
+        const key = `ws:handshake:${source}`;
+        try {
+            const client = this.redisService.getClient();
+            const count = await client.incr(key);
+            if (count === 1) {
+                await client.pexpire(key, WsServer.HANDSHAKE_WINDOW_MS);
+            }
+            return count <= WsServer.MAX_HANDSHAKES_PER_SOURCE;
+        } catch (err) {
+            logger.error(
+                '[WsServer] Handshake limit check failed, using in-memory fallback:',
+                err,
+            );
+
+            const now = Date.now();
+            let entry = this.handshakeFallback.get(source);
+            if (entry === undefined || now > entry.resetAt) {
+                entry = {
+                    count: 0,
+                    resetAt: now + WsServer.HANDSHAKE_WINDOW_MS,
+                };
+            }
+            entry.count += 1;
+            this.handshakeFallback.set(source, entry);
+
+            if (this.handshakeFallback.size > 10_000) {
+                for (const [key, value] of this.handshakeFallback) {
+                    if (now > value.resetAt) this.handshakeFallback.delete(key);
+                }
+            }
+
+            return entry.count <= WsServer.MAX_HANDSHAKES_PER_SOURCE;
+        }
     }
 
     private startSocketHeartbeat(): void {

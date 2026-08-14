@@ -45,7 +45,7 @@ export class AuthController {
      */
     @Event('authenticate')
     @Validate(AuthenticateSchema)
-    @RateLimit(5, 10000) // 5 authentication attempts per 10s per connection
+    @RateLimit(30, 60000)
     public async onAuthenticate(
         payload: IWsAuthenticateEvent['payload'],
         _authenticatedUser: undefined, // Not authenticated yet

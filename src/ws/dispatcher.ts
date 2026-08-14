@@ -48,6 +48,7 @@ interface ICacheEntry {
 interface IConnectionMetadata {
     id: string;
     connectedAt: number;
+    source?: string;
 }
 
 interface IDispatcherMetrics {
@@ -188,11 +189,18 @@ export class WsDispatcher {
     /**
      * Assigns a unique identifier to a WebSocket connection.
      */
-    public registerConnection(ws: WebSocket): void {
+    public registerConnection(ws: WebSocket, source?: string): void {
         this.connectionMetadata.set(ws, {
             id: crypto.randomUUID(),
             connectedAt: Date.now(),
+            source,
         });
+    }
+
+    public getPreAuthKey(ws: WebSocket): string {
+        const source = this.connectionMetadata.get(ws)?.source;
+        if (source !== undefined && source !== '') return `src:${source}`;
+        return `anon:${this.getConnectionId(ws)}`;
     }
 
     /**
@@ -283,9 +291,8 @@ export class WsDispatcher {
             );
             if (rateLimitConfig !== undefined) {
                 const { points, duration } = rateLimitConfig;
-                const connectionId = this.getConnectionId(ws);
                 const userId =
-                    authenticatedUser?.userId ?? `anon:${connectionId}`;
+                    authenticatedUser?.userId ?? this.getPreAuthKey(ws);
                 const rateLimitKey = `${userId}:${envelope.event.type}`;
 
                 const isAllowed = await this.checkRateLimit(
