@@ -427,9 +427,9 @@ export class ServerController {
         payload: ILeaveServerEvent['payload'],
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
-    ): Promise<void> {
+    ): Promise<{ success: boolean }> {
         if (!authenticatedUser || !ws) {
-            return;
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { serverId } = payload;
@@ -437,6 +437,8 @@ export class ServerController {
         logger.debug(
             `[ServerController] User ${authenticatedUser.userId} left server ${serverId}`,
         );
+
+        return { success: true };
     }
 
     /**
@@ -481,9 +483,9 @@ export class ServerController {
         payload: ILeaveChannelEvent['payload'],
         authenticatedUser?: IWsUser,
         ws?: WebSocket,
-    ): Promise<void> {
+    ): Promise<{ success: boolean }> {
         if (!authenticatedUser || !ws) {
-            return;
+            throw new ApiError(401, 'Authentication required');
         }
 
         const { channelId } = payload;
@@ -491,6 +493,8 @@ export class ServerController {
         logger.debug(
             `[ServerController] User ${authenticatedUser.userId} left channel ${channelId}`,
         );
+
+        return { success: true };
     }
 
     @Event('join_voice')

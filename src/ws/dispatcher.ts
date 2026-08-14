@@ -45,6 +45,8 @@ interface ICacheEntry {
     expiresAt: number;
 }
 
+export const DEFAULT_HANDLER_TIMEOUT_MS = 10_000;
+
 interface IConnectionMetadata {
     id: string;
     connectedAt: number;
@@ -455,11 +457,15 @@ export class WsDispatcher {
         ws?: WebSocket,
     ): Promise<unknown> {
         const target = instance.constructor.prototype;
-        const timeoutMs = Reflect.getMetadata(
+        const declared = Reflect.getMetadata(
             WS_TIMEOUT_METADATA,
             target,
             method,
         );
+        const timeoutMs =
+            typeof declared === 'number'
+                ? declared
+                : DEFAULT_HANDLER_TIMEOUT_MS;
 
         const handlerMethod = (instance as Record<string, Function>)[method];
         if (typeof handlerMethod !== 'function') {
@@ -468,43 +474,33 @@ export class WsDispatcher {
 
         const abortController = new AbortController();
 
-        if (timeoutMs !== undefined) {
-            let timeoutTimer: NodeJS.Timeout | undefined;
-            const timeoutPromise = new Promise((_, reject) => {
-                timeoutTimer = setTimeout(() => {
-                    abortController.abort();
-                    reject(new Error('TIMEOUT'));
-                }, timeoutMs);
-            });
+        let timeoutTimer: NodeJS.Timeout | undefined;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutTimer = setTimeout(() => {
+                abortController.abort();
+                reject(new Error('TIMEOUT'));
+            }, timeoutMs);
+        });
 
-            const handlerPromise = Promise.resolve(
-                handlerMethod.call(
-                    instance,
-                    envelope.event.payload,
-                    authenticatedUser,
-                    ws,
-                    abortController.signal,
-                ),
-            );
+        const handlerPromise = Promise.resolve(
+            handlerMethod.call(
+                instance,
+                envelope.event.payload,
+                authenticatedUser,
+                ws,
+                abortController.signal,
+            ),
+        );
 
-            handlerPromise.catch(() => undefined);
+        handlerPromise.catch(() => undefined);
 
-            try {
-                return await Promise.race([handlerPromise, timeoutPromise]);
-            } finally {
-                if (timeoutTimer !== undefined) {
-                    clearTimeout(timeoutTimer);
-                }
+        try {
+            return await Promise.race([handlerPromise, timeoutPromise]);
+        } finally {
+            if (timeoutTimer !== undefined) {
+                clearTimeout(timeoutTimer);
             }
         }
-
-        return await handlerMethod.call(
-            instance,
-            envelope.event.payload,
-            authenticatedUser,
-            ws,
-            abortController.signal,
-        );
     }
 
     /**
