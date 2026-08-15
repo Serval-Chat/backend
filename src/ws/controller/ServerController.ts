@@ -164,10 +164,18 @@ export class ServerController {
             redis.del(`user_voice:${userId}`),
         ]);
 
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'user_left_voice',
-            payload: { serverId, channelId, userId },
-        });
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'user_left_voice',
+                payload: { serverId, channelId, userId },
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'viewChannels',
+            },
+        );
 
         logger.debug(
             `[ServerController] User ${userId} left voice channel ${channelId} (Server: ${serverId})`,
@@ -563,10 +571,18 @@ export class ServerController {
             userId,
         };
 
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'user_joined_voice',
-            payload: broadcastPayload,
-        });
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'user_joined_voice',
+                payload: broadcastPayload,
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'viewChannels',
+            },
+        );
 
         const hkey = `voice_states:${serverId}:${channelId}`;
         const participants = await redis.smembers(voiceKey);
@@ -656,10 +672,18 @@ export class ServerController {
             isDeafened,
         };
 
-        this.wsServer.broadcastToServer(serverId, {
-            type: 'voice_state_updated',
-            payload: broadcastPayload,
-        });
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'voice_state_updated',
+                payload: broadcastPayload,
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'viewChannels',
+            },
+        );
 
         return { success: true };
     }

@@ -69,7 +69,9 @@ function controllerWith(redis: unknown) {
         ServerController.prototype,
     ) as ServerController;
     (controller as any).redisService = { getClient: () => redis };
-    (controller as any).wsServer = { broadcastToServer: jest.fn() };
+    (controller as any).wsServer = {
+        broadcastToServerWithPermission: jest.fn().mockResolvedValue(undefined),
+    };
     return controller;
 }
 
