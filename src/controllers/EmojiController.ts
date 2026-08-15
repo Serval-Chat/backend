@@ -51,6 +51,7 @@ export class EmojiController {
     }
 
     @Get(':emojiId')
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Get a specific emoji by ID' })
     @ApiResponse({ status: 200, type: EmojiResponseDTO })
     @ApiResponse({ status: 404, description: 'Emoji Not Found' })

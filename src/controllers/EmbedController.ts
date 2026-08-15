@@ -12,6 +12,7 @@ import {
 } from '@nestjs/swagger';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import { ScraperService } from '@/services/ScraperService';
+import { Public } from '@/modules/auth/public.decorator';
 import crypto from 'crypto';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
@@ -68,6 +69,7 @@ async function streamImage(
 
 @ApiTags('Embed')
 @Controller('api/v1/embed')
+@Public()
 export class EmbedController {
     public constructor(
         @Inject(TYPES.Logger) private logger: ILogger,

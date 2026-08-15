@@ -49,6 +49,7 @@ import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import {
     CreateRoleRequestDTO,
     UpdateRoleRequestDTO,
@@ -743,6 +744,7 @@ export class ServerRoleController {
     }
 
     @Get('icon/:filename')
+    @Public()
     @ApiOperation({ summary: 'Get role icon' })
     @ApiProduces('image/webp', 'image/gif', 'image/png', 'image/jpeg')
     @ApiOkResponse({ type: String, description: 'Role icon image' })

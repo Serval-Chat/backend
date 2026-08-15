@@ -1,5 +1,5 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LoggerModule } from 'nestjs-pino';
@@ -10,7 +10,7 @@ import { DatabaseModule } from './modules/database/database.module';
 import { RepositoryModule } from './modules/repository/repository.module';
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
 import { ServicesModule } from './modules/services/services.module';
-import { AuthModule } from './modules/auth/auth.module';
+import { AuthModule, JwtAuthGuard } from './modules/auth/auth.module';
 import { AuthController } from './controllers/AuthController';
 import { BlockController } from './controllers/BlockController';
 import { AdminController } from './controllers/AdminController';
@@ -185,6 +185,10 @@ import {
         {
             provide: APP_FILTER,
             useClass: ApiErrorFilter,
+        },
+        {
+            provide: APP_GUARD,
+            useClass: JwtAuthGuard,
         },
     ],
 })

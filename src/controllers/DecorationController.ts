@@ -23,6 +23,7 @@ import {
     ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import { Request, Response } from 'express';
 import path from 'path';
 import fs, { promises as fsPromises } from 'fs';
@@ -354,6 +355,7 @@ export class DecorationController {
     }
 
     @Get('file/:id')
+    @Public()
     @ApiOperation({ summary: 'Download decoration file' })
     public async getDecorationFile(
         @Param('id') id: string,

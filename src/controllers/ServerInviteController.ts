@@ -41,6 +41,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import crypto from 'crypto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import { CreateInviteRequestDTO } from './dto/server-invite.request.dto';
 import {
     InviteDetailsResponseDTO,
@@ -336,6 +337,7 @@ export class ServerInviteController {
     }
 
     @Get('invites/:code')
+    @Public()
     @ApiOperation({ summary: 'Get invite details' })
     @ApiResponse({
         status: 200,

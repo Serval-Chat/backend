@@ -38,6 +38,7 @@ import {
     VerifyConnectionResponseDTO,
 } from './dto/profile.extra.response.dto';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import {
@@ -1260,6 +1261,7 @@ export class ProfileController {
     }
 
     @Get('banner/:filename')
+    @Public()
     @ApiOperation({ summary: 'Get profile banner' })
     @ApiProduces('image/webp', 'image/gif', 'image/png', 'image/jpeg')
     @ApiOkResponse({ type: String, description: 'Banner image' })
@@ -2229,6 +2231,7 @@ export class ProfileController {
     }
 
     @Get('picture/:filename')
+    @Public()
     @ApiOperation({ summary: 'Get profile picture' })
     @ApiProduces('image/webp', 'image/gif', 'image/png', 'image/jpeg')
     @ApiOkResponse({ type: String, description: 'Profile picture' })

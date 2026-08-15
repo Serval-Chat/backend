@@ -16,6 +16,7 @@ import { JWT_SECRET } from '@/config/env';
 import * as jwt from 'jsonwebtoken';
 import { JWTPayload } from '@/utils/jwt';
 import { PERMISSIONS_KEY } from './permissions.decorator';
+import { IS_PUBLIC_KEY } from './public.decorator';
 import { IUser } from '@/models/User';
 import { resolveBotAuthPayload } from '@/utils/botAuth';
 import logger from '@/utils/logger';
@@ -29,10 +30,10 @@ export class JwtAuthGuard implements CanActivate {
     ) {}
 
     public async canActivate(context: ExecutionContext): Promise<boolean> {
-        const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
-            context.getHandler(),
-            context.getClass(),
-        ]);
+        const isPublic = this.reflector.getAllAndOverride<boolean>(
+            IS_PUBLIC_KEY,
+            [context.getHandler(), context.getClass()],
+        );
 
         if (isPublic) {
             return true;

@@ -46,6 +46,7 @@ import { TYPES } from '@/di/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import {
     Bot,
     BOT_PERMISSION_KEYS,
@@ -208,6 +209,7 @@ export class BotController {
     }
 
     @Get(':clientId/public')
+    @Public()
     @ApiOperation({ summary: 'Public bot info (no auth)' })
     @ApiOkResponse({ type: BotPublicInfoResponseDTO })
     public async getPublicInfo(@Param('clientId') clientId: string) {

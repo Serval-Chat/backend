@@ -49,6 +49,7 @@ export class StickerController {
     }
 
     @Get(':stickerId')
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Get a specific sticker by ID' })
     @ApiResponse({ status: 200, type: StickerResponseDTO })
     @ApiResponse({ status: 404, description: 'Sticker Not Found' })

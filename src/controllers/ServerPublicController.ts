@@ -22,9 +22,11 @@ import path from 'path';
 import fs from 'fs';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { Request, Response } from 'express';
+import { Public } from '@/modules/auth/public.decorator';
 
 @Controller('api/v1/servers')
 @ApiTags('Servers (Public)')
+@Public()
 export class ServerPublicController {
     private readonly UPLOADS_DIR = path.join(
         process.cwd(),

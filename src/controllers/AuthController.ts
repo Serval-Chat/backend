@@ -64,6 +64,7 @@ import {
 } from './dto/auth.request.dto';
 
 import { NoBot } from '@/modules/auth/bot.decorator';
+import { Public } from '@/modules/auth/public.decorator';
 
 class Mutex {
     private mutex = Promise.resolve();
@@ -103,6 +104,7 @@ export class AuthController {
     }
 
     @Post('login')
+    @Public()
     @HttpCode(HttpStatus.OK)
     @ApiResponse({ status: 200, type: LoginResponseDTO })
     @ApiResponse({ status: 401, description: 'Invalid credentials' })
@@ -228,6 +230,7 @@ export class AuthController {
     }
 
     @Post('2fa/verify')
+    @Public()
     @HttpCode(HttpStatus.OK)
     @ApiResponse({ status: 200, type: LoginResponseDTO })
     @NoBot()
@@ -331,6 +334,7 @@ export class AuthController {
     }
 
     @Post('register')
+    @Public()
     @HttpCode(HttpStatus.OK)
     @NoBot()
     @ApiResponse({ status: 200, type: RegisterResponseDTO })
@@ -568,6 +572,7 @@ export class AuthController {
         };
     }
     @Post('password/reset')
+    @Public()
     @HttpCode(HttpStatus.OK)
     @ApiResponse({ status: 200, type: PasswordResetResponseDTO })
     public async requestPasswordReset(
@@ -590,6 +595,7 @@ export class AuthController {
     }
 
     @Post('password/reset/confirm')
+    @Public()
     @HttpCode(HttpStatus.OK)
     @ApiResponse({ status: 200, type: PasswordResetResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid or expired token' })

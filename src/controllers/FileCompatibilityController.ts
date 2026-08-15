@@ -15,11 +15,13 @@ import { extractOriginalFilename } from '@/config/multer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
+import { Public } from '@/modules/auth/public.decorator';
 
 // Compatibility controller for file downloads
 // Provides the legacy /api/v1/download/:filename endpoint
 @ApiTags('Files')
 @Controller('api/v1')
+@Public()
 export class FileCompatibilityController {
     public constructor(
         @Inject(TYPES.Logger)

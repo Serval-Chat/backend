@@ -7,7 +7,6 @@ import {
     Body,
     Req,
     UseGuards,
-    SetMetadata,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -24,6 +23,7 @@ import {
 import type { Request as ExpressRequest } from 'express';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import { PushSubscription } from '@/models/PushSubscription';
 import { User } from '@/models/User';
 import {
@@ -42,7 +42,7 @@ export class PushController {
     public constructor() {}
 
     @Get('vapid-public-key')
-    @SetMetadata('isPublic', true)
+    @Public()
     @ApiOperation({ summary: 'Get VAPID public key' })
     @ApiOkResponse({ type: PublicKeyResponseDTO })
     public getVapidKey() {
@@ -50,7 +50,7 @@ export class PushController {
     }
 
     @Get('vapid-status')
-    @SetMetadata('isPublic', true)
+    @Public()
     @ApiOperation({ summary: 'Get VAPID status' })
     @ApiOkResponse({ type: VapidStatusResponseDTO })
     public vapidStatus() {

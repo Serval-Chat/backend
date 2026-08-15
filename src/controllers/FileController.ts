@@ -26,6 +26,7 @@ import {
     ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import { Request, Response } from 'express';
 import path from 'path';
 import fs, { promises as fsPromises } from 'fs';
@@ -134,6 +135,7 @@ export class FileController {
     }
 
     @Get('metadata/:filename')
+    @Public()
     @ApiOperation({ summary: 'Get file metadata' })
     @ApiOkResponse({ type: FileMetadataResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid filename' })
@@ -168,6 +170,7 @@ export class FileController {
     }
 
     @Get('download/:filename')
+    @Public()
     @ApiOperation({ summary: 'Download a file' })
     @ApiOkResponse({ type: String, description: 'File stream' })
     @ApiProduces('application/octet-stream')

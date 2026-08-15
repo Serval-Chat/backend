@@ -2,9 +2,11 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
 import { getGitCommitHash, getVersion } from '@/utils/version';
 import { SystemInfoResponseDTO } from './dto/system.response.dto';
+import { Public } from '@/modules/auth/public.decorator';
 
 @Controller('api/v1')
 @ApiTags('System')
+@Public()
 export class SystemController {
     public constructor() {}
 

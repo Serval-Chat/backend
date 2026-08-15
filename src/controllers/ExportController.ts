@@ -25,6 +25,7 @@ import { Response } from 'express';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
 import fs from 'fs';
 
@@ -96,6 +97,7 @@ export class ExportController {
     }
 
     @Get('exports/download/:token')
+    @Public()
     @ApiOperation({ summary: 'Download exported file' })
     @ApiOkResponse({ type: String, description: 'Export JSON file' })
     @ApiProduces('application/json')

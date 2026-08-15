@@ -64,6 +64,7 @@ import { MAX_MESSAGE_LENGTH } from '@/config/env';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import {
     CreateWebhookRequestDTO,
@@ -634,6 +635,7 @@ export class WebhookController {
     }
 
     @Get('webhooks/avatar/:filename')
+    @Public()
     @ApiOperation({ summary: 'Get webhook avatar' })
     @ApiOkResponse({
         description: 'Avatar retrieved',
@@ -674,6 +676,7 @@ export class WebhookController {
     }
 
     @Post('webhooks/:token')
+    @Public()
     @ApiOperation({ summary: 'Execute webhook' })
     @ApiResponse({
         status: 201,
@@ -830,6 +833,7 @@ export class WebhookController {
     }
 
     @Patch('webhooks/:token/messages/:messageId')
+    @Public()
     @ApiOperation({ summary: 'Edit webhook message' })
     @ApiOkResponse({
         type: SimpleMessageResponseDTO,
@@ -939,6 +943,7 @@ export class WebhookController {
     }
 
     @Delete('webhooks/:token/messages/:messageId')
+    @Public()
     @ApiOperation({ summary: 'Delete webhook message' })
     @ApiOkResponse({
         type: SimpleMessageResponseDTO,

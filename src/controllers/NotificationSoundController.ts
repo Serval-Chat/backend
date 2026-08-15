@@ -17,6 +17,7 @@ import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { Public } from '@/modules/auth/public.decorator';
 import { Response } from 'express';
 import path from 'path';
 import { promises as fsPromises, constants as fsConstants } from 'fs';
@@ -181,6 +182,7 @@ export class NotificationSoundController {
     }
 
     @Get('play/:filename')
+    @Public()
     @ApiOperation({ summary: 'Serve a notification sound file' })
     @ApiOkResponse({ type: String, description: 'Audio file' })
     @ApiProduces('audio/ogg')
