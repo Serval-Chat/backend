@@ -67,22 +67,28 @@ if (FRONTEND_URL !== '') {
     }
 }
 
+if (process.env.NODE_ENV === 'test' && PROJECT_LEVEL === 'production') {
+    throw new Error(
+        "NODE_ENV=test with PROJ_LEVEL=production. Refusing to start: this combination silently drops env validation and every rate limiter's shared store.",
+    );
+}
+
+if (JWT_SECRET === '') throw new Error('JWT_SECRET not set.');
+if (APP_ENCRYPTION_KEY === '') throw new Error('APP_ENCRYPTION_KEY not set.');
+if (APP_ENCRYPTION_KEY === JWT_SECRET)
+    throw new Error('APP_ENCRYPTION_KEY cannot be the same as JWT_SECRET.');
+const MIN_SECRET_LENGTH = 32;
+if (JWT_SECRET.length < MIN_SECRET_LENGTH)
+    throw new Error(
+        `JWT_SECRET must be at least ${MIN_SECRET_LENGTH} characters (got ${JWT_SECRET.length}). Generate one with: openssl rand -base64 48`,
+    );
+if (APP_ENCRYPTION_KEY.length < MIN_SECRET_LENGTH)
+    throw new Error(
+        `APP_ENCRYPTION_KEY must be at least ${MIN_SECRET_LENGTH} characters (got ${APP_ENCRYPTION_KEY.length}). Generate one with: openssl rand -base64 48`,
+    );
+
 if (process.env.NODE_ENV !== 'test') {
     if (PORT === -1) throw new Error('CHAT_PORT not set.');
-    if (JWT_SECRET === '') throw new Error('JWT_SECRET not set.');
-    if (APP_ENCRYPTION_KEY === '')
-        throw new Error('APP_ENCRYPTION_KEY not set.');
-    if (APP_ENCRYPTION_KEY === JWT_SECRET)
-        throw new Error('APP_ENCRYPTION_KEY cannot be the same as JWT_SECRET.');
-    const MIN_SECRET_LENGTH = 32;
-    if (JWT_SECRET.length < MIN_SECRET_LENGTH)
-        throw new Error(
-            `JWT_SECRET must be at least ${MIN_SECRET_LENGTH} characters (got ${JWT_SECRET.length}). Generate one with: openssl rand -base64 48`,
-        );
-    if (APP_ENCRYPTION_KEY.length < MIN_SECRET_LENGTH)
-        throw new Error(
-            `APP_ENCRYPTION_KEY must be at least ${MIN_SECRET_LENGTH} characters (got ${APP_ENCRYPTION_KEY.length}). Generate one with: openssl rand -base64 48`,
-        );
     if (MONGO_URI === '') throw new Error('MONGO_URI not set.');
     if (PROJECT_LEVEL === '') throw new Error('PROJ_LEVEL not set.');
     if (LOGS_PATH === '') throw new Error('LOGS_PATH not set.');

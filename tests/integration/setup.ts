@@ -1,5 +1,6 @@
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.JWT_SECRET = 'test-jwt-secret-not-for-real-use-000000';
+process.env.APP_ENCRYPTION_KEY = 'test-encryption-key-not-for-real-use-000';
 process.env.PORT = '0';
 process.env.CHAT_PORT = '0';
 process.env.MONGO_URI = 'mongodb://localhost:27017/test';
