@@ -28,6 +28,7 @@ export interface IMessage {
     components?: IEmbedButton[];
     attachments?: IMessageAttachment[];
     noEmbeds?: boolean;
+    noEmbedsUrls?: string[];
 }
 
 // Message Repository Interface
@@ -58,6 +59,7 @@ export interface IMessageRepository {
             poll?: IPoll;
             attachments?: IMessageAttachment[];
             noEmbeds?: boolean;
+            noEmbedsUrls?: string[];
         },
         session?: ClientSession,
     ): Promise<IMessage>;

@@ -14,64 +14,63 @@ import type { ReactionData } from '@/di/interfaces/IReactionRepository';
  * Client -> Server
  * Send a direct message to another user.
  */
-export interface ISendMessageDmEvent
-    extends WsEvent<
-        'send_message_dm',
-        {
-            receiverId: string; // User ID (ObjectId as string)
-            text?: string; // Message content
-            replyToId?: string; // Optional: Message ID being replied to
-            stickerId?: string;
-            attachments?: IMessageAttachment[];
-            poll?: Omit<IPoll, 'options'> & {
-                options: {
-                    text: string;
-                    emoji?: string;
-                    emojiType?: 'unicode' | 'custom';
-                    emojiId?: string;
-                }[];
-                expiresAt?: string;
-            };
-            noEmbeds?: boolean;
-        }
-    > {}
+export interface ISendMessageDmEvent extends WsEvent<
+    'send_message_dm',
+    {
+        receiverId: string; // User ID (ObjectId as string)
+        text?: string; // Message content
+        replyToId?: string; // Optional: Message ID being replied to
+        stickerId?: string;
+        attachments?: IMessageAttachment[];
+        poll?: Omit<IPoll, 'options'> & {
+            options: {
+                text: string;
+                emoji?: string;
+                emojiType?: 'unicode' | 'custom';
+                emojiId?: string;
+            }[];
+            expiresAt?: string;
+        };
+        noEmbeds?: boolean;
+        noEmbedsUrls?: string[];
+    }
+> {}
 
 /**
  * Server -> Client (Response to send_message_dm)
  * Confirms message was sent and saved.
  */
-export interface IMessageDmSentEvent
-    extends WsEvent<
-        'message_dm_sent',
-        {
+export interface IMessageDmSentEvent extends WsEvent<
+    'message_dm_sent',
+    {
+        messageId: string;
+        id: string;
+        senderId: string;
+        senderUsername: string;
+        receiverId: string;
+        text: string;
+        createdAt: string; // ISO 8601 timestamp
+        replyToId?: string;
+        isEdited: false;
+        isPinned: false;
+        isSticky: false;
+        isWebhook: false;
+        repliedTo?: {
             messageId: string;
-            id: string;
             senderId: string;
-            senderUsername: string;
-            receiverId: string;
             text: string;
-            createdAt: string; // ISO 8601 timestamp
-            replyToId?: string;
-            isEdited: false;
-            isPinned: false;
-            isSticky: false;
-            isWebhook: false;
-            repliedTo?: {
-                messageId: string;
-                senderId: string;
-                text: string;
-            };
-            embeds: IEmbed[];
-            components: IEmbedButton[];
-            attachments: IMessageAttachment[];
-            reactions: [];
-            interaction: null;
-            senderIsBot: boolean;
-            stickerId: string | null;
-            poll: IPoll | null;
-            noEmbeds?: boolean;
-        }
-    > {}
+        };
+        embeds: IEmbed[];
+        components: IEmbedButton[];
+        attachments: IMessageAttachment[];
+        reactions: [];
+        interaction: null;
+        senderIsBot: boolean;
+        stickerId: string | null;
+        poll: IPoll | null;
+        noEmbeds?: boolean;
+    }
+> {}
 
 export interface IMessageDm {
     messageId: string;
@@ -114,131 +113,121 @@ export interface IMessageDmEvent extends WsEvent<'message_dm', IMessageDm> {}
  * Client -> Server
  * Edit an existing direct message.
  */
-export interface IEditMessageDmEvent
-    extends WsEvent<
-        'edit_message_dm',
-        {
-            messageId: string;
-            text: string;
-        }
-    > {}
+export interface IEditMessageDmEvent extends WsEvent<
+    'edit_message_dm',
+    {
+        messageId: string;
+        text: string;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast)
  * DM was edited.
  */
-export interface IMessageDmEditedEvent
-    extends WsEvent<
-        'message_dm_edited',
-        {
-            messageId: string;
-            text: string;
-            editedAt: string;
-            isEdited: boolean;
-            embeds?: IEmbed[];
-            attachments?: IMessageAttachment[];
-        }
-    > {}
+export interface IMessageDmEditedEvent extends WsEvent<
+    'message_dm_edited',
+    {
+        messageId: string;
+        text: string;
+        editedAt: string;
+        isEdited: boolean;
+        embeds?: IEmbed[];
+        attachments?: IMessageAttachment[];
+    }
+> {}
 
 /**
  * Client -> Server
  * Delete a direct message.
  */
-export interface IDeleteMessageDmEvent
-    extends WsEvent<
-        'delete_message_dm',
-        {
-            messageId: string;
-        }
-    > {}
+export interface IDeleteMessageDmEvent extends WsEvent<
+    'delete_message_dm',
+    {
+        messageId: string;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast)
  * DM was deleted.
  */
-export interface IMessageDmDeletedEvent
-    extends WsEvent<
-        'message_dm_deleted',
-        {
-            messageId: string;
-        }
-    > {}
+export interface IMessageDmDeletedEvent extends WsEvent<
+    'message_dm_deleted',
+    {
+        messageId: string;
+    }
+> {}
 /**
  * Server -> Client (Broadcast)
  * Poll vote updated.
  */
-export interface IPollVoteUpdatedDmEvent
-    extends WsEvent<
-        'poll_vote_updated_dm',
-        {
-            messageId: string;
-            poll: IPoll;
-        }
-    > {}
+export interface IPollVoteUpdatedDmEvent extends WsEvent<
+    'poll_vote_updated_dm',
+    {
+        messageId: string;
+        poll: IPoll;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast)
  * Message embeds were updated (e.g. after async scraping).
  */
-export interface IMessageDmEmbedsUpdatedEvent
-    extends WsEvent<
-        'message_dm_embeds_updated',
-        {
-            messageId: string;
-            embeds: IEmbed[];
-        }
-    > {}
+export interface IMessageDmEmbedsUpdatedEvent extends WsEvent<
+    'message_dm_embeds_updated',
+    {
+        messageId: string;
+        embeds: IEmbed[];
+    }
+> {}
 
 /**
  * Client -> Server
  * Mark a DM conversation as read.
  */
-export interface IMarkDmReadEvent
-    extends WsEvent<
-        'mark_dm_read',
-        {
-            peerId: string; // User ID of conversation partner
-        }
-    > {}
+export interface IMarkDmReadEvent extends WsEvent<
+    'mark_dm_read',
+    {
+        peerId: string; // User ID of conversation partner
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast to user's sessions)
  * Unread count for a DM conversation updated.
  */
-export interface IDmUnreadUpdatedEvent
-    extends WsEvent<
-        'dm_unread_updated',
-        {
-            peerId: string;
-            peerUsername: string;
-            count: number; // New unread count
-        }
-    > {}
+export interface IDmUnreadUpdatedEvent extends WsEvent<
+    'dm_unread_updated',
+    {
+        peerId: string;
+        peerUsername: string;
+        count: number; // New unread count
+    }
+> {}
 
 /**
  * Client -> Server
  * Indicate typing in a DM conversation.
  */
-export interface ITypingDmEvent
-    extends WsEvent<
-        'typing_dm',
-        {
-            receiverId: string;
-        }
-    > {}
+export interface ITypingDmEvent extends WsEvent<
+    'typing_dm',
+    {
+        receiverId: string;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast to receiver)
  * User is typing in DM.
  */
-export interface ITypingDmBroadcastEvent
-    extends WsEvent<
-        'typing_dm',
-        {
-            senderId: string;
-            senderUsername: string;
-        }
-    > {}
+export interface ITypingDmBroadcastEvent extends WsEvent<
+    'typing_dm',
+    {
+        senderId: string;
+        senderUsername: string;
+    }
+> {}
 
 // ============================================================================
 // Server (Guild/Channel) Message Events
@@ -248,137 +237,130 @@ export interface ITypingDmBroadcastEvent
  * Client -> Server
  * Subscribe to server-wide events.
  */
-export interface IJoinServerEvent
-    extends WsEvent<
-        'join_server',
-        {
-            serverId: string;
-        }
-    > {}
+export interface IJoinServerEvent extends WsEvent<
+    'join_server',
+    {
+        serverId: string;
+    }
+> {}
 
 /**
  * Server -> Client (Response)
  * Successfully joined server.
  */
-export interface IServerJoinedEvent
-    extends WsEvent<
-        'server_joined',
-        {
-            serverId: string;
-            voiceStates?: Record<string, string[]>;
-        }
-    > {}
+export interface IServerJoinedEvent extends WsEvent<
+    'server_joined',
+    {
+        serverId: string;
+        voiceStates?: Record<string, string[]>;
+    }
+> {}
 
 /**
  * Client -> Server
  * Unsubscribe from server events.
  */
-export interface ILeaveServerEvent
-    extends WsEvent<
-        'leave_server',
-        {
-            serverId: string;
-        }
-    > {}
+export interface ILeaveServerEvent extends WsEvent<
+    'leave_server',
+    {
+        serverId: string;
+    }
+> {}
 
 /**
  * Client -> Server
  * Subscribe to channel-specific events.
  */
-export interface IJoinChannelEvent
-    extends WsEvent<
-        'join_channel',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > {}
+export interface IJoinChannelEvent extends WsEvent<
+    'join_channel',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
 /**
  * Server -> Client (Response)
  * Successfully joined channel.
  */
-export interface IChannelJoinedEvent
-    extends WsEvent<
-        'channel_joined',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > {}
+export interface IChannelJoinedEvent extends WsEvent<
+    'channel_joined',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
 /**
  * Client -> Server
  * Unsubscribe from channel events.
  */
-export interface ILeaveChannelEvent
-    extends WsEvent<
-        'leave_channel',
-        {
-            channelId: string;
-        }
-    > {}
+export interface ILeaveChannelEvent extends WsEvent<
+    'leave_channel',
+    {
+        channelId: string;
+    }
+> {}
 
 /**
  * Client -> Server
  * Send a message to a server channel.
  */
-export interface ISendMessageServerEvent
-    extends WsEvent<
-        'send_message_server',
-        {
-            serverId: string;
-            channelId: string;
-            text?: string;
-            replyToId?: string;
-            stickerId?: string;
-            attachments?: IMessageAttachment[];
-            poll?: Omit<IPoll, 'options'> & {
-                options: {
-                    text: string;
-                    emoji?: string;
-                    emojiType?: 'unicode' | 'custom';
-                    emojiId?: string;
-                }[];
-                expiresAt?: string;
-            };
-            noEmbeds?: boolean;
-        }
-    > {}
+export interface ISendMessageServerEvent extends WsEvent<
+    'send_message_server',
+    {
+        serverId: string;
+        channelId: string;
+        text?: string;
+        replyToId?: string;
+        stickerId?: string;
+        attachments?: IMessageAttachment[];
+        poll?: Omit<IPoll, 'options'> & {
+            options: {
+                text: string;
+                emoji?: string;
+                emojiType?: 'unicode' | 'custom';
+                emojiId?: string;
+            }[];
+            expiresAt?: string;
+        };
+        noEmbeds?: boolean;
+        noEmbedsUrls?: string[];
+    }
+> {}
 
 /**
  * Server -> Client (Response)
  * Confirms server message was sent.
  */
-export interface IMessageServerSentEvent
-    extends WsEvent<
-        'message_server_sent',
-        {
-            messageId: string;
-            id: string;
-            serverId: string;
-            channelId: string;
-            senderId: string;
-            senderUsername: string;
-            text: string;
-            createdAt: string;
-            replyToId?: string;
-            isEdited: false;
-            isPinned: false;
-            isSticky: false;
-            isWebhook: false;
-            embeds: IEmbed[];
-            components: IEmbedButton[];
-            attachments: IMessageAttachment[];
-            reactions: [];
-            interaction: null;
-            slowModeNextMessageAllowedAt?: string | null;
-            stickerId: string | null;
-            poll: IPoll | null;
-            senderIsBot: boolean;
-            noEmbeds?: boolean;
-        }
-    > {}
+export interface IMessageServerSentEvent extends WsEvent<
+    'message_server_sent',
+    {
+        messageId: string;
+        id: string;
+        serverId: string;
+        channelId: string;
+        senderId: string;
+        senderUsername: string;
+        text: string;
+        createdAt: string;
+        replyToId?: string;
+        isEdited: false;
+        isPinned: false;
+        isSticky: false;
+        isWebhook: false;
+        embeds: IEmbed[];
+        components: IEmbedButton[];
+        attachments: IMessageAttachment[];
+        reactions: [];
+        interaction: null;
+        slowModeNextMessageAllowedAt?: string | null;
+        stickerId: string | null;
+        poll: IPoll | null;
+        senderIsBot: boolean;
+        noEmbeds?: boolean;
+    }
+> {}
 
 export interface IMessageServer {
     messageId: string;
@@ -421,207 +403,195 @@ export interface IMessageServer {
  * Server -> Client (Broadcast to channel)
  * New server message.
  */
-export interface IMessageServerEvent
-    extends WsEvent<'message_server', IMessageServer> {}
+export interface IMessageServerEvent extends WsEvent<
+    'message_server',
+    IMessageServer
+> {}
 
 /**
  * Client -> Server
  * Edit a server message.
  */
-export interface IEditMessageServerEvent
-    extends WsEvent<
-        'edit_message_server',
-        {
-            messageId: string;
-            text: string;
-        }
-    > {}
+export interface IEditMessageServerEvent extends WsEvent<
+    'edit_message_server',
+    {
+        messageId: string;
+        text: string;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast)
  * Server message was edited.
  */
-export interface IMessageServerEditedEvent
-    extends WsEvent<
-        'message_server_edited',
-        {
-            messageId: string;
-            serverId: string;
-            channelId: string;
-            text: string;
-            editedAt: string;
-            isEdited: boolean;
-            embeds?: IEmbed[];
-            components?: IEmbedButton[];
-            attachments?: IMessageAttachment[];
-        }
-    > {}
+export interface IMessageServerEditedEvent extends WsEvent<
+    'message_server_edited',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        text: string;
+        editedAt: string;
+        isEdited: boolean;
+        embeds?: IEmbed[];
+        components?: IEmbedButton[];
+        attachments?: IMessageAttachment[];
+    }
+> {}
 
 /**
  * Client -> Server
  * Delete a server message.
  */
-export interface IDeleteMessageServerEvent
-    extends WsEvent<
-        'delete_message_server',
-        {
-            serverId: string;
-            messageId: string;
-        }
-    > {}
+export interface IDeleteMessageServerEvent extends WsEvent<
+    'delete_message_server',
+    {
+        serverId: string;
+        messageId: string;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast)
  * Server message was deleted.
  */
-export interface IMessageServerDeletedEvent
-    extends WsEvent<
-        'message_server_deleted',
-        {
-            messageId: string;
-            serverId: string;
-            channelId: string;
-            hard?: boolean;
-        }
-    > {}
+export interface IMessageServerDeletedEvent extends WsEvent<
+    'message_server_deleted',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        hard?: boolean;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast)
  * Poll vote updated.
  */
-export interface IPollVoteUpdatedServerEvent
-    extends WsEvent<
-        'poll_vote_updated_server',
-        {
-            messageId: string;
-            serverId: string;
-            channelId: string;
-            poll: IPoll;
-        }
-    > {}
+export interface IPollVoteUpdatedServerEvent extends WsEvent<
+    'poll_vote_updated_server',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        poll: IPoll;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast)
  * Multiple server messages were deleted.
  */
-export interface IMessagesServerBulkDeletedEvent
-    extends WsEvent<
-        'messages_server_bulk_deleted',
-        {
-            messageIds: string[];
-            serverId: string;
-            channelId: string;
-            hard?: boolean;
-        }
-    > {}
+export interface IMessagesServerBulkDeletedEvent extends WsEvent<
+    'messages_server_bulk_deleted',
+    {
+        messageIds: string[];
+        serverId: string;
+        channelId: string;
+        hard?: boolean;
+    }
+> {}
 /**
  * Server -> Client (Broadcast)
  * Server message pin status updated.
  */
-export interface IMessageServerPinUpdatedEvent
-    extends WsEvent<
-        'message_server_pin_updated',
-        {
-            messageId: string;
-            serverId: string;
-            channelId: string;
-            isPinned: boolean;
-            isSticky: boolean;
-        }
-    > {}
+export interface IMessageServerPinUpdatedEvent extends WsEvent<
+    'message_server_pin_updated',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        isPinned: boolean;
+        isSticky: boolean;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast)
  * Message embeds were updated (e.g. after async scraping).
  */
-export interface IMessageServerEmbedsUpdatedEvent
-    extends WsEvent<
-        'message_server_embeds_updated',
-        {
-            messageId: string;
-            serverId: string;
-            channelId: string;
-            embeds: IEmbed[];
-        }
-    > {}
+export interface IMessageServerEmbedsUpdatedEvent extends WsEvent<
+    'message_server_embeds_updated',
+    {
+        messageId: string;
+        serverId: string;
+        channelId: string;
+        embeds: IEmbed[];
+    }
+> {}
 
 /**
  * Client -> Server
  * Mark a channel as read.
  */
-export interface IMarkChannelReadEvent
-    extends WsEvent<
-        'mark_channel_read',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > {}
+export interface IMarkChannelReadEvent extends WsEvent<
+    'mark_channel_read',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast to user's sessions)
  * Channel unread status updated.
  */
-export interface IChannelUnreadUpdatedEvent
-    extends WsEvent<
-        'channel_unread_updated',
-        {
-            serverId: string;
-            channelId: string;
-            lastMessageAt: string | null;
-            senderId: string;
-            lastReadAt?: string;
-        }
-    > {}
+export interface IChannelUnreadUpdatedEvent extends WsEvent<
+    'channel_unread_updated',
+    {
+        serverId: string;
+        channelId: string;
+        lastMessageAt: string | null;
+        senderId: string;
+        lastReadAt?: string;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast to user's sessions)
  * Server-level unread status updated (e.g. after channel message or mark channel read).
  */
-export interface IServerUnreadUpdatedEvent
-    extends WsEvent<
-        'server_unread_updated',
-        {
-            serverId: string;
-            hasUnread: boolean;
-        }
-    > {}
+export interface IServerUnreadUpdatedEvent extends WsEvent<
+    'server_unread_updated',
+    {
+        serverId: string;
+        hasUnread: boolean;
+    }
+> {}
 
 /**
  * Client -> Server
  * Indicate typing in a channel.
  */
-export interface ITypingServerEvent
-    extends WsEvent<
-        'typing_server',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > {}
+export interface ITypingServerEvent extends WsEvent<
+    'typing_server',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
 /**
  * Server -> Client (Broadcast to channel)
  * User is typing in channel.
  */
-export interface ITypingServerBroadcastEvent
-    extends WsEvent<
-        'typing_server',
-        {
-            channelId: string;
-            senderId: string;
-            senderUsername: string;
-        }
-    > {}
+export interface ITypingServerBroadcastEvent extends WsEvent<
+    'typing_server',
+    {
+        channelId: string;
+        senderId: string;
+        senderUsername: string;
+    }
+> {}
 
-export interface IJoinVoiceEvent
-    extends WsEvent<
-        'join_voice',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > {
+export interface IJoinVoiceEvent extends WsEvent<
+    'join_voice',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {
     response: {
         success: boolean;
         serverId: string;
@@ -631,106 +601,98 @@ export interface IJoinVoiceEvent
     };
 }
 
-export interface ILeaveVoiceEvent
-    extends WsEvent<
-        'leave_voice',
-        {
-            serverId: string;
-            channelId: string;
-        }
-    > {}
+export interface ILeaveVoiceEvent extends WsEvent<
+    'leave_voice',
+    {
+        serverId: string;
+        channelId: string;
+    }
+> {}
 
-export interface IUserJoinedVoiceEvent
-    extends WsEvent<
-        'user_joined_voice',
-        {
-            serverId: string;
-            channelId: string;
-            userId: string;
-        }
-    > {}
+export interface IUserJoinedVoiceEvent extends WsEvent<
+    'user_joined_voice',
+    {
+        serverId: string;
+        channelId: string;
+        userId: string;
+    }
+> {}
 
-export interface IUserLeftVoiceEvent
-    extends WsEvent<
-        'user_left_voice',
-        {
-            serverId: string;
-            channelId: string;
-            userId: string;
-        }
-    > {}
+export interface IUserLeftVoiceEvent extends WsEvent<
+    'user_left_voice',
+    {
+        serverId: string;
+        channelId: string;
+        userId: string;
+    }
+> {}
 
-export interface IUpdateVoiceStateEvent
-    extends WsEvent<
-        'update_voice_state',
-        {
-            serverId: string;
-            channelId: string;
-            isMuted: boolean;
-            isDeafened: boolean;
-        }
-    > {}
+export interface IUpdateVoiceStateEvent extends WsEvent<
+    'update_voice_state',
+    {
+        serverId: string;
+        channelId: string;
+        isMuted: boolean;
+        isDeafened: boolean;
+    }
+> {}
 
-export interface IVoiceStateUpdatedEvent
-    extends WsEvent<
-        'voice_state_updated',
-        {
-            serverId: string;
-            channelId: string;
-            userId: string;
-            isMuted: boolean;
-            isDeafened: boolean;
-        }
-    > {}
+export interface IVoiceStateUpdatedEvent extends WsEvent<
+    'voice_state_updated',
+    {
+        serverId: string;
+        channelId: string;
+        userId: string;
+        isMuted: boolean;
+        isDeafened: boolean;
+    }
+> {}
 
-export interface IInteractionCreateServerEvent
-    extends WsEvent<
-        'interaction_create_server',
-        {
-            command: string;
-            commandId?: string;
-            options: { name: string; value: InteractionValue }[];
-            serverId: string;
-            channelId: string;
-            senderId: string;
-            senderUsername: string;
-            senderPermissions?: Permissions;
-            user?: { id: string; username: string };
-            invocationId?: string;
-        }
-    > {}
+export interface IInteractionCreateServerEvent extends WsEvent<
+    'interaction_create_server',
+    {
+        command: string;
+        commandId?: string;
+        options: { name: string; value: InteractionValue }[];
+        serverId: string;
+        channelId: string;
+        senderId: string;
+        senderUsername: string;
+        senderPermissions?: Permissions;
+        user?: { id: string; username: string };
+        invocationId?: string;
+    }
+> {}
 
-export interface IComponentInteractionCreateServerEvent
-    extends WsEvent<
-        'component_interaction_create_server',
-        {
-            componentType: 'button';
-            customId: string;
-            messageId: string;
-            componentIndex: number;
-            serverId: string;
-            channelId: string;
-            senderId: string;
-            senderUsername: string;
-            senderPermissions?: Permissions;
-            invocationId?: string;
-        }
-    > {}
+export interface IComponentInteractionCreateServerEvent extends WsEvent<
+    'component_interaction_create_server',
+    {
+        componentType: 'button';
+        customId: string;
+        messageId: string;
+        componentIndex: number;
+        serverId: string;
+        channelId: string;
+        senderId: string;
+        senderUsername: string;
+        senderPermissions?: Permissions;
+        invocationId?: string;
+    }
+> {}
 
-export interface IInteractionResponseServerEvent
-    extends WsEvent<
-        'interaction_response_server',
-        {
-            serverId: string;
-            channelId: string;
-            text: string;
-            senderId?: string;
-            senderUsername?: string;
-            senderIsBot?: boolean;
-            senderProfilePicture?: string | null;
-            embeds?: IEmbed[];
-            components?: IEmbedButton[];
-            invocationId?: string;
-            ephemeral?: boolean;
-        }
-    > {}
+export interface IInteractionResponseServerEvent extends WsEvent<
+    'interaction_response_server',
+    {
+        serverId: string;
+        channelId: string;
+        text: string;
+        senderId?: string;
+        senderUsername?: string;
+        senderIsBot?: boolean;
+        senderProfilePicture?: string | null;
+        embeds?: IEmbed[];
+        components?: IEmbedButton[];
+        invocationId?: string;
+        ephemeral?: boolean;
+    }
+> {}

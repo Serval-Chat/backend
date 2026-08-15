@@ -104,6 +104,7 @@ export class ChatController {
             poll,
             attachments,
             noEmbeds,
+            noEmbedsUrls,
         } = payload;
         const senderId = authenticatedUser.userId;
 
@@ -142,6 +143,7 @@ export class ChatController {
                         text: text ?? '',
                         attachments,
                         noEmbeds,
+                        noEmbedsUrls,
                         ...(replyToId !== undefined && replyToId !== ''
                             ? { replyToId }
                             : {}),

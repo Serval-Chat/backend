@@ -26,9 +26,7 @@ type PopulatedServerMessageDoc = IServerMessage & {
 //
 // Implements IServerMessageRepository using Mongoose ServerMessage model
 @injectable()
-export class MongooseServerMessageRepository
-    implements IServerMessageRepository
-{
+export class MongooseServerMessageRepository implements IServerMessageRepository {
     private transformMessage(msg: PopulatedServerMessageDoc): IServerMessage {
         const transformed = { ...msg } as IServerMessage;
         delete (transformed as Partial<PopulatedServerMessageDoc>)
@@ -105,6 +103,7 @@ export class MongooseServerMessageRepository
             stickerId?: string;
             poll?: IPoll;
             noEmbeds?: boolean;
+            noEmbedsUrls?: string[];
         },
         session?: ClientSession,
     ): Promise<IServerMessage> {

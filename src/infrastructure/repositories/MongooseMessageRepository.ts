@@ -198,6 +198,7 @@ export class MongooseMessageRepository implements IMessageRepository {
             poll?: IPoll;
             attachments?: IMessageAttachment[];
             noEmbeds?: boolean;
+            noEmbedsUrls?: string[];
         },
         session?: ClientSession,
     ): Promise<IMessage> {

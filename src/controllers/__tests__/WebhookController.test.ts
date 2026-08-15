@@ -172,6 +172,23 @@ describe('WebhookController', () => {
         );
     });
 
+    it('passes noEmbedsUrls through to the created message', async () => {
+        await controller.executeWebhook(
+            { token },
+            {
+                content: 'Check this out: https://example.com',
+                noEmbedsUrls: ['https://example.com'],
+            },
+        );
+
+        expect(serverMessageRepo.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                text: 'Check this out: https://example.com',
+                noEmbedsUrls: ['https://example.com'],
+            }),
+        );
+    });
+
     it('deletes a webhook message and broadcasts deletion to channel subscribers and bots', async () => {
         const result = await controller.deleteWebhookMessage({
             token,

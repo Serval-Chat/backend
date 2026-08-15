@@ -211,6 +211,7 @@ export interface IServerMessage {
     stickerId?: string;
     poll?: IPoll;
     noEmbeds?: boolean;
+    noEmbedsUrls?: string[];
 }
 
 // Server ban interface
@@ -533,6 +534,7 @@ const serverMessageSchema = new Schema<IServerMessage>({
         required: false,
     },
     noEmbeds: { type: Boolean, default: false },
+    noEmbedsUrls: { type: [String], default: [] },
 });
 serverMessageSchema.index({ channelId: 1, deletedAt: 1, createdAt: -1 });
 serverMessageSchema.index({ channelId: 1, createdAt: -1 });

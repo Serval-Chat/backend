@@ -305,6 +305,107 @@ describe('EmbedService', () => {
             expect(mockServerMessageRepo.update).not.toHaveBeenCalled();
         });
 
+        it('should skip a URL listed in noEmbedsUrls but still embed the rest', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
+                serverId: new Types.ObjectId(),
+                channelId: new Types.ObjectId(),
+                text: 'Suppressed: https://suppressed.example Visible: https://visible.example',
+                embeds: [],
+                noEmbedsUrls: ['https://suppressed.example'],
+            } as any;
+
+            mockScraperService.scrape.mockResolvedValue({
+                ...mockFetchResult,
+                url: 'https://visible.example/',
+            });
+
+            await service.processServerMessage(message);
+
+            expect(mockScraperService.scrape).toHaveBeenCalledTimes(1);
+            expect(mockScraperService.scrape).toHaveBeenCalledWith(
+                'https://visible.example',
+            );
+            expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
+                message.snowflakeId,
+                expect.objectContaining({
+                    embeds: [
+                        expect.objectContaining({
+                            url: 'https://visible.example/',
+                        }),
+                    ],
+                }),
+            );
+        });
+
+        it('should skip every URL when they are all listed in noEmbedsUrls', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
+                serverId: new Types.ObjectId(),
+                channelId: new Types.ObjectId(),
+                text: 'https://suppressed.example',
+                embeds: [],
+                noEmbedsUrls: ['https://suppressed.example'],
+            } as any;
+
+            await service.processServerMessage(message);
+
+            expect(mockScraperService.scrape).not.toHaveBeenCalled();
+            expect(mockServerMessageRepo.update).not.toHaveBeenCalled();
+        });
+
+        it('should treat noEmbedsUrls trailing-slash differences as the same URL', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
+                serverId: new Types.ObjectId(),
+                channelId: new Types.ObjectId(),
+                text: 'https://suppressed.example/',
+                embeds: [],
+                noEmbedsUrls: ['https://suppressed.example'],
+            } as any;
+
+            await service.processServerMessage(message);
+
+            expect(mockScraperService.scrape).not.toHaveBeenCalled();
+        });
+
+        it('should still honour the DM broadcast path when a URL is suppressed', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
+                senderId: new Types.ObjectId(),
+                receiverId: new Types.ObjectId(),
+                text: 'Suppressed: https://suppressed.example Visible: https://visible.example',
+                embeds: [],
+                noEmbedsUrls: ['https://suppressed.example'],
+            } as any;
+
+            mockScraperService.scrape.mockResolvedValue({
+                ...mockFetchResult,
+                url: 'https://visible.example/',
+            });
+
+            await service.processUserMessage(message);
+
+            expect(mockScraperService.scrape).toHaveBeenCalledTimes(1);
+            expect(mockScraperService.scrape).toHaveBeenCalledWith(
+                'https://visible.example',
+            );
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
+                message.snowflakeId,
+                expect.objectContaining({
+                    embeds: [
+                        expect.objectContaining({
+                            url: 'https://visible.example/',
+                        }),
+                    ],
+                }),
+            );
+        });
+
         it('should not scrape URLs wrapped in angle brackets', async () => {
             const message = {
                 _id: new Types.ObjectId(),

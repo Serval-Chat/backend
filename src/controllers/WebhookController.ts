@@ -727,6 +727,7 @@ export class WebhookController {
             webhookAvatarUrl: webhookAvatarUrl ?? undefined,
             embeds,
             noEmbeds: translatedBody.noEmbeds,
+            noEmbedsUrls: translatedBody.noEmbedsUrls,
         });
 
         await this.channelRepo.updateLastMessageAt(webhook.channelId);

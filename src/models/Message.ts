@@ -46,6 +46,7 @@ export interface IMessage extends Document {
     components?: IEmbedButton[];
     attachments?: IMessageAttachment[];
     noEmbeds?: boolean;
+    noEmbedsUrls?: string[];
 }
 
 // Hard deletion fields preserved for backward compatibility
@@ -92,6 +93,7 @@ const messageSchema = new Schema<IMessage>({
     components: { type: [Schema.Types.Mixed], default: [] },
     attachments: { type: [messageAttachmentSchema], default: [] },
     noEmbeds: { type: Boolean, default: false },
+    noEmbedsUrls: { type: [String], default: [] },
 });
 
 messageSchema.plugin(mongooseIdPlugin);

@@ -714,6 +714,7 @@ export class ServerController {
             poll,
             attachments,
             noEmbeds,
+            noEmbedsUrls,
         } = payload;
         const userId = authenticatedUser.userId;
 
@@ -801,6 +802,7 @@ export class ServerController {
                         text: text ?? '',
                         attachments,
                         noEmbeds,
+                        noEmbedsUrls,
                         ...(replyToId !== undefined && replyToId !== ''
                             ? { replyToId }
                             : {}),

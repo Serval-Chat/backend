@@ -80,6 +80,10 @@ export class EmbedService {
 
         if (existingEmbeds.length >= MAX_EMBEDS) return;
 
+        const suppressedUrls = new Set(
+            (message.noEmbedsUrls ?? []).map((url) => url.replace(/\/$/, '')),
+        );
+
         const textCounts: Record<string, number> = {};
         const internalHostRegex =
             /^https?:\/\/(?:[a-zA-Z0-9.-]*\.)?(?:ser\.chat|catfla\.re)(?::\d+)?(?:\/|$)/;
@@ -94,6 +98,7 @@ export class EmbedService {
             if (url.includes('klipy.com/')) continue;
 
             const norm = url.replace(/\/$/, '');
+            if (suppressedUrls.has(norm)) continue;
             const currentCount = textCounts[norm] ?? 0;
             textCounts[norm] = currentCount + 1;
         }
