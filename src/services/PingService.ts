@@ -161,11 +161,6 @@ export class PingService {
         return await this.pingRepo.deleteByServerId(userId, serverId);
     }
 
-    // Clear all pings for a user
-    public async clearAllPings(userId: string): Promise<void> {
-        await this.pingRepo.deleteByUserId(userId);
-    }
-
     // Clear all DM pings between two users
     public async clearPingsBetweenUsers(
         user1: string,

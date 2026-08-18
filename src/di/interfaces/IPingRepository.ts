@@ -60,9 +60,6 @@ export interface IPingRepository {
 
     deleteByServerId(userId: string, serverId: string): Promise<number>;
 
-    // Delete all pings for a user
-    deleteByUserId(userId: string): Promise<number>;
-
     // Delete all pings between two users
     deleteBetweenUsers(user1: string, user2: string): Promise<number>;
 

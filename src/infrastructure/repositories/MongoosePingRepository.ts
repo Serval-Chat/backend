@@ -128,13 +128,6 @@ export class MongoosePingRepository implements IPingRepository {
         return result.deletedCount;
     }
 
-    public async deleteByUserId(userId: string): Promise<number> {
-        const result = await Ping.deleteMany({
-            userId,
-        });
-        return result.deletedCount;
-    }
-
     public async deleteOldPings(maxAge: number): Promise<number> {
         const cutoffDate = new Date(Date.now() - maxAge);
         const result = await Ping.deleteMany({

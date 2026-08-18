@@ -103,21 +103,4 @@ export class UserPingController {
             throw new ApiError(500, 'Internal server error');
         }
     }
-
-    @Delete()
-    @ApiOperation({ summary: 'Clear all pings for the current user' })
-    @ApiResponse({ status: 200, type: DeletePingResponseDTO })
-    public async clearAllPings(
-        @Req() req: AuthenticatedRequest,
-    ): Promise<DeletePingResponseDTO> {
-        const userId = req.user.id;
-
-        try {
-            await this.pingService.clearAllPings(userId);
-            return { success: true };
-        } catch (error) {
-            this.logger.error('Failed to clear pings:', error);
-            throw new ApiError(500, 'Internal server error');
-        }
-    }
 }
