@@ -23,6 +23,7 @@ import {
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
+import { revokeAllSessionsForUser } from '@/utils/sessionAuth';
 import { toApiId } from '@/utils/mongooseId';
 import { isValidSnowflakeId } from '@/utils/snowflake';
 import type { IUser, IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -154,7 +155,7 @@ import {
     AdminNoteResponseDTO,
 } from './dto/admin-notes.dto';
 import { AdminListUsersRequestDTO } from './dto/admin-list-users.request.dto';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Permissions } from '@/modules/auth/permissions.decorator';
 
 import { AuthenticatedRequest } from '@/middleware/auth';
@@ -164,7 +165,7 @@ import { grantsBeyond, outranks } from '@/permissions/adminHierarchy';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @NoBot()
 @Controller('api/v1/admin')
 export class AdminController {
@@ -622,7 +623,6 @@ export class AdminController {
             profilePicture: DELETED_AVATAR_PATH,
             login: `deleted_${userId}`,
             anonymizedUsername,
-            tokenVersion: (user.tokenVersion ?? 0) + 1,
         });
 
         if (oldAvatar !== undefined && oldAvatar !== '') {
@@ -752,7 +752,6 @@ export class AdminController {
             await this.warningRepo.deleteAllForUser(userId);
             await this.banRepo.deleteAllForUser(userId);
             await this.muteRepo.deleteAllForUser(userId);
-            await this.userRepo.incrementTokenVersion(userId);
 
             if (oldAvatar !== undefined && oldAvatar !== DELETED_AVATAR_PATH) {
                 await deleteAvatarFile(oldAvatar);
@@ -870,7 +869,7 @@ export class AdminController {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        await this.userRepo.incrementTokenVersion(userId);
+        await revokeAllSessionsForUser(userId);
         await this.logAdminAction(req, 'update_permissions', userId, {
             permissions,
         });

@@ -69,6 +69,8 @@ import { MongooseExportJobRepository } from '@/infrastructure/repositories/Mongo
 import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseBlockRepository';
 import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/MongooseAdminNoteRepository';
 import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
+import type { ISessionRepository } from '@/di/interfaces/ISessionRepository';
+import { MongooseSessionRepository } from '@/infrastructure/repositories/MongooseSessionRepository';
 import { MailService } from '@/services/MailService';
 import { MetricsService } from '@/services/MetricsService';
 
@@ -238,6 +240,11 @@ container
 container
     .bind<IPasswordResetRepository>(TYPES.PasswordResetRepository)
     .to(MongoosePasswordResetRepository)
+    .inTransientScope();
+
+container
+    .bind<ISessionRepository>(TYPES.SessionRepository)
+    .to(MongooseSessionRepository)
     .inTransientScope();
 
 // ===============

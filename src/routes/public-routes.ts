@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { PUBLIC_FOLDER_PATH } from '@/config/env';
+import { PUBLIC_FOLDER_PATH, PROJECT_LEVEL } from '@/config/env';
 import express from 'express';
 import path from 'path';
 import { readFileSync } from 'fs';
@@ -41,10 +41,7 @@ router.get(/.*/, (req, res, next) => {
     }
 
     try {
-        if (
-            cachedHtml === null ||
-            process.env.PROJECT_LEVEL === 'development'
-        ) {
+        if (cachedHtml === null || PROJECT_LEVEL === 'development') {
             const htmlPath = path.resolve(PUBLIC_FOLDER_PATH, 'index.html');
             cachedHtml = readFileSync(htmlPath, 'utf8');
         }

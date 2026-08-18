@@ -8,6 +8,7 @@ import type { JWTPayload } from '@/utils/jwt';
 import { container } from '@/di/container';
 import { TYPES } from '@/di/types';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
+import { resolveSession } from '@/utils/sessionAuth';
 
 function getStore(prefix: string) {
     return new RedisStore({
@@ -177,10 +178,10 @@ export const discoverySettingsLimiter = rateLimit({
         : {}),
     windowMs: 60_000,
     max: 20,
-    keyGenerator: (req: Request) => {
+    keyGenerator: async (req: Request) => {
         const serverId =
             typeof req.params.serverId === 'string' ? req.params.serverId : '';
-        return `${authenticatedUserKey(req)}:${serverId}`;
+        return `${await authenticatedUserKey(req)}:${serverId}`;
     },
     standardHeaders: 'draft-7',
     legacyHeaders: false,
@@ -229,24 +230,14 @@ function twoFactorSubjectKey(req: Request): string {
     return ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip');
 }
 
-function authenticatedUserKey(req: Request): string {
+async function authenticatedUserKey(req: Request): Promise<string> {
     const guardedUserId = (req as Request & { user?: JWTPayload }).user?.id;
     if (guardedUserId !== undefined) return guardedUserId;
 
     const header = req.headers.authorization;
     if (typeof header === 'string' && header.startsWith('Bearer ')) {
-        try {
-            const payload = jwt.verify(
-                header.slice('Bearer '.length),
-                JWT_SECRET,
-                { algorithms: ['HS256'] },
-            ) as JWTPayload;
-            if (payload.type === 'access') {
-                return payload.id;
-            }
-        } catch {
-            // Fall back to IP for malformed or expired tokens.
-        }
+        const resolved = await resolveSession(header.slice('Bearer '.length));
+        if (resolved !== null) return resolved.userId;
     }
 
     return ipKeyGenerator(req.ip ?? 'unknown');
@@ -370,4 +361,16 @@ export const crawlerPreviewLimiter = rateLimit({
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: 'Too many invite preview requests, please slow down.',
+});
+
+export const sessionManagementLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:session-mgmt:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many session management requests, please try again later.',
 });

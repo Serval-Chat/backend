@@ -21,7 +21,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsColor } from '@/validation/schemas/common';
-import { MessageAlignmentDTO } from './common.request.dto';
+import { MessageAlignmentDTO, SessionDurationDTO } from './common.request.dto';
 
 export class KeybindsMapDTO {
     [key: string]: KeybindBindingDTO | null;
@@ -234,4 +234,9 @@ export class UpdateSettingsRequestDTO {
     @IsOptional()
     @IsValidKeybindsObject()
     public keybinds?: KeybindsMapDTO;
+
+    @ApiPropertyOptional({ enum: SessionDurationDTO })
+    @IsOptional()
+    @IsEnum(SessionDurationDTO)
+    public sessionDuration?: SessionDurationDTO;
 }

@@ -43,7 +43,7 @@ import type {
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { WsServer } from '@/ws/server';
 import { EmbedService } from '@/services/EmbedService';
 import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
@@ -72,7 +72,7 @@ interface MessageResponse {
 
 @Controller('api/v1/messages')
 @ApiTags('User Messages')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @ApiBearerAuth()
 export class UserMessageController {
     public constructor(

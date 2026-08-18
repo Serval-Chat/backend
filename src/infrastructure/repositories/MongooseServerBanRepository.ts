@@ -32,7 +32,7 @@ export class MongooseServerBanRepository implements IServerBanRepository {
         const userIds = bans.map((b) => b.userId);
         const users = await User.find({ snowflakeId: { $in: userIds } })
             .select(
-                '-tokenVersion -permissions -password -settings -language -login -deletedReason',
+                '-permissions -password -settings -language -login -deletedReason',
             )
             .lean();
 
@@ -41,7 +41,6 @@ export class MongooseServerBanRepository implements IServerBanRepository {
             if (!user) return { ...b, user: null };
 
             const safeUser: Record<string, unknown> = { ...user };
-            delete safeUser.tokenVersion;
             delete safeUser.permissions;
             delete safeUser.password;
             delete safeUser.settings;

@@ -10,8 +10,9 @@ import { DatabaseModule } from './modules/database/database.module';
 import { RepositoryModule } from './modules/repository/repository.module';
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
 import { ServicesModule } from './modules/services/services.module';
-import { AuthModule, JwtAuthGuard } from './modules/auth/auth.module';
+import { AuthModule, AuthGuard } from './modules/auth/auth.module';
 import { AuthController } from './controllers/AuthController';
+import { SessionController } from './controllers/SessionController';
 import { BlockController } from './controllers/BlockController';
 import { AdminController } from './controllers/AdminController';
 import { AdminBadgeController } from './controllers/AdminBadgeController';
@@ -68,6 +69,7 @@ import {
     passwordResetLimiter,
     registrationLimiter,
     sensitiveOperationLimiter,
+    sessionManagementLimiter,
     twoFactorVerifyLimiter,
     passwordResetConfirmLimiter,
     websiteConnectionCreateLimiter,
@@ -103,7 +105,7 @@ import {
                         : {};
                 },
                 transport:
-                    PROJECT_LEVEL !== 'production'
+                    PROJECT_LEVEL !== 'release'
                         ? { target: 'pino-pretty' }
                         : {
                               targets: [
@@ -139,6 +141,7 @@ import {
     ],
     controllers: [
         AuthController,
+        SessionController,
         BlockController,
         AdminController,
         AdminBadgeController,
@@ -188,7 +191,7 @@ import {
         },
         {
             provide: APP_GUARD,
-            useClass: JwtAuthGuard,
+            useClass: AuthGuard,
         },
     ],
 })
@@ -317,5 +320,20 @@ export class AppModule {
             path: 'api/v1/auth/2fa/verify',
             method: RequestMethod.POST,
         });
+
+        consumer.apply(sessionManagementLimiter).forRoutes(
+            {
+                path: 'api/v1/auth/sessions',
+                method: RequestMethod.GET,
+            },
+            {
+                path: 'api/v1/auth/sessions/others',
+                method: RequestMethod.DELETE,
+            },
+            {
+                path: 'api/v1/auth/sessions/:sessionId',
+                method: RequestMethod.DELETE,
+            },
+        );
     }
 }

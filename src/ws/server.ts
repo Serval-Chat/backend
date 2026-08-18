@@ -26,6 +26,7 @@ import { isPermissionKey } from '@/permissions/types';
 import type { IWsServer } from './interfaces/IWsServer';
 import { sourceAddress } from './upgradeSource';
 import { resolveTrustProxy } from '@/config/trustProxy';
+import { touchSessionByHash } from '@/utils/sessionAuth';
 
 const wsTracer = trace.getTracer('serval-ws-gateway');
 
@@ -97,6 +98,10 @@ type RedisBroadcastMessage =
           payload: { userId: string; code: number; reason: string };
       }
     | {
+          action: 'disconnectSession';
+          payload: { sessionId: string; code: number; reason: string };
+      }
+    | {
           action: 'unsubscribeUserFromServer';
           payload: { userId: string; serverId: string; channelIds: string[] };
       }
@@ -115,6 +120,7 @@ export class WsServer extends EventEmitter implements IWsServer {
     // Track authenticated connections
     private socketToUser = new WeakMap<WebSocket, IWsUser>();
     private connectionsByUserId = new Map<string, Set<WebSocket>>();
+    private connectionsBySessionId = new Map<string, Set<WebSocket>>();
     private socketsById = new Map<string, WebSocket>();
 
     // Track channel and server subscriptions
@@ -291,6 +297,13 @@ export class WsServer extends EventEmitter implements IWsServer {
                 case 'disconnectUser':
                     this._localDisconnectUser(
                         data.payload.userId,
+                        data.payload.code,
+                        data.payload.reason,
+                    );
+                    break;
+                case 'disconnectSession':
+                    this._localDisconnectSession(
+                        data.payload.sessionId,
                         data.payload.code,
                         data.payload.reason,
                     );
@@ -572,6 +585,11 @@ export class WsServer extends EventEmitter implements IWsServer {
                     return;
                 }
 
+                const authenticatedUser = this.socketToUser.get(ws);
+                if (authenticatedUser?.sessionTokenHash !== undefined) {
+                    void touchSessionByHash(authenticatedUser.sessionTokenHash);
+                }
+
                 this.socketLiveness.set(ws, false);
                 try {
                     ws.ping();
@@ -612,6 +630,17 @@ export class WsServer extends EventEmitter implements IWsServer {
             this.connectionsByUserId.set(user.userId, userSockets);
         }
         userSockets.add(ws);
+
+        if (user.sessionId !== undefined) {
+            let sessionSockets = this.connectionsBySessionId.get(
+                user.sessionId,
+            );
+            if (sessionSockets === undefined) {
+                sessionSockets = new Set();
+                this.connectionsBySessionId.set(user.sessionId, sessionSockets);
+            }
+            sessionSockets.add(ws);
+        }
 
         logger.info(
             `[WsServer] User ${user.username} authenticated (total sessions: ${userSockets.size})`,
@@ -1185,6 +1214,27 @@ export class WsServer extends EventEmitter implements IWsServer {
         }
     }
 
+    public disconnectSession(
+        sessionId: string,
+        code: number,
+        reason: string,
+    ): void {
+        this.publishToRedis('disconnectSession', { sessionId, code, reason });
+        this._localDisconnectSession(sessionId, code, reason);
+    }
+
+    private _localDisconnectSession(
+        sessionId: string,
+        code: number,
+        reason: string,
+    ): void {
+        const sockets = this.connectionsBySessionId.get(sessionId);
+        if (sockets === undefined) return;
+        for (const ws of Array.from(sockets)) {
+            this.closeConnection(ws, code, reason);
+        }
+    }
+
     // Called when a user loses server access (kick, ban, self-leave) so their
     // existing sockets stop receiving that server's broadcasts.
     public unsubscribeUserFromServer(
@@ -1256,6 +1306,18 @@ export class WsServer extends EventEmitter implements IWsServer {
         // Get user before we lose the reference
         const user = this.socketToUser.get(ws);
         if (user !== undefined) {
+            if (user.sessionId !== undefined) {
+                const sessionSockets = this.connectionsBySessionId.get(
+                    user.sessionId,
+                );
+                if (sessionSockets !== undefined) {
+                    sessionSockets.delete(ws);
+                    if (sessionSockets.size === 0) {
+                        this.connectionsBySessionId.delete(user.sessionId);
+                    }
+                }
+            }
+
             const userSockets = this.connectionsByUserId.get(user.userId);
             if (userSockets !== undefined) {
                 userSockets.delete(ws);

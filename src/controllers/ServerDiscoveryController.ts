@@ -6,7 +6,7 @@ import {
     ApiTags,
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 import {
     DiscoveryServersResponseDTO,
@@ -16,7 +16,7 @@ import {
 @Controller('api/v1/discovery')
 @ApiTags('Server Discovery')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 export class ServerDiscoveryController {
     public constructor(
         @Inject(TYPES.ServerDiscoveryService)

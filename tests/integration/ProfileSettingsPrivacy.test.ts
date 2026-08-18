@@ -19,7 +19,7 @@ describe('Profile settings privacy', () => {
         owner = await createTestUser({
             login: `msg-settings-owner-${Date.now()}@example.com`,
         });
-        ownerToken = generateAuthToken(owner);
+        ownerToken = await generateAuthToken(owner);
 
         await User.updateOne(
             { snowflakeId: owner.snowflakeId },
@@ -37,7 +37,7 @@ describe('Profile settings privacy', () => {
         viewer = await createTestUser({
             login: `msg-settings-viewer-${Date.now()}@example.com`,
         });
-        viewerToken = generateAuthToken(viewer);
+        viewerToken = await generateAuthToken(viewer);
     });
 
     afterAll(async () => {

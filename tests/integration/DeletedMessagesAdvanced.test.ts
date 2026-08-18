@@ -26,16 +26,16 @@ describe('Deleted Message Visibility Advanced Integration', () => {
         app = result.app;
 
         serverOwner = await createTestUser({ login: 'owner@example.com' });
-        serverOwnerToken = generateAuthToken(serverOwner);
+        serverOwnerToken = await generateAuthToken(serverOwner);
 
         adminUser = await createTestUser({ login: 'admin@example.com' });
-        adminToken = generateAuthToken(adminUser);
+        adminToken = await generateAuthToken(adminUser);
 
         auditUser = await createTestUser({ login: 'audit@example.com' });
-        auditToken = generateAuthToken(auditUser);
+        auditToken = await generateAuthToken(auditUser);
 
         regularUser = await createTestUser({ login: 'regular@example.com' });
-        regularUserToken = generateAuthToken(regularUser);
+        regularUserToken = await generateAuthToken(regularUser);
     });
 
     beforeEach(async () => {
@@ -231,7 +231,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
     describe('Direct Messages Deletion', () => {
         it('should hard-delete DM messages so they are not found by anyone', async () => {
             const otherUser = await createTestUser({ login: 'other@example.com' });
-            const otherToken = generateAuthToken(otherUser);
+            const otherToken = await generateAuthToken(otherUser);
 
             const { Friendship } = await import('../../src/models/Friendship');
             await Friendship.create({

@@ -16,7 +16,7 @@ import {
     ApiTags,
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { NoBot } from '@/modules/auth/bot.decorator';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
@@ -36,7 +36,7 @@ import { isValidSnowflakeId } from '@/utils/snowflake';
 @Controller('api/v1/servers/:serverId/channels/:channelId/messages')
 @ApiTags('Message Search')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @NoBot()
 export class ServerMessageSearchController {
     public constructor(

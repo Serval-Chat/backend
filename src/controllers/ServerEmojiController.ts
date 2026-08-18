@@ -43,7 +43,7 @@ import fs from 'fs';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { emojiUploadLimits, imageFileFilter, storage } from '@/config/multer';
 import {
     processAndSaveImage,
@@ -61,7 +61,7 @@ import { assertHttpNotWarned } from '@/utils/warning';
 @Controller('api/v1/servers/:serverId/emojis')
 @ApiTags('Server Emojis')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 export class ServerEmojiController {
     private readonly UPLOADS_DIR = path.join(
         process.cwd(),

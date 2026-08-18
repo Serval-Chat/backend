@@ -28,8 +28,7 @@ describe('AuthService', () => {
             create: jest.fn(),
             update: jest.fn(),
             findById: jest.fn(),
-            updatePassword: jest.fn(),
-            incrementTokenVersion: jest.fn()
+            updatePassword: jest.fn()
         };
 
         mockBanRepo = {

@@ -45,7 +45,7 @@ import { isValidSnowflakeId } from '@/utils/snowflake';
 import { TYPES } from '@/di/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import {
     Bot,
@@ -245,7 +245,7 @@ export class BotController {
         };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Post(':clientId/verification-request')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Apply for verified bot badge (owner only)' })
@@ -270,7 +270,7 @@ export class BotController {
         return { message: 'Verification requested' };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Post()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create a new bot application' })
@@ -306,7 +306,6 @@ export class BotController {
             bio: description?.trim() ?? '',
             password: crypto.randomBytes(32).toString('hex'),
             isBot: true,
-            tokenVersion: 0,
         });
 
         const bot = await Bot.create({
@@ -330,7 +329,7 @@ export class BotController {
         };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Get()
     @ApiOperation({ summary: "List caller's bots" })
     @ApiOkResponse({ type: [BotResponseDTO] })
@@ -346,7 +345,7 @@ export class BotController {
         return bots.map((b) => this.resolveBotUser(b));
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Get(':clientId')
     @ApiOperation({ summary: 'Get bot detail (owner only)' })
     @ApiOkResponse({ type: BotResponseDTO })
@@ -371,7 +370,7 @@ export class BotController {
         return this.resolveBotUser(bot);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Patch(':clientId')
     @ApiOperation({
         summary: 'Update bot name/description/avatar (owner only)',
@@ -422,7 +421,7 @@ export class BotController {
         return updated !== null ? this.resolveBotUser(updated) : null;
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Patch(':clientId/permissions')
     @ApiOperation({ summary: 'Update bot API permissions (owner only)' })
     @ApiOkResponse({ type: BotResponseDTO })
@@ -458,7 +457,7 @@ export class BotController {
         return updated !== null ? this.resolveBotUser(updated) : null;
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Delete(':clientId')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Delete bot (owner only)' })
@@ -483,7 +482,7 @@ export class BotController {
         return { message: 'Bot deleted' };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Post(':clientId/reset-token')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
@@ -511,15 +510,11 @@ export class BotController {
         const newToken = generateBotToken();
         bot.botTokenHash = hashBotToken(newToken);
         await bot.save();
-        await User.findOneAndUpdate(
-            { snowflakeId: bot.userId },
-            { $inc: { tokenVersion: 1 } },
-        );
 
         return { token: newToken };
     }
 
-    @UseGuards(JwtAuthGuard, IsHumanGuard)
+    @UseGuards(AuthGuard, IsHumanGuard)
     @Post(':clientId/authorize')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
@@ -651,7 +646,7 @@ export class BotController {
         return { serverId, serverName: server.name };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Get(':clientId/servers')
     @ApiOperation({ summary: 'List servers the bot is in (owner only)' })
     @ApiOkResponse({ type: BotServerCountResponseDTO })
@@ -674,7 +669,7 @@ export class BotController {
         return { count };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Get(':clientId/commands')
     @ApiOperation({ summary: 'Get slash commands for bot' })
     @ApiOkResponse({ type: [SlashCommandDTO] })
@@ -692,7 +687,7 @@ export class BotController {
         return this.slashCommandRepo.findByBotId(bot.snowflakeId);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Post(':clientId/commands')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Overwrite slash commands for bot' })
@@ -730,7 +725,7 @@ export class BotController {
     }
 
     @Post(':clientId/picture')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @UseInterceptors(
         FileInterceptor('profilePicture', {
             storage,
@@ -855,7 +850,7 @@ export class BotController {
     }
 
     @Post(':clientId/banner')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @UseInterceptors(
         FileInterceptor('banner', {
             storage,

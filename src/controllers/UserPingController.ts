@@ -16,7 +16,7 @@ import {
     ApiBearerAuth,
     ApiOperation,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { ApiError } from '@/utils/ApiError';
 import {
@@ -28,7 +28,7 @@ import { NoBot } from '@/modules/auth/bot.decorator';
 
 @ApiTags('Pings')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @NoBot()
 @Controller('api/v1/pings')
 export class UserPingController {

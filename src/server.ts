@@ -65,7 +65,7 @@ export function setupExpressApp(app: Application): Application {
         helmet({
             noSniff: true, // prevents MIME type sniffing
             strictTransportSecurity:
-                PROJECT_LEVEL === 'production'
+                PROJECT_LEVEL === 'release'
                     ? {
                           maxAge: 31536000, // 1 year
                           includeSubDomains: true,
@@ -175,7 +175,7 @@ export function setupExpressApp(app: Application): Application {
                         'https://www.youtube-nocookie.com',
                         'https://challenges.cloudflare.com',
                     ],
-                    ...(PROJECT_LEVEL === 'production'
+                    ...(PROJECT_LEVEL === 'release'
                         ? { upgradeInsecureRequests: [] }
                         : {}),
                 },
@@ -241,7 +241,7 @@ export function setupExpressApp(app: Application): Application {
                 }
 
                 if (
-                    PROJECT_LEVEL !== 'production' &&
+                    PROJECT_LEVEL !== 'release' &&
                     LOCAL_ORIGIN_RE.test(origin)
                 ) {
                     return callback(null, true);
@@ -330,13 +330,13 @@ export function setupExpressApp(app: Application): Application {
         };
         const status = error.status ?? 500;
         const message =
-            PROJECT_LEVEL === 'production' && status >= 500
+            PROJECT_LEVEL === 'release' && status >= 500
                 ? 'Internal Server Error'
                 : (error.message ?? 'Internal Server Error');
 
         res.status(status).json({
             error: message,
-            ...(PROJECT_LEVEL !== 'production' && { stack: error.stack }),
+            ...(PROJECT_LEVEL !== 'release' && { stack: error.stack }),
         });
     });
 

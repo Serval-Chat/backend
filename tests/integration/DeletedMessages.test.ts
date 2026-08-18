@@ -21,10 +21,10 @@ describe('Deleted Message Visibility Integration', () => {
         app = result.app;
 
         admin = await createTestUser();
-        adminToken = generateAuthToken(admin);
+        adminToken = await generateAuthToken(admin);
 
         regularUser = await createTestUser();
-        regularUserToken = generateAuthToken(regularUser);
+        regularUserToken = await generateAuthToken(regularUser);
     });
 
     beforeEach(async () => {

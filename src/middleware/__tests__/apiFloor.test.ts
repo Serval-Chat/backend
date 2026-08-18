@@ -4,12 +4,26 @@ import jwt from 'jsonwebtoken';
 
 import { JWT_SECRET } from '@/config/env';
 import { createApp } from '@/server';
+import { resolveSession } from '@/utils/sessionAuth';
 import {
     API_FLOOR_MAX,
     API_FLOOR_WINDOW_MS,
     apiFloorLimiter,
     loginLimiter,
 } from '../rateLimiting';
+
+jest.mock('@/utils/sessionAuth', () => ({
+    resolveSession: jest.fn(),
+}));
+
+(resolveSession as jest.Mock).mockImplementation((raw: string) => {
+    const decoded = jwt.decode(raw) as { id?: string } | null;
+    return Promise.resolve(
+        decoded?.id !== undefined
+            ? { userId: decoded.id, sessionId: 'session' }
+            : null,
+    );
+});
 
 interface MiddlewareStack {
     _router?: { stack: StackLayer[] };
@@ -28,7 +42,6 @@ function token(id: string): string {
             id,
             login: `${id}@example.invalid`,
             username: id,
-            tokenVersion: 0,
             type: 'access',
         },
         JWT_SECRET,

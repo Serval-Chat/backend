@@ -137,16 +137,12 @@ export class MongooseUserRepository implements IUserRepository {
     }
 
     // Soft delete a user
-    //
-    // Marks the user as deleted, sets a reason, and increments the token version
-    // To invalidate all existing sessions
     public async softDelete(id: string, reason: string): Promise<boolean> {
         const user = await this.userModel.findOne({ snowflakeId: id });
         if (!user) return false;
 
         user.deletedAt = new Date();
         user.deletedReason = reason;
-        user.tokenVersion = (user.tokenVersion ?? 0) + 1;
         await user.save();
 
         return true;
@@ -369,15 +365,6 @@ export class MongooseUserRepository implements IUserRepository {
         return result !== null;
     }
 
-    public async incrementTokenVersion(id: string): Promise<void> {
-        await this.userModel.findOneAndUpdate(
-            { snowflakeId: id },
-            {
-                $inc: { tokenVersion: 1 },
-            },
-        );
-    }
-
     public async removeBadgeFromAllUsers(badgeId: string): Promise<void> {
         await this.userModel.updateMany(
             { badges: badgeId },
@@ -419,6 +406,7 @@ export class MongooseUserRepository implements IUserRepository {
                     meta?: boolean;
                 } | null
             >;
+            sessionDuration?: '1d' | '7d' | '30d' | '90d';
         },
     ): Promise<void> {
         const update: Record<string, unknown> = {};

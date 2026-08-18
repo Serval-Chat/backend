@@ -13,7 +13,7 @@ export class ApiErrorFilter implements ExceptionFilter {
         response.status(status).json({
             error: exception.message,
             details: exception.details,
-            ...(PROJECT_LEVEL !== 'production' && { stack: exception.stack }),
+            ...(PROJECT_LEVEL !== 'release' && { stack: exception.stack }),
         });
     }
 }

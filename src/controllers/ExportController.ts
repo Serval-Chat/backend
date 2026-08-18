@@ -24,7 +24,7 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { Response } from 'express';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
 import fs from 'fs';
@@ -43,7 +43,7 @@ export class ExportController {
 
     @Get('servers/:serverId/channels/:channelId/export-state')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get export state for a channel' })
     @ApiOkResponse({ type: ExportStateResponseDTO })
     public async getExportState(
@@ -63,7 +63,7 @@ export class ExportController {
 
     @Post('servers/:serverId/channels/:channelId/export')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Request message export for a channel' })
     @ApiOkResponse({ type: ExportRequestResponseDTO })
     public async requestExport(

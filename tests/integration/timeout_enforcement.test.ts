@@ -35,8 +35,8 @@ describe('Timeout Enforcement Integration', () => {
         owner = await createTestUser({ login: `owner_${Date.now()}@test.com` });
         targetUser = await createTestUser({ login: `target_${Date.now()}@test.com` });
 
-        ownerToken = generateAuthToken(owner);
-        targetToken = generateAuthToken(targetUser);
+        ownerToken = await generateAuthToken(owner);
+        targetToken = await generateAuthToken(targetUser);
 
         serverObj = await createTestServer(owner.snowflakeId);
         channelObj = await createTestChannel(serverObj.snowflakeId);

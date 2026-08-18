@@ -25,6 +25,13 @@ export interface IWsUser {
     isBot: boolean;
 
     /**
+     * The session backing this connection, and its token hash.
+     * Undefined for bots.
+     */
+    sessionId?: string;
+    sessionTokenHash?: string;
+
+    /**
      * Timestamp of when the user was authenticated.
      */
     authenticatedAt: Date;

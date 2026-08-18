@@ -40,7 +40,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -66,7 +66,7 @@ import {
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Channels')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 export class ServerChannelController {
     public constructor(
         @Inject(TYPES.ChannelRepository)

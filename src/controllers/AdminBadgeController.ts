@@ -22,7 +22,7 @@ import {
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { Badge } from '@/models/Badge';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Permissions } from '@/modules/auth/permissions.decorator';
 import { NoBot } from '@/modules/auth/bot.decorator';
 import {
@@ -35,7 +35,7 @@ import {
 
 @ApiTags('Admin')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @NoBot()
 @Controller('api/v1/admin')
 export class AdminBadgeController {

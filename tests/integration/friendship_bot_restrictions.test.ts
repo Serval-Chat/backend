@@ -38,7 +38,7 @@ describe('Friendship bot restrictions', () => {
             login: 'human_target',
             username: 'human_target',
         });
-        humanToken = generateAuthToken(human);
+        humanToken = await generateAuthToken(human);
     });
 
     it('rejects sending a friend request to a bot', async () => {

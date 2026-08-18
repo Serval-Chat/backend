@@ -5,7 +5,6 @@ import type { JWTPayload } from '@/utils/jwt';
 type PopulatedBotTokenUser = {
     snowflakeId: string;
     username: string;
-    tokenVersion: number;
     deletedAt?: Date;
     isBot: boolean;
 };
@@ -25,10 +24,7 @@ export async function resolveBotAuthPayload(
 ): Promise<JWTPayload | null> {
     const bot = (await Bot.findOne({ botTokenHash: tokenHash })
         .select('+botTokenHash')
-        .populate(
-            'userIdUser',
-            'username tokenVersion deletedAt isBot snowflakeId',
-        )
+        .populate('userIdUser', 'username deletedAt isBot snowflakeId')
         .lean()) as LeanBotForAuth | null;
 
     if (
@@ -57,7 +53,6 @@ export async function resolveBotAuthPayload(
         id: bot.userIdUser.snowflakeId,
         login: `bot.${bot.clientId}`,
         username: bot.userIdUser.username,
-        tokenVersion: bot.userIdUser.tokenVersion,
         isBot: true,
     };
 }

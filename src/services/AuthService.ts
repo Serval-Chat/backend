@@ -46,7 +46,6 @@ export interface TempTokenPayload {
     id: string;
     login: string;
     username: string;
-    tokenVersion: number;
     iat?: number;
     exp?: number;
 }
@@ -506,9 +505,6 @@ export class AuthService {
 
         // Update password
         await this.userRepo.updatePassword(resetRequest.userId, newPassword);
-
-        // Invalidate sessions
-        await this.userRepo.incrementTokenVersion(resetRequest.userId);
 
         // Invalidate all other reset tokens for this user
         await this.passwordResetRepo.deleteByUser(resetRequest.userId);

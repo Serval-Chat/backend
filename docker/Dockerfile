@@ -5,13 +5,10 @@ FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a55
 
 WORKDIR /app
 
-# node:22 bundles npm 10, which cannot resolve this npm 12 lockfile.
 RUN npm i -g npm@12
 
 COPY package.json package-lock.json ./
 
-# Explicit --include=optional: npm sometimes skips sharp's nested libvips
-# package, which fails at runtime rather than at install.
 RUN npm ci --include=optional
 
 RUN node -e "require('sharp'); require('bcrypt'); console.log('native modules OK')"
@@ -27,7 +24,6 @@ FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a55
 
 WORKDIR /app
 
-# Keep in sync with .env and the nginx.prod.conf.template upstream.
 ENV CHAT_PORT=8000
 ENV NODE_ENV=production
 
@@ -37,10 +33,10 @@ COPY --from=builder /app/dist/ dist/
 COPY templates/ templates/
 COPY static/ static/
 
-# Read at runtime by getVersion().
+COPY vpn-lists/output/ vpn-lists/output/
+
 COPY package.json ./
 
-# public/ must exist or env.ts throws "Public folder not found" at startup.
 RUN addgroup -S app && adduser -S app -G app \
     && mkdir -p logs uploads public \
     && chown -R app:app /app

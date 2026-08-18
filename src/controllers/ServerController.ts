@@ -50,7 +50,7 @@ import { WsServer } from '@/ws/server';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { IChannel } from '@/di/interfaces/IChannelRepository';
 import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import path from 'path';
@@ -86,7 +86,7 @@ import {
 @Controller('api/v1/servers')
 @ApiTags('Servers')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 export class ServerController {
     private readonly UPLOADS_DIR = path.join(
         process.cwd(),
@@ -286,7 +286,7 @@ export class ServerController {
 
     @Post()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @NoBot()
     @ApiOperation({ summary: 'Create server' })
     @ApiResponse({

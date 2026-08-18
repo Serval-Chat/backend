@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { WebSocket } from 'ws';
 import type { Server } from 'node:http';
@@ -8,13 +7,13 @@ import type { AddressInfo } from 'node:net';
 import type { RawData } from 'ws';
 import type { Express } from 'express';
 
-import { JWT_SECRET } from '../../src/config/env';
 import { setup, teardown } from './setup';
 import {
     clearDatabase,
     createTestChannel,
     createTestServer,
     createTestUser,
+    generateAuthToken,
 } from './helpers';
 import { Webhook } from '../../src/models/Webhook';
 import { ServerMember } from '../../src/models/Server';
@@ -34,20 +33,7 @@ type WsReceivedEnvelope = {
 
 const WS_EVENT_TIMEOUT_MS = 5000;
 
-function makeAccessToken(user: { snowflakeId: string, login: string, username: string, tokenVersion?: number, isBot?: boolean }) {
-    return jwt.sign(
-        {
-            id: user.snowflakeId,
-            login: user.login,
-            username: user.username,
-            tokenVersion: user.tokenVersion ?? 0,
-            isBot: user.isBot === true,
-            type: 'access',
-        },
-        JWT_SECRET,
-        { expiresIn: '1h' },
-    );
-}
+const makeAccessToken = generateAuthToken;
 
 function wsUrlFromServer(server: Server): string {
     const address = server.address() as AddressInfo;
@@ -137,7 +123,7 @@ describe('Webhook Embed Updates Broadcast', () => {
 
         await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: viewer.snowflakeId, roles: [] });
 
-        const viewerToken = makeAccessToken(viewer);
+        const viewerToken = await makeAccessToken(viewer);
         const viewerSocket = await openAuthenticatedSocket(wsUrl, viewerToken);
 
         viewerSocket.send(JSON.stringify({
@@ -197,7 +183,7 @@ describe('Webhook Embed Updates Broadcast', () => {
 
         await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: viewer.snowflakeId, roles: [] });
 
-        const viewerToken = makeAccessToken(viewer);
+        const viewerToken = await makeAccessToken(viewer);
         const viewerSocket = await openAuthenticatedSocket(wsUrl, viewerToken);
 
         viewerSocket.send(JSON.stringify({

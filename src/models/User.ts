@@ -12,6 +12,20 @@ export enum MessageAlignment {
     RIGHT = 'right',
 }
 
+export enum SessionDuration {
+    ONE_DAY = '1d',
+    SEVEN_DAYS = '7d',
+    THIRTY_DAYS = '30d',
+    NINETY_DAYS = '90d',
+}
+
+export const SESSION_DURATION_DAYS: Record<SessionDuration, number> = {
+    [SessionDuration.ONE_DAY]: 1,
+    [SessionDuration.SEVEN_DAYS]: 7,
+    [SessionDuration.THIRTY_DAYS]: 30,
+    [SessionDuration.NINETY_DAYS]: 90,
+};
+
 // User interface
 //
 // Represents a registered user in the system
@@ -49,7 +63,6 @@ export interface IUser extends Document {
     deletedAt?: Date;
     deletedReason?: string;
     anonymizedUsername?: string;
-    tokenVersion?: number; // For JWT invalidation (global logout)
     displayName?: string;
     bio?: string;
     pronouns?: string;
@@ -101,6 +114,7 @@ export interface IUser extends Document {
                 meta?: boolean;
             } | null
         >;
+        sessionDuration?: SessionDuration;
     };
     banner?: string;
     bannerColor?: string;
@@ -204,7 +218,6 @@ const schema = new Schema<IUser>(
         deletedAt: { type: Date },
         deletedReason: { type: String },
         anonymizedUsername: { type: String },
-        tokenVersion: { type: Number, default: 0 },
         bio: { type: String, maxlength: 500, trim: true },
         pronouns: { type: String, maxlength: 60, trim: true },
         badges: { type: [String], default: [] },
@@ -257,6 +270,11 @@ const schema = new Schema<IUser>(
             useDefaultSounds: { type: Boolean, default: true },
             use24HourTime: { type: Boolean, default: false },
             keybinds: { type: Schema.Types.Mixed, default: {} },
+            sessionDuration: {
+                type: String,
+                enum: Object.values(SessionDuration),
+                default: SessionDuration.THIRTY_DAYS,
+            },
         },
         notificationPreferences: {
             type: {

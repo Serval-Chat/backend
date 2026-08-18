@@ -22,7 +22,7 @@ import {
     ApiConsumes,
     ApiBody,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import { Request, Response } from 'express';
 import path from 'path';
@@ -112,7 +112,7 @@ export class DecorationController {
     @Post('upload')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @UseInterceptors(
         FileInterceptor('file', {
             storage,
@@ -216,7 +216,7 @@ export class DecorationController {
     @Post(':id/apply')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Apply a decoration' })
     @ApiResponse({ status: 200, type: SimpleMessageResponseDTO })
     public async applyDecoration(
@@ -237,7 +237,7 @@ export class DecorationController {
     @Delete('active')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Remove active decoration' })
     @ApiResponse({ status: 200, type: SimpleMessageResponseDTO })
     public async removeActiveDecoration(
@@ -252,7 +252,7 @@ export class DecorationController {
     @Get('my')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({
         summary: 'Get all decorations created by the current user',
     })
@@ -278,7 +278,7 @@ export class DecorationController {
     @Delete(':id')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Delete a decoration permanently' })
     @ApiResponse({ status: 200, type: SimpleMessageResponseDTO })
     public async deleteDecoration(
@@ -334,7 +334,7 @@ export class DecorationController {
 
     @Get(':id')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get decoration metadata' })
     @ApiResponse({ status: 200, type: DecorationResponseDTO })
     public async getDecoration(

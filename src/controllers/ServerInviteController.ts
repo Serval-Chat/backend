@@ -40,7 +40,7 @@ import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import crypto from 'crypto';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import { CreateInviteRequestDTO } from './dto/server-invite.request.dto';
 import {
@@ -91,7 +91,7 @@ export class ServerInviteController {
     ) {}
 
     @Get('servers/:serverId/invites')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get all invites for a server' })
     @ApiOkResponse({
@@ -135,7 +135,7 @@ export class ServerInviteController {
     }
 
     @Post('servers/:serverId/invites')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @HttpCode(200)
     @ApiOperation({ summary: 'Create a new invite for a server' })
@@ -278,7 +278,7 @@ export class ServerInviteController {
     }
 
     @Delete('servers/:serverId/invites/:inviteId')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Delete a server invite' })
     @ApiOkResponse({
@@ -401,7 +401,7 @@ export class ServerInviteController {
     }
 
     @Post('invites/:code/join')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @HttpCode(200)
     @ApiOperation({ summary: 'Join a server using an invite code' })

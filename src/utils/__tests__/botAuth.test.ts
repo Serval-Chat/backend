@@ -26,7 +26,6 @@ function botRecord(overrides: Record<string, unknown> = {}) {
         userIdUser: {
             snowflakeId: 'bot-user-1',
             username: 'somebot',
-            tokenVersion: 3,
             isBot: true,
             ...overrides,
         },
@@ -61,7 +60,6 @@ describe('resolveBotAuthPayload', () => {
             id: 'bot-user-1',
             login: 'bot.client-1',
             username: 'somebot',
-            tokenVersion: 3,
             isBot: true,
         });
     });

@@ -20,7 +20,7 @@ import {
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { SimpleMessageResponseDTO } from './dto/profile.extra.response.dto';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { TYPES } from '@/di/types';
 import { IBlockRepository } from '@/di/interfaces/IBlockRepository';
@@ -40,7 +40,7 @@ import { NoBot } from '@/modules/auth/bot.decorator';
 
 @ApiTags('Blocks')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @NoBot()
 @Controller('api/v1/blocks')
 export class BlockController {
@@ -55,7 +55,7 @@ export class BlockController {
 
     @Get('profiles')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get all block profiles for the current user' })
     @ApiResponse({ status: 200, type: [BlockProfileResponseDTO] })
     public async getProfiles(
@@ -74,7 +74,7 @@ export class BlockController {
 
     @Post('profiles')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Create a new block profile' })
     @ApiResponse({ status: 201, type: BlockProfileResponseDTO })
     @ApiResponse({ status: 403, description: 'Maximum profile limit reached' })
@@ -104,7 +104,7 @@ export class BlockController {
 
     @Patch('profiles/:id')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Update an existing block profile' })
     @ApiResponse({ status: 200, type: BlockProfileResponseDTO })
     @ApiResponse({ status: 404, description: 'Profile not found' })
@@ -131,7 +131,7 @@ export class BlockController {
 
     @Delete('profiles/:id')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @HttpCode(200)
     @ApiOperation({
         summary: 'Delete a block profile (cascade-deletes associated blocks)',
@@ -157,7 +157,7 @@ export class BlockController {
 
     @Get()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get all users blocked by the current user' })
     @ApiResponse({ status: 200, type: [BlockRelationshipResponseDTO] })
     public async getBlocks(
@@ -175,7 +175,7 @@ export class BlockController {
 
     @Put(':targetUserId')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Block a user or update their block profile' })
     @ApiResponse({ status: 200, type: BlockRelationshipResponseDTO })
     public async blockUser(
@@ -214,7 +214,7 @@ export class BlockController {
 
     @Delete(':targetUserId')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @HttpCode(204)
     @ApiOperation({ summary: 'Unblock a user' })
     @ApiResponse({ status: 204, description: 'User unblocked' })

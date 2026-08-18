@@ -78,11 +78,11 @@ describe('secret validation cannot be bypassed with NODE_ENV=test', () => {
     });
 });
 
-describe('NODE_ENV=test is refused when PROJ_LEVEL=production', () => {
+describe('NODE_ENV=test is refused when PROJ_LEVEL=release', () => {
     it('refuses to start in that combination', () => {
         expect(() =>
-            loadEnv({ ...VALID, PROJ_LEVEL: 'production' }, 'test'),
-        ).toThrow(/NODE_ENV=test with PROJ_LEVEL=production/);
+            loadEnv({ ...VALID, PROJ_LEVEL: 'release' }, 'test'),
+        ).toThrow(/NODE_ENV=test with PROJ_LEVEL=release/);
     });
 
     it('starts normally under NODE_ENV=test with PROJ_LEVEL=development', () => {
@@ -91,9 +91,9 @@ describe('NODE_ENV=test is refused when PROJ_LEVEL=production', () => {
         ).not.toThrow();
     });
 
-    it('starts normally in a real production boot (NODE_ENV unset)', () => {
+    it('starts normally in a real release boot (NODE_ENV unset)', () => {
         expect(() =>
-            loadEnv({ ...VALID, PROJ_LEVEL: 'production' }, 'production'),
+            loadEnv({ ...VALID, PROJ_LEVEL: 'release' }, 'production'),
         ).not.toThrow();
     });
 });

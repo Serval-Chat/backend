@@ -41,7 +41,7 @@ import fs from 'fs';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { imageFileFilter, storage } from '@/config/multer';
 import { STICKER_MAX_SIZE_BYTES } from '@/constants/stickers';
 import { StickerResponseDTO } from './dto/sticker.response.dto';
@@ -55,7 +55,7 @@ import { assertHttpNotWarned } from '@/utils/warning';
 @Controller('api/v1/servers/:serverId/stickers')
 @ApiTags('Server Stickers')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 export class ServerStickerController {
     private readonly UPLOADS_DIR = path.join(
         process.cwd(),

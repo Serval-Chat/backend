@@ -17,7 +17,7 @@ describe('Server creation grants the @everyone role', () => {
         owner = await createTestUser({
             login: `server-owner-${Date.now()}@example.com`,
         });
-        ownerToken = generateAuthToken(owner);
+        ownerToken = await generateAuthToken(owner);
     });
 
     afterAll(async () => {

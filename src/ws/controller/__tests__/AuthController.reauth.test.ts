@@ -4,6 +4,10 @@ jest.mock('@/utils/botAuth', () => ({
     resolveBotAuthPayload: jest.fn().mockResolvedValue(null),
 }));
 
+jest.mock('@/utils/sessionAuth', () => ({
+    resolveSession: jest.fn().mockResolvedValue(null),
+}));
+
 const userRepo = { findById: jest.fn(), isBanned: jest.fn() };
 const serverMemberRepo = { findByUserId: jest.fn() };
 

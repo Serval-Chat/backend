@@ -27,6 +27,7 @@ import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/M
 import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseBlockRepository';
 import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/MongooseAdminNoteRepository';
 import { SlashCommandRepository } from '@/infrastructure/repositories/SlashCommandRepository';
+import { MongooseSessionRepository } from '@/infrastructure/repositories/MongooseSessionRepository';
 
 @Global()
 @Module({
@@ -139,6 +140,10 @@ import { SlashCommandRepository } from '@/infrastructure/repositories/SlashComma
             provide: TYPES.SlashCommandRepository,
             useClass: SlashCommandRepository,
         },
+        {
+            provide: TYPES.SessionRepository,
+            useClass: MongooseSessionRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -168,6 +173,7 @@ import { SlashCommandRepository } from '@/infrastructure/repositories/SlashComma
         TYPES.BlockRepository,
         TYPES.AdminNoteRepository,
         TYPES.SlashCommandRepository,
+        TYPES.SessionRepository,
     ],
 })
 export class RepositoryModule {}

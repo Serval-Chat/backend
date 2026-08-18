@@ -26,7 +26,7 @@ import {
     ApiBearerAuth,
     ApiOperation,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { mapUser } from '@/utils/user';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { ApiError } from '@/utils/ApiError';
@@ -50,7 +50,7 @@ import { NoBot } from '@/modules/auth/bot.decorator';
 
 @ApiTags('Friends')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @NoBot()
 @Controller('api/v1/friends')
 export class FriendshipController {
@@ -94,7 +94,7 @@ export class FriendshipController {
 
     @Get()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get friends list' })
     @ApiResponse({ status: 200, type: [FriendResponseDTO] })
     public async getFriends(
@@ -258,7 +258,7 @@ export class FriendshipController {
 
     @Get('profiles')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({
         summary: 'Get full profiles for all friends in one request',
     })
@@ -334,7 +334,7 @@ export class FriendshipController {
 
     @Get('incoming')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get incoming friend requests' })
     @ApiResponse({ status: 200, type: [IncomingFriendRequestResponseDTO] })
     public async getIncomingRequests(
@@ -365,7 +365,7 @@ export class FriendshipController {
 
     @Get('outgoing')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get outgoing friend requests' })
     @ApiResponse({ status: 200, type: [OutgoingFriendRequestResponseDTO] })
     public async getOutgoingRequests(
@@ -395,7 +395,7 @@ export class FriendshipController {
 
     @Post()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Send a friend request' })
     @ApiResponse({ status: 201, type: SendFriendRequestResponseDTO })
     @ApiResponse({
@@ -504,7 +504,7 @@ export class FriendshipController {
 
     @Post(':id/accept')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Accept a friend request' })
     @ApiResponse({ status: 201, type: AcceptFriendRequestResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -588,7 +588,7 @@ export class FriendshipController {
 
     @Post(':id/reject')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Reject a friend request' })
     @ApiResponse({ status: 201, type: FriendshipMessageResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -625,7 +625,7 @@ export class FriendshipController {
 
     @Post(':id/cancel')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Cancel a friend request' })
     @ApiResponse({ status: 201, type: FriendshipMessageResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -662,7 +662,7 @@ export class FriendshipController {
 
     @Post(':friendId/pin')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Toggle DM pin for a friend' })
     @ApiResponse({ status: 404, description: 'User Not Found' })
     public async togglePinFriend(
@@ -698,7 +698,7 @@ export class FriendshipController {
 
     @Patch(':friendId/nickname')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Set a private local nickname for a friend' })
     @ApiResponse({ status: 404, description: 'User Not Found' })
     public async setFriendNickname(
@@ -736,7 +736,7 @@ export class FriendshipController {
 
     @Delete(':friendId/nickname')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Clear the private local nickname for a friend' })
     @ApiResponse({ status: 404, description: 'User Not Found' })
     public async clearFriendNickname(
@@ -768,7 +768,7 @@ export class FriendshipController {
 
     @Delete(':friendId')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Remove a friend' })
     @ApiResponse({ status: 200, type: FriendshipMessageResponseDTO })
     @ApiResponse({ status: 404, description: 'User Not Found' })

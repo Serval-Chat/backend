@@ -3,9 +3,12 @@ import { Reflector } from '@nestjs/core';
 
 import { ProfileController } from '@/controllers/ProfileController';
 import { resolveBotAuthPayload } from '@/utils/botAuth';
-import { JwtAuthGuard } from '../auth.module';
+import { AuthGuard } from '../auth.module';
 
 jest.mock('@/utils/botAuth', () => ({ resolveBotAuthPayload: jest.fn() }));
+jest.mock('@/utils/sessionAuth', () => ({
+    resolveSession: jest.fn().mockResolvedValue(null),
+}));
 
 const resolveBot = resolveBotAuthPayload as jest.Mock;
 
@@ -14,7 +17,6 @@ const BOT_PAYLOAD = {
     id: 'bot-user-1',
     login: 'bot.client-1',
     username: 'somebot',
-    tokenVersion: 0,
     isBot: true,
 };
 
@@ -35,12 +37,12 @@ function contextFor(handler: unknown) {
 }
 
 describe('bot tokens against permission-guarded routes', () => {
-    let guard: JwtAuthGuard;
+    let guard: AuthGuard;
 
     beforeEach(() => {
         jest.clearAllMocks();
         resolveBot.mockResolvedValue(BOT_PAYLOAD);
-        guard = new JwtAuthGuard(
+        guard = new AuthGuard(
             { findById: jest.fn() } as never,
             {
                 checkExpired: jest.fn(),

@@ -22,7 +22,7 @@ import { TYPES } from '@/di/types';
 import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Bot } from '@/models/Bot';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { SetCommandsRequestDTO } from './dto/application.request.dto';
@@ -58,7 +58,7 @@ export class ApplicationController {
         });
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Get('@me/commands')
     @ApiOperation({ summary: 'Get slash commands registered by this bot' })
     @ApiOkResponse({ type: [SlashCommandDTO] })
@@ -71,7 +71,7 @@ export class ApplicationController {
         return this.slashCommandRepo.findByBotId(bot.snowflakeId);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Put('@me/commands')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({

@@ -43,7 +43,7 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import {
     AddUnicodeReactionRequestDTO,
     AddCustomReactionRequestDTO,
@@ -66,7 +66,7 @@ const REACTION_VALIDATION_ERRORS: string[] = [
 @Controller('api/v1')
 @ApiTags('Reactions')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @ApiExtraModels(
     AddUnicodeReactionRequestDTO,
     AddCustomReactionRequestDTO,

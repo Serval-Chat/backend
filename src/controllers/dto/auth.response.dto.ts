@@ -58,3 +58,8 @@ export class Disable2FAResponseDTO {
     @ApiProperty()
     public token!: string;
 }
+
+export class LogoutResponseDTO {
+    @ApiProperty()
+    public message!: string;
+}

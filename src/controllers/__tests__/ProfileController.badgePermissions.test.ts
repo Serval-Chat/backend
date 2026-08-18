@@ -1,27 +1,25 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import * as jwt from 'jsonwebtoken';
 
-import { JWT_SECRET } from '@/config/env';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { PERMISSIONS_KEY } from '@/modules/auth/permissions.decorator';
 import { ProfileController } from '../ProfileController';
+import { resolveSession } from '@/utils/sessionAuth';
+
+jest.mock('@/utils/sessionAuth', () => ({
+    resolveSession: jest.fn(),
+}));
+
+const mockResolveSession = resolveSession as jest.Mock;
+mockResolveSession.mockResolvedValue({
+    userId: 'admin-1',
+    sessionId: 'session-1',
+});
 
 const handler = ProfileController.prototype.updateUserBadges;
 
-function signToken(permissions?: Record<string, boolean>): string {
-    return jwt.sign(
-        {
-            id: 'admin-1',
-            login: 'admin',
-            username: 'admin',
-            tokenVersion: 0,
-            type: 'access',
-            ...(permissions === undefined ? {} : { permissions }),
-        },
-        JWT_SECRET,
-        { algorithm: 'HS256' },
-    );
+function signToken(): string {
+    return 'token';
 }
 
 function makeContext(token: string) {
@@ -38,7 +36,7 @@ function makeContext(token: string) {
 describe('POST /profile/:id/badges permission source', () => {
     let userRepo: { findById: jest.Mock };
     let banRepo: { checkExpired: jest.Mock; findActiveByUserId: jest.Mock };
-    let guard: JwtAuthGuard;
+    let guard: AuthGuard;
 
     beforeEach(() => {
         userRepo = { findById: jest.fn() };
@@ -46,7 +44,7 @@ describe('POST /profile/:id/badges permission source', () => {
             checkExpired: jest.fn().mockResolvedValue(undefined),
             findActiveByUserId: jest.fn().mockResolvedValue(null),
         };
-        guard = new JwtAuthGuard(
+        guard = new AuthGuard(
             userRepo as never,
             banRepo as never,
             new Reflector(),
@@ -58,14 +56,13 @@ describe('POST /profile/:id/badges permission source', () => {
         expect(required).toEqual(['manageUsers']);
     });
 
-    it('denies a token that claims manageUsers the database has revoked', async () => {
+    it('denies when the database does not grant manageUsers', async () => {
         userRepo.findById.mockResolvedValue({
             snowflakeId: 'admin-1',
-            tokenVersion: 0,
             permissions: { adminAccess: false, manageUsers: false },
         });
 
-        const context = makeContext(signToken({ manageUsers: true }));
+        const context = makeContext(signToken());
 
         await expect(guard.canActivate(context as never)).rejects.toThrow(
             ForbiddenException,
@@ -75,7 +72,6 @@ describe('POST /profile/:id/badges permission source', () => {
     it('allows a token with no permissions when the database grants them', async () => {
         userRepo.findById.mockResolvedValue({
             snowflakeId: 'admin-1',
-            tokenVersion: 0,
             permissions: { adminAccess: false, manageUsers: true },
         });
 
@@ -87,7 +83,6 @@ describe('POST /profile/:id/badges permission source', () => {
     it('allows adminAccess', async () => {
         userRepo.findById.mockResolvedValue({
             snowflakeId: 'admin-1',
-            tokenVersion: 0,
             permissions: { adminAccess: true, manageUsers: false },
         });
 

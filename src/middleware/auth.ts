@@ -1,12 +1,11 @@
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
-import { JWT_SECRET } from '@/config/env';
 import logger from '@/utils/logger';
 import type { JWTPayload } from '@/utils/jwt';
 import { Ban } from '@/models/Ban';
 import { User } from '@/models/User';
 import { resolveBotAuthPayload } from '@/utils/botAuth';
+import { resolveSession } from '@/utils/sessionAuth';
 
 declare module 'express-serve-static-core' {
     interface Request {
@@ -39,34 +38,29 @@ export const authenticateToken = async (
         return res.redirect('/login.html');
     }
 
-    let decoded: JWTPayload | null = null;
-    try {
-        const verified = jwt.verify(token, JWT_SECRET, {
-            algorithms: ['HS256'],
-        }) as JWTPayload;
-        if (verified.type === 'access') decoded = verified;
-    } catch {
-        console.error('Invalid JWT token');
-    }
+    const resolved = await resolveSession(token);
 
     try {
-        if (decoded !== null) {
+        if (resolved !== null) {
             const user = await User.findOne({
-                snowflakeId: decoded.id,
+                snowflakeId: resolved.userId,
             }).lean();
             if (!user || user.deletedAt) {
                 return res.status(401).json({ error: 'Invalid token' });
             }
 
-            if (
-                Number(user.tokenVersion ?? 0) !== Number(decoded.tokenVersion)
-            ) {
-                return res.status(401).json({ error: 'Token expired' });
-            }
+            const decoded: JWTPayload = {
+                type: 'access',
+                id: resolved.userId,
+                login: user.login,
+                username: user.username,
+                isBot: user.isBot ?? false,
+                sessionId: resolved.sessionId,
+            };
 
-            await Ban.checkExpired(decoded.id);
+            await Ban.checkExpired(resolved.userId);
             const activeBan = await Ban.findOne({
-                userId: decoded.id,
+                userId: resolved.userId,
                 active: true,
             });
             if (activeBan) {
@@ -85,8 +79,7 @@ export const authenticateToken = async (
             );
             if (existingDescriptor) {
                 const existingUser = existingDescriptor.value as
-                    | JWTPayload
-                    | undefined;
+                    JWTPayload | undefined;
                 if (
                     existingUser &&
                     existingDescriptor.writable === false &&

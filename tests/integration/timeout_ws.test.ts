@@ -1,20 +1,20 @@
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { WebSocket } from 'ws';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { RawData } from 'ws';
 
-import { JWT_SECRET } from '../../src/config/env';
 import { setup, teardown } from './setup';
 import {
     clearDatabase,
     createTestChannel,
     createTestServer,
     createTestUser,
+    generateAuthToken,
 } from './helpers';
 import { ServerMember } from '../../src/models/Server';
+import type { IUser } from '../../src/models/User';
 
 type WsReceivedEnvelope = {
     id: string;
@@ -30,19 +30,8 @@ type WsReceivedEnvelope = {
 
 const WS_EVENT_TIMEOUT_MS = 2000;
 
-function makeAccessToken(user: { snowflakeId: string, login: string, username: string, tokenVersion?: number, isBot?: boolean }) {
-    return jwt.sign(
-        {
-            id: user.snowflakeId,
-            login: user.login,
-            username: user.username,
-            tokenVersion: user.tokenVersion ?? 0,
-            isBot: user.isBot === true,
-            type: 'access',
-        },
-        JWT_SECRET,
-        { expiresIn: '1h' },
-    );
+function makeAccessToken(user: IUser) {
+    return generateAuthToken(user);
 }
 
 function wsUrlFromServer(server: Server): string {
@@ -124,7 +113,7 @@ describe('Timeout WebSocket Events', () => {
 
         await ServerMember.create({ serverId: serverDoc.snowflakeId, userId: target.snowflakeId, roles: [] });
 
-        const ownerToken = makeAccessToken(owner);
+        const ownerToken = await makeAccessToken(owner);
         const ownerSocket = await openAuthenticatedSocket(wsUrl, ownerToken);
 
         ownerSocket.send(JSON.stringify({
@@ -171,7 +160,7 @@ describe('Timeout WebSocket Events', () => {
             communicationDisabledUntil: until
         });
 
-        const ownerToken = makeAccessToken(owner);
+        const ownerToken = await makeAccessToken(owner);
         const ownerSocket = await openAuthenticatedSocket(wsUrl, ownerToken);
 
         ownerSocket.send(JSON.stringify({

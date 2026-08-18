@@ -19,7 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { GifTagService } from '@/services/GifTagService';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
@@ -58,7 +58,7 @@ function toFavoriteDTO(gif: IFavoriteGif): FavoriteGifResponseDTO {
 
 @Controller('api/v1/gif-tags')
 @ApiTags('GifTags')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @ApiBearerAuth()
 export class GifTagController {
     public constructor(

@@ -13,8 +13,13 @@ import {
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { AuthService } from '@/services/AuthService';
-import { generateJWT } from '@/utils/jwt';
 import { generateTwoFactorTempToken } from '@/utils/jwt';
+import {
+    createSession,
+    revokeAllSessionsForUser,
+    revokeSessionById,
+} from '@/utils/sessionAuth';
+import { SessionDuration } from '@/models/User';
 import {
     loginAttemptsCounter,
     registrationAttemptsCounter,
@@ -34,9 +39,8 @@ import {
     ApiOkResponse,
     ApiSecurity,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { ILogger } from '@/di/interfaces/ILogger';
-import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import {
     LoginResponseDTO,
@@ -45,6 +49,7 @@ import {
     ChangePasswordResponseDTO,
     PasswordResetResponseDTO,
     Disable2FAResponseDTO,
+    LogoutResponseDTO,
 } from './dto/auth.response.dto';
 import {
     TotpSetupConfirmRequestDTO,
@@ -89,18 +94,12 @@ export class AuthController {
         private authService: AuthService,
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
-        @Inject(TYPES.WsServer)
-        private wsServer: IWsServer,
     ) {}
 
-    private static readonly SESSION_REVOKED_CLOSE_CODE = 4003;
-
-    private revokeUserSessions(userId: string): void {
-        this.wsServer.disconnectUser(
-            userId,
-            AuthController.SESSION_REVOKED_CLOSE_CODE,
-            'Session revoked',
-        );
+    private sessionDurationFor(user: {
+        settings?: { sessionDuration?: string };
+    }): string {
+        return user.settings?.sessionDuration ?? SessionDuration.THIRTY_DAYS;
     }
 
     @Post('login')
@@ -158,7 +157,6 @@ export class AuthController {
                 id: user.snowflakeId,
                 login: login,
                 username: user.username as string,
-                tokenVersion: user.tokenVersion ?? 0,
             });
 
             res.status(HttpStatus.OK).json({
@@ -169,13 +167,12 @@ export class AuthController {
             return;
         }
 
-        const token = generateJWT({
-            id: user.snowflakeId,
-            login: login,
-            username: user.username as string,
-            tokenVersion: user.tokenVersion ?? 0,
-            isBot: user.isBot ?? false,
-        });
+        const { token } = await createSession(
+            user.snowflakeId,
+            req.headers['user-agent'] ?? 'unknown',
+            extractClientIp(req),
+            this.sessionDurationFor(user),
+        );
 
         res.status(HttpStatus.OK).json({
             token,
@@ -183,8 +180,24 @@ export class AuthController {
         });
     }
 
+    @Post('logout')
+    @UseGuards(AuthGuard)
+    @ApiSecurity('jwt')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({ type: LogoutResponseDTO })
+    public async logout(
+        @Req() req: AuthenticatedRequest,
+    ): Promise<LogoutResponseDTO> {
+        const { id: userId, sessionId } = req.user;
+        if (sessionId !== undefined) {
+            await revokeSessionById(sessionId, userId);
+        }
+
+        return { message: 'Logged out successfully' };
+    }
+
     @Post('2fa/setup')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiSecurity('jwt')
     @NoBot()
     @ApiResponse({ status: 200, type: TotpSetupResponseDTO })
@@ -196,7 +209,7 @@ export class AuthController {
     }
 
     @Post('2fa/setup/confirm')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @NoBot()
     @ApiSecurity('jwt')
     @ApiResponse({ status: 200, type: TotpSetupConfirmResponseDTO })
@@ -209,24 +222,21 @@ export class AuthController {
             user.id,
             body.code,
         );
-        await this.userRepo.incrementTokenVersion(user.id);
-        this.revokeUserSessions(user.id);
+        await revokeAllSessionsForUser(user.id);
 
         const updatedUser = await this.userRepo.findById(user.id);
         if (updatedUser === null || updatedUser.deletedAt !== undefined) {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_TOKEN);
         }
 
-        return {
-            ...result,
-            token: generateJWT({
-                id: updatedUser.snowflakeId,
-                login: updatedUser.login ?? user.login,
-                username: updatedUser.username ?? user.username,
-                tokenVersion: updatedUser.tokenVersion ?? 0,
-                isBot: updatedUser.isBot ?? false,
-            }),
-        };
+        const { token } = await createSession(
+            updatedUser.snowflakeId,
+            req.headers['user-agent'] ?? 'unknown',
+            extractClientIp(req),
+            this.sessionDurationFor(updatedUser),
+        );
+
+        return { ...result, token };
     }
 
     @Post('2fa/verify')
@@ -236,6 +246,7 @@ export class AuthController {
     @NoBot()
     public async verifyTwoFactor(
         @Body() body: TotpVerifyRequestDTO,
+        @Req() req: Request,
         @Res() res: Response,
     ): Promise<void> {
         if (
@@ -260,13 +271,12 @@ export class AuthController {
         if (user === null || user.deletedAt !== undefined) {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_TEMP_TOKEN);
         }
-        const token = generateJWT({
-            id: user.snowflakeId,
-            login: user.login ?? payload.login,
-            username: user.username ?? payload.username,
-            tokenVersion: user.tokenVersion ?? 0,
-            isBot: user.isBot ?? false,
-        });
+        const { token } = await createSession(
+            user.snowflakeId,
+            req.headers['user-agent'] ?? 'unknown',
+            extractClientIp(req),
+            this.sessionDurationFor(user),
+        );
 
         res.status(HttpStatus.OK).json({
             token,
@@ -275,7 +285,7 @@ export class AuthController {
     }
 
     @Post('2fa/backup-codes/regenerate')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiSecurity('jwt')
     @NoBot()
     @ApiResponse({ status: 200, type: TotpSetupConfirmResponseDTO })
@@ -291,7 +301,7 @@ export class AuthController {
     }
 
     @Post('2fa/disable')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @NoBot()
     @ApiSecurity('jwt')
     @ApiOkResponse({ type: Disable2FAResponseDTO })
@@ -313,23 +323,23 @@ export class AuthController {
             body.backupCode,
         );
 
-        await this.userRepo.incrementTokenVersion(user.id);
-        this.revokeUserSessions(user.id);
+        await revokeAllSessionsForUser(user.id);
 
         const updatedUser = await this.userRepo.findById(user.id);
         if (updatedUser === null || updatedUser.deletedAt !== undefined) {
             throw new ApiError(401, ErrorMessages.AUTH.INVALID_TOKEN);
         }
 
+        const { token } = await createSession(
+            updatedUser.snowflakeId,
+            req.headers['user-agent'] ?? 'unknown',
+            extractClientIp(req),
+            this.sessionDurationFor(updatedUser),
+        );
+
         return {
             message: 'Two-factor authentication disabled successfully',
-            token: generateJWT({
-                id: updatedUser.snowflakeId,
-                login: updatedUser.login ?? user.login,
-                username: updatedUser.username ?? user.username,
-                tokenVersion: updatedUser.tokenVersion ?? 0,
-                isBot: updatedUser.isBot ?? false,
-            }),
+            token,
         };
     }
 
@@ -435,13 +445,12 @@ export class AuthController {
             if (newUser === null)
                 throw new ApiError(500, 'User just created but not found');
 
-            const token = generateJWT({
-                id: newUser.snowflakeId,
-                login: newUser.login ?? '',
-                username: newUser.username ?? '',
-                tokenVersion: newUser.tokenVersion ?? 0,
-                isBot: newUser.isBot ?? false,
-            });
+            const { token } = await createSession(
+                newUser.snowflakeId,
+                req.headers['user-agent'] ?? 'unknown',
+                extractClientIp(req),
+                this.sessionDurationFor(newUser),
+            );
 
             res.status(HttpStatus.OK).json({ token });
         } finally {
@@ -450,7 +459,7 @@ export class AuthController {
     }
 
     @Patch('login')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiSecurity('jwt')
     @ApiResponse({ status: 200, type: ChangeLoginResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid input' })
@@ -500,13 +509,11 @@ export class AuthController {
             );
         }
 
-        const token = generateJWT({
-            id: updatedUser.snowflakeId,
-            login: updatedUser.login ?? '',
-            username: updatedUser.username ?? '',
-            tokenVersion: updatedUser.tokenVersion ?? 0,
-            isBot: updatedUser.isBot ?? false,
-        });
+        const authHeader = req.headers['authorization'];
+        const token =
+            typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+                ? authHeader.slice('Bearer '.length).trim()
+                : '';
 
         return {
             message: 'Login updated successfully',
@@ -516,7 +523,7 @@ export class AuthController {
     }
 
     @Patch('password')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiSecurity('jwt')
     @ApiResponse({ status: 200, type: ChangePasswordResponseDTO })
     @ApiResponse({ status: 400, description: 'Invalid input' })
@@ -550,21 +557,19 @@ export class AuthController {
         }
 
         await this.userRepo.updatePassword(userId, newPassword);
-        await this.userRepo.incrementTokenVersion(userId);
-        this.revokeUserSessions(userId);
+        await revokeAllSessionsForUser(userId);
 
         const updatedUser = await this.userRepo.findById(userId);
         if (updatedUser === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
-        const token = generateJWT({
-            id: updatedUser.snowflakeId,
-            login: updatedUser.login ?? '',
-            username: updatedUser.username ?? '',
-            tokenVersion: updatedUser.tokenVersion ?? 0,
-            isBot: updatedUser.isBot ?? false,
-        });
+        const { token } = await createSession(
+            updatedUser.snowflakeId,
+            req.headers['user-agent'] ?? 'unknown',
+            extractClientIp(req),
+            this.sessionDurationFor(updatedUser),
+        );
 
         return {
             message: 'Password updated successfully',
@@ -608,7 +613,7 @@ export class AuthController {
                 body.newPassword,
             );
 
-        this.revokeUserSessions(userId);
+        await revokeAllSessionsForUser(userId);
 
         return {
             message: 'Password has been reset successfully.',

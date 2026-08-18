@@ -1,0 +1,3 @@
+[submodule "vpn-lists"]
+	path = vpn-lists
+	url = https://github.com/X4BNet/lists_vpn

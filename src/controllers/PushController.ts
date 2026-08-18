@@ -22,7 +22,7 @@ import {
 } from './dto/push.response.dto';
 import type { Request as ExpressRequest } from 'express';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import { PushSubscription } from '@/models/PushSubscription';
 import { User } from '@/models/User';
@@ -36,7 +36,7 @@ import { VAPID_PUB } from '@/config/env';
 
 @Controller('api/v1/push')
 @ApiTags('Push')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @ApiBearerAuth()
 export class PushController {
     public constructor() {}

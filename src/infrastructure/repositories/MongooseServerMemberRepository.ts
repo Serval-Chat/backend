@@ -192,7 +192,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         const users = await this.userModel
             .find({ snowflakeId: { $in: userIds } })
             .select(
-                '-tokenVersion -permissions -password -settings -language -login -deletedReason',
+                '-permissions -password -settings -language -login -deletedReason',
             )
             .lean();
 
@@ -201,7 +201,6 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             if (!user) return { ...m, user: null };
 
             const safeUser: Record<string, unknown> = { ...user };
-            delete safeUser.tokenVersion;
             delete safeUser.permissions;
             delete safeUser.password;
             delete safeUser.settings;
@@ -241,7 +240,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         const populatedUsers = await this.userModel
             .find({ snowflakeId: { $in: memberUserIds } })
             .select(
-                '-tokenVersion -permissions -password -settings -language -login -deletedReason',
+                '-permissions -password -settings -language -login -deletedReason',
             )
             .lean();
 
@@ -250,7 +249,6 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
             if (!user) return { ...m, user: null };
 
             const safeUser: Record<string, unknown> = { ...user };
-            delete safeUser.tokenVersion;
             delete safeUser.permissions;
             delete safeUser.password;
             delete safeUser.settings;

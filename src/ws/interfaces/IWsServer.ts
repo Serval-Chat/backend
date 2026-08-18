@@ -74,6 +74,7 @@ export interface IWsServer {
     ): void;
     closeConnection(ws: WebSocket, code: number, reason: string): void;
     disconnectUser(userId: string, code: number, reason: string): void;
+    disconnectSession(sessionId: string, code: number, reason: string): void;
     unsubscribeUserFromServer(
         userId: string,
         serverId: string,

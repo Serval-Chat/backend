@@ -11,7 +11,6 @@ export function createTestUser(overrides: Record<string, unknown> = {}) {
         login: 'testuser',
         password: '$2b$10$hashedpassword',
         email: 'test@example.com',
-        tokenVersion: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
         ...overrides

@@ -59,7 +59,7 @@ import { embedAttachmentContentForMessages } from '@/utils/attachments';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import {
     SendMessageRequestDTO,
     ServerEditMessageRequestDTO,
@@ -69,7 +69,7 @@ import { PollVoteRequestDTO } from './dto/poll-vote.request.dto';
 
 @Controller('api/v1/servers/:serverId/channels/:channelId/messages')
 @ApiTags('Server Messages')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @ApiBearerAuth()
 export class ServerMessageController {
     public constructor(

@@ -59,7 +59,7 @@ import { IUser } from '@/models/User';
 import { Bot } from '@/models/Bot';
 import { Role } from '@/models/Server';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { NoBot } from '@/modules/auth/bot.decorator';
 import {
     KickMemberRequestDTO,
@@ -75,7 +75,7 @@ import {
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Members')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 export class ServerMemberController {
     public constructor(
         @Inject(TYPES.ServerMemberRepository)

@@ -35,6 +35,7 @@ const METRICS_TOKEN = process.env.METRICS_TOKEN ?? '';
 const KLIPY_API_KEY = process.env.KLIPY_API_KEY ?? '';
 const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH ?? 2000);
 const CF_TURNSTILE_SECRET = process.env.CF_TURNSTILE_SECRET ?? '';
+const MAXMIND_LICENSE_KEY = process.env.MAXMIND_LICENSE_KEY ?? '';
 
 const OTEL_ENDPOINT =
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'grpc://otel-collector:4317';
@@ -67,9 +68,9 @@ if (FRONTEND_URL !== '') {
     }
 }
 
-if (process.env.NODE_ENV === 'test' && PROJECT_LEVEL === 'production') {
+if (process.env.NODE_ENV === 'test' && PROJECT_LEVEL === 'release') {
     throw new Error(
-        "NODE_ENV=test with PROJ_LEVEL=production. Refusing to start: this combination silently drops env validation and every rate limiter's shared store.",
+        "NODE_ENV=test with PROJ_LEVEL=release. Refusing to start: this combination silently drops env validation and every rate limiter's shared store.",
     );
 }
 
@@ -101,11 +102,9 @@ if (process.env.NODE_ENV !== 'test') {
 
 if (
     process.env.NODE_ENV !== 'test' &&
-    !['production', 'development'].includes(PROJECT_LEVEL)
+    !['release', 'development'].includes(PROJECT_LEVEL)
 ) {
-    throw new Error(
-        'Invalid PROJECT_LEVEL. Use "production" or "development".',
-    );
+    throw new Error('Invalid PROJECT_LEVEL. Use "release" or "development".');
 }
 
 if (process.env.NODE_ENV !== 'test' && !['on', 'off'].includes(USE_HTTPS)) {
@@ -167,4 +166,5 @@ export {
     SCRAPER_PORT,
     SNOWFLAKE_WORKER_ID,
     CF_TURNSTILE_SECRET,
+    MAXMIND_LICENSE_KEY,
 };

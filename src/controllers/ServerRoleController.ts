@@ -48,7 +48,7 @@ import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import type { Request as ExpressRequest } from 'express';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import {
     CreateRoleRequestDTO,
@@ -93,7 +93,7 @@ export class ServerRoleController {
     ) {}
 
     @Get()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get server roles' })
     @ApiOkResponse({
@@ -117,7 +117,7 @@ export class ServerRoleController {
     }
 
     @Post()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Create a role' })
     @ApiResponse({
@@ -209,7 +209,7 @@ export class ServerRoleController {
     }
 
     @Patch('reorder')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Reorder roles' })
     @ApiOkResponse({
@@ -322,7 +322,7 @@ export class ServerRoleController {
     }
 
     @Patch(':roleId')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Update a role' })
     @ApiOkResponse({ type: ServerRoleResponseDTO, description: 'Role updated' })
@@ -529,7 +529,7 @@ export class ServerRoleController {
     }
 
     @Delete(':roleId')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Delete a role' })
     @ApiOkResponse({ type: RoleDeleteResponseDTO, description: 'Role deleted' })
@@ -609,7 +609,7 @@ export class ServerRoleController {
     }
 
     @Post(':roleId/icon')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @UseInterceptors(
         FileInterceptor('icon', {

@@ -12,17 +12,15 @@ import { Reflector } from '@nestjs/core';
 import { TYPES } from '@/di/types';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { IBanRepository } from '@/di/interfaces/IBanRepository';
-import { JWT_SECRET } from '@/config/env';
-import * as jwt from 'jsonwebtoken';
 import { JWTPayload } from '@/utils/jwt';
 import { PERMISSIONS_KEY } from './permissions.decorator';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import { IUser } from '@/models/User';
 import { resolveBotAuthPayload } from '@/utils/botAuth';
-import logger from '@/utils/logger';
+import { resolveSession } from '@/utils/sessionAuth';
 
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class AuthGuard implements CanActivate {
     public constructor(
         @Inject(TYPES.UserRepository) private userRepo: IUserRepository,
         @Inject(TYPES.BanRepository) private banRepo: IBanRepository,
@@ -54,38 +52,28 @@ export class JwtAuthGuard implements CanActivate {
             throw new UnauthorizedException('No token provided');
         }
 
-        let decoded: JWTPayload | null = null;
-        try {
-            const verified = jwt.verify(token, JWT_SECRET, {
-                algorithms: ['HS256'],
-            }) as JWTPayload;
-            if (verified.type === 'access') decoded = verified;
-        } catch (err) {
-            logger.debug(
-                `[JwtAuthGuard] JWT verification failed: ${
-                    err instanceof Error ? err.message : String(err)
-                }`,
-            );
-        }
+        const resolved = await resolveSession(token);
 
         try {
-            if (decoded !== null) {
-                const user = await this.userRepo.findById(decoded.id);
+            if (resolved !== null) {
+                const user = await this.userRepo.findById(resolved.userId);
 
                 if (!user || user.deletedAt) {
                     throw new UnauthorizedException('Invalid token');
                 }
 
-                if (
-                    Number(user.tokenVersion ?? 0) !==
-                    Number(decoded.tokenVersion)
-                ) {
-                    throw new UnauthorizedException('Token expired');
-                }
+                const decoded: JWTPayload = {
+                    type: 'access',
+                    id: resolved.userId,
+                    login: user.login ?? '',
+                    username: user.username ?? '',
+                    isBot: user.isBot ?? false,
+                    sessionId: resolved.sessionId,
+                };
 
-                await this.banRepo.checkExpired(decoded.id);
+                await this.banRepo.checkExpired(resolved.userId);
                 const activeBan = await this.banRepo.findActiveByUserId(
-                    decoded.id,
+                    resolved.userId,
                 );
                 if (activeBan) {
                     throw new ForbiddenException({
@@ -156,7 +144,7 @@ export class JwtAuthGuard implements CanActivate {
 }
 
 @Module({
-    providers: [JwtAuthGuard],
-    exports: [JwtAuthGuard],
+    providers: [AuthGuard],
+    exports: [AuthGuard],
 })
 export class AuthModule {}

@@ -14,7 +14,7 @@ import {
     ApiTags,
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { NoBot } from '@/modules/auth/bot.decorator';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
@@ -30,7 +30,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 @Controller('api/v1/messages')
 @ApiTags('Message Search')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @NoBot()
 export class UserMessageSearchController {
     public constructor(

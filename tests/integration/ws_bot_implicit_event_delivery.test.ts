@@ -1,18 +1,17 @@
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { WebSocket } from 'ws';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { RawData } from 'ws';
 
-import { JWT_SECRET } from '../../src/config/env';
 import { setup, teardown } from './setup';
 import {
     clearDatabase,
     createTestChannel,
     createTestServer,
     createTestUser,
+    generateAuthToken,
 } from './helpers';
 import { Bot, DEFAULT_BOT_PERMISSIONS } from '../../src/models/Bot';
 import { Role, ServerMember, ServerMessage } from '../../src/models/Server';
@@ -44,26 +43,7 @@ type WsReceivedEnvelope = {
 const WS_EVENT_TIMEOUT_MS = 5000;
 const WS_NO_EVENT_WINDOW_MS = 600;
 
-function makeAccessToken(user: {
-    snowflakeId: string;
-    login: string;
-    username: string;
-    tokenVersion?: number;
-    isBot?: boolean;
-}) {
-    return jwt.sign(
-        {
-            id: user.snowflakeId,
-            login: user.login,
-            username: user.username,
-            tokenVersion: user.tokenVersion ?? 0,
-            isBot: user.isBot === true,
-            type: 'access',
-        },
-        JWT_SECRET,
-        { expiresIn: '1h' },
-    );
-}
+const makeAccessToken = generateAuthToken;
 
 function wsUrlFromServer(server: Server): string {
     const address = server.address() as AddressInfo;
@@ -190,11 +170,11 @@ describe('WS bot implicit event delivery', () => {
 
         const botSocket = await openAuthenticatedSocket(
             wsUrl,
-            makeAccessToken(botUser),
+            await makeAccessToken(botUser),
         );
 
         const httpMessageEventPromise = waitForWsEvent(botSocket, 'message_server');
-        const humanToken = makeAccessToken(human);
+        const humanToken = await makeAccessToken(human);
         const httpRes = await request(app)
             .post(
                 `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages`,
@@ -231,9 +211,9 @@ describe('WS bot implicit event delivery', () => {
             },
         });
 
-        const botSocket = await openAuthenticatedSocket(wsUrl, makeAccessToken(botUser));
+        const botSocket = await openAuthenticatedSocket(wsUrl, await makeAccessToken(botUser));
 
-        const ownerToken = makeAccessToken(owner);
+        const ownerToken = await makeAccessToken(owner);
         const authorizeRes = await request(app)
             .post(`/api/v1/bots/${botDoc.clientId}/authorize`)
             .set('Authorization', `Bearer ${ownerToken}`)
@@ -241,7 +221,7 @@ describe('WS bot implicit event delivery', () => {
         expect(authorizeRes.status).toBe(200);
 
         const messageEventPromise = waitForWsEvent(botSocket, 'message_server');
-        const humanToken = makeAccessToken(human);
+        const humanToken = await makeAccessToken(human);
         const httpRes = await request(app)
             .post(
                 `/api/v1/servers/${serverDoc.snowflakeId}/channels/${channelDoc.snowflakeId}/messages`,
@@ -286,10 +266,10 @@ describe('WS bot implicit event delivery', () => {
             shouldReply: false,
         });
 
-        const botSocket = await openAuthenticatedSocket(wsUrl, makeAccessToken(botUser));
+        const botSocket = await openAuthenticatedSocket(wsUrl, await makeAccessToken(botUser));
 
         const interactionEventPromise = waitForWsEvent(botSocket, 'interaction_create_server');
-        const humanToken = makeAccessToken(human);
+        const humanToken = await makeAccessToken(human);
         const interactionRes = await request(app)
             .post('/api/v1/interactions')
             .set('Authorization', `Bearer ${humanToken}`)
@@ -314,8 +294,8 @@ describe('WS bot implicit event delivery', () => {
         const human = await createTestUser({ username: 'human_ws_react', login: 'human_ws_react' });
         const botUser = await createTestUser({ username: 'bot_ws_react', login: 'bot_ws_react', isBot: true });
 
-        const ownerToken = makeAccessToken(owner);
-        const humanToken = makeAccessToken(human);
+        const ownerToken = await makeAccessToken(owner);
+        const humanToken = await makeAccessToken(human);
 
         const serverDoc = await createTestServer(owner.snowflakeId);
         const channelDoc = await createTestChannel(serverDoc.snowflakeId);
@@ -324,7 +304,7 @@ describe('WS bot implicit event delivery', () => {
 
         const botSocket = await openAuthenticatedSocket(
             wsUrl,
-            makeAccessToken(botUser),
+            await makeAccessToken(botUser),
         );
 
         const webhookCreateRes = await request(app)
@@ -387,8 +367,8 @@ describe('WS bot implicit event delivery', () => {
         const human = await createTestUser({ username: 'human_ws_no_view', login: 'human_ws_no_view' });
         const botUser = await createTestUser({ username: 'bot_ws_no_view', login: 'bot_ws_no_view', isBot: true });
 
-        const humanToken = makeAccessToken(human);
-        const ownerToken = makeAccessToken(owner);
+        const humanToken = await makeAccessToken(human);
+        const ownerToken = await makeAccessToken(owner);
 
         const serverDoc = await createTestServer(owner.snowflakeId);
         const channelDoc = await createTestChannel(serverDoc.snowflakeId);
@@ -428,7 +408,7 @@ describe('WS bot implicit event delivery', () => {
         botMember.roles = [denyRole.snowflakeId];
         await botMember.save();
 
-        const botSocket = await openAuthenticatedSocket(wsUrl, makeAccessToken(botUser));
+        const botSocket = await openAuthenticatedSocket(wsUrl, await makeAccessToken(botUser));
 
         const sendRes = await request(app)
             .post(

@@ -35,7 +35,7 @@ import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepos
 import type { ISlashCommand } from '@/models/SlashCommand';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { NoBot } from '@/modules/auth/bot.decorator';
 import { Bot } from '@/models/Bot';
 import type { AuthenticatedRequest } from '@/middleware/auth';
@@ -198,7 +198,7 @@ export class InteractionController {
         private warningRepo: IWarningRepository,
     ) {}
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Get('servers/:serverId/commands')
     @ApiOperation({ summary: 'Get available commands for a server' })
     @ApiOkResponse({
@@ -251,7 +251,7 @@ export class InteractionController {
         return [...SYSTEM_COMMANDS, ...botCommands];
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Post('interactions')
     @NoBot()
     @HttpCode(HttpStatus.OK)
@@ -491,7 +491,7 @@ export class InteractionController {
         return { success: true };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Post('interactions/components')
     @NoBot()
     @HttpCode(HttpStatus.OK)
@@ -654,7 +654,7 @@ export class InteractionController {
         return { success: true };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Post('interactions/respond')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({

@@ -3,13 +3,18 @@ import type { ExecutionContext } from '@nestjs/common';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Types } from 'mongoose';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { AdminInviteController } from '../AdminInviteController';
-import * as jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '@/config/env';
+import { resolveSession } from '@/utils/sessionAuth';
+
+jest.mock('@/utils/sessionAuth', () => ({
+    resolveSession: jest.fn(),
+}));
+
+const mockResolveSession = resolveSession as jest.Mock;
 
 describe('AdminInviteController Security', () => {
-    let guard: JwtAuthGuard;
+    let guard: AuthGuard;
     let reflector: Reflector;
     const mockUserRepo = {
         findById: jest.fn(),
@@ -22,7 +27,7 @@ describe('AdminInviteController Security', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         reflector = new Reflector();
-        guard = new JwtAuthGuard(
+        guard = new AuthGuard(
             mockUserRepo as any,
             mockBanRepo as any,
             reflector,
@@ -49,19 +54,18 @@ describe('AdminInviteController Security', () => {
 
     it('denies access to createInvite if user lacks manageInvites permission', async () => {
         const userId = new Types.ObjectId();
-        const token = jwt.sign(
-            { id: userId.toHexString(), tokenVersion: 0, type: 'access' },
-            JWT_SECRET,
-        );
+        mockResolveSession.mockResolvedValue({
+            userId: userId.toHexString(),
+            sessionId: 'session-1',
+        });
 
         mockUserRepo.findById.mockResolvedValue({
             _id: userId,
-            tokenVersion: 0,
             permissions: {},
         });
         mockBanRepo.findActiveByUserId.mockResolvedValue(null);
 
-        const context = createMockContext('createInvite', token);
+        const context = createMockContext('createInvite', 'token');
 
         await expect(guard.canActivate(context)).rejects.toThrow(
             ForbiddenException,
@@ -70,19 +74,18 @@ describe('AdminInviteController Security', () => {
 
     it('allows access to createInvite if user has manageInvites permission', async () => {
         const userId = new Types.ObjectId();
-        const token = jwt.sign(
-            { id: userId.toHexString(), tokenVersion: 0, type: 'access' },
-            JWT_SECRET,
-        );
+        mockResolveSession.mockResolvedValue({
+            userId: userId.toHexString(),
+            sessionId: 'session-1',
+        });
 
         mockUserRepo.findById.mockResolvedValue({
             _id: userId,
-            tokenVersion: 0,
             permissions: { manageInvites: true },
         });
         mockBanRepo.findActiveByUserId.mockResolvedValue(null);
 
-        const context = createMockContext('createInvite', token);
+        const context = createMockContext('createInvite', 'token');
 
         const result = await guard.canActivate(context);
         expect(result).toBe(true);

@@ -3,11 +3,26 @@ import * as jwt from 'jsonwebtoken';
 import request from 'supertest';
 
 import { JWT_SECRET } from '@/config/env';
+import { resolveSession } from '@/utils/sessionAuth';
 import {
     passwordResetConfirmLimiter,
     sensitiveOperationLimiter,
     twoFactorVerifyLimiter,
 } from '../rateLimiting';
+
+jest.mock('@/utils/sessionAuth', () => ({
+    resolveSession: jest.fn(),
+}));
+
+const mockResolveSession = resolveSession as jest.Mock;
+
+mockResolveSession.mockImplementation((token: string) =>
+    Promise.resolve(
+        token.startsWith('token-for-')
+            ? { userId: token.slice('token-for-'.length), sessionId: 'session' }
+            : null,
+    ),
+);
 
 function appWith(path: string, middleware: express.RequestHandler) {
     const app = express();
@@ -22,7 +37,7 @@ function appWith(path: string, middleware: express.RequestHandler) {
 
 function accessToken(id: string): string {
     return jwt.sign(
-        { id, login: id, username: id, tokenVersion: 0, type: 'access' },
+        { id, login: id, username: id, type: 'access' },
         JWT_SECRET,
         { algorithm: 'HS256' },
     );
@@ -40,25 +55,19 @@ describe('sensitiveOperationLimiter', () => {
     it('keys on the bearer token rather than the address', async () => {
         const app = appWith('/password', sensitiveOperationLimiter);
 
-        const send = (token: string, forwardedFor: string) =>
+        const send = (id: string, forwardedFor: string) =>
             request(app)
                 .patch('/password')
-                .set('Authorization', `Bearer ${token}`)
+                .set('Authorization', `Bearer token-for-${id}`)
                 .set('X-Forwarded-For', forwardedFor)
                 .send({});
 
         for (let i = 0; i < 3; i++) {
-            expect(
-                (await send(accessToken('user-a'), `203.0.113.${i}`)).status,
-            ).toBe(401);
+            expect((await send('user-a', `203.0.113.${i}`)).status).toBe(401);
         }
-        expect((await send(accessToken('user-a'), '203.0.113.99')).status).toBe(
-            429,
-        );
+        expect((await send('user-a', '203.0.113.99')).status).toBe(429);
 
-        expect((await send(accessToken('user-b'), '203.0.113.0')).status).toBe(
-            401,
-        );
+        expect((await send('user-b', '203.0.113.0')).status).toBe(401);
     });
 });
 

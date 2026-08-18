@@ -8,7 +8,7 @@ import {
     ApiBearerAuth,
     ApiOperation,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
@@ -26,7 +26,7 @@ export class StickerController {
 
     @Get()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get all stickers accessible to the user' })
     @ApiResponse({ status: 200, type: [StickerResponseDTO] })
     public async getAllStickers(

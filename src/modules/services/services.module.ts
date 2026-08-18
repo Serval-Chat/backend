@@ -12,6 +12,8 @@ import { MetricsService } from '@/services/MetricsService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { RegistrationInviteService } from '@/services/RegistrationInviteService';
+import { GeoIpService } from '@/services/GeoIpService';
+import { VpnDetectionService } from '@/services/VpnDetectionService';
 import { ScraperService } from '@/services/ScraperService';
 import { EmbedService } from '@/services/EmbedService';
 import { ServerVerificationService } from '@/services/ServerVerificationService';
@@ -80,6 +82,14 @@ const esConfig = elasticsearchConfig as {
             useClass: RegistrationInviteService,
         },
         {
+            provide: TYPES.GeoIpService,
+            useClass: GeoIpService,
+        },
+        {
+            provide: TYPES.VpnDetectionService,
+            useClass: VpnDetectionService,
+        },
+        {
             provide: TYPES.ScraperService,
             useClass: ScraperService,
         },
@@ -117,6 +127,8 @@ const esConfig = elasticsearchConfig as {
         TYPES.ServerAuditLogService,
         TYPES.ImageDeliveryService,
         TYPES.RegistrationInviteService,
+        TYPES.GeoIpService,
+        TYPES.VpnDetectionService,
         TYPES.ScraperService,
         TYPES.EmbedService,
         TYPES.ServerVerificationService,

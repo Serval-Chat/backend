@@ -33,6 +33,7 @@ export const TYPES = {
     BlockRepository: Symbol.for('BlockRepository'),
     AdminNoteRepository: Symbol.for('AdminNoteRepository'),
     SlashCommandRepository: Symbol.for('SlashCommandRepository'),
+    SessionRepository: Symbol.for('SessionRepository'),
     ExportService: Symbol.for('ExportService'),
 
     AuthService: Symbol.for('AuthService'),
@@ -57,6 +58,9 @@ export const TYPES = {
     ElasticsearchConfig: Symbol.for('ElasticsearchConfig'),
 
     // Application
+    GeoIpService: Symbol.for('GeoIpService'),
+    VpnDetectionService: Symbol.for('VpnDetectionService'),
+
     ExpressApp: Symbol.for('ExpressApp'),
     WsServer: Symbol.for('WsServer'),
     WsDispatcher: Symbol.for('WsDispatcher'),

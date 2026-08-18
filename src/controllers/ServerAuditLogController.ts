@@ -18,7 +18,7 @@ import { TYPES } from '@/di/types';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { PermissionService } from '@/permissions/PermissionService';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ServerAuditLogRequestDTO } from './dto/server-audit-log.request.dto';
 import {
@@ -30,7 +30,7 @@ import { mapAuditLogEntry } from '@/utils/auditLog';
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Audit Log')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 export class ServerAuditLogController {
     public constructor(
         @Inject(TYPES.AuditLogRepository)

@@ -20,7 +20,7 @@ describe('JwtAuthGuard registered as APP_GUARD (xcut-04)', () => {
         user = await createTestUser({
             login: `global-guard-${Date.now()}@example.com`,
         });
-        token = generateAuthToken(user);
+        token = await generateAuthToken(user);
     });
 
     afterAll(async () => {

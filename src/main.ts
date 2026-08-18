@@ -19,6 +19,7 @@ import {
     flushAllCaches,
 } from '@/utils/startup-tasks';
 import { KlipyCache } from '@/models/KlipyCache';
+import type { GeoIpService } from '@/services/GeoIpService';
 import { container } from '@/di/container';
 import type { WsServer } from '@/ws/server';
 import { TYPES } from '@/di/types';
@@ -94,6 +95,11 @@ async function bootstrap() {
     const wsServer = container.get<WsServer>(TYPES.WsServer);
     wsServer.initialize(httpServer);
 
+    const geoIpService = app.get<GeoIpService>(TYPES.GeoIpService);
+    void geoIpService.ensureDatabase().catch((err: unknown) => {
+        Logger.error('Failed to prepare GeoIP database', err, 'Bootstrap');
+    });
+
     // Initialize Swagger
     const config = new DocumentBuilder()
         .setTitle('Serchat API')
@@ -101,7 +107,7 @@ async function bootstrap() {
         .setVersion('1.0')
         .addBearerAuth()
         .build();
-    if (PROJECT_LEVEL !== 'production') {
+    if (PROJECT_LEVEL !== 'release') {
         const document = SwaggerModule.createDocument(app, config);
         SwaggerModule.setup('/api/docs', app, document);
 

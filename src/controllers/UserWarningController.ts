@@ -21,7 +21,7 @@ import {
     ApiOperation,
     ApiQuery,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
@@ -29,7 +29,7 @@ import { UserWarningResponseDTO } from './dto/warning.response.dto';
 
 @ApiTags('Warnings')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @Controller('api/v1/warnings')
 export class UserWarningController {
     public constructor(

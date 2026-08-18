@@ -16,7 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import { Response } from 'express';
 import path from 'path';
@@ -63,7 +63,7 @@ export class NotificationSoundController {
     }
 
     @Post('upload')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @UseInterceptors(
         FileInterceptor('file', {
             limits: { fileSize: 512 * 1024 },
@@ -141,7 +141,7 @@ export class NotificationSoundController {
     }
 
     @Get()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get all custom notification sounds' })
     @ApiOkResponse({ type: [NotificationSoundResponseDTO] })
     public async getSounds(@CurrentUser('id') userId: string) {
@@ -150,7 +150,7 @@ export class NotificationSoundController {
     }
 
     @Delete(':id')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Delete a custom notification sound' })
     @ApiOkResponse({ type: NotificationSoundDeletedResponseDTO })
     public async deleteSound(

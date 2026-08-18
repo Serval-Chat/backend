@@ -20,7 +20,7 @@ import {
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Response } from 'express';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Permissions } from '@/modules/auth/permissions.decorator';
 import { NoBot } from '@/modules/auth/bot.decorator';
 import { RegistrationInviteService } from '@/services/RegistrationInviteService';
@@ -33,7 +33,7 @@ import {
 
 @ApiTags('Admin')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @NoBot()
 @Controller('api/v1/admin/invites')
 export class AdminInviteController {

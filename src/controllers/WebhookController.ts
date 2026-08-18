@@ -63,7 +63,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import {
@@ -397,7 +397,7 @@ export class WebhookController {
     }
 
     @Get('servers/:serverId/channels/:channelId/webhooks')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get webhooks' })
     @ApiOkResponse({
@@ -446,7 +446,7 @@ export class WebhookController {
     }
 
     @Post('servers/:serverId/channels/:channelId/webhooks')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Create webhook' })
     @ApiResponse({
@@ -507,7 +507,7 @@ export class WebhookController {
     }
 
     @Delete('servers/:serverId/channels/:channelId/webhooks/:webhookId')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Delete webhook' })
     @ApiOkResponse({
@@ -552,7 +552,7 @@ export class WebhookController {
     }
 
     @Post('servers/:serverId/channels/:channelId/webhooks/:webhookId/avatar')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @UseInterceptors(
         FileInterceptor('avatar', {

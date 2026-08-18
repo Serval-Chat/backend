@@ -36,11 +36,11 @@ describe('Reply to a deleted message', () => {
             userA = await createTestUser({
                 login: `dm-a-${Date.now()}@example.com`,
             });
-            userAToken = generateAuthToken(userA);
+            userAToken = await generateAuthToken(userA);
             userB = await createTestUser({
                 login: `dm-b-${Date.now()}@example.com`,
             });
-            userBToken = generateAuthToken(userB);
+            userBToken = await generateAuthToken(userB);
 
             const { Friendship } = await import('../../src/models/Friendship');
             await Friendship.create({
@@ -113,7 +113,7 @@ describe('Reply to a deleted message', () => {
             regularUser = await createTestUser({
                 login: `regular-${Date.now()}@example.com`,
             });
-            regularUserToken = generateAuthToken(regularUser);
+            regularUserToken = await generateAuthToken(regularUser);
             await ServerMember.create({
                 serverId: testServer.snowflakeId,
                 userId: regularUser.snowflakeId,
@@ -123,7 +123,7 @@ describe('Reply to a deleted message', () => {
             auditUser = await createTestUser({
                 login: `audit-${Date.now()}@example.com`,
             });
-            auditToken = generateAuthToken(auditUser);
+            auditToken = await generateAuthToken(auditUser);
             const auditRole = await Role.create({
                 serverId: testServer.snowflakeId,
                 name: 'Auditor',

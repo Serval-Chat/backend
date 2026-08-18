@@ -25,7 +25,7 @@ import {
     ApiConsumes,
     ApiBody,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import { Request, Response } from 'express';
 import path from 'path';
@@ -73,7 +73,7 @@ export class FileController {
 
     @Post('upload')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @UseInterceptors(
         FileInterceptor('file', {
             storage,

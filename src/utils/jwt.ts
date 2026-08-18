@@ -9,19 +9,14 @@ export interface JWTPayload {
     login: string;
     username: string;
     profilePicture?: string;
-    tokenVersion: number; // For token invalidation (like when you change password or login tokenVersion changes).
     isBot?: boolean;
+    sessionId?: string;
 }
-
-// Generate a JWT for authenticated users
-export const generateJWT = (payload: JWTPayload) =>
-    jwt.sign({ ...payload, type: 'access' }, JWT_SECRET, { expiresIn: '7d' });
 
 export const generateTwoFactorTempToken = (payload: {
     id: string;
     login: string;
     username: string;
-    tokenVersion: number;
 }) =>
     jwt.sign(
         {

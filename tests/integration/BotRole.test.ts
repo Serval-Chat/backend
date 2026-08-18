@@ -19,7 +19,7 @@ describe('Irrevocable Bot Roles Integration', () => {
         app = result.app;
 
         owner = await createTestUser();
-        ownerToken = generateAuthToken(owner);
+        ownerToken = await generateAuthToken(owner);
         testServer = await createTestServer(owner.snowflakeId);
     });
 

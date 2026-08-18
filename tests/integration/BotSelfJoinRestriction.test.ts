@@ -18,7 +18,7 @@ describe('Bot Self-Authorization Restriction', () => {
         app = result.app;
 
         owner = await createTestUser();
-        ownerToken = generateAuthToken(owner);
+        ownerToken = await generateAuthToken(owner);
         testServer = await createTestServer(owner.snowflakeId);
     });
 
@@ -38,7 +38,7 @@ describe('Bot Self-Authorization Restriction', () => {
         });
 
 
-        const botToken = generateAuthToken(botUser);
+        const botToken = await generateAuthToken(botUser);
 
 
         const res = await request(app)

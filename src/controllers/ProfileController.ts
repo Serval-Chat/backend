@@ -37,7 +37,7 @@ import {
     SimpleMessageResponseDTO,
     VerifyConnectionResponseDTO,
 } from './dto/profile.extra.response.dto';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
 import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from '@/middleware/auth';
@@ -411,7 +411,7 @@ export class ProfileController {
 
     @Get('me')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get current user profile' })
     @ApiResponse({ status: 200, type: UserProfileResponseDTO })
     @ApiResponse({ status: 404, description: 'User not found' })
@@ -434,7 +434,7 @@ export class ProfileController {
     @Post('connections/website')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Create a pending website connection' })
     @ApiResponse({ status: 201, type: CreateWebsiteConnectionResponseDTO })
     public async createWebsiteConnection(
@@ -529,7 +529,7 @@ export class ProfileController {
     @Post('connections/:connectionId/verify')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Verify a pending website connection' })
     @ApiResponse({
         status: 201,
@@ -631,7 +631,7 @@ export class ProfileController {
     @Delete('connections/:connectionId')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Remove a profile connection' })
     @ApiOkResponse({
         type: SimpleMessageResponseDTO,
@@ -672,7 +672,7 @@ export class ProfileController {
 
     @Get(':userId')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get user profile by ID' })
     @ApiResponse({ status: 200, type: UserProfileResponseDTO })
     @ApiResponse({ status: 404, description: 'User not found' })
@@ -722,7 +722,7 @@ export class ProfileController {
 
     @Post(':id/badges')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @Permissions('manageUsers')
     @ApiOperation({ summary: 'Update user badges' })
     @ApiResponse({ status: 200, type: BadgeOperationResponseDTO })
@@ -839,7 +839,7 @@ export class ProfileController {
 
     @Post('picture')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @UseInterceptors(
         FileInterceptor('profilePicture', {
             storage,
@@ -1056,7 +1056,7 @@ export class ProfileController {
     @Post('banner')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @UseInterceptors(
         FileInterceptor('banner', {
             storage,
@@ -1302,7 +1302,7 @@ export class ProfileController {
     @Patch('bio')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Update bio' })
     @ApiOkResponse({ type: UpdateBioResponseDTO, description: 'Bio updated' })
     public async updateBio(
@@ -1368,7 +1368,7 @@ export class ProfileController {
 
     @Patch('pronouns')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @NoBot()
     @ApiOperation({ summary: 'Update pronouns' })
     @ApiOkResponse({
@@ -1442,7 +1442,7 @@ export class ProfileController {
 
     @Patch('display-name')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @NoBot()
     @ApiOperation({ summary: 'Update display name' })
     @ApiOkResponse({
@@ -1528,7 +1528,7 @@ export class ProfileController {
     @Patch('privacy')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Update privacy settings' })
     @ApiOkResponse({ description: 'Privacy settings updated' })
     public async updatePrivacySettings(
@@ -1565,7 +1565,7 @@ export class ProfileController {
 
     @Patch('status')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Update custom status' })
     @ApiOkResponse({
         type: UpdateCustomStatusResponseDTO,
@@ -1724,7 +1724,7 @@ export class ProfileController {
 
     @Delete('status')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Clear custom status' })
     @ApiOkResponse({
         type: UpdateCustomStatusResponseDTO,
@@ -1788,7 +1788,7 @@ export class ProfileController {
     }
 
     @Post('status/bulk')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get bulk custom statuses' })
     @ApiOkResponse({
@@ -1859,7 +1859,7 @@ export class ProfileController {
     @Patch('style')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Update username style' })
     @ApiOkResponse({
         type: UpdateStyleResponseDTO,
@@ -1958,7 +1958,7 @@ export class ProfileController {
     @Patch('appearance')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Update profile appearance colors' })
     @ApiOkResponse({
         type: UpdateAppearanceResponseDTO,
@@ -2066,7 +2066,7 @@ export class ProfileController {
 
     @Get('lookup/:username')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Lookup user by username' })
     @ApiResponse({ status: 200, type: UserLookupResponseDTO })
     @ApiResponse({ status: 404, description: 'User not found' })
@@ -2084,7 +2084,7 @@ export class ProfileController {
 
     @Post('bulk')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Lookup multiple user profiles by ID' })
     @ApiResponse({ status: 200, type: [UserProfileResponseDTO] })
     public async bulkLookupUsers(
@@ -2104,7 +2104,7 @@ export class ProfileController {
     @Patch('username')
     @NoBot()
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Change username' })
     @ApiOkResponse({
         type: ChangeUsernameResponseDTO,
@@ -2199,7 +2199,7 @@ export class ProfileController {
 
     @Patch('language')
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(AuthGuard)
     @NoBot()
     @ApiOperation({ summary: 'Update language' })
     @ApiOkResponse({

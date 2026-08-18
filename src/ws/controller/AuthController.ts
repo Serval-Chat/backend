@@ -9,14 +9,11 @@ import type { WebSocket } from 'ws';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '@/config/env';
-import type { JWTPayload } from '@/utils/jwt';
 import { z } from 'zod';
 import type { IWsUser } from '@/ws/types';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { resolveBotAuthPayload } from '@/utils/botAuth';
-import logger from '@/utils/logger';
+import { resolveSession } from '@/utils/sessionAuth';
 import { ApiError } from '@/utils/ApiError';
 
 const AuthenticateSchema = z.object({
@@ -64,23 +61,16 @@ export class AuthController {
 
         const { token } = payload;
 
-        let decoded: JWTPayload | null = null;
-        try {
-            const verified = jwt.verify(token, JWT_SECRET, {
-                algorithms: ['HS256'],
-            }) as JWTPayload;
-            if (verified.type === 'access') {
-                decoded = verified;
-            }
-        } catch (err) {
-            logger.debug(
-                `[WsAuth] Token verification failed: ${
-                    err instanceof Error ? err.message : String(err)
-                }`,
-            );
-        }
+        const resolved = await resolveSession(token);
 
-        if (decoded === null) {
+        let userId: string;
+        let sessionId: string | undefined;
+        let isBot = false;
+
+        if (resolved !== null) {
+            userId = resolved.userId;
+            sessionId = resolved.sessionId;
+        } else {
             const tokenHash = crypto
                 .createHash('sha256')
                 .update(token)
@@ -90,10 +80,11 @@ export class AuthController {
             if (botPayload === null)
                 throw new ApiError(401, 'Invalid or expired token');
 
-            decoded = botPayload;
+            userId = botPayload.id;
+            isBot = true;
         }
 
-        const user = await this.userRepo.findById(decoded.id);
+        const user = await this.userRepo.findById(userId);
 
         if (!user) {
             throw new ApiError(401, 'Account deleted or not found');
@@ -103,28 +94,32 @@ export class AuthController {
             throw new ApiError(401, 'Account deleted or not found');
         }
 
-        if (Number(user.tokenVersion ?? 0) !== Number(decoded.tokenVersion)) {
-            throw new ApiError(401, 'Token expired');
-        }
-
-        if (await this.userRepo.isBanned(decoded.id)) {
+        if (await this.userRepo.isBanned(userId)) {
             throw new ApiError(401, 'Account banned');
         }
 
+        isBot = isBot || user.isBot === true;
+
         const wsUser: IWsUser = {
-            userId: decoded.id,
-            username: decoded.username,
-            isBot: decoded.isBot ?? false,
+            userId,
+            username: user.username ?? '',
+            isBot,
             socket: ws,
             authenticatedAt: new Date(),
+            ...(sessionId !== undefined && {
+                sessionId,
+                sessionTokenHash: crypto
+                    .createHash('sha256')
+                    .update(token)
+                    .digest('hex'),
+            }),
         };
 
         await this.wsServer.authenticateConnection(ws, wsUser);
 
         if (wsUser.isBot === true) {
-            const memberships = await this.serverMemberRepo.findByUserId(
-                decoded.id,
-            );
+            const memberships =
+                await this.serverMemberRepo.findByUserId(userId);
             for (const membership of memberships) {
                 this.wsServer.subscribeToServer(
                     ws,

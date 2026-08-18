@@ -34,7 +34,7 @@ import type {
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { UpdateSettingsRequestDTO } from './dto/settings.request.dto';
 import { UpdateServerSettingsRequestDTO } from './dto/server-settings.request.dto';
 import type { WsServer } from '@/ws/server';
@@ -72,6 +72,7 @@ interface UserSettings {
             meta?: boolean;
         } | null
     >;
+    sessionDuration?: '1d' | '7d' | '30d' | '90d';
     serverSettings?: {
         order: (
             | string
@@ -82,7 +83,7 @@ interface UserSettings {
 
 @Controller('api/v1/settings')
 @ApiTags('Settings')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @ApiBearerAuth()
 export class SettingsController {
     public constructor(
@@ -129,6 +130,7 @@ export class SettingsController {
             customFontUrl: '',
             customFontFamily: '',
             keybinds: {},
+            sessionDuration: '30d',
         };
 
         if (user.serverSettings) {

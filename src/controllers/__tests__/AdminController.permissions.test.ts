@@ -1,6 +1,13 @@
 import { NotFoundException } from '@nestjs/common';
 import { DEFAULT_PERMISSIONS } from '@/permissions/AdminPermissions';
 import { AdminController } from '../AdminController';
+import { revokeAllSessionsForUser } from '@/utils/sessionAuth';
+
+jest.mock('@/utils/sessionAuth', () => ({
+    revokeAllSessionsForUser: jest.fn().mockResolvedValue([]),
+}));
+
+const mockRevokeAllSessionsForUser = revokeAllSessionsForUser as jest.Mock;
 
 const DEPS = [
     'userRepo',
@@ -45,7 +52,6 @@ function userRepoWithPermissions(
                 : { snowflakeId: TARGET, permissions: targetPerms },
         ),
         updatePermissions: jest.fn().mockResolvedValue(true),
-        incrementTokenVersion: jest.fn().mockResolvedValue(undefined),
     };
 }
 
@@ -66,7 +72,6 @@ function userRepoWith(updateResult: boolean) {
                   },
         ),
         updatePermissions: jest.fn().mockResolvedValue(updateResult),
-        incrementTokenVersion: jest.fn().mockResolvedValue(undefined),
     };
 }
 
@@ -74,7 +79,11 @@ const request = { user: { id: CALLER, username: 'admin' }, ip: '127.0.0.1' };
 const body = { permissions: { ...DEFAULT_PERMISSIONS, manageUsers: true } };
 
 describe('updateUserPermissions', () => {
-    it('revokes outstanding tokens after a permission change', async () => {
+    beforeEach(() => {
+        mockRevokeAllSessionsForUser.mockClear();
+    });
+
+    it('revokes outstanding sessions after a permission change', async () => {
         const userRepo = userRepoWith(true);
         const controller = makeController({
             userRepo,
@@ -93,7 +102,7 @@ describe('updateUserPermissions', () => {
             TARGET,
             body.permissions,
         );
-        expect(userRepo.incrementTokenVersion).toHaveBeenCalledWith(TARGET);
+        expect(mockRevokeAllSessionsForUser).toHaveBeenCalledWith(TARGET);
     });
 
     it('reports a write that matched nothing instead of claiming success', async () => {
@@ -118,7 +127,7 @@ describe('updateUserPermissions', () => {
             ),
         ).rejects.toThrow(NotFoundException);
 
-        expect(userRepo.incrementTokenVersion).not.toHaveBeenCalled();
+        expect(mockRevokeAllSessionsForUser).not.toHaveBeenCalled();
         expect(auditLogRepo.create).not.toHaveBeenCalled();
     });
 });

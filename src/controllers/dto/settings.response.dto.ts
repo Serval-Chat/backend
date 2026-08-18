@@ -123,6 +123,9 @@ export class UserSettingsResponseDTO {
     @ApiPropertyOptional({ type: KeybindsResponseMapDTO })
     public keybinds?: KeybindsResponseMapDTO;
 
+    @ApiPropertyOptional({ enum: ['1d', '7d', '30d', '90d'] })
+    public sessionDuration?: '1d' | '7d' | '30d' | '90d';
+
     @ApiPropertyOptional({ type: ServerSettingsDTO })
     public serverSettings?: ServerSettingsDTO;
 }

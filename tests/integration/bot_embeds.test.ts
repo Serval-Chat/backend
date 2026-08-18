@@ -1,7 +1,5 @@
-import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
-import { JWT_SECRET } from '../../src/config/env';
 import { ServerMember, ServerMessage } from '../../src/models/Server';
 import { setup, teardown } from './setup';
 import {
@@ -9,6 +7,7 @@ import {
     createTestChannel,
     createTestServer,
     createTestUser,
+    generateAuthToken,
 } from './helpers';
 
 import type { Express } from 'express';
@@ -40,36 +39,14 @@ describe('Bot embed messaging', () => {
             login: 'owner_embed',
             username: 'owner_embed',
         });
-        ownerToken = jwt.sign(
-            {
-                id: owner.snowflakeId,
-                login: owner.login,
-                username: owner.username,
-                tokenVersion: owner.tokenVersion,
-                isBot: false,
-                type: 'access',
-            },
-            JWT_SECRET,
-            { expiresIn: '1h' },
-        );
+        ownerToken = await generateAuthToken(owner);
 
         botUser = await createTestUser({
             login: 'bot_embed',
             username: 'bot_embed',
             isBot: true,
         });
-        botToken = jwt.sign(
-            {
-                id: botUser.snowflakeId,
-                login: botUser.login,
-                username: botUser.username,
-                tokenVersion: botUser.tokenVersion,
-                isBot: true,
-                type: 'access',
-            },
-            JWT_SECRET,
-            { expiresIn: '1h' },
-        );
+        botToken = await generateAuthToken(botUser);
 
         serverDoc = await createTestServer(owner.snowflakeId);
         channelDoc = await createTestChannel(serverDoc.snowflakeId);

@@ -17,7 +17,6 @@ function makeService(overrides: {
         findById: jest.fn(),
         comparePassword: jest.fn(),
         updatePassword: jest.fn().mockResolvedValue(undefined),
-        incrementTokenVersion: jest.fn().mockResolvedValue(undefined),
         update: jest.fn().mockResolvedValue(undefined),
         ...overrides.userRepo,
     };

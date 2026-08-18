@@ -48,9 +48,6 @@ export interface IUser {
         updatedAt: Date;
     } | null;
     presenceStatus?: PresenceStatus;
-    // Version of the user's authentication token
-    // Incremented to invalidate all existing JWTs (global logout)
-    tokenVersion?: number;
     // Timestamp of when the user account was soft-deleted
     deletedAt?: Date;
     // Reason for account deletion (e.g., user request, ban)
@@ -98,6 +95,7 @@ export interface IUser {
                 meta?: boolean;
             } | null
         >;
+        sessionDuration?: '1d' | '7d' | '30d' | '90d';
     };
     banner?: string;
     bannerColor?: string;
@@ -243,9 +241,6 @@ export interface IUserRepository {
         permissions: AdminPermissions,
     ): Promise<boolean>;
 
-    // Increment token version
-    incrementTokenVersion(id: string): Promise<void>;
-
     // Remove a specific badge from all users
     removeBadgeFromAllUsers(badgeId: string): Promise<void>;
 
@@ -284,6 +279,7 @@ export interface IUserRepository {
                     meta?: boolean;
                 } | null
             >;
+            sessionDuration?: '1d' | '7d' | '30d' | '90d';
         },
     ): Promise<void>;
 

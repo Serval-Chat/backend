@@ -16,7 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import { KlipyService } from '@/services/KlipyService';
-import { JwtAuthGuard } from '@/modules/auth/auth.module';
+import { AuthGuard } from '@/modules/auth/auth.module';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ToggleFavoriteGifRequestDTO } from '@/controllers/dto/klipy.request.dto';
 import {
@@ -28,7 +28,7 @@ import { KlipySearchResponseDTO } from '@/controllers/dto/klipy-search.response.
 
 @Controller('api/v1/klipy')
 @ApiTags('Klipy')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 @ApiBearerAuth()
 export class KlipyController {
     public constructor(

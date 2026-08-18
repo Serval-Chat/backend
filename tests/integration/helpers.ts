@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { io as Client } from 'socket.io-client';
 import { User } from '../../src/models/User';
-import { generateJWT } from '../../src/utils/jwt';
+import { createSession } from '../../src/utils/sessionAuth';
 import type { IUser } from '../../src/models/User';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -13,20 +13,18 @@ export async function createTestUser(overrides: Record<string, unknown> = {}) {
         username: `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         login: email,
         password: 'password123',
-        tokenVersion: 0,
         ...overrides
     });
     return user;
 }
 
-export function generateAuthToken(user: IUser) {
-    return generateJWT({
-        id: user.snowflakeId,
-        login: user.login,
-        username: user.username,
-        tokenVersion: user.tokenVersion ?? 0,
-        isBot: user.isBot === true
-    });
+export async function generateAuthToken(user: IUser) {
+    const { token } = await createSession(
+        user.snowflakeId,
+        'integration-test',
+        '127.0.0.1',
+    );
+    return token;
 }
 
 export function createSocketClient(server: Server, token: string) {
