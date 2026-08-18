@@ -40,8 +40,10 @@ describe('every registered Mongoose model carries mongooseIdPlugin', () => {
     });
 
     it.each(modelNames)('%s', (name) => {
-        const plugins: Array<{ fn: unknown }> =
-            mongoose.model(name).schema.plugins;
+        const schema = mongoose.model(name).schema as unknown as {
+            plugins: Array<{ fn: unknown }>;
+        };
+        const plugins = schema.plugins;
         expect(plugins.some((p) => p.fn === mongooseIdPlugin)).toBe(true);
     });
 });
