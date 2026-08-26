@@ -1,6 +1,5 @@
 import { Types } from 'mongoose';
 import type { IMessage } from '../../src/di/interfaces/IMessageRepository';
-import type { IServerMessage } from '../../src/di/interfaces/IServerMessageRepository';
 
 const mockIndices = {
     exists: jest.fn(),
@@ -58,7 +57,7 @@ const makeDmMessage = (overrides: Partial<IMessage> = {}): IMessage =>
         ...overrides,
     }) as IMessage;
 
-const makeChannelMessage = (overrides: Partial<IServerMessage> = {}): IServerMessage =>
+const makeChannelMessage = (overrides: Partial<IMessage> = {}): IMessage =>
     ({
         _id: new Types.ObjectId(),
         snowflakeId: new Types.ObjectId().toString(),
@@ -68,7 +67,7 @@ const makeChannelMessage = (overrides: Partial<IServerMessage> = {}): IServerMes
         text: 'channel hello',
         createdAt: new Date('2026-01-01T12:00:00.000Z'),
         ...overrides,
-    }) as IServerMessage;
+    }) as IMessage;
 
 const makeSearchResponse = (hits: unknown[], total: number) => ({
     hits: {
@@ -144,6 +143,8 @@ describe('MessageSearchService', () => {
         it('sends a correctly shaped document to ES', async () => {
             mockClient.index.mockResolvedValueOnce({});
             const msg = makeDmMessage();
+            const receiverId = msg.receiverId;
+            if (receiverId === undefined) throw new Error('unreachable');
 
             await service.indexDmMessage(msg);
 
@@ -154,7 +155,7 @@ describe('MessageSearchService', () => {
                     document: expect.objectContaining({
                         id: msg.snowflakeId,
                         senderId: msg.senderId.toString(),
-                        receiverId: msg.receiverId.toString(),
+                        receiverId: receiverId.toString(),
                         text: msg.text,
                         senderDeleted: false,
                         receiverDeleted: false,
@@ -186,7 +187,7 @@ describe('MessageSearchService', () => {
                         id: msg.snowflakeId,
                         senderId: msg.senderId.toString(),
                         channelId: msg.channelId.toString(),
-                        serverId: msg.serverId.toString(),
+                        serverId: msg.serverId?.toString(),
                         text: msg.text,
                         isDeleted: false,
                     }),

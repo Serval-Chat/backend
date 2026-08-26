@@ -7,9 +7,10 @@ import type { MarkdownBlockadeRule } from './IServerRepository';
 export interface IChannel {
     _id: Types.ObjectId;
     snowflakeId: string;
-    serverId: string;
-    name: string;
-    type: 'text' | 'voice' | 'link';
+    serverId?: string;
+    name?: string;
+    type: 'text' | 'voice' | 'link' | 'dm' | 'group_dm';
+    recipientIds?: string[];
     position: number;
     categoryId?: string | null;
     permissions?: {
@@ -35,10 +36,11 @@ export interface IChannel {
 
 // Channel creation DTO
 export interface CreateChannelDTO {
-    serverId: string;
-    name: string;
-    type: 'text' | 'voice' | 'link';
-    position: number;
+    serverId?: string;
+    name?: string;
+    type: 'text' | 'voice' | 'link' | 'dm' | 'group_dm';
+    recipientIds?: string[];
+    position?: number;
     categoryId?: string | null;
     permissions?: {
         [roleId: string]: {
@@ -76,6 +78,9 @@ export interface IChannelRepository {
 
     // Find channel with maximum position for a server
     findMaxPositionByServerId(serverId: string): Promise<IChannel | null>;
+
+    // Find a DM/group-DM channel by its exact recipient set
+    findDmChannelByRecipients(recipientIds: string[]): Promise<IChannel | null>;
 
     // Create a new channel
     create(data: CreateChannelDTO): Promise<IChannel>;

@@ -29,7 +29,7 @@ describe('ChatController search indexing', () => {
     let messageRepo: {
         findById: jest.Mock;
         create: jest.Mock;
-        delete: jest.Mock;
+        hardDelete: jest.Mock;
     };
     let dmUnreadRepo: { increment: jest.Mock };
     let muteRepo: { findActiveByUserId: jest.Mock; checkExpired: jest.Mock };
@@ -54,7 +54,7 @@ describe('ChatController search indexing', () => {
         messageRepo = {
             findById: jest.fn(),
             create: jest.fn(),
-            delete: jest.fn().mockResolvedValue(true),
+            hardDelete: jest.fn().mockResolvedValue(true),
         };
         dmUnreadRepo = { increment: jest.fn().mockResolvedValue(1) };
         muteRepo = {
@@ -89,6 +89,11 @@ describe('ChatController search indexing', () => {
             redisService as any,
             searchService as any,
             warningRepo as any,
+            {
+                getOrCreateDmChannel: jest
+                    .fn()
+                    .mockResolvedValue({ snowflakeId: 'dm-channel-1' }),
+            } as any, // ChannelService
         );
         (chatController as any).wsServer = wsServer as any;
     });

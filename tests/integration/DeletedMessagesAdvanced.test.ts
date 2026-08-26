@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { setup, teardown } from './setup';
 import { createTestUser, generateAuthToken, createTestServer, createTestChannel } from './helpers';
-import { ServerMessage, Role, ServerMember } from '../../src/models/Server';
+import { Role, ServerMember } from '../../src/models/Server';
 import type { IServer, IChannel } from '../../src/models/Server';
 import { Message } from '../../src/models/Message';
 import { AuditLog } from '../../src/models/AuditLog';
@@ -39,7 +39,6 @@ describe('Deleted Message Visibility Advanced Integration', () => {
     });
 
     beforeEach(async () => {
-        await ServerMessage.deleteMany({});
         await Message.deleteMany({});
         await AuditLog.deleteMany({});
 
@@ -138,7 +137,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
 
         it('should hide soft-deleted pinned messages from regular users', async () => {
 
-            await ServerMessage.updateOne({ snowflakeId: deletedMessageId }, { $set: { isPinned: true } });
+            await Message.updateOne({ snowflakeId: deletedMessageId }, { $set: { isPinned: true } });
 
             const res = await request(app)
                 .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/pins`)
@@ -149,7 +148,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
         });
 
         it('should show soft-deleted pinned messages to audit users', async () => {
-            await ServerMessage.updateOne({ snowflakeId: deletedMessageId }, { $set: { isPinned: true } });
+            await Message.updateOne({ snowflakeId: deletedMessageId }, { $set: { isPinned: true } });
 
             const res = await request(app)
                 .get(`/api/v1/servers/${testServer.snowflakeId}/channels/${testChannel.snowflakeId}/messages/pins`)
@@ -242,6 +241,7 @@ describe('Deleted Message Visibility Advanced Integration', () => {
             const dmMsg = await Message.create({
                 senderId: regularUser.snowflakeId,
                 receiverId: otherUser.snowflakeId,
+                channelId: `dm-${regularUser.snowflakeId}-${otherUser.snowflakeId}`,
                 text: 'Private message'
             });
             const dmId = dmMsg.snowflakeId;

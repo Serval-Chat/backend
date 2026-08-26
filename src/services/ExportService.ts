@@ -6,7 +6,7 @@ import path from 'path';
 import { TYPES } from '@/di/types';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -17,6 +17,8 @@ import { randomBytes } from 'crypto';
 import { type IExportJob, ExportJob } from '@/models/ExportJob';
 import { SERVER_URL } from '@/config/env';
 import { SYSTEM_SENDER_ID } from '@/utils/snowflake';
+import { ErrorMessages } from '@/constants/errorMessages';
+import { assertDefined } from '@/utils/typeGuards';
 
 @injectable()
 export class ExportService implements OnModuleInit, OnModuleDestroy {
@@ -35,9 +37,9 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         @inject(TYPES.ChannelRepository)
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-        @inject(TYPES.ServerMessageRepository)
-        @Inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
+        @inject(TYPES.MessageRepository)
+        @Inject(TYPES.MessageRepository)
+        private messageRepo: IMessageRepository,
         @inject(TYPES.ServerRepository)
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
@@ -192,7 +194,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         try {
             writeStream.write('[\n');
 
-            const cursor = this.serverMessageRepo.findCursorByChannelId(
+            const cursor = this.messageRepo.findCursorByChannelId(
                 job.channelId,
             );
             let first = true;
@@ -201,6 +203,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
                 if (!first) {
                     writeStream.write(',\n');
                 }
+                assertDefined(m.createdAt, ErrorMessages.MESSAGE.NOT_FOUND);
                 const data = {
                     content: m.text,
                     sender_user_id: m.senderId.toString(),
@@ -272,6 +275,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         const channel = await this.channelRepo.findById(job.channelId);
 
         if (!user || !server || !channel) return;
+        assertDefined(channel.name, ErrorMessages.CHANNEL.NOT_FOUND);
 
         const downloadUrl = `${SERVER_URL}/api/v1/exports/download/${token}`;
 
@@ -313,6 +317,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
         const channel = await this.channelRepo.findById(job.channelId);
 
         if (!user || !server || !channel) return;
+        assertDefined(channel.name, ErrorMessages.CHANNEL.NOT_FOUND);
 
         if (
             user.login !== undefined &&

@@ -2,10 +2,6 @@ import { mongooseIdPlugin } from '@/utils/mongooseId';
 import { snowflakeIdPlugin } from '@/utils/snowflake';
 import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
-import type { IEmbed, IEmbedButton } from './Embed';
-import type { InteractionValue } from '@/types/interactions';
-import type { IPoll } from './Message';
-import { messageAttachmentSchema, type IMessageAttachment } from './Attachment';
 import {
     getPermissionDefault,
     PERMISSION_KEYS,
@@ -90,14 +86,17 @@ export interface ICategory extends Document {
 
 // Channel interface
 //
-// Represents a text or voice channel within a server
+// Represents a text or voice channel within a server, or a DM/group-DM
+// channel between users. Server channels always set serverId; DM-family
+// channels (type 'dm' | 'group_dm') always set recipientIds instead.
 export interface IChannel extends Document {
     snowflakeId: string;
     _id: mongoose.Types.ObjectId;
-    serverId: string;
+    serverId?: string;
     categoryId?: string;
-    name: string;
-    type: 'text' | 'voice' | 'link';
+    name?: string;
+    type: 'text' | 'voice' | 'link' | 'dm' | 'group_dm';
+    recipientIds?: string[];
     position: number;
     permissions?: {
         [roleId: string]: Permissions;
@@ -171,47 +170,6 @@ export interface IInvite extends Document {
     uses: number;
     expiresAt?: Date;
     createdAt: Date;
-}
-
-// Server message interface
-//
-// Represents a message sent in a server channel
-export interface IServerMessage {
-    snowflakeId: string;
-    _id: Types.ObjectId;
-    text: string;
-    senderId: string;
-    serverId: string;
-    channelId: string;
-    replyToId?: string;
-    repliedToMessageId?: string;
-    repliedTo?: {
-        messageId: string;
-        senderId: string;
-        senderUsername?: string;
-        text: string;
-    };
-    isEdited?: boolean;
-    editedAt?: Date;
-    isPinned?: boolean;
-    isSticky?: boolean;
-    deletedAt?: Date;
-    createdAt: Date;
-    isWebhook?: boolean;
-    webhookUsername?: string;
-    webhookAvatarUrl?: string;
-    embeds?: IEmbed[];
-    components?: IEmbedButton[];
-    attachments?: IMessageAttachment[];
-    interaction?: {
-        command: string;
-        options: { name: string; value: InteractionValue }[];
-        user: { id: string; username: string };
-    };
-    stickerId?: string;
-    poll?: IPoll;
-    noEmbeds?: boolean;
-    noEmbedsUrls?: string[];
 }
 
 // Server ban interface
@@ -377,13 +335,18 @@ const categorySchema = new Schema<ICategory>({
 categorySchema.index({ serverId: 1, position: 1 });
 
 const channelSchema = new Schema<IChannel>({
-    serverId: { type: String, required: true },
+    serverId: { type: String, required: false },
     categoryId: {
         type: String,
         required: false,
     },
-    name: { type: String, required: true },
-    type: { type: String, enum: ['text', 'voice', 'link'], default: 'text' },
+    name: { type: String, required: false },
+    type: {
+        type: String,
+        enum: ['text', 'voice', 'link', 'dm', 'group_dm'],
+        default: 'text',
+    },
+    recipientIds: { type: [String], required: false },
     position: { type: Number, default: 0 },
     permissions: {
         type: Map,
@@ -419,6 +382,7 @@ const channelSchema = new Schema<IChannel>({
 });
 channelSchema.index({ serverId: 1, categoryId: 1, position: 1 });
 channelSchema.index({ serverId: 1, lastMessageAt: -1 });
+channelSchema.index({ type: 1, recipientIds: 1 });
 
 const serverMemberSchema = new Schema<IServerMember>({
     serverId: { type: String, required: true },
@@ -470,75 +434,6 @@ const inviteSchema = new Schema<IInvite>({
 });
 inviteSchema.index({ serverId: 1 });
 
-const serverMessageSchema = new Schema<IServerMessage>({
-    serverId: { type: String, required: true },
-    channelId: { type: String, required: true },
-    senderId: { type: String, required: true },
-    text: { type: String, required: false },
-    createdAt: { type: Date, default: Date.now },
-    replyToId: { type: String, required: false },
-    repliedToMessageId: {
-        type: String,
-        required: false,
-    },
-    repliedTo: {
-        messageId: { type: String, required: false },
-        senderId: { type: String, required: false },
-        senderUsername: { type: String, required: false },
-        text: { type: String, required: false },
-    },
-    editedAt: { type: Date, required: false },
-    isEdited: { type: Boolean, default: false },
-    isPinned: { type: Boolean, default: false },
-    isSticky: { type: Boolean, default: false },
-    deletedAt: { type: Date, required: false },
-    isWebhook: { type: Boolean, default: false },
-    webhookUsername: { type: String, required: false },
-    webhookAvatarUrl: { type: String, required: false },
-    embeds: { type: [Schema.Types.Mixed], default: [] },
-    components: { type: [Schema.Types.Mixed], default: [] },
-    attachments: { type: [messageAttachmentSchema], default: [] },
-    interaction: {
-        command: { type: String, required: false },
-        options: [
-            {
-                name: { type: String, required: false },
-                value: { type: Schema.Types.Mixed, required: false },
-            },
-        ],
-        user: {
-            id: { type: String, required: false },
-            username: { type: String, required: false },
-        },
-    },
-    stickerId: { type: String, required: false },
-    poll: {
-        type: new Schema(
-            {
-                title: { type: String, required: true },
-                options: [
-                    {
-                        id: { type: String, required: true },
-                        text: { type: String, required: true },
-                        emoji: { type: String, required: false },
-                        emojiType: { type: String, required: false },
-                        emojiId: { type: String, required: false },
-                        votes: [{ type: String }],
-                    },
-                ],
-                multiSelect: { type: Boolean, default: false },
-                expiresAt: { type: Date, required: false },
-            },
-            { _id: false },
-        ),
-        required: false,
-    },
-    noEmbeds: { type: Boolean, default: false },
-    noEmbedsUrls: { type: [String], default: [] },
-});
-serverMessageSchema.index({ channelId: 1, deletedAt: 1, createdAt: -1 });
-serverMessageSchema.index({ channelId: 1, createdAt: -1 });
-
 const serverBanSchema = new Schema<IServerBan>({
     serverId: { type: String, required: true },
     userId: { type: String, required: true },
@@ -569,15 +464,6 @@ roleSchema.plugin(mongooseIdPlugin);
 roleSchema.plugin(snowflakeIdPlugin);
 inviteSchema.plugin(mongooseIdPlugin);
 inviteSchema.plugin(snowflakeIdPlugin);
-serverMessageSchema.plugin(mongooseIdPlugin);
-serverMessageSchema.plugin(snowflakeIdPlugin);
-
-serverMessageSchema.virtual('repliedToMessage', {
-    ref: 'ServerMessage',
-    localField: 'repliedToMessageId',
-    foreignField: 'snowflakeId',
-    justOne: true,
-});
 serverBanSchema.plugin(mongooseIdPlugin);
 serverBanSchema.plugin(snowflakeIdPlugin);
 
@@ -600,10 +486,6 @@ export const ServerMember: Model<IServerMember> = mongoose.model(
 );
 export const Role: Model<IRole> = mongoose.model('Role', roleSchema);
 export const Invite: Model<IInvite> = mongoose.model('Invite', inviteSchema);
-export const ServerMessage: Model<IServerMessage> = mongoose.model(
-    'ServerMessage',
-    serverMessageSchema,
-);
 export const ServerBan: Model<IServerBan> = mongoose.model(
     'ServerBan',
     serverBanSchema,

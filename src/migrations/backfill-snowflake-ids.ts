@@ -29,7 +29,6 @@ import {
     ServerMember,
     Role,
     Invite,
-    ServerMessage,
     ServerBan,
 } from '@/models/Server';
 import { ServerChannelRead } from '@/models/ServerChannelRead';
@@ -52,7 +51,6 @@ const MODELS: Model<any>[] = [
     ServerMember,
     Role,
     Invite,
-    ServerMessage,
     ServerBan,
     Message,
     Friendship,

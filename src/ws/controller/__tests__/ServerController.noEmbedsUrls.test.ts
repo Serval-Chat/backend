@@ -22,7 +22,7 @@ function makeWsUser(overrides: Partial<IWsUser> = {}): IWsUser {
 }
 
 function buildController() {
-    const serverMessageRepo = {
+    const messageRepo = {
         create: jest.fn().mockImplementation(async (data) => ({
             ...data,
             _id: new Types.ObjectId(),
@@ -72,7 +72,7 @@ function buildController() {
     const controller = new ServerController(
         {} as any, // serverRepo
         { findById: jest.fn() } as any, // userRepo
-        serverMessageRepo as any,
+        messageRepo as any,
         serverMemberRepo as any,
         channelRepo as any,
         serverChannelReadRepo as any,
@@ -84,15 +84,16 @@ function buildController() {
         redisService as any,
         embedService as any,
         warningRepo as any,
+        { createAndBroadcast: jest.fn().mockResolvedValue({}) }, // ServerAuditLogService
     );
     (controller as any).wsServer = wsServer;
 
-    return { controller, serverMessageRepo };
+    return { controller, messageRepo };
 }
 
 describe('ServerController wires noEmbedsUrls through to the persisted message', () => {
-    it('passes noEmbedsUrls from the payload to serverMessageRepo.create', async () => {
-        const { controller, serverMessageRepo } = buildController();
+    it('passes noEmbedsUrls from the payload to messageRepo.create', async () => {
+        const { controller, messageRepo } = buildController();
 
         await controller.onSendMessageServer(
             {
@@ -104,7 +105,7 @@ describe('ServerController wires noEmbedsUrls through to the persisted message',
             makeWsUser(),
         );
 
-        expect(serverMessageRepo.create).toHaveBeenCalledWith(
+        expect(messageRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 noEmbedsUrls: ['https://example.com'],
             }),
@@ -113,14 +114,14 @@ describe('ServerController wires noEmbedsUrls through to the persisted message',
     });
 
     it('passes undefined through when the payload has no noEmbedsUrls', async () => {
-        const { controller, serverMessageRepo } = buildController();
+        const { controller, messageRepo } = buildController();
 
         await controller.onSendMessageServer(
             { serverId: SERVER, channelId: CHANNEL, text: 'hello' },
             makeWsUser(),
         );
 
-        expect(serverMessageRepo.create).toHaveBeenCalledWith(
+        expect(messageRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({ noEmbedsUrls: undefined }),
             null,
         );

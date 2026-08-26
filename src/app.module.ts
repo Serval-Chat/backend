@@ -44,6 +44,8 @@ import { ServerPublicController } from './controllers/ServerPublicController';
 import { ServerDiscoveryController } from './controllers/ServerDiscoveryController';
 import { SystemController } from './controllers/SystemController';
 import { UserMessageController } from './controllers/UserMessageController';
+import { UserChannelController } from './controllers/UserChannelController';
+import { ChannelMessageController } from './controllers/ChannelMessageController';
 import { SettingsController } from './controllers/SettingsController';
 import { PushController } from './controllers/PushController';
 import { KlipyController } from './controllers/KlipyController';
@@ -171,6 +173,8 @@ import {
         SystemController,
         UserMessageSearchController,
         UserMessageController,
+        UserChannelController,
+        ChannelMessageController,
         SettingsController,
         PushController,
         ExportController,

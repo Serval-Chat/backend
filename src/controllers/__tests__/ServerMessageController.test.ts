@@ -20,7 +20,7 @@ describe('ServerMessageController Manual Instance', () => {
         findByChannelId: jest.fn(),
         create: jest.fn(),
         findById: jest.fn(),
-        update: jest.fn(),
+        updateMessage: jest.fn(),
     } as any;
     const mockReactionRepo = {
         getReactionsForMessages: jest.fn().mockResolvedValue({}),
@@ -232,7 +232,9 @@ describe('ServerMessageController Manual Instance', () => {
             (mockServerMessageRepo.findById as jest.Mock).mockResolvedValue(
                 message,
             );
-            (mockServerMessageRepo.update as jest.Mock).mockResolvedValue({
+            (
+                mockServerMessageRepo.updateMessage as jest.Mock
+            ).mockResolvedValue({
                 ...message,
                 isPinned: true,
             });
@@ -257,7 +259,9 @@ describe('ServerMessageController Manual Instance', () => {
             (mockServerMessageRepo.findById as jest.Mock).mockResolvedValue(
                 message,
             );
-            (mockServerMessageRepo.update as jest.Mock).mockResolvedValue({
+            (
+                mockServerMessageRepo.updateMessage as jest.Mock
+            ).mockResolvedValue({
                 ...message,
                 isSticky: true,
             });

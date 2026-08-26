@@ -34,9 +34,9 @@ import { TYPES } from '@/di/types';
 import crypto from 'crypto';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type {
-    IServerMessageRepository,
-    IServerMessage,
-} from '@/di/interfaces/IServerMessageRepository';
+    IMessageRepository,
+    IMessage,
+} from '@/di/interfaces/IMessageRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
@@ -59,6 +59,7 @@ import { embedAttachmentContentForMessages } from '@/utils/attachments';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { assertSlowModeAllows } from '@/utils/slowMode';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import {
     SendMessageRequestDTO,
@@ -73,8 +74,8 @@ import { PollVoteRequestDTO } from './dto/poll-vote.request.dto';
 @ApiBearerAuth()
 export class ServerMessageController {
     public constructor(
-        @Inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
+        @Inject(TYPES.MessageRepository)
+        private messageRepo: IMessageRepository,
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @Inject(TYPES.ChannelRepository)
@@ -101,7 +102,7 @@ export class ServerMessageController {
         private searchService: IMessageSearchService,
     ) {}
 
-    private allowlistProxyUrls(msgs: IServerMessage[]): void {
+    private allowlistProxyUrls(msgs: IMessage[]): void {
         const pipeline = this.redisService.getClient().pipeline();
         let added = false;
 
@@ -145,6 +146,21 @@ export class ServerMessageController {
         }
     }
 
+    private async attachReactions(
+        message: IMessage,
+        userId: string,
+    ): Promise<IMessage> {
+        const reactionsMap = await this.reactionRepo.getReactionsForMessages(
+            [message.snowflakeId],
+            'server',
+            userId,
+        );
+        return {
+            ...message,
+            reactions: reactionsMap[message.snowflakeId] || [],
+        };
+    }
+
     @Get()
     @ApiOperation({ summary: 'Get channel messages' })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -169,7 +185,7 @@ export class ServerMessageController {
         @Query('around') around?: string,
         @Query('after') after?: string,
         @Query('includeAttachmentContent') includeAttachmentContent?: string,
-    ): Promise<IServerMessage[]> {
+    ): Promise<IMessage[]> {
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -179,7 +195,7 @@ export class ServerMessageController {
         }
 
         const channel = await this.channelRepo.findById(channelId);
-        if (channel === null || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId?.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {
@@ -204,7 +220,7 @@ export class ServerMessageController {
                 'seeDeletedMessages',
             );
 
-        const msgs = await this.serverMessageRepo.findByChannelId(
+        const msgs = await this.messageRepo.findByChannelId(
             channelId,
             limit,
             before,
@@ -235,7 +251,7 @@ export class ServerMessageController {
                     (reactionsMap as Record<string, unknown[]>)[
                         msg.snowflakeId
                     ] || [],
-            } as IServerMessage;
+            } as IMessage;
         });
     }
 
@@ -262,7 +278,7 @@ export class ServerMessageController {
         @CurrentUser('isBot') isUserBot: boolean | undefined,
         @CurrentUser('username') senderUsername: string,
         @Body() body: SendMessageRequestDTO,
-    ): Promise<IServerMessage> {
+    ): Promise<IMessage> {
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -293,7 +309,7 @@ export class ServerMessageController {
         );
 
         const channel = await this.channelRepo.findById(channelId);
-        if (channel === null || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId?.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {
@@ -302,7 +318,6 @@ export class ServerMessageController {
             );
         }
 
-        // Check for slow mode
         if (channel.slowMode !== undefined && channel.slowMode > 0) {
             const hasBypass = await this.permissionService.hasChannelPermission(
                 serverId,
@@ -312,32 +327,13 @@ export class ServerMessageController {
             );
 
             if (hasBypass !== true) {
-                const lastMessage =
-                    await this.serverMessageRepo.findLastByChannelAndUser(
-                        channelId,
-                        userId,
-                    );
-
-                if (lastMessage !== null) {
-                    const now = new Date();
-                    const lastSentAt =
-                        lastMessage.createdAt instanceof Date
-                            ? lastMessage.createdAt
-                            : new Date(lastMessage.createdAt);
-                    const elapsedSeconds = Math.floor(
-                        (now.getTime() - lastSentAt.getTime()) / 1000,
-                    );
-
-                    if (elapsedSeconds < channel.slowMode) {
-                        const remaining = channel.slowMode - elapsedSeconds;
-                        throw new ForbiddenException(
-                            ErrorMessages.MESSAGE.SLOW_MODE.replace(
-                                '%s',
-                                `${remaining}s`,
-                            ),
-                        );
-                    }
-                }
+                await assertSlowModeAllows(
+                    this.redisService,
+                    this.messageRepo,
+                    channelId,
+                    userId,
+                    channel.slowMode * 1000,
+                );
             }
         }
 
@@ -373,7 +369,7 @@ export class ServerMessageController {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
-        const message = await this.serverMessageRepo.create({
+        const message = await this.messageRepo.create({
             serverId: serverId,
             channelId: channelId,
             senderId: userId,
@@ -521,7 +517,7 @@ export class ServerMessageController {
         @Param('serverId') serverId: string,
         @Param('channelId') channelId: string,
         @CurrentUser('id') userId: string,
-    ): Promise<IServerMessage[]> {
+    ): Promise<IMessage[]> {
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -546,7 +542,7 @@ export class ServerMessageController {
                 'seeDeletedMessages',
             );
 
-        const pins = await this.serverMessageRepo.findPinnedByChannelId(
+        const pins = await this.messageRepo.findPinnedByChannelId(
             channelId,
             includeDeleted,
         );
@@ -567,7 +563,7 @@ export class ServerMessageController {
             reactions:
                 (reactionsMap as Record<string, unknown[]>)[pin.snowflakeId] ||
                 [],
-        })) as IServerMessage[];
+        })) as IMessage[];
     }
 
     @Get(':messageId')
@@ -584,8 +580,8 @@ export class ServerMessageController {
         @Param('messageId') messageId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{
-        message: IServerMessage;
-        repliedMessage: IServerMessage | null;
+        message: IMessage;
+        repliedMessage: IMessage | null;
     }> {
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
@@ -596,7 +592,7 @@ export class ServerMessageController {
         }
 
         const channel = await this.channelRepo.findById(channelId);
-        if (channel === null || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId?.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {
@@ -621,7 +617,7 @@ export class ServerMessageController {
                 'seeDeletedMessages',
             );
 
-        const message = await this.serverMessageRepo.findById(
+        const message = await this.messageRepo.findById(
             messageId,
             includeDeleted,
         );
@@ -629,10 +625,10 @@ export class ServerMessageController {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
 
-        let repliedMessage: IServerMessage | null = null;
+        let repliedMessage: IMessage | null = null;
         // Handle both legacy and new reply ID fields for backward compatibility
         if (message.replyToId !== undefined && message.replyToId !== '') {
-            const repliedMsg = await this.serverMessageRepo.findById(
+            const repliedMsg = await this.messageRepo.findById(
                 message.replyToId,
                 includeDeleted,
             );
@@ -646,7 +642,7 @@ export class ServerMessageController {
             message.repliedToMessageId !== undefined &&
             message.repliedToMessageId !== ''
         ) {
-            const repliedMsg = await this.serverMessageRepo.findById(
+            const repliedMsg = await this.messageRepo.findById(
                 message.repliedToMessageId,
                 includeDeleted,
             );
@@ -668,7 +664,7 @@ export class ServerMessageController {
             ...('toObject' in message && typeof message.toObject === 'function'
                 ? message.toObject()
                 : message),
-        } as IServerMessage;
+        } as IMessage;
 
         const messagesToAllowlist = [msgObj];
         if (repliedMessage !== null) {
@@ -677,7 +673,7 @@ export class ServerMessageController {
                 typeof repliedMessage.toObject === 'function'
                     ? repliedMessage.toObject()
                     : repliedMessage),
-            } as IServerMessage);
+            } as IMessage);
         }
         this.allowlistProxyUrls(messagesToAllowlist);
 
@@ -712,8 +708,8 @@ export class ServerMessageController {
         @CurrentUser('id') userId: string,
         @CurrentUser('isBot') isUserBot: boolean | undefined,
         @Body() body: ServerEditMessageRequestDTO,
-    ): Promise<IServerMessage> {
-        const message = await this.serverMessageRepo.findById(messageId, true);
+    ): Promise<IMessage> {
+        const message = await this.messageRepo.findById(messageId, true);
         if (message === null || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -775,7 +771,7 @@ export class ServerMessageController {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
 
-        const updatedMessage = await this.serverMessageRepo.update(messageId, {
+        const updatedMessage = await this.messageRepo.updateMessage(messageId, {
             text: messageText,
             ...(embeds !== undefined ? { embeds } : {}),
             ...(components !== undefined ? { components } : {}),
@@ -848,7 +844,7 @@ export class ServerMessageController {
                 );
         }
 
-        return updatedMessage;
+        return this.attachReactions(updatedMessage, userId);
     }
 
     @Post(':messageId/poll/vote')
@@ -866,7 +862,7 @@ export class ServerMessageController {
         @Param('messageId') messageId: string,
         @Body() body: PollVoteRequestDTO,
         @CurrentUser('id') userId: string,
-    ): Promise<IServerMessage> {
+    ): Promise<IMessage> {
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -883,7 +879,7 @@ export class ServerMessageController {
             new ForbiddenException(ErrorMessages.CHANNEL.NOT_FOUND),
         );
 
-        const message = await this.serverMessageRepo.findById(messageId, false);
+        const message = await this.messageRepo.findById(messageId, false);
         if (message === null || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -917,7 +913,7 @@ export class ServerMessageController {
             );
         }
 
-        const updatedMessage = await this.serverMessageRepo.setPollVote(
+        const updatedMessage = await this.messageRepo.setPollVote(
             messageId,
             userId,
             body.optionIds,
@@ -972,7 +968,7 @@ export class ServerMessageController {
             );
         }
 
-        const deletedCount = await this.serverMessageRepo.bulkDelete(
+        const deletedCount = await this.messageRepo.bulkSoftDelete(
             channelId,
             body.messageIds,
         );
@@ -1056,7 +1052,7 @@ export class ServerMessageController {
         @Param('messageId') messageId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ message: string }> {
-        const message = await this.serverMessageRepo.findById(messageId, true);
+        const message = await this.messageRepo.findById(messageId, true);
         if (message === null || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -1113,7 +1109,7 @@ export class ServerMessageController {
             );
         }
 
-        await this.serverMessageRepo.delete(messageId);
+        await this.messageRepo.softDelete(messageId);
 
         this.searchService
             .removeChannelMessage(messageId)
@@ -1203,7 +1199,7 @@ export class ServerMessageController {
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
         @CurrentUser('id') userId: string,
-    ): Promise<IServerMessage> {
+    ): Promise<IMessage> {
         await this.permissionService.requireChannelPermission(
             serverId,
             userId,
@@ -1212,7 +1208,7 @@ export class ServerMessageController {
             new ForbiddenException('No permission to pin messages'),
         );
 
-        const message = await this.serverMessageRepo.findById(messageId, true);
+        const message = await this.messageRepo.findById(messageId, true);
         if (message === null || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -1221,7 +1217,7 @@ export class ServerMessageController {
             throw new BadRequestException('Cannot pin a deleted message');
         }
 
-        const updated = await this.serverMessageRepo.update(
+        const updated = await this.messageRepo.updateMessage(
             message.snowflakeId,
             {
                 isPinned: message.isPinned === false,
@@ -1289,7 +1285,7 @@ export class ServerMessageController {
                 );
             });
 
-        return updated;
+        return this.attachReactions(updated, userId);
     }
 
     @Post(':messageId/sticky')
@@ -1307,7 +1303,7 @@ export class ServerMessageController {
         @Param('channelId') channelId: string,
         @Param('messageId') messageId: string,
         @CurrentUser('id') userId: string,
-    ): Promise<IServerMessage> {
+    ): Promise<IMessage> {
         await this.permissionService.requireChannelPermission(
             serverId,
             userId,
@@ -1316,7 +1312,7 @@ export class ServerMessageController {
             new ForbiddenException('No permission to pin messages'),
         );
 
-        const message = await this.serverMessageRepo.findById(
+        const message = await this.messageRepo.findById(
             messageId,
             true, // Include soft-deleted messages
         );
@@ -1328,7 +1324,7 @@ export class ServerMessageController {
             throw new BadRequestException('Cannot sticky a deleted message');
         }
 
-        const updated = await this.serverMessageRepo.update(
+        const updated = await this.messageRepo.updateMessage(
             message.snowflakeId,
             {
                 isSticky: message.isSticky === false,
@@ -1397,6 +1393,6 @@ export class ServerMessageController {
                 );
             });
 
-        return updated;
+        return this.attachReactions(updated, userId);
     }
 }

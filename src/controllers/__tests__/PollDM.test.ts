@@ -176,6 +176,11 @@ describe('DM Polls', () => {
                 removeDmMessage: jest.fn().mockResolvedValue(undefined),
             } as any,
             { hasUnacknowledged: jest.fn().mockResolvedValue(false) } as any, // WarningRepository
+            {
+                getOrCreateDmChannel: jest
+                    .fn()
+                    .mockResolvedValue({ snowflakeId: 'dm-channel-1' }),
+            } as any, // ChannelService
         );
         (chatController as any).wsServer = wsServer;
     });

@@ -189,6 +189,8 @@ export class DmMessageSearchQueryDTO extends BaseMessageSearchQueryDTO {
     public userId!: string;
 }
 
+export class DmChannelMessageSearchQueryDTO extends BaseMessageSearchQueryDTO {}
+
 export class ChannelMessageSearchQueryDTO extends BaseMessageSearchQueryDTO {
     @ApiPropertyOptional({
         description: 'Filter pinned messages (channel only)',

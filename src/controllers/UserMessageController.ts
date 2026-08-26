@@ -42,6 +42,7 @@ import type {
 } from '@/di/interfaces/IReactionRepository';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { assertDefined } from '@/utils/typeGuards';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import { WsServer } from '@/ws/server';
@@ -251,6 +252,10 @@ export class UserMessageController {
         if (targetMessage === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
+        assertDefined(
+            targetMessage.receiverId,
+            ErrorMessages.MESSAGE.NOT_FOUND,
+        );
 
         const isPartOfConversation =
             (targetMessage.senderId.toString() === meId &&
@@ -303,6 +308,7 @@ export class UserMessageController {
         if (message === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
+        assertDefined(message.receiverId, ErrorMessages.MESSAGE.NOT_FOUND);
 
         const isPartOfConversation =
             (message.senderId.toString() === meId &&
@@ -348,6 +354,7 @@ export class UserMessageController {
         if (message === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
+        assertDefined(message.receiverId, ErrorMessages.MESSAGE.NOT_FOUND);
 
         if (message.senderId.toString() !== meId) {
             throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
@@ -408,6 +415,7 @@ export class UserMessageController {
         if (message === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
+        assertDefined(message.receiverId, ErrorMessages.MESSAGE.NOT_FOUND);
 
         if (!message.poll) {
             throw new BadRequestException(
@@ -489,12 +497,13 @@ export class UserMessageController {
         if (message === null) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
         }
+        assertDefined(message.receiverId, ErrorMessages.MESSAGE.NOT_FOUND);
 
         if (message.senderId.toString() !== meId) {
             throw new ForbiddenException(ErrorMessages.AUTH.UNAUTHORIZED);
         }
 
-        const deleted = await this.messageRepo.delete(id);
+        const deleted = await this.messageRepo.hardDelete(id);
         if (deleted) {
             this.searchService.removeDmMessage(id).catch((err: unknown) => {
                 this.logger.error(

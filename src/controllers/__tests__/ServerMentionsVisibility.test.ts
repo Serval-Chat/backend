@@ -126,6 +126,7 @@ describe('Server WS mention visibility', () => {
             { getClient: jest.fn() } as any,
             {} as any,
             {} as any,
+            {} as any,
         );
         (controller as any).wsServer = wsServer;
         handleMentions = (controller as any).handleMentions.bind(controller);

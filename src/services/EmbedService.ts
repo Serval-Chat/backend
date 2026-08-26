@@ -4,10 +4,6 @@ import { TYPES } from '@/di/types';
 import crypto from 'crypto';
 import { ScraperService } from './ScraperService';
 import type {
-    IServerMessageRepository,
-    IServerMessage,
-} from '@/di/interfaces/IServerMessageRepository';
-import type {
     IMessageRepository,
     IMessage,
 } from '@/di/interfaces/IMessageRepository';
@@ -15,6 +11,8 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type { AnyResponseWsEvent } from '@/ws/protocol/envelope';
 import type { IEmbed } from '@/models/Embed';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
+import { assertDefined } from '@/utils/typeGuards';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 @injectable()
 export class EmbedService {
@@ -26,9 +24,6 @@ export class EmbedService {
         @Inject(TYPES.ScraperService)
         @inject(TYPES.ScraperService)
         private scraperService: ScraperService,
-        @Inject(TYPES.ServerMessageRepository)
-        @inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
         @Inject(TYPES.MessageRepository)
         @inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
@@ -40,7 +35,7 @@ export class EmbedService {
         private redisService: IRedisService,
     ) {}
 
-    public async processServerMessage(message: IServerMessage): Promise<void> {
+    public async processServerMessage(message: IMessage): Promise<void> {
         await this.processMessage(message, true);
     }
 
@@ -49,7 +44,7 @@ export class EmbedService {
     }
 
     private async processMessage(
-        message: IServerMessage | IMessage,
+        message: IMessage,
         isServerMessage: boolean,
     ): Promise<void> {
         const messageId = message.snowflakeId;
@@ -240,38 +235,36 @@ export class EmbedService {
 
         const allEmbeds = [...(message.embeds || []), ...newEmbeds];
 
+        await this.messageRepo.updateMessage(messageId, {
+            embeds: allEmbeds,
+        });
+
         if (isServerMessage) {
-            const serverMsg = message as IServerMessage;
-            await this.serverMessageRepo.update(messageId, {
-                embeds: allEmbeds,
-            });
+            assertDefined(message.serverId, ErrorMessages.MESSAGE.NOT_FOUND);
 
             this.logger.debug(
-                `Broadcasting updated embeds for message ${messageId} in channel ${serverMsg.channelId}`,
+                `Broadcasting updated embeds for message ${messageId} in channel ${message.channelId}`,
             );
 
             await this.wsServer.broadcastToServerWithPermission(
-                serverMsg.serverId.toString(),
+                message.serverId.toString(),
                 {
                     type: 'message_server_embeds_updated',
                     payload: {
                         messageId,
-                        serverId: serverMsg.serverId.toString(),
-                        channelId: serverMsg.channelId.toString(),
+                        serverId: message.serverId.toString(),
+                        channelId: message.channelId.toString(),
                         embeds: allEmbeds,
                     },
                 },
                 {
                     type: 'channel',
-                    targetId: serverMsg.channelId.toString(),
+                    targetId: message.channelId.toString(),
                     permission: 'viewChannels',
                 },
             );
         } else {
-            const userMsg = message as IMessage;
-            await this.messageRepo.updateMessage(messageId, {
-                embeds: allEmbeds,
-            });
+            assertDefined(message.receiverId, ErrorMessages.MESSAGE.NOT_FOUND);
 
             const embedsEvent = {
                 type: 'message_dm_embeds_updated' as const,
@@ -282,11 +275,11 @@ export class EmbedService {
             } as AnyResponseWsEvent;
 
             this.wsServer.broadcastToUser(
-                userMsg.senderId.toString(),
+                message.senderId.toString(),
                 embedsEvent,
             );
             this.wsServer.broadcastToUser(
-                userMsg.receiverId.toString(),
+                message.receiverId.toString(),
                 embedsEvent,
             );
         }

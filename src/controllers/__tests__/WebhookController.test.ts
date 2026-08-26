@@ -12,10 +12,10 @@ describe('WebhookController', () => {
     const webhookRepo = {
         findByToken: jest.fn(),
     };
-    const serverMessageRepo = {
+    const messageRepo = {
         create: jest.fn(),
         findById: jest.fn(),
-        delete: jest.fn(),
+        softDelete: jest.fn(),
     };
     const channelRepo = {
         updateLastMessageAt: jest.fn(),
@@ -35,7 +35,7 @@ describe('WebhookController', () => {
             channelId,
             token,
         });
-        serverMessageRepo.findById.mockResolvedValue({
+        messageRepo.findById.mockResolvedValue({
             _id: new Types.ObjectId(),
             snowflakeId: messageId,
             serverId,
@@ -43,8 +43,8 @@ describe('WebhookController', () => {
             isWebhook: true,
             deletedAt: undefined,
         });
-        serverMessageRepo.delete.mockResolvedValue(true);
-        serverMessageRepo.create.mockResolvedValue({
+        messageRepo.softDelete.mockResolvedValue(true);
+        messageRepo.create.mockResolvedValue({
             _id: new Types.ObjectId(),
             snowflakeId: messageId,
             createdAt: new Date('2026-05-31T12:00:00.000Z'),
@@ -56,7 +56,7 @@ describe('WebhookController', () => {
             webhookRepo as never,
             {} as never,
             channelRepo as never,
-            serverMessageRepo as never,
+            messageRepo as never,
             {} as never,
             {
                 error: jest.fn(),
@@ -95,7 +95,7 @@ describe('WebhookController', () => {
             ),
         ).rejects.toThrow(ForbiddenException);
 
-        expect(serverMessageRepo.create).not.toHaveBeenCalled();
+        expect(messageRepo.create).not.toHaveBeenCalled();
     });
 
     it('translates GitHub push deliveries into Serchat webhook messages', async () => {
@@ -130,7 +130,7 @@ describe('WebhookController', () => {
             },
         );
 
-        expect(serverMessageRepo.create).toHaveBeenCalledWith(
+        expect(messageRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 text: expect.stringContaining('**octocat** pushed [1 commit]'),
                 webhookUsername: 'GitHub',
@@ -139,7 +139,7 @@ describe('WebhookController', () => {
                 noEmbeds: true,
             }),
         );
-        expect(serverMessageRepo.create.mock.calls[0][0].text).toContain(
+        expect(messageRepo.create.mock.calls[0][0].text).toContain(
             '- [2222222](https://github.com/octocat/Hello-World/commit/2222222abcdef) Fix the thing - octocat',
         );
     });
@@ -163,7 +163,7 @@ describe('WebhookController', () => {
             },
         );
 
-        expect(serverMessageRepo.create).toHaveBeenCalledWith(
+        expect(messageRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 text: '**octocat** triggered GitHub `github` (opened) in octocat/Hello-World',
                 webhookUsername: 'GitHub',
@@ -181,7 +181,7 @@ describe('WebhookController', () => {
             },
         );
 
-        expect(serverMessageRepo.create).toHaveBeenCalledWith(
+        expect(messageRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 text: 'Check this out: https://example.com',
                 noEmbedsUrls: ['https://example.com'],
@@ -198,13 +198,10 @@ describe('WebhookController', () => {
         expect(result).toEqual({
             message: 'Webhook message deleted successfully',
         });
-        expect(serverMessageRepo.findById).toHaveBeenCalledWith(
-            messageId,
-            true,
-        );
-        expect(serverMessageRepo.delete).toHaveBeenCalledWith(messageId);
+        expect(messageRepo.findById).toHaveBeenCalledWith(messageId, true);
+        expect(messageRepo.softDelete).toHaveBeenCalledWith(messageId);
 
-        const event = {
+        const hardEvent = {
             type: 'message_server_deleted',
             payload: {
                 messageId: messageId.toString(),
@@ -213,14 +210,39 @@ describe('WebhookController', () => {
                 hard: true,
             },
         };
+        const softEvent = {
+            type: 'message_server_deleted',
+            payload: {
+                messageId: messageId.toString(),
+                serverId: serverId.toString(),
+                channelId: channelId.toString(),
+                hard: false,
+            },
+        };
 
-        expect(wsServer.broadcastToChannel).toHaveBeenCalledWith(
-            channelId.toString(),
-            event,
+        expect(wsServer.broadcastToServerWithPermission).toHaveBeenCalledWith(
+            serverId.toString(),
+            hardEvent,
+            {
+                type: 'channel',
+                targetId: channelId.toString(),
+                permission: 'seeDeletedMessages',
+                negate: true,
+            },
         );
         expect(wsServer.broadcastToServerWithPermission).toHaveBeenCalledWith(
             serverId.toString(),
-            event,
+            softEvent,
+            {
+                type: 'channel',
+                targetId: channelId.toString(),
+                permission: 'seeDeletedMessages',
+                negate: false,
+            },
+        );
+        expect(wsServer.broadcastToServerWithPermission).toHaveBeenCalledWith(
+            serverId.toString(),
+            hardEvent,
             {
                 type: 'channel',
                 targetId: channelId.toString(),

@@ -47,6 +47,7 @@ describe('mark_dm_read requires a real conversation', () => {
             { getClient: () => redis } as any,
             {} as any,
             {} as any,
+            {} as any,
         );
         (controller as any).wsServer = wsServer as any;
     });

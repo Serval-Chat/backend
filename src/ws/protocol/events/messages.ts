@@ -45,6 +45,7 @@ export interface IMessageDmSentEvent extends WsEvent<
     {
         messageId: string;
         id: string;
+        channelId: string;
         senderId: string;
         senderUsername: string;
         receiverId: string;
@@ -75,6 +76,7 @@ export interface IMessageDmSentEvent extends WsEvent<
 export interface IMessageDm {
     messageId: string;
     id: string;
+    channelId: string;
     senderId: string;
     senderUsername: string;
     receiverId: string;

@@ -39,7 +39,6 @@ import type {
     IServer,
 } from '@/di/interfaces/IServerRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
@@ -47,6 +46,7 @@ import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
 import type { IAdminNoteRepository } from '@/di/interfaces/IAdminNoteRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { assertDefined } from '@/utils/typeGuards';
 import {
     AdminStatsRequestDTO,
     AdminStatsRangeDTO,
@@ -188,8 +188,6 @@ export class AdminController {
         private serverRepo: IServerRepository,
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
-        @Inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
         @Inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -234,19 +232,16 @@ export class AdminController {
             users,
             bans,
             servers,
-            dmMessages,
-            serverMessages,
+            messages,
             usersSparkline,
             bansSparkline,
             serversSparkline,
-            dmSparkline,
-            serverMsgSparkline,
+            messagesSparkline,
         ] = await Promise.all([
             this.userRepo.count(),
             this.banRepo.countActive(),
             this.serverRepo.count(),
             this.messageRepo.count(),
-            this.serverMessageRepo.count(),
             isLifetime
                 ? this.userRepo.countAllByDay()
                 : isHourly
@@ -267,31 +262,7 @@ export class AdminController {
                 : isHourly
                   ? this.messageRepo.countByHour(since, buckets)
                   : this.messageRepo.countByDay(since, buckets),
-            isLifetime
-                ? this.serverMessageRepo.countAllByDay()
-                : isHourly
-                  ? this.serverMessageRepo.countByHour(since, buckets)
-                  : this.serverMessageRepo.countByDay(since, buckets),
         ]);
-
-        let messagesSparkline: number[];
-        if (isLifetime) {
-            const maxLen = Math.max(
-                dmSparkline.length,
-                serverMsgSparkline.length,
-            );
-            messagesSparkline = Array(maxLen).fill(0);
-            for (let i = 0; i < maxLen; i++) {
-                const dmVal = dmSparkline[dmSparkline.length - 1 - i] ?? 0;
-                const smVal =
-                    serverMsgSparkline[serverMsgSparkline.length - 1 - i] ?? 0;
-                messagesSparkline[maxLen - 1 - i] = dmVal + smVal;
-            }
-        } else {
-            messagesSparkline = dmSparkline.map(
-                (v, i) => v + (serverMsgSparkline[i] ?? 0),
-            );
-        }
 
         const activeUsersCount = this.wsServer.getAllOnlineUsers().length;
 
@@ -306,7 +277,7 @@ export class AdminController {
         stats.bansSparkline = bansSparkline;
         stats.servers = servers;
         stats.serversSparkline = serversSparkline;
-        stats.messages = dmMessages + serverMessages;
+        stats.messages = messages;
         stats.messagesSparkline = messagesSparkline;
         return stats;
     }
@@ -1840,8 +1811,7 @@ export class AdminController {
         const owner = await this.userRepo.findById(server.ownerId);
         const memberCount =
             await this.serverMemberRepo.countByServerId(serverId);
-        const messageVolume =
-            await this.serverMessageRepo.countByServerId(serverId);
+        const messageVolume = await this.messageRepo.countByServerId(serverId);
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const [recentBanCount, recentKickCount] = await Promise.all([
             this.auditLogRepo.count({
@@ -1899,10 +1869,11 @@ export class AdminController {
         }
 
         details.channels = channels.map((c) => {
+            assertDefined(c.name, ErrorMessages.CHANNEL.NOT_FOUND);
             const dto = new AdminChannelShortDTO();
             dto.id = c.snowflakeId;
             dto.name = c.name;
-            dto.type = c.type;
+            dto.type = c.type as 'text' | 'voice' | 'link';
             dto.position = c.position;
             return dto;
         });

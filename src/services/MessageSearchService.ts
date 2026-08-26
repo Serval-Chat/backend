@@ -6,7 +6,6 @@ import { ELASTICSEARCH_URL } from '@/config/env';
 import { SYSTEM_SENDER_ID } from '@/utils/snowflake';
 import { TYPES } from '@/di/types';
 import type { IMessage } from '@/di/interfaces/IMessageRepository';
-import type { IServerMessage } from '@/di/interfaces/IServerMessageRepository';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type {
     IMessageSearchService,
@@ -15,6 +14,8 @@ import type {
     ChannelSearchHit,
 } from '@/di/interfaces/IMessageSearchService';
 import type { IEmbed } from '@/models/Embed';
+import { assertDefined } from '@/utils/typeGuards';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 export const DM_MESSAGES_INDEX = 'serchat-dm-messages-v1';
 export const CHANNEL_MESSAGES_INDEX = 'serchat-channel-messages-v1';
@@ -165,6 +166,7 @@ export class MessageSearchService
         senderIsBot = false,
     ): Promise<void> {
         try {
+            assertDefined(msg.receiverId, ErrorMessages.MESSAGE.NOT_FOUND);
             const text = msg.text;
             await this.client.index({
                 index: DM_MESSAGES_INDEX,
@@ -200,10 +202,11 @@ export class MessageSearchService
     }
 
     public async indexChannelMessage(
-        msg: IServerMessage,
+        msg: IMessage,
         senderIsBot = false,
     ): Promise<void> {
         try {
+            assertDefined(msg.serverId, ErrorMessages.MESSAGE.NOT_FOUND);
             const text = msg.text;
             await this.client.index({
                 index: CHANNEL_MESSAGES_INDEX,

@@ -1,34 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-jest.mock('@/services/PushService', () => ({
-    notifyUser: jest.fn().mockResolvedValue(undefined),
-    notifyUsers: jest.fn().mockResolvedValue(undefined),
-}));
-
-import { ServerController } from '../ServerController';
+import { assertSlowModeAllows } from '../slowMode';
 import { ApiError } from '@/utils/ApiError';
 
 const CHANNEL = '0254710804526399488';
 const USER = '0254710804526399489';
 
-function controllerWith(redis: unknown, serverMessageRepo: unknown) {
-    const controller = Object.create(
-        ServerController.prototype,
-    ) as ServerController;
-    (controller as any).redisService = { getClient: () => redis };
-    (controller as any).serverMessageRepo = serverMessageRepo;
-    return controller;
-}
-
-const claim = (controller: ServerController, cooldownMs: number) =>
-    (
-        controller as unknown as {
-            assertSlowModeAllows: (
-                channelId: string,
-                userId: string,
-                cooldownMs: number,
-            ) => Promise<void>;
-        }
-    ).assertSlowModeAllows(CHANNEL, USER, cooldownMs);
+const claim = (redis: unknown, messageRepo: unknown, cooldownMs: number) =>
+    assertSlowModeAllows(
+        { getClient: () => redis } as never,
+        messageRepo as never,
+        CHANNEL,
+        USER,
+        cooldownMs,
+    );
 
 function fakeRedis() {
     const keys = new Map<string, number>();
@@ -58,18 +41,16 @@ function fakeRedis() {
 describe('slow mode is claimed atomically', () => {
     it('lets the first message through and holds the next', async () => {
         const redis = fakeRedis();
-        const controller = controllerWith(redis, {});
 
-        await expect(claim(controller, 5000)).resolves.toBeUndefined();
-        await expect(claim(controller, 5000)).rejects.toBeInstanceOf(ApiError);
+        await expect(claim(redis, {}, 5000)).resolves.toBeUndefined();
+        await expect(claim(redis, {}, 5000)).rejects.toBeInstanceOf(ApiError);
     });
 
     it('rejects a burst that used to slip through the read-then-write gap', async () => {
         const redis = fakeRedis();
-        const controller = controllerWith(redis, {});
 
         const results = await Promise.allSettled(
-            Array.from({ length: 10 }, () => claim(controller, 5000)),
+            Array.from({ length: 10 }, () => claim(redis, {}, 5000)),
         );
 
         expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
@@ -78,9 +59,8 @@ describe('slow mode is claimed atomically', () => {
 
     it('claims with NX and an expiry, in one round trip', async () => {
         const redis = fakeRedis();
-        const controller = controllerWith(redis, {});
 
-        await claim(controller, 4000);
+        await claim(redis, {}, 4000);
 
         expect(redis.set).toHaveBeenCalledTimes(1);
         expect(redis.set).toHaveBeenCalledWith(
@@ -94,18 +74,16 @@ describe('slow mode is claimed atomically', () => {
 
     it('reports the remaining time from the key, not from a guess', async () => {
         const redis = fakeRedis();
-        const controller = controllerWith(redis, {});
 
-        await claim(controller, 60_000);
-        await expect(claim(controller, 60_000)).rejects.toThrow(/\d+s/);
+        await claim(redis, {}, 60_000);
+        await expect(claim(redis, {}, 60_000)).rejects.toThrow(/\d+s/);
         expect(redis.pttl).toHaveBeenCalled();
     });
 
     it('does nothing when the channel has no cooldown', async () => {
         const redis = fakeRedis();
-        const controller = controllerWith(redis, {});
 
-        await claim(controller, 0);
+        await claim(redis, {}, 0);
 
         expect(redis.set).not.toHaveBeenCalled();
     });
@@ -115,15 +93,16 @@ describe('slow mode is claimed atomically', () => {
             set: jest.fn().mockRejectedValue(new Error('redis down')),
             pttl: jest.fn(),
         };
-        const serverMessageRepo = {
+        const messageRepo = {
             findLastByChannelAndUser: jest.fn().mockResolvedValue({
                 createdAt: new Date(Date.now() - 1000),
             }),
         };
-        const controller = controllerWith(redis, serverMessageRepo);
 
-        await expect(claim(controller, 5000)).rejects.toBeInstanceOf(ApiError);
-        expect(serverMessageRepo.findLastByChannelAndUser).toHaveBeenCalled();
+        await expect(claim(redis, messageRepo, 5000)).rejects.toBeInstanceOf(
+            ApiError,
+        );
+        expect(messageRepo.findLastByChannelAndUser).toHaveBeenCalled();
     });
 
     it('allows the send when the fallback shows the cooldown has passed', async () => {
@@ -131,28 +110,26 @@ describe('slow mode is claimed atomically', () => {
             set: jest.fn().mockRejectedValue(new Error('redis down')),
             pttl: jest.fn(),
         };
-        const serverMessageRepo = {
+        const messageRepo = {
             findLastByChannelAndUser: jest.fn().mockResolvedValue({
                 createdAt: new Date(Date.now() - 60_000),
             }),
         };
-        const controller = controllerWith(redis, serverMessageRepo);
 
-        await expect(claim(controller, 5000)).resolves.toBeUndefined();
+        await expect(claim(redis, messageRepo, 5000)).resolves.toBeUndefined();
     });
 
     it('does not swallow its own rejection into the fallback', async () => {
         const redis = fakeRedis();
-        const serverMessageRepo = {
+        const messageRepo = {
             findLastByChannelAndUser: jest.fn(),
         };
-        const controller = controllerWith(redis, serverMessageRepo);
 
-        await claim(controller, 5000);
-        await expect(claim(controller, 5000)).rejects.toBeInstanceOf(ApiError);
+        await claim(redis, messageRepo, 5000);
+        await expect(claim(redis, messageRepo, 5000)).rejects.toBeInstanceOf(
+            ApiError,
+        );
 
-        expect(
-            serverMessageRepo.findLastByChannelAndUser,
-        ).not.toHaveBeenCalled();
+        expect(messageRepo.findLastByChannelAndUser).not.toHaveBeenCalled();
     });
 });

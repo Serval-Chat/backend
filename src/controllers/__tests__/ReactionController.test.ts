@@ -18,9 +18,6 @@ describe('ReactionController', () => {
     const mockMessageRepo = {
         findById: jest.fn(),
     } as any;
-    const mockServerMessageRepo = {
-        findById: jest.fn(),
-    } as any;
     const mockServerMemberRepo = {
         findByServerAndUser: jest.fn().mockResolvedValue({ userId: 'u1' }),
     } as any;
@@ -70,7 +67,6 @@ describe('ReactionController', () => {
         controller = new ReactionController(
             mockReactionRepo,
             mockMessageRepo,
-            mockServerMessageRepo,
             mockServerMemberRepo,
             mockChannelRepo,
             mockPermissionService,
@@ -96,7 +92,7 @@ describe('ReactionController', () => {
             const MESSAGE_ID = new Types.ObjectId().toHexString();
             const USER_ID = new Types.ObjectId().toHexString();
 
-            (mockServerMessageRepo.findById as jest.Mock).mockResolvedValue({
+            (mockMessageRepo.findById as jest.Mock).mockResolvedValue({
                 _id: new Types.ObjectId(MESSAGE_ID),
                 serverId: new Types.ObjectId(SERVER_ID),
                 channelId: new Types.ObjectId(CHANNEL_ID),

@@ -1,5 +1,5 @@
 import { Inject } from '@nestjs/common';
-import { injectable } from 'inversify';
+import { injectable, inject } from 'inversify';
 import { TYPES } from '@/di/types';
 import {
     IAuditLogRepository,
@@ -16,12 +16,16 @@ import { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 export class ServerAuditLogService implements IServerAuditLogService {
     public constructor(
         @Inject(TYPES.AuditLogRepository)
+        @inject(TYPES.AuditLogRepository)
         private auditLogRepo: IAuditLogRepository,
         @Inject(TYPES.WsServer)
+        @inject(TYPES.WsServer)
         private wsServer: IWsServer,
         @Inject(TYPES.PermissionService)
+        @inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @Inject(TYPES.Logger)
+        @inject(TYPES.Logger)
         private logger: ILogger,
     ) {}
 
@@ -31,12 +35,7 @@ export class ServerAuditLogService implements IServerAuditLogService {
         actionType: string;
         targetId?: string;
         targetType?:
-            | 'user'
-            | 'channel'
-            | 'category'
-            | 'role'
-            | 'message'
-            | 'server';
+            'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
         targetUserId?: string;
         changes?: IAuditLogChange[];
         reason?: string;

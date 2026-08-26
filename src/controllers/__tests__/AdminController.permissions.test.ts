@@ -19,7 +19,6 @@ const DEPS = [
     'muteRepo',
     'serverRepo',
     'messageRepo',
-    'serverMessageRepo',
     'warningRepo',
     'serverMemberRepo',
     'channelRepo',

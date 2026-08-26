@@ -25,6 +25,8 @@ import { Types } from 'mongoose';
 import { TYPES } from '@/di/types';
 import { getDocumentId } from '@/utils/mongooseId';
 import { generateSnowflakeId, isValidSnowflakeId } from '@/utils/snowflake';
+import { assertDefined } from '@/utils/typeGuards';
+import { ErrorMessages } from '@/constants/errorMessages';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 
 import type {
@@ -35,17 +37,12 @@ import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepos
 import type { ISlashCommand } from '@/models/SlashCommand';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import { NoBot } from '@/modules/auth/bot.decorator';
 import { Bot } from '@/models/Bot';
 import type { AuthenticatedRequest } from '@/middleware/auth';
-import {
-    ServerMember,
-    ServerMessage,
-    Channel,
-    Role,
-    ServerBan,
-} from '@/models/Server';
+import { ServerMember, Channel, Role, ServerBan } from '@/models/Server';
 import { User } from '@/models/User';
 import { PermissionService } from '@/permissions/PermissionService';
 import {
@@ -196,6 +193,8 @@ export class InteractionController {
         private muteRepo: IMuteRepository,
         @Inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
+        @Inject(TYPES.MessageRepository)
+        private messageRepo: IMessageRepository,
     ) {}
 
     @UseGuards(AuthGuard)
@@ -376,7 +375,7 @@ export class InteractionController {
         let invocationId: string | undefined;
 
         if (commandDef.shouldReply === true) {
-            const serverMessage = await ServerMessage.create({
+            const serverMessage = await this.messageRepo.create({
                 serverId: serverId,
                 channelId: channelId,
                 senderId: req.user.id,
@@ -387,6 +386,10 @@ export class InteractionController {
                     user: { id: req.user.id, username: req.user.username },
                 },
             });
+            assertDefined(
+                serverMessage.createdAt,
+                ErrorMessages.MESSAGE.NOT_FOUND,
+            );
             invocationId = serverMessage.snowflakeId;
 
             this.wsServer.broadcastToChannel(channelId, {
@@ -592,12 +595,12 @@ export class InteractionController {
             return { success: true };
         }
 
-        const message = await ServerMessage.findOne({
-            snowflakeId: messageId,
-            serverId: serverId,
-            channelId: channelId,
-        }).lean();
-        if (message === null) {
+        const message = await this.messageRepo.findById(messageId, true);
+        if (
+            message === null ||
+            message.serverId !== serverId ||
+            message.channelId !== channelId
+        ) {
             throw new NotFoundException('Message not found');
         }
 
@@ -726,7 +729,7 @@ export class InteractionController {
                 components ?? [],
             );
         } else {
-            const serverMessage = await ServerMessage.create({
+            const serverMessage = await this.messageRepo.create({
                 serverId: serverId,
                 channelId: channelId,
                 senderId: req.user.id,
@@ -734,6 +737,10 @@ export class InteractionController {
                 embeds: body.embeds,
                 components,
             });
+            assertDefined(
+                serverMessage.createdAt,
+                ErrorMessages.MESSAGE.NOT_FOUND,
+            );
 
             this.wsServer.broadcastToChannel(channelId, {
                 type: 'message_server',
@@ -1042,10 +1049,7 @@ export class InteractionController {
     ) {
         if (invocationId === undefined || invocationId === '') return;
 
-        await ServerMessage.updateOne(
-            { snowflakeId: invocationId },
-            { $set: { text } },
-        );
+        await this.messageRepo.updateMessage(invocationId, { text });
 
         this.wsServer.broadcastToChannel(channelId, {
             type: 'message_server_edited',
@@ -1214,6 +1218,7 @@ export class InteractionController {
 
         if (channel === null)
             throw new Error(`Channel "${value}" not found in this server`);
+        assertDefined(channel.name, ErrorMessages.CHANNEL.NOT_FOUND);
 
         return {
             id: channel.snowflakeId,

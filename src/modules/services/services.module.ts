@@ -19,6 +19,7 @@ import { EmbedService } from '@/services/EmbedService';
 import { ServerVerificationService } from '@/services/ServerVerificationService';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 import { MessageSearchService } from '@/services/MessageSearchService';
+import { ChannelService } from '@/services/ChannelService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 import { container } from '@/di/container';
@@ -114,6 +115,10 @@ const esConfig = elasticsearchConfig as {
             provide: TYPES.ElasticsearchConfig,
             useValue: esConfig,
         },
+        {
+            provide: TYPES.ChannelService,
+            useClass: ChannelService,
+        },
     ],
     exports: [
         TYPES.AuthService,
@@ -135,6 +140,7 @@ const esConfig = elasticsearchConfig as {
         TYPES.ServerDiscoveryService,
         TYPES.MessageSearchService,
         TYPES.ElasticsearchConfig,
+        TYPES.ChannelService,
     ],
 })
 export class ServicesModule {}

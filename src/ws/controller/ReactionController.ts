@@ -19,7 +19,6 @@ import type {
 } from '@/ws/protocol/events/reactions';
 import { TYPES } from '@/di/types';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IMentionEvent } from '@/ws/protocol/events/mentions';
@@ -34,6 +33,7 @@ import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertWsNotWarned } from '@/utils/warning';
 import logger from '@/utils/logger';
 import { ApiError } from '@/utils/ApiError';
+import { assertDefined } from '@/utils/typeGuards';
 
 /**
  * Controller for handling message reaction events.
@@ -46,8 +46,6 @@ export class ReactionController {
     public constructor(
         @inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
-        @inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
         @inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
         @inject(TYPES.PermissionService)
@@ -86,6 +84,7 @@ export class ReactionController {
             if (message === null) {
                 throw new ApiError(404, 'Message not found');
             }
+            assertDefined(message.receiverId, 'Message not found');
 
             const isParticipant =
                 message.senderId.toString() === userId ||
@@ -167,6 +166,7 @@ export class ReactionController {
                         message: {
                             messageId: messageId,
                             id: messageId,
+                            channelId: message.channelId,
                             senderId: authorId,
                             senderUsername: author.username ?? 'Unknown User',
                             receiverId: message.receiverId.toString(),
@@ -199,10 +199,11 @@ export class ReactionController {
                 }
             }
         } else {
-            const message = await this.serverMessageRepo.findById(messageId);
+            const message = await this.messageRepo.findById(messageId);
             if (message === null) {
                 throw new ApiError(404, 'Message not found');
             }
+            assertDefined(message.serverId, 'Message not found');
 
             // Check if user has access to the channel
             const serverId = message.serverId.toString();
@@ -300,7 +301,9 @@ export class ReactionController {
                             senderIsBot: false,
                             senderUsername: author.username ?? 'Unknown User',
                             text: message.text,
-                            createdAt: message.createdAt.toISOString(),
+                            createdAt: (
+                                message.createdAt ?? new Date()
+                            ).toISOString(),
                             replyToId: message.replyToId?.toString(),
                             isEdited: message.isEdited ?? false,
                             isPinned: message.isPinned ?? false,
@@ -355,6 +358,7 @@ export class ReactionController {
             if (message === null) {
                 throw new ApiError(404, 'Message not found');
             }
+            assertDefined(message.receiverId, 'Message not found');
 
             // Validate user is part of the conversation
             const isParticipant =
@@ -408,10 +412,11 @@ export class ReactionController {
                 ws,
             );
         } else {
-            const message = await this.serverMessageRepo.findById(messageId);
+            const message = await this.messageRepo.findById(messageId);
             if (message === null) {
                 throw new ApiError(404, 'Message not found');
             }
+            assertDefined(message.serverId, 'Message not found');
 
             const channelId = message.channelId.toString();
 

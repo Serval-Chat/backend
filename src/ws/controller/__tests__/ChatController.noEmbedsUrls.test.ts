@@ -86,6 +86,11 @@ describe('ChatController wires noEmbedsUrls through to the persisted message', (
             redisService as any,
             searchService as any,
             warningRepo as any,
+            {
+                getOrCreateDmChannel: jest
+                    .fn()
+                    .mockResolvedValue({ snowflakeId: 'dm-channel-1' }),
+            } as any, // ChannelService
         );
         (chatController as any).wsServer = wsServer as any;
     });

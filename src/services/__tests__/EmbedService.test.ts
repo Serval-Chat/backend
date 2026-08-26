@@ -2,10 +2,6 @@
 import { EmbedService } from '../EmbedService';
 import { Types } from 'mongoose';
 import type {
-    IServerMessageRepository,
-    IServerMessage,
-} from '@/di/interfaces/IServerMessageRepository';
-import type {
     IMessageRepository,
     IMessage,
 } from '@/di/interfaces/IMessageRepository';
@@ -17,7 +13,6 @@ import type { FetchResult } from '@/types/scraper';
 describe('EmbedService', () => {
     let service: EmbedService;
     let mockScraperService: jest.Mocked<ScraperService>;
-    let mockServerMessageRepo: jest.Mocked<IServerMessageRepository>;
     let mockMessageRepo: jest.Mocked<IMessageRepository>;
     let mockWsServer: jest.Mocked<IWsServer>;
     let mockRedisService: jest.Mocked<IRedisService>;
@@ -26,10 +21,6 @@ describe('EmbedService', () => {
     beforeEach(() => {
         mockScraperService = {
             scrape: jest.fn(),
-        } as any;
-
-        mockServerMessageRepo = {
-            update: jest.fn().mockResolvedValue({}),
         } as any;
 
         mockMessageRepo = {
@@ -55,7 +46,6 @@ describe('EmbedService', () => {
 
         service = new EmbedService(
             mockScraperService,
-            mockServerMessageRepo,
             mockMessageRepo,
             mockWsServer,
             mockRedisService,
@@ -89,7 +79,7 @@ describe('EmbedService', () => {
             expect(mockScraperService.scrape).toHaveBeenCalledWith(
                 'https://example.com',
             );
-            expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
                 message.snowflakeId,
                 expect.objectContaining({
                     embeds: [
@@ -120,7 +110,7 @@ describe('EmbedService', () => {
             await service.processServerMessage(message);
 
             expect(mockScraperService.scrape).toHaveBeenCalledTimes(2);
-            expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
                 message.snowflakeId,
                 expect.objectContaining({
                     embeds: [
@@ -155,7 +145,7 @@ describe('EmbedService', () => {
             await service.processServerMessage(message);
 
             expect(mockScraperService.scrape).not.toHaveBeenCalled();
-            expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
                 message.snowflakeId,
                 expect.objectContaining({
                     embeds: [expect.objectContaining({ title: 'Cached' })],
@@ -176,7 +166,7 @@ describe('EmbedService', () => {
             await service.processServerMessage(message);
 
             expect(mockScraperService.scrape).not.toHaveBeenCalled();
-            expect(mockServerMessageRepo.update).not.toHaveBeenCalled();
+            expect(mockMessageRepo.updateMessage).not.toHaveBeenCalled();
         });
 
         it('should supplement missing embeds if count in text is higher than current embeds', async () => {
@@ -194,7 +184,7 @@ describe('EmbedService', () => {
             await service.processServerMessage(message);
 
             expect(mockScraperService.scrape).toHaveBeenCalledTimes(1);
-            expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
                 message.snowflakeId,
                 expect.objectContaining({
                     embeds: [
@@ -237,7 +227,7 @@ describe('EmbedService', () => {
             await service.processServerMessage(message);
 
             expect(mockScraperService.scrape).not.toHaveBeenCalled();
-            expect(mockServerMessageRepo.update).not.toHaveBeenCalled();
+            expect(mockMessageRepo.updateMessage).not.toHaveBeenCalled();
         });
 
         it('should handle trailing slash differences during comparison', async () => {
@@ -270,7 +260,7 @@ describe('EmbedService', () => {
             await service.processServerMessage(message);
 
             expect(mockScraperService.scrape).toHaveBeenCalledTimes(5);
-            expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
                 message.snowflakeId,
                 expect.objectContaining({
                     embeds: expect.arrayContaining([
@@ -283,7 +273,7 @@ describe('EmbedService', () => {
                 }),
             );
 
-            const updateArgs = mockServerMessageRepo.update.mock
+            const updateArgs = mockMessageRepo.updateMessage.mock
                 .calls[0]![1] as any;
             expect(updateArgs.embeds.length).toBe(5);
         });
@@ -302,7 +292,7 @@ describe('EmbedService', () => {
             await service.processServerMessage(message);
 
             expect(mockScraperService.scrape).not.toHaveBeenCalled();
-            expect(mockServerMessageRepo.update).not.toHaveBeenCalled();
+            expect(mockMessageRepo.updateMessage).not.toHaveBeenCalled();
         });
 
         it('should skip a URL listed in noEmbedsUrls but still embed the rest', async () => {
@@ -327,7 +317,7 @@ describe('EmbedService', () => {
             expect(mockScraperService.scrape).toHaveBeenCalledWith(
                 'https://visible.example',
             );
-            expect(mockServerMessageRepo.update).toHaveBeenCalledWith(
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
                 message.snowflakeId,
                 expect.objectContaining({
                     embeds: [
@@ -353,7 +343,7 @@ describe('EmbedService', () => {
             await service.processServerMessage(message);
 
             expect(mockScraperService.scrape).not.toHaveBeenCalled();
-            expect(mockServerMessageRepo.update).not.toHaveBeenCalled();
+            expect(mockMessageRepo.updateMessage).not.toHaveBeenCalled();
         });
 
         it('should treat noEmbedsUrls trailing-slash differences as the same URL', async () => {

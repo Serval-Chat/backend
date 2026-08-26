@@ -14,7 +14,7 @@ const transformChannel = (doc: unknown): IChannel | null => {
     const d = doc as {
         _id: Types.ObjectId;
         snowflakeId: string;
-        serverId: string;
+        serverId?: string;
         categoryId?: Types.ObjectId | null;
     };
 
@@ -63,6 +63,16 @@ export class MongooseChannelRepository implements IChannelRepository {
         return results
             .map(transformChannel)
             .filter((c): c is IChannel => c !== null);
+    }
+
+    public async findDmChannelByRecipients(
+        recipientIds: string[],
+    ): Promise<IChannel | null> {
+        const result = await Channel.findOne({
+            type: { $in: ['dm', 'group_dm'] },
+            recipientIds: { $size: recipientIds.length, $all: recipientIds },
+        }).lean();
+        return transformChannel(result);
     }
 
     public async findMaxPositionByServerId(

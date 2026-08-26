@@ -6,7 +6,7 @@ import {
     createTestServer,
     createTestChannel,
 } from './helpers';
-import { ServerMessage, Role, ServerMember } from '../../src/models/Server';
+import { Role, ServerMember } from '../../src/models/Server';
 import type { IServer, IChannel } from '../../src/models/Server';
 import { Message } from '../../src/models/Message';
 import type { IUser } from '../../src/models/User';
@@ -55,12 +55,14 @@ describe('Reply to a deleted message', () => {
             const messageA = await Message.create({
                 senderId: userA.snowflakeId,
                 receiverId: userB.snowflakeId,
+                channelId: `dm-${userA.snowflakeId}-${userB.snowflakeId}`,
                 text: 'Original DM message',
             });
 
             const messageB = await Message.create({
                 senderId: userB.snowflakeId,
                 receiverId: userA.snowflakeId,
+                channelId: `dm-${userA.snowflakeId}-${userB.snowflakeId}`,
                 text: 'Replying to A',
                 replyToId: messageA.snowflakeId,
             });
@@ -102,7 +104,7 @@ describe('Reply to a deleted message', () => {
         let testChannel: IChannel;
 
         beforeEach(async () => {
-            await ServerMessage.deleteMany({});
+            await Message.deleteMany({});
 
             serverOwner = await createTestUser({
                 login: `owner-${Date.now()}@example.com`,
@@ -172,7 +174,7 @@ describe('Reply to a deleted message', () => {
             expect(getARes.status).toBe(404);
 
             // Channel deletes are soft deletes: the record survives with deletedAt set.
-            const dbMessageA = await ServerMessage.findOne({
+            const dbMessageA = await Message.findOne({
                 snowflakeId: messageAId,
             });
             expect(dbMessageA).not.toBeNull();

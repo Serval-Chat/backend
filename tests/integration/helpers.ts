@@ -100,8 +100,8 @@ export async function createTestChannel(serverId: string, overrides: Record<stri
 }
 
 export async function createTestMessage(serverId: string, channelId: string, senderId: string, overrides: Record<string, unknown> = {}) {
-    const { ServerMessage } = await import('../../src/models/Server');
-    const message = await ServerMessage.create({
+    const { Message } = await import('../../src/models/Message');
+    const message = await Message.create({
         serverId,
         channelId,
         senderId,

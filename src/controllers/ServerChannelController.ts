@@ -31,7 +31,7 @@ import type {
     ICategoryRepository,
     ICategory,
 } from '@/di/interfaces/ICategoryRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import { ExportService } from '@/services/ExportService';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
@@ -40,6 +40,7 @@ import type { ILogger } from '@/di/interfaces/ILogger';
 
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
+import { assertDefined } from '@/utils/typeGuards';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
@@ -77,8 +78,8 @@ export class ServerChannelController {
         private serverChannelReadRepo: IServerChannelReadRepository,
         @Inject(TYPES.CategoryRepository)
         private categoryRepo: ICategoryRepository,
-        @Inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
+        @Inject(TYPES.MessageRepository)
+        private messageRepo: IMessageRepository,
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @Inject(TYPES.Logger)
@@ -171,6 +172,11 @@ export class ServerChannelController {
 
         const mappedChannels = visibleChannels.map(
             async (channel: IChannel) => {
+                assertDefined(channel.name, ErrorMessages.CHANNEL.NOT_FOUND);
+                assertDefined(
+                    channel.serverId,
+                    ErrorMessages.CHANNEL.NOT_FOUND,
+                );
                 const channelId = channel.snowflakeId;
                 const lastMessageAt: Date | null =
                     channel.lastMessageAt !== undefined
@@ -183,15 +189,12 @@ export class ServerChannelController {
                 let slowModeNextMessageAllowedAt: string | null = null;
                 if (channel.slowMode !== undefined && channel.slowMode > 0) {
                     const lastMessage =
-                        await this.serverMessageRepo.findLastByChannelAndUser(
+                        await this.messageRepo.findLastByChannelAndUser(
                             channelId,
                             userId,
                         );
                     if (lastMessage !== null) {
-                        const lastSentAt =
-                            lastMessage.createdAt instanceof Date
-                                ? lastMessage.createdAt
-                                : new Date(lastMessage.createdAt);
+                        const lastSentAt = lastMessage.createdAt ?? new Date(0);
                         const nextAllowedAt = new Date(
                             lastSentAt.getTime() + channel.slowMode * 1000,
                         );
@@ -205,6 +208,8 @@ export class ServerChannelController {
                 return {
                     ...channel,
                     id: channel.snowflakeId,
+                    name: channel.name,
+                    type: channel.type as 'text' | 'voice' | 'link',
                     serverId: channel.serverId.toString(),
                     categoryId: channel.categoryId ?? null,
                     lastMessageAt: lastMessageAt
@@ -468,12 +473,12 @@ export class ServerChannelController {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        if (channel.serverId.toString() !== serverId) {
+        if (channel.serverId?.toString() !== serverId) {
             throw new ApiError(400, ErrorMessages.CHANNEL.NOT_IN_SERVER);
         }
+        assertDefined(channel.name, ErrorMessages.CHANNEL.NOT_FOUND);
 
-        const messageCount =
-            await this.serverMessageRepo.countByChannelId(channelId);
+        const messageCount = await this.messageRepo.countByChannelId(channelId);
 
         return {
             channelId: channel.snowflakeId,
@@ -581,7 +586,7 @@ export class ServerChannelController {
         const existingChannel = await this.channelRepo.findById(channelId);
         if (
             existingChannel === null ||
-            existingChannel.serverId.toString() !== serverId
+            existingChannel.serverId?.toString() !== serverId
         ) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
@@ -747,7 +752,12 @@ export class ServerChannelController {
         const channel = await this.channelRepo.findById(channelId);
         const server = await this.serverRepo.findById(serverId);
 
-        if (channel !== null && server !== null) {
+        if (
+            channel !== null &&
+            server !== null &&
+            channel.serverId?.toString() === serverId
+        ) {
+            assertDefined(channel.name, ErrorMessages.CHANNEL.NOT_FOUND);
             await this.exportService.handleChannelDeletion(
                 channelId,
                 channel.name,

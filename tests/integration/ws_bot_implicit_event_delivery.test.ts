@@ -14,7 +14,8 @@ import {
     generateAuthToken,
 } from './helpers';
 import { Bot, DEFAULT_BOT_PERMISSIONS } from '../../src/models/Bot';
-import { Role, ServerMember, ServerMessage } from '../../src/models/Server';
+import { Role, ServerMember } from '../../src/models/Server';
+import { Message } from '../../src/models/Message';
 import { SlashCommand } from '../../src/models/SlashCommand';
 
 type WsEnvelope = {
@@ -436,7 +437,7 @@ describe('WS bot implicit event delivery', () => {
 
         await waitForNoWsEvent(botSocket, 'message_server');
 
-        const publicMessage = await ServerMessage.findOne({
+        const publicMessage = await Message.findOne({
             channelId: channelDoc.snowflakeId,
             text: 'hidden from bot',
         }).lean();

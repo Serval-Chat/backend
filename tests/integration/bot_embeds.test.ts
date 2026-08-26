@@ -1,6 +1,7 @@
 import request from 'supertest';
 
-import { ServerMember, ServerMessage } from '../../src/models/Server';
+import { ServerMember } from '../../src/models/Server';
+import { Message } from '../../src/models/Message';
 import { setup, teardown } from './setup';
 import {
     clearDatabase,
@@ -92,7 +93,7 @@ describe('Bot embed messaging', () => {
         expect(sendRes.body.text).toBe('');
         expect(sendRes.body.embeds).toEqual(embeds);
 
-        const saved = await ServerMessage.findOne({
+        const saved = await Message.findOne({
             snowflakeId: sendRes.body.id,
         }).lean();
         expect(saved?.embeds).toEqual(embeds);

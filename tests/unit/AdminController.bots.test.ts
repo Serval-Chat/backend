@@ -79,7 +79,6 @@ describe('AdminController bot verification', () => {
             {} as any,
             {} as any,
             {} as any,
-            {} as any,
         );
 
         (ServerMember.countDocuments as jest.Mock).mockResolvedValue(0);

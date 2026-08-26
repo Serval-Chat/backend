@@ -22,11 +22,11 @@ export const TYPES = {
     WebhookRepository: Symbol.for('WebhookRepository'),
     ChannelRepository: Symbol.for('ChannelRepository'),
     CategoryRepository: Symbol.for('CategoryRepository'),
-    ServerMessageRepository: Symbol.for('ServerMessageRepository'),
     AuditLogRepository: Symbol.for('AuditLogRepository'),
     InviteRepository: Symbol.for('InviteRepository'),
     ServerBanRepository: Symbol.for('ServerBanRepository'),
     ServerChannelReadRepository: Symbol.for('ServerChannelReadRepository'),
+    ChannelReadRepository: Symbol.for('ChannelReadRepository'),
     PingRepository: Symbol.for('PingRepository'),
     ReactionRepository: Symbol.for('ReactionRepository'),
     ExportJobRepository: Symbol.for('ExportJobRepository'),
@@ -55,6 +55,7 @@ export const TYPES = {
     ServerVerificationService: Symbol.for('ServerVerificationService'),
     ServerDiscoveryService: Symbol.for('ServerDiscoveryService'),
     MessageSearchService: Symbol.for('MessageSearchService'),
+    ChannelService: Symbol.for('ChannelService'),
     ElasticsearchConfig: Symbol.for('ElasticsearchConfig'),
 
     // Application

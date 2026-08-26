@@ -8,9 +8,9 @@ import {
     Server,
     ServerBan,
     ServerMember,
-    ServerMessage,
     ServerVerificationStats,
 } from '@/models/Server';
+import { Message } from '@/models/Message';
 
 const DEFAULT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const STATS_KEY = 'server-verification';
@@ -271,7 +271,7 @@ export class ServerVerificationService
         serverIds: string[],
         since: Date,
     ): Promise<Map<string, Map<string, number>>> {
-        const rows = await ServerMessage.aggregate<{
+        const rows = await Message.aggregate<{
             _id: { serverId: string; senderId: string };
             count: number;
         }>([

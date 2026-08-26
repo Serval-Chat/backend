@@ -42,7 +42,7 @@ import type {
 } from '@/di/interfaces/IWebhookRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { EmbedService } from '@/services/EmbedService';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
@@ -51,7 +51,6 @@ import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import type {
     IMessageServerEvent,
     IMessageServerEditedEvent,
-    IMessageServerDeletedEvent,
     IChannelUnreadUpdatedEvent,
 } from '@/ws/protocol/events/messages';
 import { messagesSentCounter, websocketMessagesCounter } from '@/utils/metrics';
@@ -60,6 +59,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { assertDefined } from '@/utils/typeGuards';
 import { MAX_MESSAGE_LENGTH } from '@/config/env';
 import type { IRedisService } from '@/di/interfaces/IRedisService';
 import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
@@ -160,8 +160,8 @@ export class WebhookController {
         private serverMemberRepo: IServerMemberRepository,
         @Inject(TYPES.ChannelRepository)
         private channelRepo: IChannelRepository,
-        @Inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
+        @Inject(TYPES.MessageRepository)
+        private messageRepo: IMessageRepository,
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @Inject(TYPES.Logger)
@@ -720,7 +720,7 @@ export class WebhookController {
 
         await this.allowlistWebhookAvatarUrl(webhookAvatarUrl);
 
-        const message = await this.serverMessageRepo.create({
+        const message = await this.messageRepo.create({
             serverId: webhook.serverId,
             channelId: webhook.channelId,
             senderId: SYSTEM_SENDER_ID,
@@ -826,6 +826,7 @@ export class WebhookController {
                 );
             });
 
+        assertDefined(message.createdAt, ErrorMessages.MESSAGE.NOT_FOUND);
         return {
             id: message.snowflakeId,
             timestamp: message.createdAt,
@@ -850,7 +851,7 @@ export class WebhookController {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(messageId);
         if (
             message === null ||
             message.isWebhook !== true ||
@@ -885,7 +886,7 @@ export class WebhookController {
 
         await this.allowlistWebhookAvatarUrl(webhookAvatarUrl);
 
-        const updatedMessage = await this.serverMessageRepo.update(
+        const updatedMessage = await this.messageRepo.updateMessage(
             messageId,
             updateData,
         );
@@ -959,7 +960,7 @@ export class WebhookController {
             throw new NotFoundException(ErrorMessages.WEBHOOK.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(messageId, true);
+        const message = await this.messageRepo.findById(messageId, true);
         if (
             message === null ||
             message.isWebhook !== true ||
@@ -970,27 +971,49 @@ export class WebhookController {
         }
 
         if (message.deletedAt === undefined) {
-            await this.serverMessageRepo.delete(messageId);
+            await this.messageRepo.softDelete(messageId);
         }
 
-        const event: IMessageServerDeletedEvent = {
-            type: 'message_server_deleted',
-            payload: {
-                messageId,
-                serverId: webhook.serverId.toString(),
-                channelId: webhook.channelId.toString(),
-                hard: true,
-            },
-        };
-
-        this.wsServer.broadcastToChannel(webhook.channelId.toString(), event);
+        const serverId = webhook.serverId.toString();
+        const channelId = webhook.channelId.toString();
 
         await this.wsServer.broadcastToServerWithPermission(
-            webhook.serverId.toString(),
-            event,
+            serverId,
+            {
+                type: 'message_server_deleted',
+                payload: { messageId, serverId, channelId, hard: true },
+            },
             {
                 type: 'channel',
-                targetId: webhook.channelId.toString(),
+                targetId: channelId,
+                permission: 'seeDeletedMessages',
+                negate: true,
+            },
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'message_server_deleted',
+                payload: { messageId, serverId, channelId, hard: false },
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
+                permission: 'seeDeletedMessages',
+                negate: false,
+            },
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            serverId,
+            {
+                type: 'message_server_deleted',
+                payload: { messageId, serverId, channelId, hard: true },
+            },
+            {
+                type: 'channel',
+                targetId: channelId,
                 permission: 'viewChannels',
             },
             undefined,

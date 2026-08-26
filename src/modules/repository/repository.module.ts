@@ -16,10 +16,10 @@ import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePi
 import { MongooseEmojiRepository } from '@/infrastructure/repositories/MongooseEmojiRepository';
 import { MongooseStickerRepository } from '@/infrastructure/repositories/MongooseStickerRepository';
 import { MongooseReactionRepository } from '@/infrastructure/repositories/MongooseReactionRepository';
-import { MongooseServerMessageRepository } from '@/infrastructure/repositories/MongooseServerMessageRepository';
 import { MongooseInviteRepository } from '@/infrastructure/repositories/MongooseInviteRepository';
 import { MongooseServerBanRepository } from '@/infrastructure/repositories/MongooseServerBanRepository';
 import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
+import { MongooseChannelReadRepository } from '@/infrastructure/repositories/MongooseChannelReadRepository';
 import { MongooseDmUnreadRepository } from '@/infrastructure/repositories/MongooseDmUnreadRepository';
 import { MongooseWebhookRepository } from '@/infrastructure/repositories/MongooseWebhookRepository';
 import { MongooseExportJobRepository } from '@/infrastructure/repositories/MongooseExportJobRepository';
@@ -97,10 +97,6 @@ import { MongooseSessionRepository } from '@/infrastructure/repositories/Mongoos
             useClass: MongooseReactionRepository,
         },
         {
-            provide: TYPES.ServerMessageRepository,
-            useClass: MongooseServerMessageRepository,
-        },
-        {
             provide: TYPES.InviteRepository,
             useClass: MongooseInviteRepository,
         },
@@ -111,6 +107,10 @@ import { MongooseSessionRepository } from '@/infrastructure/repositories/Mongoos
         {
             provide: TYPES.ServerChannelReadRepository,
             useClass: MongooseServerChannelReadRepository,
+        },
+        {
+            provide: TYPES.ChannelReadRepository,
+            useClass: MongooseChannelReadRepository,
         },
         {
             provide: TYPES.DmUnreadRepository,
@@ -162,10 +162,10 @@ import { MongooseSessionRepository } from '@/infrastructure/repositories/Mongoos
         TYPES.EmojiRepository,
         TYPES.StickerRepository,
         TYPES.ReactionRepository,
-        TYPES.ServerMessageRepository,
         TYPES.InviteRepository,
         TYPES.ServerBanRepository,
         TYPES.ServerChannelReadRepository,
+        TYPES.ChannelReadRepository,
         TYPES.DmUnreadRepository,
         TYPES.WebhookRepository,
         TYPES.PasswordResetRepository,

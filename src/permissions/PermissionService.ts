@@ -26,11 +26,11 @@ import type {
     ServerMember as ResolverMember,
 } from '@/permissions/types';
 import { PERMISSION_KEYS } from '@/permissions/types';
+import { ErrorMessages } from '@/constants/errorMessages';
+import { assertDefined } from '@/utils/typeGuards';
 
 type PermissionOverrideSource =
-    | Map<string, unknown>
-    | Record<string, unknown>
-    | undefined;
+    Map<string, unknown> | Record<string, unknown> | undefined;
 
 const LEGACY_PERMISSION_ALIASES: Partial<Record<string, PermissionKey>> = {
     export_channel_messages: 'exportChannelMessages',
@@ -397,11 +397,11 @@ export class PermissionService {
             ownerId: server.ownerId,
             roles: roles.map((r): ServerRole => this.mapRole(r)),
             everyoneRoleId,
-            channels: channels.map(
-                (c): ResolverChannel => this.mapChannel(c, everyoneRoleId),
+            channels: channels.map((c): ResolverChannel =>
+                this.mapChannel(c, everyoneRoleId),
             ),
-            categories: categories.map(
-                (c): ResolverCategory => this.mapCategory(c, everyoneRoleId),
+            categories: categories.map((c): ResolverCategory =>
+                this.mapCategory(c, everyoneRoleId),
             ),
             members: members.map((m): ResolverMember => this.mapMember(m)),
         };
@@ -429,6 +429,7 @@ export class PermissionService {
         channel: IChannel,
         everyoneRoleId: string | undefined,
     ): ResolverChannel {
+        assertDefined(channel.serverId, ErrorMessages.CHANNEL.NOT_FOUND);
         const overrides = remapEveryoneOverrideKey(
             extractOverridesToMap(channel.permissions),
             everyoneRoleId,

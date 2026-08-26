@@ -9,7 +9,6 @@ import {
     ServerMember,
     Role,
     Invite,
-    ServerMessage,
     ServerBan,
 } from '@/models/Server';
 import { Message } from '@/models/Message';
@@ -41,7 +40,6 @@ import { GifTag } from '@/models/GifTag';
             { name: 'Role', schema: Role.schema },
             { name: 'Category', schema: Category.schema },
             { name: 'Channel', schema: Channel.schema },
-            { name: 'ServerMessage', schema: ServerMessage.schema },
             { name: 'Invite', schema: Invite.schema },
             { name: 'ServerBan', schema: ServerBan.schema },
             { name: 'ServerChannelRead', schema: ServerChannelRead.schema },

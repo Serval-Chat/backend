@@ -41,13 +41,14 @@ import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { WsServer } from '@/ws/server';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { assertDefined } from '@/utils/typeGuards';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { AuthGuard } from '@/modules/auth/auth.module';
@@ -107,8 +108,8 @@ export class ServerController {
         private userRepo: IUserRepository,
         @Inject(TYPES.InviteRepository)
         private inviteRepo: IInviteRepository,
-        @Inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
+        @Inject(TYPES.MessageRepository)
+        private messageRepo: IMessageRepository,
         @Inject(TYPES.ServerBanRepository)
         private serverBanRepo: IServerBanRepository,
         @Inject(TYPES.ServerChannelReadRepository)
@@ -384,7 +385,7 @@ export class ServerController {
         for (const serverId of serverIds) {
             const serverIdStr = serverId.toString();
             const serverChannels = channels.filter(
-                (c) => c.serverId.toString() === serverIdStr,
+                (c) => c.serverId?.toString() === serverIdStr,
             );
             if (serverChannels.length === 0) continue;
 
@@ -399,6 +400,7 @@ export class ServerController {
 
         // A server is unread if any of its channels have a message newer than the user's last read timestamp
         for (const channel of channels) {
+            assertDefined(channel.serverId, ErrorMessages.CHANNEL.NOT_FOUND);
             const serverIdStr = channel.serverId.toString();
             if (unreadMap[serverIdStr] === true) continue;
             if (channel.type === 'link') continue;
@@ -1040,7 +1042,7 @@ export class ServerController {
         await this.serverMemberRepo.deleteByServerId(serverId);
         await this.roleRepo.deleteByServerId(serverId);
         await this.inviteRepo.deleteByServerId(serverId);
-        await this.serverMessageRepo.deleteByServerId(serverId);
+        await this.messageRepo.deleteByServerId(serverId);
         await this.discoveryService.removeServer(serverId);
 
         this.wsServer.broadcastToServer(serverId.toString(), {

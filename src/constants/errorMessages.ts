@@ -77,6 +77,8 @@ export const ErrorMessages = {
         NO_PERMISSION_MANAGE: 'No permission to manage channels',
         NO_PERMISSION_SEND: 'No permission to send messages in this channel',
         CATEGORY_NOT_FOUND: 'Category not found',
+        CANNOT_DM_SELF: 'Cannot create a DM channel with yourself',
+        NOT_MEMBER: 'You are not a participant in this channel',
     },
 
     MEMBER: {

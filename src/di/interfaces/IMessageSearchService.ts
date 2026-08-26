@@ -1,5 +1,4 @@
 import type { IMessage } from '@/di/interfaces/IMessageRepository';
-import type { IServerMessage } from '@/di/interfaces/IServerMessageRepository';
 import type { IEmbed } from '@/models/Embed';
 
 export interface DmSearchHit {
@@ -58,10 +57,7 @@ export interface IMessageSearchService {
     ensureDmIndex(): Promise<void>;
     ensureChannelIndex(): Promise<void>;
     indexDmMessage(msg: IMessage, senderIsBot?: boolean): Promise<void>;
-    indexChannelMessage(
-        msg: IServerMessage,
-        senderIsBot?: boolean,
-    ): Promise<void>;
+    indexChannelMessage(msg: IMessage, senderIsBot?: boolean): Promise<void>;
     updateChannelMessageFlags(
         id: string,
         flags: { isPinned?: boolean; isSticky?: boolean },

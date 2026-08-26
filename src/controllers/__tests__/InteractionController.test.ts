@@ -14,10 +14,6 @@ jest.mock('@/models/Server', () => ({
         findOne: jest.fn(),
         find: jest.fn(),
     },
-    ServerMessage: {
-        create: jest.fn(),
-        findOne: jest.fn(),
-    },
 }));
 
 jest.mock('@/models/User', () => ({
@@ -28,7 +24,7 @@ jest.mock('@/models/User', () => ({
 }));
 
 import { Bot } from '@/models/Bot';
-import { ServerMember, ServerMessage } from '@/models/Server';
+import { ServerMember } from '@/models/Server';
 import { User } from '@/models/User';
 import { InteractionController } from '../InteractionController';
 import { IsHumanGuard } from '@/modules/auth/bot.guard';
@@ -83,6 +79,12 @@ const warningRepo = {
     hasUnacknowledged: jest.fn().mockResolvedValue(false),
 };
 
+const messageRepo = {
+    create: jest.fn(),
+    findById: jest.fn(),
+    updateMessage: jest.fn(),
+};
+
 const req = {
     user: {
         id: new Types.ObjectId().toHexString(),
@@ -110,6 +112,7 @@ describe('InteractionController', () => {
             serverMemberRepo as never,
             muteRepo as never,
             warningRepo as never,
+            messageRepo as never,
         );
         muteRepo.findActiveByUserId.mockResolvedValue(null);
         warningRepo.hasUnacknowledged.mockResolvedValue(false);
@@ -238,7 +241,7 @@ describe('InteractionController', () => {
             options: [{ name: 'target', type: 3, required: false }],
             shouldReply: true,
         });
-        (ServerMessage.create as jest.Mock).mockResolvedValue({
+        messageRepo.create.mockResolvedValue({
             snowflakeId: invocationId,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
         });
@@ -251,7 +254,7 @@ describe('InteractionController', () => {
         });
 
         expect(res).toEqual({ success: true });
-        expect(ServerMessage.create).toHaveBeenCalled();
+        expect(messageRepo.create).toHaveBeenCalled();
         expect(wsServer.broadcastToChannel).toHaveBeenCalledWith(
             channelId,
             expect.objectContaining({
@@ -373,20 +376,20 @@ describe('InteractionController', () => {
             chainResult({ _id: 'member' }),
         );
         permissionService.hasChannelPermission.mockResolvedValue(true);
-        (ServerMessage.findOne as jest.Mock).mockReturnValue(
-            chainResult({
-                _id: new Types.ObjectId(),
-                snowflakeId: messageId,
-                senderId: botUserId,
-                components: [
-                    {
-                        type: 'button',
-                        style: 'primary',
-                        custom_id: 'cool',
-                    },
-                ],
-            }),
-        );
+        messageRepo.findById.mockResolvedValue({
+            _id: new Types.ObjectId(),
+            snowflakeId: messageId,
+            senderId: botUserId,
+            serverId,
+            channelId,
+            components: [
+                {
+                    type: 'button',
+                    style: 'primary',
+                    custom_id: 'cool',
+                },
+            ],
+        });
         (User.findOne as jest.Mock).mockReturnValue(
             chainResult({ _id: botUserId, isBot: true }),
         );
@@ -429,13 +432,13 @@ describe('InteractionController', () => {
             chainResult({ _id: 'member' }),
         );
         permissionService.hasChannelPermission.mockResolvedValue(true);
-        (ServerMessage.findOne as jest.Mock).mockReturnValue(
-            chainResult({
-                _id: new Types.ObjectId(messageId),
-                senderId: new Types.ObjectId(),
-                components: [],
-            }),
-        );
+        messageRepo.findById.mockResolvedValue({
+            _id: new Types.ObjectId(messageId),
+            senderId: new Types.ObjectId(),
+            serverId,
+            channelId,
+            components: [],
+        });
 
         await expect(
             controller.createComponentInteraction(req, {

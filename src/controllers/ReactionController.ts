@@ -25,7 +25,6 @@ import type {
     ReactionData,
 } from '@/di/interfaces/IReactionRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
@@ -41,6 +40,7 @@ import { assertHttpNotWarned } from '@/utils/warning';
 
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { assertDefined } from '@/utils/typeGuards';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { AuthGuard } from '@/modules/auth/auth.module';
@@ -79,8 +79,6 @@ export class ReactionController {
         private reactionRepo: IReactionRepository,
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
-        @Inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @Inject(TYPES.ChannelRepository)
@@ -119,6 +117,7 @@ export class ReactionController {
         if (message === null) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
+        assertDefined(message.receiverId, ErrorMessages.MESSAGE.NOT_FOUND);
 
         if (
             message.senderId.toString() !== userId &&
@@ -169,6 +168,7 @@ export class ReactionController {
         if (message === null) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
+        assertDefined(message.receiverId, ErrorMessages.MESSAGE.NOT_FOUND);
 
         const receiverId =
             message.senderId.toString() === userId
@@ -282,6 +282,7 @@ export class ReactionController {
         if (message === null) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
+        assertDefined(message.receiverId, ErrorMessages.MESSAGE.NOT_FOUND);
 
         if (
             message.senderId.toString() !== userId &&
@@ -376,7 +377,7 @@ export class ReactionController {
         }
 
         const channel = await this.channelRepo.findById(channelId);
-        if (channel === null || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId?.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
@@ -388,7 +389,7 @@ export class ReactionController {
             new ApiError(403, ErrorMessages.REACTION.MISSING_PERMISSION_ADD),
         );
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(messageId);
         if (message === null || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -493,11 +494,11 @@ export class ReactionController {
         }
 
         const channel = await this.channelRepo.findById(channelId);
-        if (channel === null || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId?.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(messageId);
         if (message === null || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }
@@ -610,11 +611,11 @@ export class ReactionController {
         }
 
         const channel = await this.channelRepo.findById(channelId);
-        if (channel === null || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId?.toString() !== serverId) {
             throw new ApiError(404, ErrorMessages.CHANNEL.NOT_FOUND);
         }
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(messageId);
         if (message === null || message.channelId.toString() !== channelId) {
             throw new ApiError(404, ErrorMessages.MESSAGE.NOT_FOUND);
         }

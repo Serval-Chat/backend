@@ -19,10 +19,10 @@ import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepos
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
 import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
+import type { IChannelReadRepository } from '@/di/interfaces/IChannelReadRepository';
 import type { IPingRepository } from '@/di/interfaces/IPingRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
 import type { IExportJobRepository } from '@/di/interfaces/IExportJobRepository';
@@ -57,12 +57,12 @@ import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { MongooseWarningRepository } from '@/infrastructure/repositories/MongooseWarningRepository';
 import { MongooseChannelRepository } from '@/infrastructure/repositories/MongooseChannelRepository';
 import { MongooseCategoryRepository } from '@/infrastructure/repositories/MongooseCategoryRepository';
-import { MongooseServerMessageRepository } from '@/infrastructure/repositories/MongooseServerMessageRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import { MongooseAuditLogRepository } from '@/infrastructure/repositories/MongooseAuditLogRepository';
 import { MongooseInviteRepository } from '@/infrastructure/repositories/MongooseInviteRepository';
 import { MongooseServerBanRepository } from '@/infrastructure/repositories/MongooseServerBanRepository';
 import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
+import { MongooseChannelReadRepository } from '@/infrastructure/repositories/MongooseChannelReadRepository';
 import { MongoosePingRepository } from '@/infrastructure/repositories/MongoosePingRepository';
 import { MongooseReactionRepository } from '@/infrastructure/repositories/MongooseReactionRepository';
 import { MongooseExportJobRepository } from '@/infrastructure/repositories/MongooseExportJobRepository';
@@ -86,6 +86,7 @@ import { RedisService } from '@/services/RedisService';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { ScraperService } from '@/services/ScraperService';
 import { EmbedService } from '@/services/EmbedService';
+import { ChannelService } from '@/services/ChannelService';
 
 import { WsServer } from '@/ws/server';
 import { WsDispatcher } from '@/ws/dispatcher';
@@ -188,11 +189,6 @@ container
     .inTransientScope();
 
 container
-    .bind<IServerMessageRepository>(TYPES.ServerMessageRepository)
-    .to(MongooseServerMessageRepository)
-    .inTransientScope();
-
-container
     .bind<IAuditLogRepository>(TYPES.AuditLogRepository)
     .to(MongooseAuditLogRepository)
     .inTransientScope();
@@ -210,6 +206,11 @@ container
 container
     .bind<IServerChannelReadRepository>(TYPES.ServerChannelReadRepository)
     .to(MongooseServerChannelReadRepository)
+    .inTransientScope();
+
+container
+    .bind<IChannelReadRepository>(TYPES.ChannelReadRepository)
+    .to(MongooseChannelReadRepository)
     .inTransientScope();
 
 container
@@ -298,6 +299,11 @@ container
 container
     .bind<EmbedService>(TYPES.EmbedService)
     .to(EmbedService)
+    .inSingletonScope();
+
+container
+    .bind<ChannelService>(TYPES.ChannelService)
+    .to(ChannelService)
     .inSingletonScope();
 
 container

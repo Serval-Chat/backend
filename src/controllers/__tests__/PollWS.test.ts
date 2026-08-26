@@ -155,6 +155,7 @@ describe('Server WS Polls', () => {
             redisService as any,
             embedService as any,
             { hasUnacknowledged: jest.fn().mockResolvedValue(false) } as any, // WarningRepository
+            { createAndBroadcast: jest.fn().mockResolvedValue({}) }, // ServerAuditLogService
         );
         (serverController as any).wsServer = wsServer;
     });

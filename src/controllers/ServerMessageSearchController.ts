@@ -102,7 +102,7 @@ export class ServerMessageSearchController {
         }
 
         const channel = await this.channelRepo.findById(channelId);
-        if (channel === null || channel.serverId.toString() !== serverId) {
+        if (channel === null || channel.serverId?.toString() !== serverId) {
             throw new NotFoundException(ErrorMessages.CHANNEL.NOT_FOUND);
         }
         if (channel.type === 'link') {

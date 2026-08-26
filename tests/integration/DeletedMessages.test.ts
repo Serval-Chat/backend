@@ -1,7 +1,8 @@
 import request from 'supertest';
 import { setup, teardown } from './setup';
 import { createTestUser, generateAuthToken, createTestServer, createTestChannel } from './helpers';
-import { ServerMessage, Role, ServerMember } from '../../src/models/Server';
+import { Role, ServerMember } from '../../src/models/Server';
+import { Message } from '../../src/models/Message';
 
 import type { Express } from 'express';
 import type { IUser } from '../../src/models/User';
@@ -59,7 +60,7 @@ describe('Deleted Message Visibility Integration', () => {
 
         expect(deleteRes.status).toBe(200);
 
-        const dbMessage = await ServerMessage.findOne({
+        const dbMessage = await Message.findOne({
             snowflakeId: messageId,
         });
         expect(dbMessage).toBeDefined();

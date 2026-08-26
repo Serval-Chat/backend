@@ -43,10 +43,12 @@ import type { TransactionManager } from '@/infrastructure/TransactionManager';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { notifyUser } from '@/services/PushService';
 import { EmbedService } from '@/services/EmbedService';
+import { ChannelService } from '@/services/ChannelService';
 import { assertWsNotMuted } from '@/utils/mute';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertWsNotWarned } from '@/utils/warning';
 import { ApiError } from '@/utils/ApiError';
+import { assertDefined } from '@/utils/typeGuards';
 
 /**
  * Controller for handling direct message events
@@ -76,6 +78,8 @@ export class ChatController {
         private searchService: IMessageSearchService,
         @inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
+        @inject(TYPES.ChannelService)
+        private channelService: ChannelService,
     ) {}
 
     /**
@@ -134,12 +138,18 @@ export class ChatController {
             repliedToMessage = await this.messageRepo.findById(replyToId);
         }
 
+        const channel = await this.channelService.getOrCreateDmChannel(
+            senderId,
+            receiverId,
+        );
+
         const { created, newCount } =
             await this.transactionManager.runInTransaction(async (session) => {
                 const msg = await this.messageRepo.create(
                     {
                         senderId: senderId,
                         receiverId: receiverId,
+                        channelId: channel.snowflakeId,
                         text: text ?? '',
                         attachments,
                         noEmbeds,
@@ -201,6 +211,7 @@ export class ChatController {
         const broadcastPayload: IMessageDmEvent['payload'] = {
             messageId: created.snowflakeId,
             id: created.snowflakeId,
+            channelId: channel.snowflakeId,
             senderId,
             senderUsername: authenticatedUser.username,
             receiverId,
@@ -280,6 +291,7 @@ export class ChatController {
         return {
             messageId: created.snowflakeId,
             id: created.snowflakeId,
+            channelId: channel.snowflakeId,
             senderId,
             senderUsername: authenticatedUser.username,
             receiverId,
@@ -339,6 +351,7 @@ export class ChatController {
         if (message.senderId.toString() !== userId) {
             throw new ApiError(403, 'Can only edit your own messages');
         }
+        assertDefined(message.receiverId, 'Message not found');
 
         const updated = await this.messageRepo.update(messageId, text);
         if (!updated) {
@@ -416,8 +429,9 @@ export class ChatController {
         if (message.senderId.toString() !== userId) {
             throw new ApiError(403, 'Can only delete your own messages');
         }
+        assertDefined(message.receiverId, 'Message not found');
 
-        await this.messageRepo.delete(messageId);
+        await this.messageRepo.hardDelete(messageId);
 
         this.searchService.removeDmMessage(messageId).catch((err: unknown) => {
             logger.error(

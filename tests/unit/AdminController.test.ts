@@ -24,7 +24,6 @@ describe('AdminController', () => {
     let mockBanRepo: Record<string, jest.Mock>;
     let mockServerRepo: Record<string, jest.Mock>;
     let mockMessageRepo: Record<string, jest.Mock>;
-    let mockServerMessageRepo: Record<string, jest.Mock>;
     let mockWarningRepo: Record<string, jest.Mock>;
     let mockServerMemberRepo: Record<string, jest.Mock>;
     let mockChannelRepo: Record<string, jest.Mock>;
@@ -73,7 +72,6 @@ describe('AdminController', () => {
             create: jest.fn(),
         };
         mockMessageRepo = {} as Record<string, jest.Mock>;
-        mockServerMessageRepo = {} as Record<string, jest.Mock>;
         mockWarningRepo = {
             countByUserId: jest.fn().mockResolvedValue(0),
         };
@@ -114,7 +112,6 @@ describe('AdminController', () => {
             mockMuteRepo as any,
             mockServerRepo as any,
             mockMessageRepo as any,
-            mockServerMessageRepo as any,
             mockWarningRepo as any,
             mockServerMemberRepo as any,
             mockChannelRepo as any,

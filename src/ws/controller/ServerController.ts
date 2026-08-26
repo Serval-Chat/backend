@@ -49,7 +49,7 @@ import type {
 import type { IMentionEvent } from '@/ws/protocol/events/mentions';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import type { IServerMessageRepository } from '@/di/interfaces/IServerMessageRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type {
     IChannel,
@@ -65,6 +65,7 @@ import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
+import { assertDefined } from '@/utils/typeGuards';
 import { generateSnowflakeId, isValidSnowflakeId } from '@/utils/snowflake';
 import type { IWsUser } from '@/ws/types';
 import type { WebSocket } from 'ws';
@@ -76,6 +77,8 @@ import { EmbedService } from '@/services/EmbedService';
 import { assertWsNotMuted } from '@/utils/mute';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertWsNotWarned } from '@/utils/warning';
+import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
+import { assertSlowModeAllows } from '@/utils/slowMode';
 
 /**
  * Controller for handling server/channel message events.
@@ -88,8 +91,8 @@ export class ServerController {
     public constructor(
         @inject(TYPES.ServerRepository) private serverRepo: IServerRepository,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
-        @inject(TYPES.ServerMessageRepository)
-        private serverMessageRepo: IServerMessageRepository,
+        @inject(TYPES.MessageRepository)
+        private messageRepo: IMessageRepository,
         @inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @inject(TYPES.ChannelRepository)
@@ -107,6 +110,8 @@ export class ServerController {
         @inject(TYPES.EmbedService) private embedService: EmbedService,
         @inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
+        @inject(TYPES.ServerAuditLogService)
+        private serverAuditLogService: IServerAuditLogService,
     ) {}
 
     @postConstruct()
@@ -135,6 +140,10 @@ export class ServerController {
                 try {
                     const channel = await this.channelRepo.findById(channelId);
                     if (channel) {
+                        assertDefined(
+                            channel.serverId,
+                            ErrorMessages.CHANNEL.NOT_FOUND,
+                        );
                         await this._internalLeaveVoice(
                             userId,
                             channel.serverId.toString(),
@@ -180,56 +189,6 @@ export class ServerController {
         logger.debug(
             `[ServerController] User ${userId} left voice channel ${channelId} (Server: ${serverId})`,
         );
-    }
-
-    private slowModeRejection(remainingMs: number): ApiError {
-        const remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
-        return new ApiError(
-            403,
-            ErrorMessages.MESSAGE.SLOW_MODE.replace(
-                '%s',
-                `${remainingSeconds}s`,
-            ),
-        );
-    }
-
-    private async assertSlowModeAllows(
-        channelId: string,
-        userId: string,
-        cooldownMs: number,
-    ): Promise<void> {
-        if (cooldownMs <= 0) return;
-
-        const key = `slowmode:${channelId}:${userId}`;
-
-        try {
-            const redis = this.redisService.getClient();
-            const claimed = await redis.set(key, '1', 'PX', cooldownMs, 'NX');
-            if (claimed !== null) return;
-
-            const remainingMs = await redis.pttl(key);
-            throw this.slowModeRejection(
-                remainingMs > 0 ? remainingMs : cooldownMs,
-            );
-        } catch (err) {
-            if (err instanceof ApiError) throw err;
-
-            logger.error(
-                `[ServerController] Slow-mode claim failed, falling back to the message history: ${(err as Error).message}`,
-            );
-
-            const lastMessage =
-                await this.serverMessageRepo.findLastByChannelAndUser(
-                    channelId,
-                    userId,
-                );
-            if (!lastMessage) return;
-
-            const elapsed = Date.now() - lastMessage.createdAt.getTime();
-            if (elapsed < cooldownMs) {
-                throw this.slowModeRejection(cooldownMs - elapsed);
-            }
-        }
     }
 
     private async requireServerMember(
@@ -756,7 +715,9 @@ export class ServerController {
             );
 
             if (!hasBypass) {
-                await this.assertSlowModeAllows(
+                await assertSlowModeAllows(
+                    this.redisService,
+                    this.messageRepo,
                     channelId,
                     userId,
                     (channel.slowMode ?? 0) * 1000,
@@ -794,7 +755,7 @@ export class ServerController {
 
         const created = await this.transactionManager.runInTransaction(
             async (session) => {
-                const msg = await this.serverMessageRepo.create(
+                const msg = await this.messageRepo.create(
                     {
                         serverId: serverId,
                         channelId: channelId,
@@ -848,6 +809,7 @@ export class ServerController {
                 return msg;
             },
         );
+        assertDefined(created.createdAt, ErrorMessages.MESSAGE.NOT_FOUND);
 
         const redis = this.redisService.getClient();
         await redis.setex(
@@ -1048,7 +1010,7 @@ export class ServerController {
         await assertWsNotMuted(this.muteRepo, userId, 'edit messages');
         await assertWsNotWarned(this.warningRepo, userId, 'edit messages');
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(messageId);
 
         if (message === null) {
             throw new ApiError(404, 'Message not found');
@@ -1057,8 +1019,30 @@ export class ServerController {
         if (message.senderId.toString() !== userId) {
             throw new ApiError(403, 'Can only edit your own messages');
         }
+        assertDefined(message.serverId, 'Message not found');
 
-        const updated = await this.serverMessageRepo.update(messageId, {
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            message.serverId,
+            userId,
+        );
+        const serverObj = await this.serverRepo.findById(message.serverId);
+        const isOwner =
+            serverObj !== null && serverObj.ownerId.toString() === userId;
+
+        if (
+            isOwner === false &&
+            member !== null &&
+            member.communicationDisabledUntil !== undefined &&
+            new Date(member.communicationDisabledUntil) > new Date()
+        ) {
+            throw new ApiError(
+                403,
+                'You cannot edit messages while timed out.',
+            );
+        }
+
+        const previousText = message.text;
+        const updated = await this.messageRepo.updateMessage(messageId, {
             text,
             editedAt: new Date(),
             isEdited: true,
@@ -1108,6 +1092,28 @@ export class ServerController {
             { onlyBots: true },
         );
 
+        const channelObj = await this.channelRepo.findById(message.channelId);
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: message.serverId,
+            actorId: userId,
+            actionType: 'edit_message',
+            targetId: message.snowflakeId,
+            targetType: 'message',
+            targetUserId: message.senderId,
+            changes: [
+                {
+                    field: 'text',
+                    before: previousText,
+                    after: text,
+                },
+            ],
+            metadata: {
+                channelId: message.channelId.toString(),
+                channelName: channelObj ? channelObj.name : 'Unknown Channel',
+            },
+        });
+
         if (updated.text && updated.text.includes('http')) {
             Promise.resolve()
                 .then(() => this.embedService.processServerMessage(updated))
@@ -1141,7 +1147,7 @@ export class ServerController {
         const { serverId, messageId } = payload;
         const userId = authenticatedUser.userId;
 
-        const message = await this.serverMessageRepo.findById(messageId);
+        const message = await this.messageRepo.findById(messageId);
 
         if (message === null) {
             throw new ApiError(404, 'Message not found');
@@ -1165,35 +1171,87 @@ export class ServerController {
         if (!isAuthor && !canManage && !canDeleteOthers) {
             throw new ApiError(403, 'No permission to delete this message');
         }
+        assertDefined(message.serverId, 'Message not found');
 
-        await this.serverMessageRepo.delete(messageId);
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            message.serverId,
+            userId,
+        );
+        const serverObj = await this.serverRepo.findById(message.serverId);
+        const isOwner =
+            serverObj !== null && serverObj.ownerId.toString() === userId;
+
+        if (
+            isOwner === false &&
+            member !== null &&
+            member.communicationDisabledUntil !== undefined &&
+            new Date(member.communicationDisabledUntil) > new Date()
+        ) {
+            throw new ApiError(
+                403,
+                'You cannot delete messages while timed out.',
+            );
+        }
+
+        const channelObj = await this.channelRepo.findById(message.channelId);
+
+        await this.messageRepo.softDelete(messageId);
 
         logger.info(
             `[ServerController] Server message ${messageId} deleted by ${userId}`,
         );
 
-        this.wsServer.broadcastToChannel(
-            message.channelId.toString(),
+        await this.wsServer.broadcastToServerWithPermission(
+            message.serverId,
             {
                 type: 'message_server_deleted',
                 payload: {
                     messageId,
-                    serverId,
+                    serverId: message.serverId,
                     channelId: message.channelId.toString(),
+                    hard: true,
                 },
+            },
+            {
+                type: 'channel',
+                targetId: message.channelId.toString(),
+                permission: 'seeDeletedMessages',
+                negate: true,
             },
             undefined,
             ws,
         );
 
         await this.wsServer.broadcastToServerWithPermission(
-            message.serverId.toString(),
+            message.serverId,
             {
                 type: 'message_server_deleted',
                 payload: {
                     messageId,
-                    serverId: message.serverId.toString(),
+                    serverId: message.serverId,
                     channelId: message.channelId.toString(),
+                    hard: false,
+                },
+            },
+            {
+                type: 'channel',
+                targetId: message.channelId.toString(),
+                permission: 'seeDeletedMessages',
+                negate: false,
+            },
+            undefined,
+            ws,
+        );
+
+        await this.wsServer.broadcastToServerWithPermission(
+            message.serverId,
+            {
+                type: 'message_server_deleted',
+                payload: {
+                    messageId,
+                    serverId: message.serverId,
+                    channelId: message.channelId.toString(),
+                    hard: true,
                 },
             },
             {
@@ -1205,6 +1263,20 @@ export class ServerController {
             ws,
             { onlyBots: true },
         );
+
+        await this.serverAuditLogService.createAndBroadcast({
+            serverId: message.serverId,
+            actorId: userId,
+            actionType: 'delete_message',
+            targetId: message.snowflakeId,
+            targetType: 'message',
+            targetUserId: message.senderId,
+            metadata: {
+                channelId: message.channelId.toString(),
+                channelName: channelObj ? channelObj.name : 'Unknown Channel',
+                messageText: message.text,
+            },
+        });
 
         return { success: true };
     }
