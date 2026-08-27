@@ -28,6 +28,7 @@ describe('ServerController onboarding settings', () => {
     };
     const mockUserRepo = {};
     const mockInviteRepo = {};
+    const mockVanityLinkRepo = {};
     const mockServerMessageRepo = {};
     const mockServerBanRepo = {};
     const mockServerChannelReadRepo = {};
@@ -77,6 +78,7 @@ describe('ServerController onboarding settings', () => {
             mockRoleRepo as never,
             mockUserRepo as never,
             mockInviteRepo as never,
+            mockVanityLinkRepo as never,
             mockServerMessageRepo as never,
             mockServerBanRepo as never,
             mockServerChannelReadRepo as never,

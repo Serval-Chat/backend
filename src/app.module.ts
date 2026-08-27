@@ -33,6 +33,7 @@ import { ServerChannelController } from './controllers/ServerChannelController';
 import { ServerController } from './controllers/ServerController';
 import { ServerMemberController } from './controllers/ServerMemberController';
 import { ServerInviteController } from './controllers/ServerInviteController';
+import { VanityLinkController } from './controllers/VanityLinkController';
 import { ServerRoleController } from './controllers/ServerRoleController';
 import { ServerEmojiController } from './controllers/ServerEmojiController';
 import { ServerStickerController } from './controllers/ServerStickerController';
@@ -162,6 +163,7 @@ import {
         ServerController,
         ServerMemberController,
         ServerInviteController,
+        VanityLinkController,
         ServerRoleController,
         ServerEmojiController,
         ServerStickerController,

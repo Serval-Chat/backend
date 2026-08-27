@@ -24,6 +24,7 @@ export const TYPES = {
     CategoryRepository: Symbol.for('CategoryRepository'),
     AuditLogRepository: Symbol.for('AuditLogRepository'),
     InviteRepository: Symbol.for('InviteRepository'),
+    VanityLinkRepository: Symbol.for('VanityLinkRepository'),
     ServerBanRepository: Symbol.for('ServerBanRepository'),
     ServerChannelReadRepository: Symbol.for('ServerChannelReadRepository'),
     ChannelReadRepository: Symbol.for('ChannelReadRepository'),

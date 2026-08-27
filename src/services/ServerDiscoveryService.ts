@@ -5,9 +5,9 @@ import { injectable } from 'inversify';
 import { ELASTICSEARCH_URL } from '@/config/env';
 import { TYPES } from '@/di/types';
 import type {
-    IInvite,
-    IInviteRepository,
-} from '@/di/interfaces/IInviteRepository';
+    IVanityLink,
+    IVanityLinkRepository,
+} from '@/di/interfaces/IVanityLinkRepository';
 import type {
     IServer,
     IServerRepository,
@@ -19,7 +19,6 @@ import { toApiId } from '@/utils/mongooseId';
 
 export const DISCOVERY_INDEX = 'serchat-server-discovery-v2';
 
-const RANDOM_INVITE_CODE_PATTERN = /^[0-9a-fA-F]{8}$/;
 const CACHE_TTL_SECONDS = 45;
 const CACHE_VERSION_KEY = 'discovery:servers:cache-version';
 
@@ -75,32 +74,12 @@ export function normalizeDiscoveryTags(tags: string[] = []): string[] {
     return normalized;
 }
 
-export function getDiscoveryInvitePath(invite: IInvite): string | null {
-    const customPath = invite.customPath?.trim();
-    if (customPath !== undefined && customPath !== '') return customPath;
-
-    const code = invite.code.trim();
-    if (code !== '' && !RANDOM_INVITE_CODE_PATTERN.test(code)) return code;
-
-    return null;
-}
-
-export function isValidDiscoveryInvite(invite: IInvite | null): boolean {
-    if (invite === null) return false;
-    if (getDiscoveryInvitePath(invite) === null) return false;
-    if (invite.maxUses !== undefined && invite.maxUses > 0) return false;
-    if (invite.expiresAt !== undefined) {
-        return false;
-    }
-    return true;
-}
-
 export function getDiscoveryEligibility(
     server: Pick<
         IServer,
         'verified' | 'discoveryEnabled' | 'deletedAt' | 'description' | 'tags'
     > | null,
-    invite: IInvite | null,
+    vanityLink: IVanityLink | null,
 ): DiscoveryStatus {
     const blockers: string[] = [];
 
@@ -127,21 +106,16 @@ export function getDiscoveryEligibility(
         }
     }
 
-    const hasValidVanityInvite = isValidDiscoveryInvite(invite);
+    const hasValidVanityInvite = vanityLink !== null;
     if (!hasValidVanityInvite) {
-        blockers.push(
-            'Server needs a vanity invite with unlimited uses and no expiry.',
-        );
+        blockers.push('Server needs a vanity link.');
     }
 
     return {
         eligible: blockers.length === 0,
         blockers,
         hasValidVanityInvite,
-        vanityInviteCode:
-            invite !== null
-                ? (getDiscoveryInvitePath(invite) ?? undefined)
-                : undefined,
+        vanityInviteCode: vanityLink?.code,
     };
 }
 
@@ -166,8 +140,8 @@ export class ServerDiscoveryService implements OnModuleInit {
     public constructor(
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
-        @Inject(TYPES.InviteRepository)
-        private inviteRepo: IInviteRepository,
+        @Inject(TYPES.VanityLinkRepository)
+        private vanityLinkRepo: IVanityLinkRepository,
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @Inject(TYPES.RedisService)
@@ -260,20 +234,15 @@ export class ServerDiscoveryService implements OnModuleInit {
 
     public async refreshServer(serverId: string): Promise<void> {
         const server = await this.serverRepo.findById(serverId, true);
-        const invite =
-            await this.inviteRepo.findDiscoveryInviteByServerId(serverId);
-        const status = getDiscoveryEligibility(server, invite);
+        const vanityLink = await this.vanityLinkRepo.findByServerId(serverId);
+        const status = getDiscoveryEligibility(server, vanityLink);
 
-        if (!status.eligible || server === null || invite === null) {
+        if (!status.eligible || server === null || vanityLink === null) {
             await this.removeServer(serverId);
             return;
         }
 
-        const inviteCode = getDiscoveryInvitePath(invite);
-        if (inviteCode === null) {
-            await this.removeServer(serverId);
-            return;
-        }
+        const inviteCode = vanityLink.code;
 
         const memberCount =
             await this.serverMemberRepo.countByServerId(serverId);
@@ -351,9 +320,8 @@ export class ServerDiscoveryService implements OnModuleInit {
 
     public async getStatus(serverId: string): Promise<DiscoveryStatus> {
         const server = await this.serverRepo.findById(serverId, true);
-        const invite =
-            await this.inviteRepo.findDiscoveryInviteByServerId(serverId);
-        return getDiscoveryEligibility(server, invite);
+        const vanityLink = await this.vanityLinkRepo.findByServerId(serverId);
+        return getDiscoveryEligibility(server, vanityLink);
     }
 
     public async search(
@@ -557,12 +525,11 @@ export class ServerDiscoveryService implements OnModuleInit {
         const facetCounts = new Map<string, number>();
 
         for (const server of servers) {
-            const invite = await this.inviteRepo.findDiscoveryInviteByServerId(
+            const vanityLink = await this.vanityLinkRepo.findByServerId(
                 server.id,
             );
-            if (!isValidDiscoveryInvite(invite) || invite === null) continue;
-            const inviteCode = getDiscoveryInvitePath(invite);
-            if (inviteCode === null) continue;
+            if (vanityLink === null) continue;
+            const inviteCode = vanityLink.code;
 
             const tags = normalizeDiscoveryTags(server.tags ?? []);
             for (const tag of tags) {

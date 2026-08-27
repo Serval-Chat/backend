@@ -9,8 +9,6 @@ export interface IInvite {
     serverId: string;
     // Unique random code for the invite
     code: string;
-    // Custom invite code
-    customPath?: string;
     createdByUserId: string;
     maxUses?: number;
     uses: number;
@@ -22,7 +20,6 @@ export interface IInvite {
 export interface CreateInviteDTO {
     serverId: string;
     code: string;
-    customPath?: string;
     createdByUserId: string;
     maxUses?: number;
     expiresAt?: Date;
@@ -40,18 +37,6 @@ export interface IInviteRepository {
 
     // Find all invites for a server
     findByServerId(serverId: string): Promise<IInvite[]>;
-
-    // Find a vanity invite eligible for public discovery
-    findDiscoveryInviteByServerId(serverId: string): Promise<IInvite | null>;
-
-    // Find the server's preferred invite: the oldest vanity invite
-    findPreferredByServerId(serverId: string): Promise<IInvite | null>;
-
-    // Find invite by custom path
-    findByCustomPath(customPath: string): Promise<IInvite | null>;
-
-    // Find invite by code or custom path
-    findByCodeOrCustomPath(codeOrPath: string): Promise<IInvite | null>;
 
     // Create a new invite
     create(data: CreateInviteDTO): Promise<IInvite>;

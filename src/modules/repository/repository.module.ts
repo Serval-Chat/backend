@@ -17,6 +17,7 @@ import { MongooseEmojiRepository } from '@/infrastructure/repositories/MongooseE
 import { MongooseStickerRepository } from '@/infrastructure/repositories/MongooseStickerRepository';
 import { MongooseReactionRepository } from '@/infrastructure/repositories/MongooseReactionRepository';
 import { MongooseInviteRepository } from '@/infrastructure/repositories/MongooseInviteRepository';
+import { MongooseVanityLinkRepository } from '@/infrastructure/repositories/MongooseVanityLinkRepository';
 import { MongooseServerBanRepository } from '@/infrastructure/repositories/MongooseServerBanRepository';
 import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
 import { MongooseChannelReadRepository } from '@/infrastructure/repositories/MongooseChannelReadRepository';
@@ -101,6 +102,10 @@ import { MongooseSessionRepository } from '@/infrastructure/repositories/Mongoos
             useClass: MongooseInviteRepository,
         },
         {
+            provide: TYPES.VanityLinkRepository,
+            useClass: MongooseVanityLinkRepository,
+        },
+        {
             provide: TYPES.ServerBanRepository,
             useClass: MongooseServerBanRepository,
         },
@@ -163,6 +168,7 @@ import { MongooseSessionRepository } from '@/infrastructure/repositories/Mongoos
         TYPES.StickerRepository,
         TYPES.ReactionRepository,
         TYPES.InviteRepository,
+        TYPES.VanityLinkRepository,
         TYPES.ServerBanRepository,
         TYPES.ServerChannelReadRepository,
         TYPES.ChannelReadRepository,

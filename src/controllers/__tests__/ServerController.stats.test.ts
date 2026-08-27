@@ -29,6 +29,7 @@ describe('ServerController.getServerStats', () => {
         findById: jest.fn(),
     };
     const mockInviteRepo = {};
+    const mockVanityLinkRepo = {};
     const mockServerMessageRepo = {};
     const mockServerBanRepo = {
         findByServerId: jest.fn().mockResolvedValue([]),
@@ -60,6 +61,7 @@ describe('ServerController.getServerStats', () => {
             mockRoleRepo as never,
             mockUserRepo as never,
             mockInviteRepo as never,
+            mockVanityLinkRepo as never,
             mockServerMessageRepo as never,
             mockServerBanRepo as never,
             mockServerChannelReadRepo as never,

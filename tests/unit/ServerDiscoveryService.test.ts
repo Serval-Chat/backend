@@ -2,11 +2,9 @@ import { Types } from 'mongoose';
 import {
     buildDiscoveryTagFilters,
     getDiscoveryEligibility,
-    getDiscoveryInvitePath,
-    isValidDiscoveryInvite,
     normalizeDiscoveryTags,
 } from '../../src/services/ServerDiscoveryService';
-import type { IInvite } from '../../src/di/interfaces/IInviteRepository';
+import type { IVanityLink } from '../../src/di/interfaces/IVanityLinkRepository';
 import type { IServer } from '../../src/di/interfaces/IServerRepository';
 
 const makeServer = (overrides: Partial<IServer> = {}): IServer =>
@@ -21,20 +19,20 @@ const makeServer = (overrides: Partial<IServer> = {}): IServer =>
         ...overrides,
     }) as IServer;
 
-const makeInvite = (overrides: Partial<IInvite> = {}): IInvite =>
+const makeVanityLink = (overrides: Partial<IVanityLink> = {}): IVanityLink =>
     ({
         _id: new Types.ObjectId(),
-        serverId: new Types.ObjectId(),
+        snowflakeId: '1234567890123456789',
+        serverId: new Types.ObjectId().toString(),
         code: 'vanity',
-        createdByUserId: new Types.ObjectId(),
-        uses: 0,
+        createdByUserId: new Types.ObjectId().toString(),
         createdAt: new Date(),
         ...overrides,
-    }) as IInvite;
+    }) as IVanityLink;
 
 describe('ServerDiscoveryService eligibility helpers', () => {
-    it('accepts verified opted-in servers with unlimited non-expiring vanity invites', () => {
-        const status = getDiscoveryEligibility(makeServer(), makeInvite());
+    it('accepts verified opted-in servers with a vanity link', () => {
+        const status = getDiscoveryEligibility(makeServer(), makeVanityLink());
 
         expect(status.eligible).toBe(true);
         expect(status.blockers).toEqual([]);
@@ -42,10 +40,19 @@ describe('ServerDiscoveryService eligibility helpers', () => {
         expect(status.vanityInviteCode).toBe('vanity');
     });
 
+    it('rejects servers with no vanity link', () => {
+        const status = getDiscoveryEligibility(makeServer(), null);
+
+        expect(status.eligible).toBe(false);
+        expect(status.blockers).toContain('Server needs a vanity link.');
+        expect(status.hasValidVanityInvite).toBe(false);
+        expect(status.vanityInviteCode).toBeUndefined();
+    });
+
     it('rejects unverified servers', () => {
         const status = getDiscoveryEligibility(
             makeServer({ verified: false }),
-            makeInvite(),
+            makeVanityLink(),
         );
 
         expect(status.eligible).toBe(false);
@@ -55,7 +62,7 @@ describe('ServerDiscoveryService eligibility helpers', () => {
     it('rejects servers that have not opted in', () => {
         const status = getDiscoveryEligibility(
             makeServer({ discoveryEnabled: false }),
-            makeInvite(),
+            makeVanityLink(),
         );
 
         expect(status.eligible).toBe(false);
@@ -67,11 +74,11 @@ describe('ServerDiscoveryService eligibility helpers', () => {
     it('rejects servers without a description or tags', () => {
         const missingDescription = getDiscoveryEligibility(
             makeServer({ description: '' }),
-            makeInvite(),
+            makeVanityLink(),
         );
         const missingTags = getDiscoveryEligibility(
             makeServer({ tags: [] }),
-            makeInvite(),
+            makeVanityLink(),
         );
 
         expect(missingDescription.eligible).toBe(false);
@@ -87,32 +94,13 @@ describe('ServerDiscoveryService eligibility helpers', () => {
     it('rejects deleted servers', () => {
         const status = getDiscoveryEligibility(
             makeServer({ deletedAt: new Date() }),
-            makeInvite(),
+            makeVanityLink(),
         );
 
         expect(status.eligible).toBe(false);
         expect(status.blockers).toContain(
             'Deleted servers cannot appear in discovery.',
         );
-    });
-
-    it('rejects limited and expiring invites', () => {
-        expect(isValidDiscoveryInvite(makeInvite({ maxUses: 1 }))).toBe(false);
-        expect(isValidDiscoveryInvite(makeInvite({ expiresAt: new Date() })))
-            .toBe(false);
-    });
-
-    it('treats legacy non-random invite codes as vanity links', () => {
-        expect(getDiscoveryInvitePath(makeInvite({ code: 'legacy-code' })))
-            .toBe('legacy-code');
-        expect(getDiscoveryInvitePath(makeInvite({ code: 'deadbeef' }))).toBe(
-            null,
-        );
-        expect(
-            getDiscoveryInvitePath(
-                makeInvite({ code: 'deadbeef', customPath: 'chosen-path' }),
-            ),
-        ).toBe('chosen-path');
     });
 
     it('normalizes discovery tags for storage and queries', () => {

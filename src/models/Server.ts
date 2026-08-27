@@ -164,7 +164,6 @@ export interface IInvite extends Document {
     _id: mongoose.Types.ObjectId;
     serverId: string;
     code: string;
-    customPath?: string;
     createdByUserId: string;
     maxUses?: number;
     uses: number;
@@ -422,7 +421,6 @@ roleSchema.index({ serverId: 1, position: 1 });
 const inviteSchema = new Schema<IInvite>({
     serverId: { type: String, required: true },
     code: { type: String, required: true, unique: true },
-    customPath: { type: String, required: false, unique: true, sparse: true },
     createdByUserId: {
         type: String,
         required: true,

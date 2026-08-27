@@ -129,6 +129,13 @@ export const ErrorMessages = {
         INVALID_TOKEN: 'invalid invite token',
     },
 
+    VANITY_LINK: {
+        NOT_FOUND: 'This server does not have a vanity link',
+        CODE_TAKEN: 'That vanity link code is already taken',
+        NO_PERMISSION_MANAGE: 'No permission to manage the vanity link',
+        ONLY_OWNER: 'Only the server owner can manage the vanity link',
+    },
+
     EMOJI: {
         NOT_FOUND: 'Emoji not found',
         FILE_REQUIRED: 'Emoji file is required',

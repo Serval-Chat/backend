@@ -41,6 +41,7 @@ import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
+import type { IVanityLinkRepository } from '@/di/interfaces/IVanityLinkRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
@@ -108,6 +109,8 @@ export class ServerController {
         private userRepo: IUserRepository,
         @Inject(TYPES.InviteRepository)
         private inviteRepo: IInviteRepository,
+        @Inject(TYPES.VanityLinkRepository)
+        private vanityLinkRepo: IVanityLinkRepository,
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
         @Inject(TYPES.ServerBanRepository)
@@ -272,14 +275,15 @@ export class ServerController {
                     userId,
                     ['inviteUsers', 'manageInvites'],
                 );
-                const preferredInvite =
-                    await this.inviteRepo.findPreferredByServerId(server.id);
+                const vanityLink = await this.vanityLinkRepo.findByServerId(
+                    server.id,
+                );
                 return {
                     ...server,
                     memberCount,
                     canManage,
                     canInvite,
-                    preferredInviteCode: preferredInvite?.customPath,
+                    preferredInviteCode: vanityLink?.code,
                 };
             }),
         );
@@ -1042,6 +1046,7 @@ export class ServerController {
         await this.serverMemberRepo.deleteByServerId(serverId);
         await this.roleRepo.deleteByServerId(serverId);
         await this.inviteRepo.deleteByServerId(serverId);
+        await this.vanityLinkRepo.deleteByServerId(serverId);
         await this.messageRepo.deleteByServerId(serverId);
         await this.discoveryService.removeServer(serverId);
 

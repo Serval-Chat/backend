@@ -111,6 +111,8 @@ import type {
     IWarningEvent,
     IServerInviteCreatedEvent,
     IServerInviteDeletedEvent,
+    IServerVanityLinkSetEvent,
+    IServerVanityLinkDeletedEvent,
 } from './events/server_notifications';
 import type {
     IIncomingRequestAddedEvent,
@@ -219,6 +221,8 @@ export type AnyResponseWsEvent =
     | IWarningEvent
     | IServerInviteCreatedEvent
     | IServerInviteDeletedEvent
+    | IServerVanityLinkSetEvent
+    | IServerVanityLinkDeletedEvent
     // Friendship
     | IIncomingRequestAddedEvent
     | IIncomingRequestRemovedEvent

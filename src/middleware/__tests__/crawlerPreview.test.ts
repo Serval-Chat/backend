@@ -10,7 +10,10 @@ const invite = { serverId: 'server-1' };
 function repos(icon: string) {
     return {
         [TYPES.InviteRepository]: {
-            findByCodeOrCustomPath: jest.fn().mockResolvedValue(invite),
+            findByCode: jest.fn().mockResolvedValue(invite),
+        },
+        [TYPES.VanityLinkRepository]: {
+            findByCode: jest.fn().mockResolvedValue(null),
         },
         [TYPES.ServerRepository]: {
             findById: jest.fn().mockResolvedValue({
@@ -118,7 +121,10 @@ describe('invite validity is checked, matching GET /api/v1/invites/:code', () =>
     function serveInvite(invite: Record<string, unknown>) {
         const bound = {
             [TYPES.InviteRepository]: {
-                findByCodeOrCustomPath: jest.fn().mockResolvedValue(invite),
+                findByCode: jest.fn().mockResolvedValue(invite),
+            },
+            [TYPES.VanityLinkRepository]: {
+                findByCode: jest.fn().mockResolvedValue(null),
             },
             [TYPES.ServerRepository]: {
                 findById: jest.fn().mockResolvedValue({
@@ -178,6 +184,47 @@ describe('invite validity is checked, matching GET /api/v1/invites/:code', () =>
 
         expect(next).toHaveBeenCalled();
         expect(state.body).toBe('');
+    });
+
+    function serveVanityLink(vanityLink: Record<string, unknown>) {
+        const bound = {
+            [TYPES.InviteRepository]: {
+                findByCode: jest.fn().mockResolvedValue(null),
+            },
+            [TYPES.VanityLinkRepository]: {
+                findByCode: jest.fn().mockResolvedValue(vanityLink),
+            },
+            [TYPES.ServerRepository]: {
+                findById: jest.fn().mockResolvedValue({
+                    snowflakeId: 'server-1',
+                    name: 'Test Server',
+                    icon: '',
+                }),
+            },
+            [TYPES.ServerMemberRepository]: {
+                countByServerId: jest.fn().mockResolvedValue(3),
+            },
+        } as Record<symbol, unknown>;
+        get = jest
+            .spyOn(container, 'get')
+            .mockImplementation((token: unknown) => bound[token as symbol]);
+        return response();
+    }
+
+    it('falls back to a vanity link when no invite matches the code', async () => {
+        const { state, res } = serveVanityLink({
+            serverId: 'server-1',
+            code: 'abc123',
+        });
+
+        await discordCrawlerPreview(
+            request() as never,
+            res as never,
+            jest.fn(),
+        );
+
+        expect(state.status).toBe(200);
+        expect(state.body).toContain('Test Server');
     });
 });
 

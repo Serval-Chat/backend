@@ -2,10 +2,15 @@ import type { Request, Response, NextFunction } from 'express';
 import { container } from '@/di/container';
 import { TYPES } from '@/di/types';
 import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
+import type { IVanityLinkRepository } from '@/di/interfaces/IVanityLinkRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { SERVER_URL } from '@/config/env';
-import { isInviteUsable } from '@/utils/invite';
+import {
+    resolveJoinTarget,
+    getJoinTargetServerId,
+    isJoinTargetUsable,
+} from '@/utils/invite';
 import { crawlerPreviewLimiter } from '@/middleware/rateLimiting';
 
 /**
@@ -40,13 +45,16 @@ export const discordCrawlerPreview = async (
             return next();
         }
 
-        return crawlerPreviewLimiter(req, res, (err?: unknown) => {
+        let renderDone: Promise<void> | undefined;
+        await crawlerPreviewLimiter(req, res, (err?: unknown) => {
             if (err !== undefined) {
                 next(err);
                 return;
             }
-            void renderInvitePreview(res, next, inviteCode);
+            renderDone = renderInvitePreview(res, next, inviteCode);
         });
+        if (renderDone) await renderDone;
+        return;
     }
 
     next();
@@ -61,6 +69,9 @@ async function renderInvitePreview(
         const inviteRepo = container.get<IInviteRepository>(
             TYPES.InviteRepository,
         );
+        const vanityLinkRepo = container.get<IVanityLinkRepository>(
+            TYPES.VanityLinkRepository,
+        );
         const serverRepo = container.get<IServerRepository>(
             TYPES.ServerRepository,
         );
@@ -68,21 +79,26 @@ async function renderInvitePreview(
             TYPES.ServerMemberRepository,
         );
 
-        const invite = await inviteRepo.findByCodeOrCustomPath(inviteCode);
-        if (!invite) {
+        const target = await resolveJoinTarget(
+            inviteRepo,
+            vanityLinkRepo,
+            inviteCode,
+        );
+        if (!target) {
             return next();
         }
 
-        if (!isInviteUsable(invite)) {
+        if (!isJoinTargetUsable(target)) {
             return next();
         }
 
-        const server = await serverRepo.findById(invite.serverId);
+        const serverId = getJoinTargetServerId(target);
+        const server = await serverRepo.findById(serverId);
         if (!server) {
             return next();
         }
 
-        const memberCount = await memberRepo.countByServerId(invite.serverId);
+        const memberCount = await memberRepo.countByServerId(serverId);
 
         const title = escapeHtml(`Join ${server.name}`);
         const description = escapeHtml(

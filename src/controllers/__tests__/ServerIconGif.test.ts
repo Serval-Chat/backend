@@ -17,12 +17,10 @@ describe('ServerController.uploadServerIcon GIF support', () => {
 
     const mockServerRepo = {
         findById: jest.fn().mockResolvedValue({ id: serverId, icon: null }),
-        update: jest
-            .fn()
-            .mockResolvedValue({
-                id: serverId,
-                icon: `/api/v1/servers/icon/${serverId}-123.gif`,
-            }),
+        update: jest.fn().mockResolvedValue({
+            id: serverId,
+            icon: `/api/v1/servers/icon/${serverId}-123.gif`,
+        }),
     };
     const mockPermissionService = {
         requirePermission: jest.fn().mockResolvedValue(undefined),
@@ -43,6 +41,7 @@ describe('ServerController.uploadServerIcon GIF support', () => {
         jest.clearAllMocks();
         controller = new ServerController(
             mockServerRepo as never,
+            {} as never,
             {} as never,
             {} as never,
             {} as never,

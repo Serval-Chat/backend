@@ -1900,7 +1900,6 @@ export class AdminController {
             id: invite.snowflakeId,
             serverId: invite.serverId.toString(),
             code: invite.code,
-            customPath: invite.customPath,
             createdByUserId: invite.createdByUserId.toString(),
             maxUses: invite.maxUses,
             uses: invite.uses,

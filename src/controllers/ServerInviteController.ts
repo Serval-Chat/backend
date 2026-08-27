@@ -27,6 +27,7 @@ import type {
     IInviteRepository,
     IInvite,
 } from '@/di/interfaces/IInviteRepository';
+import type { IVanityLinkRepository } from '@/di/interfaces/IVanityLinkRepository';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
@@ -53,7 +54,9 @@ import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 import {
     isInviteExpired,
     isInviteMaxedOut,
-    isInviteUsable,
+    resolveJoinTarget,
+    getJoinTargetServerId,
+    getJoinTargetCode,
 } from '@/utils/invite';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertHttpNotWarned } from '@/utils/warning';
@@ -64,6 +67,8 @@ export class ServerInviteController {
     public constructor(
         @Inject(TYPES.InviteRepository)
         private inviteRepo: IInviteRepository,
+        @Inject(TYPES.VanityLinkRepository)
+        private vanityLinkRepo: IVanityLinkRepository,
         @Inject(TYPES.ServerRepository)
         private serverRepo: IServerRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -143,14 +148,6 @@ export class ServerInviteController {
         type: ServerInviteResponseDTO,
         description: 'Invite created',
     })
-    @ApiResponse({
-        status: 400,
-        description: ErrorMessages.INVITE.ALREADY_EXISTS,
-    })
-    @ApiResponse({
-        status: 403,
-        description: ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
-    })
     public async createInvite(
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
@@ -159,21 +156,11 @@ export class ServerInviteController {
     ): Promise<IInvite & { id: string; createdByUsername?: string }> {
         await assertHttpNotWarned(this.warningRepo, userId, 'create invites');
 
-        const { maxUses, expiresIn, customPath } = body;
+        const { maxUses, expiresIn } = body;
 
-        let code = customPath;
-        if (code !== undefined && code !== '') {
-            await this.ensureVanityInviteAllowed(serverId, userId, code);
-        } else {
-            await this.ensureRegularInviteAllowed(serverId, userId);
+        await this.ensureRegularInviteAllowed(serverId, userId);
 
-            if (maxUses === undefined && expiresIn === undefined) {
-                const reused = await this.reusePreferredInvite(serverId);
-                if (reused !== null) return reused;
-            }
-
-            code = crypto.randomBytes(4).toString('hex');
-        }
+        const code = await this.generateUnusedInviteCode();
 
         const expiresAt =
             expiresIn !== undefined && expiresIn !== 0
@@ -183,10 +170,6 @@ export class ServerInviteController {
         const invite = await this.inviteRepo.create({
             serverId: serverId,
             code,
-            customPath:
-                customPath !== undefined && customPath !== ''
-                    ? customPath
-                    : undefined,
             maxUses: maxUses !== undefined ? maxUses : 0,
             expiresAt,
             createdByUserId: userId,
@@ -225,31 +208,6 @@ export class ServerInviteController {
         };
     }
 
-    private async ensureVanityInviteAllowed(
-        serverId: string,
-        userId: string,
-        code: string,
-    ): Promise<void> {
-        await this.permissionService.requirePermission(
-            serverId,
-            userId,
-            'manageInvites',
-            new ForbiddenException(ErrorMessages.INVITE.NO_PERMISSION_MANAGE),
-        );
-
-        const server = await this.serverRepo.findById(serverId);
-        if (server === null || String(server.ownerId) !== userId) {
-            throw new ForbiddenException(
-                ErrorMessages.INVITE.ONLY_OWNER_CUSTOM,
-            );
-        }
-
-        const existing = await this.inviteRepo.findByCode(code);
-        if (existing !== null) {
-            throw new BadRequestException(ErrorMessages.INVITE.ALREADY_EXISTS);
-        }
-    }
-
     private async ensureRegularInviteAllowed(
         serverId: string,
         userId: string,
@@ -262,19 +220,15 @@ export class ServerInviteController {
         );
     }
 
-    private async reusePreferredInvite(
-        serverId: string,
-    ): Promise<(IInvite & { id: string; createdByUsername?: string }) | null> {
-        const preferred =
-            await this.inviteRepo.findPreferredByServerId(serverId);
-        if (preferred === null || !isInviteUsable(preferred)) return null;
-
-        const creator = await this.userRepo.findById(preferred.createdByUserId);
-        return {
-            ...preferred,
-            id: preferred.snowflakeId,
-            createdByUsername: creator?.username,
-        };
+    private async generateUnusedInviteCode(): Promise<string> {
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const code = crypto.randomBytes(4).toString('hex');
+            const existingVanity = await this.vanityLinkRepo.findByCode(code);
+            if (existingVanity === null) return code;
+        }
+        throw new Error(
+            'Failed to generate a unique invite code after 5 attempts',
+        );
     }
 
     @Delete('servers/:serverId/invites/:inviteId')
@@ -349,45 +303,52 @@ export class ServerInviteController {
     public async getInviteDetails(
         @Param('code') code: string,
     ): Promise<InviteDetailsResponseDTO> {
-        const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
-        if (invite === null) {
+        const target = await resolveJoinTarget(
+            this.inviteRepo,
+            this.vanityLinkRepo,
+            code,
+        );
+        if (target === null) {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        if (isInviteExpired(invite)) {
-            throw new HttpException(
-                ErrorMessages.INVITE.EXPIRED,
-                HttpStatus.GONE,
-            );
+        if (target.source === 'invite') {
+            if (isInviteExpired(target.invite)) {
+                throw new HttpException(
+                    ErrorMessages.INVITE.EXPIRED,
+                    HttpStatus.GONE,
+                );
+            }
+
+            if (isInviteMaxedOut(target.invite)) {
+                throw new HttpException(
+                    ErrorMessages.INVITE.MAX_USES_REACHED,
+                    HttpStatus.GONE,
+                );
+            }
         }
 
-        if (isInviteMaxedOut(invite)) {
-            throw new HttpException(
-                ErrorMessages.INVITE.MAX_USES_REACHED,
-                HttpStatus.GONE,
-            );
-        }
-
-        const server = await this.serverRepo.findById(invite.serverId);
+        const serverId = getJoinTargetServerId(target);
+        const server = await this.serverRepo.findById(serverId);
         if (server === null) {
             this.logger.warn('getInviteDetails: Server not found for invite:', {
-                serverId: invite.serverId.toString(),
+                serverId: serverId.toString(),
             });
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const memberCount = await this.serverMemberRepo.countByServerId(
-            invite.serverId,
-        );
+        const memberCount =
+            await this.serverMemberRepo.countByServerId(serverId);
 
         return {
-            code:
-                invite.customPath !== undefined && invite.customPath !== ''
-                    ? invite.customPath
-                    : invite.code,
-            expiresAt: invite.expiresAt,
-            maxUses: invite.maxUses,
-            uses: invite.uses,
+            code: getJoinTargetCode(target),
+            expiresAt:
+                target.source === 'invite'
+                    ? target.invite.expiresAt
+                    : undefined,
+            maxUses:
+                target.source === 'invite' ? target.invite.maxUses : undefined,
+            uses: target.source === 'invite' ? target.invite.uses : 0,
             server: {
                 id: server.id,
                 name: server.name,
@@ -420,26 +381,32 @@ export class ServerInviteController {
         @Param('code') code: string,
         @CurrentUser('id') userId: string,
     ): Promise<{ serverId: string }> {
-        const invite = await this.inviteRepo.findByCodeOrCustomPath(code);
-        if (invite === null) {
+        const target = await resolveJoinTarget(
+            this.inviteRepo,
+            this.vanityLinkRepo,
+            code,
+        );
+        if (target === null) {
             throw new NotFoundException(ErrorMessages.INVITE.NOT_FOUND);
         }
 
-        if (isInviteExpired(invite)) {
-            throw new HttpException(
-                ErrorMessages.INVITE.EXPIRED,
-                HttpStatus.GONE,
-            );
+        if (target.source === 'invite') {
+            if (isInviteExpired(target.invite)) {
+                throw new HttpException(
+                    ErrorMessages.INVITE.EXPIRED,
+                    HttpStatus.GONE,
+                );
+            }
+
+            if (isInviteMaxedOut(target.invite)) {
+                throw new HttpException(
+                    ErrorMessages.INVITE.MAX_USES_REACHED,
+                    HttpStatus.GONE,
+                );
+            }
         }
 
-        if (isInviteMaxedOut(invite)) {
-            throw new HttpException(
-                ErrorMessages.INVITE.MAX_USES_REACHED,
-                HttpStatus.GONE,
-            );
-        }
-
-        const serverId = invite.serverId;
+        const serverId = getJoinTargetServerId(target);
         const existingMember = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -472,14 +439,18 @@ export class ServerInviteController {
             roles.push(server.defaultRoleId);
         }
 
-        const claimedInvite = await this.inviteRepo.claimUse(
-            invite.snowflakeId,
-        );
-        if (claimedInvite === null) {
-            throw new HttpException(
-                ErrorMessages.INVITE.MAX_USES_REACHED,
-                HttpStatus.GONE,
+        let claimedUses: number | undefined;
+        if (target.source === 'invite') {
+            const claimedInvite = await this.inviteRepo.claimUse(
+                target.invite.snowflakeId,
             );
+            if (claimedInvite === null) {
+                throw new HttpException(
+                    ErrorMessages.INVITE.MAX_USES_REACHED,
+                    HttpStatus.GONE,
+                );
+            }
+            claimedUses = claimedInvite.uses;
         }
 
         try {
@@ -490,9 +461,11 @@ export class ServerInviteController {
                 onboardingRequired: server?.onboarding?.enabled === true,
             });
         } catch (err) {
-            await this.inviteRepo
-                .releaseUse(invite.snowflakeId)
-                .catch(() => undefined);
+            if (target.source === 'invite') {
+                await this.inviteRepo
+                    .releaseUse(target.invite.snowflakeId)
+                    .catch(() => undefined);
+            }
             throw err;
         }
 
@@ -518,9 +491,16 @@ export class ServerInviteController {
             targetUserId: userId,
             metadata: {
                 inviteCode: code,
-                inviteUses: claimedInvite.uses,
-                inviteMaxUses: invite.maxUses,
-                inviteExpiresAt: invite.expiresAt,
+                viaVanityLink: target.source === 'vanity',
+                inviteUses: claimedUses,
+                inviteMaxUses:
+                    target.source === 'invite'
+                        ? target.invite.maxUses
+                        : undefined,
+                inviteExpiresAt:
+                    target.source === 'invite'
+                        ? target.invite.expiresAt
+                        : undefined,
             },
         });
 

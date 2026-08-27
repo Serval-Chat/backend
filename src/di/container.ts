@@ -20,6 +20,7 @@ import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
 import type { IInviteRepository } from '@/di/interfaces/IInviteRepository';
+import type { IVanityLinkRepository } from '@/di/interfaces/IVanityLinkRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import type { IChannelReadRepository } from '@/di/interfaces/IChannelReadRepository';
@@ -60,6 +61,7 @@ import { MongooseCategoryRepository } from '@/infrastructure/repositories/Mongoo
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import { MongooseAuditLogRepository } from '@/infrastructure/repositories/MongooseAuditLogRepository';
 import { MongooseInviteRepository } from '@/infrastructure/repositories/MongooseInviteRepository';
+import { MongooseVanityLinkRepository } from '@/infrastructure/repositories/MongooseVanityLinkRepository';
 import { MongooseServerBanRepository } from '@/infrastructure/repositories/MongooseServerBanRepository';
 import { MongooseServerChannelReadRepository } from '@/infrastructure/repositories/MongooseServerChannelReadRepository';
 import { MongooseChannelReadRepository } from '@/infrastructure/repositories/MongooseChannelReadRepository';
@@ -196,6 +198,11 @@ container
 container
     .bind<IInviteRepository>(TYPES.InviteRepository)
     .to(MongooseInviteRepository)
+    .inTransientScope();
+
+container
+    .bind<IVanityLinkRepository>(TYPES.VanityLinkRepository)
+    .to(MongooseVanityLinkRepository)
     .inTransientScope();
 
 container
