@@ -47,6 +47,7 @@ export interface DBUser {
     id?: string;
     snowflakeId: string;
     username: string;
+    login: string;
     displayName?: string | null;
     profilePicture?: string | null;
     isBot?: boolean;
@@ -101,6 +102,7 @@ export interface DBUser {
 export interface MappedUser {
     id: string;
     username: string;
+    login?: string;
     displayName: string | null;
     profilePicture: string | null;
     isBot: boolean;
@@ -132,6 +134,7 @@ export interface MapUserOptions {
     includePermissions?: boolean;
     includeTotp?: boolean;
     includeSettings?: boolean;
+    includeLogin?: boolean;
 }
 
 export function mapUser(user: DBUser, options?: MapUserOptions): MappedUser;
@@ -199,6 +202,9 @@ export function mapUser(
         }),
         ...(options.includeTotp === true && {
             totpEnabled: u.totpEnabled ?? false,
+        }),
+        ...(options.includeLogin === true && {
+            login: u.login,
         }),
         connections: u.connections,
     };

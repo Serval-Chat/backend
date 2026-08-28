@@ -107,6 +107,11 @@ export class UserProfileResponseDTO {
     @ApiProperty()
     public username!: string;
 
+    @ApiPropertyOptional({
+        description: 'Only included when fetching your own profile.',
+    })
+    public login?: string;
+
     @ApiProperty({ nullable: true })
     public displayName!: string | null;
 

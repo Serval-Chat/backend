@@ -286,6 +286,7 @@ export class ProfileController {
         const mapped = mapUser(user, {
             ...options,
             includeSettings: isOwnProfile,
+            includeLogin: isOwnProfile,
         });
         if (mapped === null) {
             throw new Error('User not found');
