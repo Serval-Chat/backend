@@ -480,6 +480,13 @@ export class AuthController {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
+        if (user.passwordless === true) {
+            throw new ApiError(
+                400,
+                ErrorMessages.AUTH.PASSWORDLESS_NO_PASSWORD,
+            );
+        }
+
         const normalizedCurrentLogin = normalizeEmail(user.login ?? '');
         if (normalizedNewLogin === normalizedCurrentLogin) {
             throw new ApiError(400, ErrorMessages.AUTH.NEW_LOGIN_SAME);
@@ -543,6 +550,13 @@ export class AuthController {
         const user = await this.userRepo.findById(userId);
         if (user === null) {
             throw new ApiError(404, ErrorMessages.AUTH.USER_NOT_FOUND);
+        }
+
+        if (user.passwordless === true) {
+            throw new ApiError(
+                400,
+                ErrorMessages.AUTH.PASSWORDLESS_NO_PASSWORD,
+            );
         }
 
         const passwordValid = await this.userRepo.comparePassword(

@@ -10,4 +10,8 @@ export const AUTH_CONSTANTS = {
     SHUTDOWN: {
         TIMEOUT_MS: 30000, // 30 seconds
     },
+    PASSKEY: {
+        MAX_PER_USER: 10,
+        CHALLENGE_TTL_SECONDS: 120,
+    },
 } as const;

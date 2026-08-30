@@ -51,6 +51,15 @@ export const ErrorMessages = {
             'Too many two-factor attempts. Try again after lock expires.',
         ACCOUNT_LOCKED:
             'Too many failed login attempts. This account is temporarily locked, try again later.',
+        PASSKEY_CHALLENGE_EXPIRED:
+            'Passkey verification expired, please try again',
+        PASSKEY_NOT_FOUND: 'Passkey not found',
+        PASSKEY_LIMIT_REACHED: 'Maximum number of passkeys reached',
+        PASSWORDLESS_REQUIRES_PASSKEY:
+            'Register a passkey before going passwordless',
+        PASSWORDLESS_ALREADY_ENABLED: 'This account is already passwordless',
+        PASSWORDLESS_NO_PASSWORD:
+            'This account is passwordless and has no password to confirm',
     },
 
     SERVER: {

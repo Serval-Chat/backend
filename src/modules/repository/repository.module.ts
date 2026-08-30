@@ -29,6 +29,7 @@ import { MongooseBlockRepository } from '@/infrastructure/repositories/MongooseB
 import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/MongooseAdminNoteRepository';
 import { SlashCommandRepository } from '@/infrastructure/repositories/SlashCommandRepository';
 import { MongooseSessionRepository } from '@/infrastructure/repositories/MongooseSessionRepository';
+import { MongoosePasskeyCredentialRepository } from '@/infrastructure/repositories/MongoosePasskeyCredentialRepository';
 
 @Global()
 @Module({
@@ -149,6 +150,10 @@ import { MongooseSessionRepository } from '@/infrastructure/repositories/Mongoos
             provide: TYPES.SessionRepository,
             useClass: MongooseSessionRepository,
         },
+        {
+            provide: TYPES.PasskeyCredentialRepository,
+            useClass: MongoosePasskeyCredentialRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -180,6 +185,7 @@ import { MongooseSessionRepository } from '@/infrastructure/repositories/Mongoos
         TYPES.AdminNoteRepository,
         TYPES.SlashCommandRepository,
         TYPES.SessionRepository,
+        TYPES.PasskeyCredentialRepository,
     ],
 })
 export class RepositoryModule {}

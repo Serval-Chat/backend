@@ -6,6 +6,9 @@ import { JWT_SECRET } from '@/config/env';
 import { resolveSession } from '@/utils/sessionAuth';
 import {
     passwordResetConfirmLimiter,
+    passkeyManageLimiter,
+    passkeyLoginOptionsLimiter,
+    passwordlessRecoverLimiter,
     sensitiveOperationLimiter,
     twoFactorVerifyLimiter,
 } from '../rateLimiting';
@@ -127,5 +130,74 @@ describe('passwordResetConfirmLimiter', () => {
             ).toBe(401);
         }
         expect((await send('b'.repeat(64))).status).toBe(429);
+    });
+});
+
+describe('passkeyManageLimiter', () => {
+    it('keys on the bearer token rather than the address', async () => {
+        const app = appWith('/passkey', passkeyManageLimiter);
+
+        const send = (id: string, forwardedFor: string) =>
+            request(app)
+                .get('/passkey')
+                .set('Authorization', `Bearer token-for-${id}`)
+                .set('X-Forwarded-For', forwardedFor);
+
+        for (let i = 0; i < 30; i++) {
+            expect((await send('user-a', `203.0.113.${i}`)).status).toBe(401);
+        }
+        expect((await send('user-a', '203.0.113.99')).status).toBe(429);
+
+        expect((await send('user-b', '203.0.113.0')).status).toBe(401);
+    });
+});
+
+describe('passkeyLoginOptionsLimiter', () => {
+    it('keys on the address, since no account is known before verification', async () => {
+        const app = appWith(
+            '/passkey/login/options',
+            passkeyLoginOptionsLimiter,
+        );
+
+        const send = (forwardedFor: string) =>
+            request(app)
+                .post('/passkey/login/options')
+                .set('X-Forwarded-For', forwardedFor)
+                .send({});
+
+        for (let i = 0; i < 20; i++) {
+            expect((await send('198.51.100.10')).status).toBe(401);
+        }
+        expect((await send('198.51.100.10')).status).toBe(429);
+
+        expect((await send('198.51.100.11')).status).toBe(401);
+    });
+});
+
+describe('passwordlessRecoverLimiter', () => {
+    it('keys on IP+login, same as the password login limiter', async () => {
+        const app = appWith(
+            '/passwordless/recover',
+            passwordlessRecoverLimiter,
+        );
+
+        const send = (login: string, forwardedFor: string) =>
+            request(app)
+                .post('/passwordless/recover')
+                .set('X-Forwarded-For', forwardedFor)
+                .send({ login });
+
+        for (let i = 0; i < 5; i++) {
+            expect(
+                (await send('victim@example.com', '203.0.113.50')).status,
+            ).toBe(401);
+        }
+        expect((await send('victim@example.com', '203.0.113.50')).status).toBe(
+            429,
+        );
+
+        expect(
+            (await send('someone-else@example.com', '203.0.113.50')).status,
+        ).toBe(401);
     });
 });

@@ -12,6 +12,9 @@ import { InfrastructureModule } from './modules/infrastructure/infrastructure.mo
 import { ServicesModule } from './modules/services/services.module';
 import { AuthModule, AuthGuard } from './modules/auth/auth.module';
 import { AuthController } from './controllers/AuthController';
+import { PasskeyController } from './controllers/PasskeyController';
+import { PasswordlessController } from './controllers/PasswordlessController';
+import { AdminPasswordlessController } from './controllers/AdminPasswordlessController';
 import { SessionController } from './controllers/SessionController';
 import { BlockController } from './controllers/BlockController';
 import { AdminController } from './controllers/AdminController';
@@ -70,6 +73,14 @@ import {
     loginLimiter,
     messageSearchLimiter,
     passwordResetLimiter,
+    passkeyRegisterLimiter,
+    passkeyManageLimiter,
+    passkeyLoginOptionsLimiter,
+    passkeyLoginVerifyLimiter,
+    passwordlessEnableLimiter,
+    passwordlessRecoveryRegenerateLimiter,
+    passwordlessRecoverLimiter,
+    adminPasswordlessResetLimiter,
     registrationLimiter,
     sensitiveOperationLimiter,
     sessionManagementLimiter,
@@ -144,6 +155,9 @@ import {
     ],
     controllers: [
         AuthController,
+        PasskeyController,
+        PasswordlessController,
+        AdminPasswordlessController,
         SessionController,
         BlockController,
         AdminController,
@@ -341,5 +355,67 @@ export class AppModule {
                 method: RequestMethod.DELETE,
             },
         );
+
+        consumer.apply(passkeyRegisterLimiter).forRoutes(
+            {
+                path: 'api/v1/auth/passkey/register/options',
+                method: RequestMethod.POST,
+            },
+            {
+                path: 'api/v1/auth/passkey/register/verify',
+                method: RequestMethod.POST,
+            },
+        );
+
+        consumer.apply(passkeyManageLimiter).forRoutes(
+            {
+                path: 'api/v1/auth/passkey',
+                method: RequestMethod.GET,
+            },
+            {
+                path: 'api/v1/auth/passkey/:credentialId',
+                method: RequestMethod.PATCH,
+            },
+            {
+                path: 'api/v1/auth/passkey/:credentialId',
+                method: RequestMethod.DELETE,
+            },
+        );
+
+        consumer.apply(passkeyLoginOptionsLimiter).forRoutes({
+            path: 'api/v1/auth/passkey/login/options',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(passkeyLoginVerifyLimiter).forRoutes({
+            path: 'api/v1/auth/passkey/login/verify',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(passwordlessEnableLimiter).forRoutes({
+            path: 'api/v1/auth/passwordless/enable',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(passwordlessRecoveryRegenerateLimiter).forRoutes(
+            {
+                path: 'api/v1/auth/passwordless/recovery-keys/regenerate/options',
+                method: RequestMethod.POST,
+            },
+            {
+                path: 'api/v1/auth/passwordless/recovery-keys/regenerate/verify',
+                method: RequestMethod.POST,
+            },
+        );
+
+        consumer.apply(passwordlessRecoverLimiter, loginBackoff).forRoutes({
+            path: 'api/v1/auth/passwordless/recover',
+            method: RequestMethod.POST,
+        });
+
+        consumer.apply(adminPasswordlessResetLimiter).forRoutes({
+            path: 'api/v1/admin/passwordless/users/:userId/reset',
+            method: RequestMethod.POST,
+        });
     }
 }

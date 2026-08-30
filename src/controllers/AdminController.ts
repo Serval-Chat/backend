@@ -1689,6 +1689,7 @@ export class AdminController {
         response.deletedReason = user.deletedReason;
         response.servers = serverList;
         response.decorationId = user.decorationId;
+        response.passwordless = user.passwordless ?? false;
         response.bannerColor = user.bannerColor;
         response.profilePrimaryColor = user.profilePrimaryColor;
         response.profileAccentColor = user.profileAccentColor;

@@ -2,6 +2,8 @@ import { Global, Module } from '@nestjs/common';
 import { TYPES } from '@/di/types';
 import elasticsearchConfig from '@/config/elasticsearch.json';
 import { AuthService } from '@/services/AuthService';
+import { PasskeyService } from '@/services/PasskeyService';
+import { PasswordlessService } from '@/services/PasswordlessService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
 import { MailService } from '@/services/MailService';
@@ -36,6 +38,14 @@ const esConfig = elasticsearchConfig as {
         {
             provide: TYPES.AuthService,
             useClass: AuthService,
+        },
+        {
+            provide: TYPES.PasskeyService,
+            useClass: PasskeyService,
+        },
+        {
+            provide: TYPES.PasswordlessService,
+            useClass: PasswordlessService,
         },
         {
             provide: TYPES.PermissionService,
@@ -122,6 +132,8 @@ const esConfig = elasticsearchConfig as {
     ],
     exports: [
         TYPES.AuthService,
+        TYPES.PasskeyService,
+        TYPES.PasswordlessService,
         TYPES.PermissionService,
         TYPES.PingService,
         TYPES.MailService,

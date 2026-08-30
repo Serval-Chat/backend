@@ -213,6 +213,43 @@ export class MongooseUserRepository implements IUserRepository {
         await user.save();
     }
 
+    public async enablePasswordless(
+        id: string,
+        recoveryKeyHashes: string[],
+    ): Promise<void> {
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            {
+                $unset: { password: '' },
+                $set: { passwordless: true, recoveryKeys: recoveryKeyHashes },
+            },
+        );
+    }
+
+    public async disablePasswordless(
+        id: string,
+        newPassword: string,
+    ): Promise<void> {
+        const user = await this.userModel.findOne({ snowflakeId: id });
+        if (!user) throw new Error(ErrorMessages.AUTH.USER_NOT_FOUND);
+        const doc = user as IUserModel;
+        doc.password = newPassword;
+        doc.passwordless = false;
+        doc.recoveryKeys = [];
+        await user.save();
+    }
+
+    public async consumeRecoveryKey(
+        id: string,
+        keyHash: string,
+    ): Promise<boolean> {
+        const result = await this.userModel.findOneAndUpdate(
+            { snowflakeId: id, recoveryKeys: keyHash },
+            { $pull: { recoveryKeys: keyHash } },
+        );
+        return result !== null;
+    }
+
     public async updateUsernameStyle(
         id: string,
         style: {

@@ -36,6 +36,9 @@ const KLIPY_API_KEY = process.env.KLIPY_API_KEY ?? '';
 const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH ?? 2000);
 const CF_TURNSTILE_SECRET = process.env.CF_TURNSTILE_SECRET ?? '';
 const MAXMIND_LICENSE_KEY = process.env.MAXMIND_LICENSE_KEY ?? '';
+const WEBAUTHN_RP_ID = process.env.WEBAUTHN_RP_ID ?? 'localhost';
+const WEBAUTHN_RP_NAME = process.env.WEBAUTHN_RP_NAME ?? 'Serchat';
+const WEBAUTHN_ORIGIN = process.env.WEBAUTHN_ORIGIN ?? 'http://localhost:5173';
 
 const OTEL_ENDPOINT =
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'grpc://otel-collector:4317';
@@ -107,6 +110,14 @@ if (
     throw new Error('Invalid PROJECT_LEVEL. Use "release" or "development".');
 }
 
+if (WEBAUTHN_ORIGIN !== '') {
+    try {
+        new URL(WEBAUTHN_ORIGIN);
+    } catch {
+        throw new Error('WEBAUTHN_ORIGIN must be a valid URL');
+    }
+}
+
 if (process.env.NODE_ENV !== 'test' && !['on', 'off'].includes(USE_HTTPS)) {
     throw new Error('Invalid HTTPS. Use "on" or "off"');
 }
@@ -167,4 +178,7 @@ export {
     SNOWFLAKE_WORKER_ID,
     CF_TURNSTILE_SECRET,
     MAXMIND_LICENSE_KEY,
+    WEBAUTHN_RP_ID,
+    WEBAUTHN_RP_NAME,
+    WEBAUTHN_ORIGIN,
 };

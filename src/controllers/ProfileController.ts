@@ -173,6 +173,12 @@ export class ProfileController {
             .sort({ status: 1, verifiedAt: 1, createdAt: 1 })
             .exec();
 
+        await Promise.all(
+            connections
+                .filter((connection) => !connection.snowflakeId)
+                .map((connection) => connection.save()),
+        );
+
         return connections.map((connection) => ({
             ...this.mapConnection(connection),
             recordType:
@@ -488,31 +494,29 @@ export class ProfileController {
         const tokenHash = hashWebsiteVerificationToken(token);
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-        const connection = await UserConnection.findOneAndUpdate(
-            {
+        let connection = await UserConnection.findOne({
+            userId: userId,
+            type: WEBSITE_CONNECTION_TYPE,
+            normalizedValue: website.normalizedValue,
+        }).exec();
+
+        if (connection === null) {
+            connection = new UserConnection({
                 userId: userId,
                 type: WEBSITE_CONNECTION_TYPE,
+                value: website.value,
                 normalizedValue: website.normalizedValue,
-            },
-            {
-                $set: {
-                    userId: userId,
-                    type: WEBSITE_CONNECTION_TYPE,
-                    value: website.value,
-                    normalizedValue: website.normalizedValue,
-                    status: 'pending',
-                    verificationTokenHash: tokenHash,
-                    verificationRecordName: website.verificationRecordName,
-                    expiresAt,
-                },
-                $unset: { verifiedAt: 1 },
-            },
-            {
-                returnDocument: 'after',
-                upsert: true,
-                setDefaultsOnInsert: true,
-            },
-        ).exec();
+            });
+        }
+
+        connection.value = website.value;
+        connection.status = 'pending';
+        connection.verificationTokenHash = tokenHash;
+        connection.verificationRecordName = website.verificationRecordName;
+        connection.expiresAt = expiresAt;
+        connection.verifiedAt = undefined;
+
+        await connection.save();
 
         return {
             message: 'Please add this TXT to the DNS records of your website.',

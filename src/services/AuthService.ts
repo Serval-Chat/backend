@@ -117,6 +117,16 @@ export class AuthService {
             };
         }
 
+        if (user.passwordless === true) {
+            this.logger.warn(
+                `Login failed: Account is passwordless - ${normalizedLogin}`,
+            );
+            return {
+                success: false,
+                error: ErrorMessages.AUTH.INVALID_CREDENTIALS,
+            };
+        }
+
         // Validate password via repository
         const valid = await this.userRepo.comparePassword(
             user.snowflakeId,
@@ -390,6 +400,13 @@ export class AuthService {
             return requestId;
         }
 
+        if (user.passwordless === true) {
+            this.logger.info(
+                `[${requestId}] Password reset requested for passwordless account: ${normalizedEmail}`,
+            );
+            return requestId;
+        }
+
         const windowStart = new Date(
             Date.now() - AUTH_CONSTANTS.RATE_LIMIT.WINDOW_MS,
         );
@@ -479,6 +496,13 @@ export class AuthService {
         if (!user) {
             this.logger.warn(
                 `[${requestId}] Failed password reset: User not found`,
+            );
+            throw new ApiError(400, ErrorMessages.AUTH.INVALID_RESET_TOKEN);
+        }
+
+        if (user.passwordless === true) {
+            this.logger.warn(
+                `[${requestId}] Failed password reset: Account is passwordless`,
             );
             throw new ApiError(400, ErrorMessages.AUTH.INVALID_RESET_TOKEN);
         }

@@ -374,3 +374,109 @@ export const sessionManagementLimiter = rateLimit({
     legacyHeaders: false,
     message: 'Too many session management requests, please try again later.',
 });
+
+export const passkeyRegisterLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:passkey-reg:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many passkey registration attempts, please try again later.',
+});
+
+export const passkeyManageLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:passkey-mgmt:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many passkey management requests, please try again later.',
+});
+
+export const passkeyLoginOptionsLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:passkey-login-opt:') }
+        : {}),
+    windowMs: 60_000,
+    max: 20,
+    keyGenerator: (req: Request) =>
+        ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip'),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many passkey sign-in attempts, please try again later.',
+});
+
+export const passkeyLoginVerifyLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:passkey-login-verify:') }
+        : {}),
+    windowMs: 60_000,
+    max: 10,
+    keyGenerator: (req: Request) =>
+        ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip'),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many passkey sign-in attempts, please try again later.',
+});
+
+export const passwordlessEnableLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:passwordless-enable:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many attempts, please try again later.',
+});
+
+export const passwordlessRecoveryRegenerateLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:passwordless-regen:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many attempts, please try again later.',
+});
+
+// Rate limiter for recovery-key login attempts.
+export const passwordlessRecoverLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:passwordless-recover:') }
+        : {}),
+    windowMs: 60_000,
+    max: 5,
+    keyGenerator: (req: Request) => {
+        const login =
+            typeof req.body?.login === 'string'
+                ? req.body.login.toLowerCase()
+                : '';
+        const ip = ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'ip');
+        return `${ip}:${login}`;
+    },
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many recovery attempts, please wait and try again.',
+});
+
+export const adminPasswordlessResetLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:admin-passwordless-reset:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many admin reset requests, please try again later.',
+});

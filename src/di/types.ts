@@ -35,9 +35,12 @@ export const TYPES = {
     AdminNoteRepository: Symbol.for('AdminNoteRepository'),
     SlashCommandRepository: Symbol.for('SlashCommandRepository'),
     SessionRepository: Symbol.for('SessionRepository'),
+    PasskeyCredentialRepository: Symbol.for('PasskeyCredentialRepository'),
     ExportService: Symbol.for('ExportService'),
 
     AuthService: Symbol.for('AuthService'),
+    PasskeyService: Symbol.for('PasskeyService'),
+    PasswordlessService: Symbol.for('PasswordlessService'),
     PermissionService: Symbol.for('PermissionService'),
     WebPushService: Symbol.for('WebPushService'),
     KlipyService: Symbol.for('KlipyService'),

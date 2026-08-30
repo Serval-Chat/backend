@@ -73,6 +73,8 @@ export class AdminUserDetailsDTO extends AdminUserListItemDTO {
     public isPrivate?: boolean;
     @ApiPropertyOptional({ type: () => PrivacySettingsDTO })
     public privacySettings?: PrivacySettingsDTO;
+    @ApiProperty({ default: false })
+    public passwordless!: boolean;
 }
 
 export class AdminUserServerInfoDTO {

@@ -22,7 +22,9 @@ export interface IUser {
     isBot?: boolean;
     botVerified?: boolean;
     displayName?: string;
-    password: string;
+    password?: string;
+    passwordless?: boolean;
+    recoveryKeys?: string[];
     email?: string;
     bio?: string;
     status?: string;
@@ -189,6 +191,15 @@ export interface IUserRepository {
 
     // Update user's password
     updatePassword(id: string, newPassword: string): Promise<void>;
+
+    // Remove the password, mark the account passwordless, and set recovery key hashes
+    enablePasswordless(id: string, recoveryKeyHashes: string[]): Promise<void>;
+
+    // Admin recovery: restore a password, clear the passwordless flag and recovery keys
+    disablePasswordless(id: string, newPassword: string): Promise<void>;
+
+    // Atomically remove a recovery key hash; returns true only if this call removed it
+    consumeRecoveryKey(id: string, keyHash: string): Promise<boolean>;
 
     // Update user's username style
     updateUsernameStyle(

@@ -86,6 +86,7 @@ export interface DBUser {
         disableCustomUsernameGlow?: boolean;
     };
     totpEnabled?: boolean;
+    passwordless?: boolean;
     serverSettings?: ServerSettings;
     permissions?: AdminPermissions;
     connections?: UserConnection[];
@@ -126,6 +127,7 @@ export interface MappedUser {
     permissions?: AdminPermissions;
     settings?: DBUser['settings'];
     totpEnabled?: boolean;
+    passwordless: boolean;
     serverSettings?: ServerSettings;
     connections?: UserConnection[];
 }
@@ -194,6 +196,7 @@ export function mapUser(
         bannerColor: u.bannerColor ?? null,
         profilePrimaryColor: u.profilePrimaryColor ?? null,
         profileAccentColor: u.profileAccentColor ?? null,
+        passwordless: u.passwordless ?? false,
         ...(options.includePermissions === true && {
             permissions: u.permissions ?? DEFAULT_PERMISSIONS,
         }),

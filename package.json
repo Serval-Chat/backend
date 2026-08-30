@@ -33,6 +33,7 @@
     "@opentelemetry/resources": "^2.8.0",
     "@opentelemetry/sdk-node": "^0.219.0",
     "@opentelemetry/semantic-conventions": "^1.41.1",
+    "@simplewebauthn/server": "^13.3.3",
     "@types/bcrypt": "^6.0.0",
     "@types/dotenv": "^8.2.3",
     "@types/mongoose": "^5.11.97",

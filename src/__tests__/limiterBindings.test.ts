@@ -10,6 +10,14 @@ import {
     passwordResetConfirmLimiter,
     botTokenLimiter,
     sensitiveOperationLimiter,
+    passkeyRegisterLimiter,
+    passkeyManageLimiter,
+    passkeyLoginOptionsLimiter,
+    passkeyLoginVerifyLimiter,
+    passwordlessEnableLimiter,
+    passwordlessRecoveryRegenerateLimiter,
+    passwordlessRecoverLimiter,
+    adminPasswordlessResetLimiter,
 } from '@/middleware/rateLimiting';
 
 interface Route {
@@ -57,6 +65,42 @@ describe('rate limiter route bindings', () => {
             'api/v1/auth/password/reset/confirm',
         ],
         ['bot token', botTokenLimiter, 'api/v1/bots'],
+        [
+            'passkey register',
+            passkeyRegisterLimiter,
+            'api/v1/auth/passkey/register/options',
+        ],
+        ['passkey manage', passkeyManageLimiter, 'api/v1/auth/passkey'],
+        [
+            'passkey login options',
+            passkeyLoginOptionsLimiter,
+            'api/v1/auth/passkey/login/options',
+        ],
+        [
+            'passkey login verify',
+            passkeyLoginVerifyLimiter,
+            'api/v1/auth/passkey/login/verify',
+        ],
+        [
+            'passwordless enable',
+            passwordlessEnableLimiter,
+            'api/v1/auth/passwordless/enable',
+        ],
+        [
+            'passwordless recovery-key regenerate',
+            passwordlessRecoveryRegenerateLimiter,
+            'api/v1/auth/passwordless/recovery-keys/regenerate/options',
+        ],
+        [
+            'passwordless recover',
+            passwordlessRecoverLimiter,
+            'api/v1/auth/passwordless/recover',
+        ],
+        [
+            'admin passwordless reset',
+            adminPasswordlessResetLimiter,
+            'api/v1/admin/passwordless/users/:userId/reset',
+        ],
     ])('the %s limiter is bound to %s', (_name, limiter, path) => {
         expect(paths(limiter)).toContain(path);
     });
@@ -73,8 +117,11 @@ describe('rate limiter route bindings', () => {
         }
     });
 
-    it('binds the login backoff alongside the login limiter', () => {
-        expect(paths(loginBackoff)).toEqual(['api/v1/auth/login']);
+    it('binds the login backoff to the login and recovery-key login routes', () => {
+        expect(paths(loginBackoff)).toEqual([
+            'api/v1/auth/login',
+            'api/v1/auth/passwordless/recover',
+        ]);
     });
 
     it('leaves no limiter declared but unbound', () => {
@@ -86,6 +133,14 @@ describe('rate limiter route bindings', () => {
             passwordResetConfirmLimiter,
             botTokenLimiter,
             embedProxyLimiter,
+            passkeyRegisterLimiter,
+            passkeyManageLimiter,
+            passkeyLoginOptionsLimiter,
+            passkeyLoginVerifyLimiter,
+            passwordlessEnableLimiter,
+            passwordlessRecoveryRegenerateLimiter,
+            passwordlessRecoverLimiter,
+            adminPasswordlessResetLimiter,
         ]) {
             expect(bindings.get(limiter) ?? []).not.toHaveLength(0);
         }

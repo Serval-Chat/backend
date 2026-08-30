@@ -35,7 +35,9 @@ export interface IUser extends Document {
     _id: Types.ObjectId;
     login: string;
     username: string;
-    password: string;
+    password?: string;
+    passwordless?: boolean;
+    recoveryKeys?: string[];
     isBot?: boolean;
     botVerified: boolean;
     profilePicture?: string;
@@ -163,7 +165,9 @@ const schema = new Schema<IUser>(
         login: { type: String, required: true, unique: true },
         username: { type: String, required: true, unique: true },
         displayName: { type: String, maxlength: 32, trim: true },
-        password: { type: String, required: true, select: false },
+        password: { type: String, required: false, select: false },
+        passwordless: { type: Boolean, default: false },
+        recoveryKeys: { type: [String], default: [], select: false },
         isBot: { type: Boolean, default: false },
         botVerified: { type: Boolean, default: false },
         profilePicture: { type: String, required: false },
@@ -373,12 +377,13 @@ schema.pre('validate', function () {
 });
 
 schema.pre('save', async function () {
-    if (!this.isModified('password')) return;
+    if (!this.isModified('password') || this.password === undefined) return;
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
 });
 
 schema.methods.comparePassword = function (candidate: string) {
+    if (this.password === undefined) return Promise.resolve(false);
     return bcrypt.compare(candidate, this.password);
 };
 

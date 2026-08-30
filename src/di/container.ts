@@ -73,10 +73,14 @@ import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/Mongo
 import { MongoosePasswordResetRepository } from '@/infrastructure/repositories/MongoosePasswordResetRepository';
 import type { ISessionRepository } from '@/di/interfaces/ISessionRepository';
 import { MongooseSessionRepository } from '@/infrastructure/repositories/MongooseSessionRepository';
+import type { IPasskeyCredentialRepository } from '@/di/interfaces/IPasskeyCredentialRepository';
+import { MongoosePasskeyCredentialRepository } from '@/infrastructure/repositories/MongoosePasskeyCredentialRepository';
 import { MailService } from '@/services/MailService';
 import { MetricsService } from '@/services/MetricsService';
 
 import { AuthService } from '@/services/AuthService';
+import { PasskeyService } from '@/services/PasskeyService';
+import { PasswordlessService } from '@/services/PasswordlessService';
 import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
 import { ExportService } from '@/services/ExportService';
@@ -255,6 +259,11 @@ container
     .to(MongooseSessionRepository)
     .inTransientScope();
 
+container
+    .bind<IPasskeyCredentialRepository>(TYPES.PasskeyCredentialRepository)
+    .to(MongoosePasskeyCredentialRepository)
+    .inTransientScope();
+
 // ===============
 // Service Layer
 // ===============
@@ -262,6 +271,16 @@ container
 container
     .bind<AuthService>(TYPES.AuthService)
     .to(AuthService)
+    .inTransientScope();
+
+container
+    .bind<PasskeyService>(TYPES.PasskeyService)
+    .to(PasskeyService)
+    .inTransientScope();
+
+container
+    .bind<PasswordlessService>(TYPES.PasswordlessService)
+    .to(PasswordlessService)
     .inTransientScope();
 
 container
