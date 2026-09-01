@@ -96,7 +96,7 @@ describe('PasswordlessService', () => {
             );
         });
 
-        it('rejects on an invalid current password', async () => {
+        it('rejects on an invalid current password with a 400, never a 401 (a 401 would globally log the user out via the frontend axios interceptor)', async () => {
             const { service } = makeService({
                 userRepo: {
                     findById: jest
@@ -106,9 +106,12 @@ describe('PasswordlessService', () => {
                 },
             });
 
-            await expect(service.enable('user-1', 'wrong-pw')).rejects.toThrow(
-                ErrorMessages.AUTH.INVALID_CURRENT_PASSWORD,
-            );
+            await expect(
+                service.enable('user-1', 'wrong-pw'),
+            ).rejects.toMatchObject({
+                status: 400,
+                message: ErrorMessages.AUTH.INVALID_CURRENT_PASSWORD,
+            });
         });
 
         it('rejects when the user has no passkeys registered', async () => {
@@ -176,7 +179,7 @@ describe('PasswordlessService', () => {
     });
 
     describe('regenerateRecoveryKeysVerify', () => {
-        it('rejects when the passkey step-up verification fails', async () => {
+        it('rejects a failed passkey step-up with a 400, never a 401 (a 401 would globally log the user out via the frontend axios interceptor)', async () => {
             const { service } = makeService({
                 passkeyService: {
                     verifyAuthentication: jest
@@ -191,7 +194,10 @@ describe('PasswordlessService', () => {
                     'flow-1',
                     {} as never,
                 ),
-            ).rejects.toThrow(ErrorMessages.AUTH.INVALID_CREDENTIALS);
+            ).rejects.toMatchObject({
+                status: 400,
+                message: ErrorMessages.AUTH.INVALID_CREDENTIALS,
+            });
         });
 
         it('passes userId through as expectedUserId and persists new hashed keys on success', async () => {

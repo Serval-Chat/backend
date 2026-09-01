@@ -95,6 +95,103 @@ describe('EmbedService', () => {
             ).toHaveBeenCalled();
         });
 
+        it('should pass through image width/height when the scraper provides them', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
+                serverId: new Types.ObjectId(),
+                channelId: new Types.ObjectId(),
+                text: 'Check this image: https://example.com/photo',
+                embeds: [],
+            } as any;
+
+            mockScraperService.scrape.mockResolvedValue({
+                ...mockFetchResult,
+                image: 'https://example.com/photo.png',
+                imageWidth: 1200,
+                imageHeight: 630,
+            });
+
+            await service.processServerMessage(message);
+
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
+                message.snowflakeId,
+                expect.objectContaining({
+                    embeds: [
+                        expect.objectContaining({
+                            image: expect.objectContaining({
+                                width: 1200,
+                                height: 630,
+                            }),
+                        }),
+                    ],
+                }),
+            );
+        });
+
+        it('should omit image width/height when the scraper does not provide them', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
+                serverId: new Types.ObjectId(),
+                channelId: new Types.ObjectId(),
+                text: 'Check this image: https://example.com/photo',
+                embeds: [],
+            } as any;
+
+            mockScraperService.scrape.mockResolvedValue({
+                ...mockFetchResult,
+                image: 'https://example.com/photo.png',
+            });
+
+            await service.processServerMessage(message);
+
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
+                message.snowflakeId,
+                expect.objectContaining({
+                    embeds: [
+                        expect.objectContaining({
+                            image: { url: expect.any(String) },
+                        }),
+                    ],
+                }),
+            );
+        });
+
+        it('should pass through video width/height when the scraper provides them', async () => {
+            const message = {
+                _id: new Types.ObjectId(),
+                snowflakeId: new Types.ObjectId().toString(),
+                serverId: new Types.ObjectId(),
+                channelId: new Types.ObjectId(),
+                text: 'Check this clip: https://example.com/clip',
+                embeds: [],
+            } as any;
+
+            mockScraperService.scrape.mockResolvedValue({
+                ...mockFetchResult,
+                video: 'https://example.com/clip.mp4',
+                videoWidth: 1920,
+                videoHeight: 1080,
+            });
+
+            await service.processServerMessage(message);
+
+            expect(mockMessageRepo.updateMessage).toHaveBeenCalledWith(
+                message.snowflakeId,
+                expect.objectContaining({
+                    embeds: [
+                        expect.objectContaining({
+                            video: expect.objectContaining({
+                                width: 1920,
+                                height: 1080,
+                            }),
+                        }),
+                    ],
+                }),
+            );
+        });
+
         it('should allow multiple embeds for the same URL if it appears multiple times', async () => {
             const message = {
                 _id: new Types.ObjectId(),

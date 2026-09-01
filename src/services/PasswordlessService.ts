@@ -74,7 +74,7 @@ export class PasswordlessService {
         );
         if (passwordValid !== true) {
             throw new ApiError(
-                401,
+                400,
                 ErrorMessages.AUTH.INVALID_CURRENT_PASSWORD,
             );
         }
@@ -114,7 +114,7 @@ export class PasswordlessService {
             userId,
         );
         if (result.success !== true) {
-            throw new ApiError(401, ErrorMessages.AUTH.INVALID_CREDENTIALS);
+            throw new ApiError(400, ErrorMessages.AUTH.INVALID_CREDENTIALS);
         }
 
         const recoveryKeys = generateBackupCodes(RECOVERY_KEY_COUNT);

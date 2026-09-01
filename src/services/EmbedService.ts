@@ -171,12 +171,26 @@ export class EmbedService {
                 if (result.image !== undefined) {
                     embed.image = {
                         url: `/api/v1/embed/proxy-image?file=${encodeURIComponent(result.image)}`,
+                        ...(result.imageWidth !== undefined
+                            ? { width: result.imageWidth }
+                            : {}),
+                        ...(result.imageHeight !== undefined
+                            ? { height: result.imageHeight }
+                            : {}),
                     };
                 }
                 if (isYouTube && result.embedVideoUrl !== undefined) {
                     embed.video = { url: result.embedVideoUrl };
                 } else if (result.video !== undefined) {
-                    embed.video = { url: result.video };
+                    embed.video = {
+                        url: result.video,
+                        ...(result.videoWidth !== undefined
+                            ? { width: result.videoWidth }
+                            : {}),
+                        ...(result.videoHeight !== undefined
+                            ? { height: result.videoHeight }
+                            : {}),
+                    };
                 }
                 if (result.authorName !== undefined) {
                     embed.author = {
