@@ -24,6 +24,7 @@ import type {
     IReactionRepository,
     ReactionData,
 } from '@/di/interfaces/IReactionRepository';
+import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
@@ -43,6 +44,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { assertDefined } from '@/utils/typeGuards';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
+import { assertNoUnauthorizedExternalEmoji } from '@/utils/emojiOwnership';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import {
     AddUnicodeReactionRequestDTO,
@@ -77,6 +79,8 @@ export class ReactionController {
     public constructor(
         @Inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
+        @Inject(TYPES.EmojiRepository)
+        private emojiRepo: IEmojiRepository,
         @Inject(TYPES.MessageRepository)
         private messageRepo: IMessageRepository,
         @Inject(TYPES.ServerMemberRepository)
@@ -388,6 +392,21 @@ export class ReactionController {
             'addReactions',
             new ApiError(403, ErrorMessages.REACTION.MISSING_PERMISSION_ADD),
         );
+
+        if (emojiType === 'custom' && emojiId !== undefined) {
+            await assertNoUnauthorizedExternalEmoji({
+                permissionService: this.permissionService,
+                emojiRepo: this.emojiRepo,
+                serverId,
+                userId,
+                channelId,
+                emojiIds: [emojiId],
+                error: new ApiError(
+                    403,
+                    ErrorMessages.CHANNEL.NO_PERMISSION_EXTERNAL_EMOJI,
+                ),
+            });
+        }
 
         const message = await this.messageRepo.findById(messageId);
         if (message === null || message.channelId.toString() !== channelId) {

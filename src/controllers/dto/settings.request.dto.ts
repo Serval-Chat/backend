@@ -29,6 +29,7 @@ export class KeybindsMapDTO {
 
 export const VALID_KEYBIND_ACTION_IDS = [
     'composer.focus',
+    'chat.jumpToBottom',
     'debug.typing.more',
     'debug.typing.less',
     'debug.theme.previous',

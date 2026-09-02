@@ -77,6 +77,8 @@ function buildController() {
         channelRepo as any,
         serverChannelReadRepo as any,
         {} as any, // roleRepo
+        { findById: jest.fn().mockResolvedValue(null) } as any, // emojiRepo
+        { findById: jest.fn().mockResolvedValue(null) } as any, // stickerRepo
         permissionService as any,
         {} as any, // pingService
         muteRepo as any,

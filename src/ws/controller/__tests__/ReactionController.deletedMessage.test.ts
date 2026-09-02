@@ -46,6 +46,7 @@ function buildController() {
     const controller = new ReactionController(
         messageRepo as any,
         reactionRepo as any,
+        { findById: jest.fn().mockResolvedValue(null) } as any,
         permissionService as any,
         userRepo as any,
         blockRepo as any,

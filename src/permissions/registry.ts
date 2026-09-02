@@ -40,6 +40,7 @@ export const PERMISSION_REGISTRY = {
     seeDeletedMessages: { scope: 'channel', default: false },
     moderateMembers: { scope: 'server', default: false },
     manageStickers: { scope: 'server', default: false },
+    useExternalEmojisAndStickers: { scope: 'channel', default: true },
 } as const satisfies Record<string, PermissionDefinition>;
 
 export type PermissionKey = keyof typeof PERMISSION_REGISTRY;

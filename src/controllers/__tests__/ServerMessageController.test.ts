@@ -25,6 +25,12 @@ describe('ServerMessageController Manual Instance', () => {
     const mockReactionRepo = {
         getReactionsForMessages: jest.fn().mockResolvedValue({}),
     } as any;
+    const mockEmojiRepo = {
+        findById: jest.fn().mockResolvedValue(null),
+    } as any;
+    const mockStickerRepo = {
+        findById: jest.fn().mockResolvedValue(null),
+    } as any;
     const mockPermissionService = {
         hasChannelPermission: jest.fn().mockResolvedValue(true),
         requireChannelPermission: jest.fn(async function (
@@ -108,6 +114,8 @@ describe('ServerMessageController Manual Instance', () => {
             mockMemberRepo as any,
             mockChannelRepo,
             mockReactionRepo,
+            mockEmojiRepo,
+            mockStickerRepo,
             mockPermissionService,
             mockLogger,
             mockWsServer,
@@ -211,6 +219,116 @@ describe('ServerMessageController Manual Instance', () => {
                 }),
                 false,
             );
+        });
+    });
+
+    describe('sendMessage external emoji/sticker permission', () => {
+        const OWN_EMOJI_ID = '1111111111111111111';
+        const FOREIGN_EMOJI_ID = '2222222222222222222';
+        const FOREIGN_STICKER_ID = '3333333333333333333';
+        const FOREIGN_SERVER_ID = new Types.ObjectId().toHexString();
+
+        beforeEach(() => {
+            (mockServerMessageRepo.create as jest.Mock).mockImplementation(
+                async (data: Record<string, unknown>) => ({
+                    ...data,
+                    _id: new Types.ObjectId(VALID_MESSAGE_ID),
+                    createdAt: new Date(),
+                }),
+            );
+            (mockEmojiRepo.findById as jest.Mock).mockResolvedValue(null);
+            (mockStickerRepo.findById as jest.Mock).mockResolvedValue(null);
+        });
+
+        it('allows sending an emoji that belongs to the sending server regardless of permission', async () => {
+            (mockEmojiRepo.findById as jest.Mock).mockResolvedValue({
+                serverId: VALID_SERVER_ID,
+            });
+            (
+                mockPermissionService.hasChannelPermission as jest.Mock
+            ).mockImplementation(
+                async (_s, _u, _c, perm: string) =>
+                    perm !== 'useExternalEmojisAndStickers',
+            );
+
+            await expect(
+                controller.sendMessage(
+                    VALID_SERVER_ID,
+                    VALID_CHANNEL_ID,
+                    VALID_USER_ID,
+                    false,
+                    'testuser',
+                    { text: `hi <emoji:${OWN_EMOJI_ID}>` },
+                ),
+            ).resolves.toBeDefined();
+        });
+
+        it('rejects an emoji from a foreign server when the permission is denied', async () => {
+            (mockEmojiRepo.findById as jest.Mock).mockResolvedValue({
+                serverId: FOREIGN_SERVER_ID,
+            });
+            (
+                mockPermissionService.hasChannelPermission as jest.Mock
+            ).mockImplementation(
+                async (_s, _u, _c, perm: string) =>
+                    perm !== 'useExternalEmojisAndStickers',
+            );
+
+            await expect(
+                controller.sendMessage(
+                    VALID_SERVER_ID,
+                    VALID_CHANNEL_ID,
+                    VALID_USER_ID,
+                    false,
+                    'testuser',
+                    { text: `hi <emoji:${FOREIGN_EMOJI_ID}>` },
+                ),
+            ).rejects.toThrow();
+            expect(mockServerMessageRepo.create).not.toHaveBeenCalled();
+        });
+
+        it('allows an emoji from a foreign server when the permission is granted', async () => {
+            (mockEmojiRepo.findById as jest.Mock).mockResolvedValue({
+                serverId: FOREIGN_SERVER_ID,
+            });
+            (
+                mockPermissionService.hasChannelPermission as jest.Mock
+            ).mockResolvedValue(true);
+
+            await expect(
+                controller.sendMessage(
+                    VALID_SERVER_ID,
+                    VALID_CHANNEL_ID,
+                    VALID_USER_ID,
+                    false,
+                    'testuser',
+                    { text: `hi <emoji:${FOREIGN_EMOJI_ID}>` },
+                ),
+            ).resolves.toBeDefined();
+        });
+
+        it('rejects a stickerId from a foreign server when the permission is denied', async () => {
+            (mockStickerRepo.findById as jest.Mock).mockResolvedValue({
+                serverId: FOREIGN_SERVER_ID,
+            });
+            (
+                mockPermissionService.hasChannelPermission as jest.Mock
+            ).mockImplementation(
+                async (_s, _u, _c, perm: string) =>
+                    perm !== 'useExternalEmojisAndStickers',
+            );
+
+            await expect(
+                controller.sendMessage(
+                    VALID_SERVER_ID,
+                    VALID_CHANNEL_ID,
+                    VALID_USER_ID,
+                    false,
+                    'testuser',
+                    { text: 'hi', stickerId: FOREIGN_STICKER_ID },
+                ),
+            ).rejects.toThrow();
+            expect(mockServerMessageRepo.create).not.toHaveBeenCalled();
         });
     });
 

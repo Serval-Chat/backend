@@ -18,6 +18,9 @@ describe('ReactionController', () => {
     const mockMessageRepo = {
         findById: jest.fn(),
     } as any;
+    const mockEmojiRepo = {
+        findById: jest.fn().mockResolvedValue(null),
+    } as any;
     const mockServerMemberRepo = {
         findByServerAndUser: jest.fn().mockResolvedValue({ userId: 'u1' }),
     } as any;
@@ -66,6 +69,7 @@ describe('ReactionController', () => {
     beforeEach(() => {
         controller = new ReactionController(
             mockReactionRepo,
+            mockEmojiRepo,
             mockMessageRepo,
             mockServerMemberRepo,
             mockChannelRepo,
@@ -159,6 +163,107 @@ describe('ReactionController', () => {
                 mockServerMemberRepo.findByServerAndUser,
             ).not.toHaveBeenCalled();
             expect(mockReactionRepo.addReaction).not.toHaveBeenCalled();
+        });
+
+        describe('external emoji permission', () => {
+            const SERVER_ID = new Types.ObjectId().toHexString();
+            const FOREIGN_SERVER_ID = new Types.ObjectId().toHexString();
+            const CHANNEL_ID = new Types.ObjectId().toHexString();
+            const MESSAGE_ID = new Types.ObjectId().toHexString();
+            const USER_ID = new Types.ObjectId().toHexString();
+            const EMOJI_ID = new Types.ObjectId().toHexString();
+
+            beforeEach(() => {
+                (mockMessageRepo.findById as jest.Mock).mockResolvedValue({
+                    _id: new Types.ObjectId(MESSAGE_ID),
+                    serverId: new Types.ObjectId(SERVER_ID),
+                    channelId: new Types.ObjectId(CHANNEL_ID),
+                    senderId: new Types.ObjectId().toHexString(),
+                });
+                (mockChannelRepo.findById as jest.Mock).mockResolvedValue({
+                    _id: new Types.ObjectId(CHANNEL_ID),
+                    serverId: new Types.ObjectId(SERVER_ID),
+                });
+            });
+
+            it('allows a custom emoji belonging to the same server', async () => {
+                (mockEmojiRepo.findById as jest.Mock).mockResolvedValue({
+                    serverId: SERVER_ID,
+                });
+                (
+                    mockPermissionService.hasChannelPermission as jest.Mock
+                ).mockImplementation(
+                    async (_s, _u, _c, perm: string) =>
+                        perm !== 'useExternalEmojisAndStickers',
+                );
+
+                await expect(
+                    controller.addServerReaction(
+                        SERVER_ID,
+                        CHANNEL_ID,
+                        MESSAGE_ID,
+                        USER_ID,
+                        'testuser',
+                        {
+                            emoji: 'wave',
+                            emojiType: EmojiTypeDTO.CUSTOM,
+                            emojiId: EMOJI_ID,
+                        },
+                    ),
+                ).resolves.toBeDefined();
+            });
+
+            it('rejects a foreign-server emoji when the permission is denied', async () => {
+                (mockEmojiRepo.findById as jest.Mock).mockResolvedValue({
+                    serverId: FOREIGN_SERVER_ID,
+                });
+                (
+                    mockPermissionService.hasChannelPermission as jest.Mock
+                ).mockImplementation(
+                    async (_s, _u, _c, perm: string) =>
+                        perm !== 'useExternalEmojisAndStickers',
+                );
+
+                await expect(
+                    controller.addServerReaction(
+                        SERVER_ID,
+                        CHANNEL_ID,
+                        MESSAGE_ID,
+                        USER_ID,
+                        'testuser',
+                        {
+                            emoji: 'wave',
+                            emojiType: EmojiTypeDTO.CUSTOM,
+                            emojiId: EMOJI_ID,
+                        },
+                    ),
+                ).rejects.toThrow();
+                expect(mockReactionRepo.addReaction).not.toHaveBeenCalled();
+            });
+
+            it('allows a foreign-server emoji when the permission is granted', async () => {
+                (mockEmojiRepo.findById as jest.Mock).mockResolvedValue({
+                    serverId: FOREIGN_SERVER_ID,
+                });
+                (
+                    mockPermissionService.hasChannelPermission as jest.Mock
+                ).mockResolvedValue(true);
+
+                await expect(
+                    controller.addServerReaction(
+                        SERVER_ID,
+                        CHANNEL_ID,
+                        MESSAGE_ID,
+                        USER_ID,
+                        'testuser',
+                        {
+                            emoji: 'wave',
+                            emojiType: EmojiTypeDTO.CUSTOM,
+                            emojiId: EMOJI_ID,
+                        },
+                    ),
+                ).resolves.toBeDefined();
+            });
         });
     });
 });

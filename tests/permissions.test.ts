@@ -193,3 +193,185 @@ describe('PermissionResolver - sendMessages visibility gates', () => {
         ).toBe(false);
     });
 });
+
+describe('PermissionResolver - useExternalEmojisAndStickers', () => {
+    const ownerId = new Types.ObjectId().toString();
+    const userId = new Types.ObjectId().toString();
+    const serverId = new Types.ObjectId().toString();
+    const everyoneRoleId = new Types.ObjectId().toString();
+    const restrictedRoleId = new Types.ObjectId().toString();
+    const categoryId = new Types.ObjectId().toString();
+    const channelId = new Types.ObjectId().toString();
+
+    const baseData: ServerData = {
+        serverId,
+        ownerId,
+        everyoneRoleId,
+        roles: [
+            {
+                id: everyoneRoleId,
+                serverId,
+                name: '@everyone',
+                position: 0,
+                permissions: {},
+            },
+        ],
+        channels: [
+            {
+                id: channelId,
+                serverId,
+                categoryId,
+                overrides: new Map(),
+            },
+        ],
+        categories: [
+            {
+                id: categoryId,
+                serverId,
+                overrides: new Map(),
+            },
+        ],
+        members: [
+            {
+                id: new Types.ObjectId().toString(),
+                serverId,
+                userId,
+                roleIds: [],
+            },
+        ],
+    };
+
+    test('defaults to allowed when nothing overrides it', () => {
+        const resolver = new PermissionResolver(baseData);
+        expect(
+            resolver.canUserDo(
+                userId,
+                channelId,
+                'useExternalEmojisAndStickers',
+            ),
+        ).toBe(true);
+    });
+
+    test('role-level deny turns it off', () => {
+        const resolver = new PermissionResolver({
+            ...baseData,
+            roles: [
+                {
+                    id: everyoneRoleId,
+                    serverId,
+                    name: '@everyone',
+                    position: 0,
+                    permissions: { useExternalEmojisAndStickers: false },
+                },
+            ],
+        });
+        expect(
+            resolver.canUserDo(
+                userId,
+                channelId,
+                'useExternalEmojisAndStickers',
+            ),
+        ).toBe(false);
+    });
+
+    test('category override denies even though role allows it', () => {
+        const resolver = new PermissionResolver({
+            ...baseData,
+            categories: [
+                {
+                    id: categoryId,
+                    serverId,
+                    overrides: new Map([
+                        [
+                            everyoneRoleId,
+                            { useExternalEmojisAndStickers: false },
+                        ],
+                    ]),
+                },
+            ],
+        });
+        expect(
+            resolver.canUserDo(
+                userId,
+                channelId,
+                'useExternalEmojisAndStickers',
+            ),
+        ).toBe(false);
+    });
+
+    test('channel override wins over category override', () => {
+        const resolver = new PermissionResolver({
+            ...baseData,
+            channels: [
+                {
+                    id: channelId,
+                    serverId,
+                    categoryId,
+                    overrides: new Map([
+                        [
+                            everyoneRoleId,
+                            { useExternalEmojisAndStickers: true },
+                        ],
+                    ]),
+                },
+            ],
+            categories: [
+                {
+                    id: categoryId,
+                    serverId,
+                    overrides: new Map([
+                        [
+                            everyoneRoleId,
+                            { useExternalEmojisAndStickers: false },
+                        ],
+                    ]),
+                },
+            ],
+        });
+        expect(
+            resolver.canUserDo(
+                userId,
+                channelId,
+                'useExternalEmojisAndStickers',
+            ),
+        ).toBe(true);
+    });
+
+    test('a role granting it overrides another role denying it (OR semantics)', () => {
+        const memberId = new Types.ObjectId().toString();
+        const resolver = new PermissionResolver({
+            ...baseData,
+            roles: [
+                {
+                    id: everyoneRoleId,
+                    serverId,
+                    name: '@everyone',
+                    position: 0,
+                    permissions: { useExternalEmojisAndStickers: false },
+                },
+                {
+                    id: restrictedRoleId,
+                    serverId,
+                    name: 'Trusted',
+                    position: 1,
+                    permissions: { useExternalEmojisAndStickers: true },
+                },
+            ],
+            members: [
+                {
+                    id: memberId,
+                    serverId,
+                    userId,
+                    roleIds: [restrictedRoleId],
+                },
+            ],
+        });
+        expect(
+            resolver.canUserDo(
+                userId,
+                channelId,
+                'useExternalEmojisAndStickers',
+            ),
+        ).toBe(true);
+    });
+});

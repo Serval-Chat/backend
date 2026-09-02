@@ -85,6 +85,8 @@ export const ErrorMessages = {
         NOT_IN_SERVER: 'Channel does not belong to this server',
         NO_PERMISSION_MANAGE: 'No permission to manage channels',
         NO_PERMISSION_SEND: 'No permission to send messages in this channel',
+        NO_PERMISSION_EXTERNAL_EMOJI:
+            'No permission to use emojis or stickers from other servers',
         CATEGORY_NOT_FOUND: 'Category not found',
         CANNOT_DM_SELF: 'Cannot create a DM channel with yourself',
         NOT_MEMBER: 'You are not a participant in this channel',

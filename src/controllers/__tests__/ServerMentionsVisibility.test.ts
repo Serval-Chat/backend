@@ -119,6 +119,8 @@ describe('Server WS mention visibility', () => {
             channelRepo as any,
             {} as any,
             {} as any,
+            { findById: jest.fn().mockResolvedValue(null) } as any,
+            { findById: jest.fn().mockResolvedValue(null) } as any,
             permissionService as any,
             pingService as any,
             {} as any,

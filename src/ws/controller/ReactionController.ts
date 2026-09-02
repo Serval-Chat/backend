@@ -20,6 +20,7 @@ import type {
 import { TYPES } from '@/di/types';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
+import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IMentionEvent } from '@/ws/protocol/events/mentions';
 import type { PermissionService } from '@/permissions/PermissionService';
@@ -34,6 +35,8 @@ import { assertWsNotWarned } from '@/utils/warning';
 import logger from '@/utils/logger';
 import { ApiError } from '@/utils/ApiError';
 import { assertDefined } from '@/utils/typeGuards';
+import { assertNoUnauthorizedExternalEmoji } from '@/utils/emojiOwnership';
+import { ErrorMessages } from '@/constants/errorMessages';
 
 /**
  * Controller for handling message reaction events.
@@ -48,6 +51,7 @@ export class ReactionController {
         private messageRepo: IMessageRepository,
         @inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
+        @inject(TYPES.EmojiRepository) private emojiRepo: IEmojiRepository,
         @inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @inject(TYPES.UserRepository) private userRepo: IUserRepository,
@@ -218,6 +222,21 @@ export class ReactionController {
 
             if (!canReact) {
                 throw new ApiError(403, 'No permission to add reactions');
+            }
+
+            if (emojiType === 'custom' && emojiId !== undefined) {
+                await assertNoUnauthorizedExternalEmoji({
+                    permissionService: this.permissionService,
+                    emojiRepo: this.emojiRepo,
+                    serverId,
+                    userId,
+                    channelId,
+                    emojiIds: [emojiId],
+                    error: new ApiError(
+                        403,
+                        ErrorMessages.CHANNEL.NO_PERMISSION_EXTERNAL_EMOJI,
+                    ),
+                });
             }
 
             const serverBlockFlags = await this.blockRepo.getActiveBlockFlags(

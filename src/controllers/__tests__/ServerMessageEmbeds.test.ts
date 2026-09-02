@@ -24,6 +24,8 @@ describe('ServerMessageController embeds', () => {
         updateLastMessageAt: jest.fn(),
     };
     const mockReactionRepo = {};
+    const mockEmojiRepo = { findById: jest.fn().mockResolvedValue(null) };
+    const mockStickerRepo = { findById: jest.fn().mockResolvedValue(null) };
     const mockPermissionService = {
         hasChannelPermission: jest.fn(),
         requireChannelPermission: jest.fn(async function (
@@ -66,6 +68,8 @@ describe('ServerMessageController embeds', () => {
             mockServerMemberRepo as never,
             mockChannelRepo as never,
             mockReactionRepo as never,
+            mockEmojiRepo as never,
+            mockStickerRepo as never,
             mockPermissionService as never,
             mockLogger as never,
             mockWsServer as never,

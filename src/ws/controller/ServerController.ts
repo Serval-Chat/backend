@@ -57,6 +57,8 @@ import type {
 } from '@/di/interfaces/IChannelRepository';
 import type { IServerChannelReadRepository } from '@/di/interfaces/IServerChannelReadRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
+import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
+import type { IStickerRepository } from '@/di/interfaces/IStickerRepository';
 import type { PermissionService } from '@/permissions/PermissionService';
 import type { PermissionKey } from '@/permissions/types';
 import type { PingService } from '@/services/PingService';
@@ -79,6 +81,8 @@ import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertWsNotWarned } from '@/utils/warning';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import { assertSlowModeAllows } from '@/utils/slowMode';
+import { extractCustomEmojiIds } from '@/utils/emojiParser';
+import { assertNoUnauthorizedExternalEmoji } from '@/utils/emojiOwnership';
 
 /**
  * Controller for handling server/channel message events.
@@ -100,6 +104,9 @@ export class ServerController {
         @inject(TYPES.ServerChannelReadRepository)
         private serverChannelReadRepo: IServerChannelReadRepository,
         @inject(TYPES.RoleRepository) private roleRepo: IRoleRepository,
+        @inject(TYPES.EmojiRepository) private emojiRepo: IEmojiRepository,
+        @inject(TYPES.StickerRepository)
+        private stickerRepo: IStickerRepository,
         @inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @inject(TYPES.PingService) private pingService: PingService,
@@ -760,6 +767,21 @@ export class ServerController {
             }
         }
 
+        await assertNoUnauthorizedExternalEmoji({
+            permissionService: this.permissionService,
+            emojiRepo: this.emojiRepo,
+            stickerRepo: this.stickerRepo,
+            serverId,
+            userId,
+            channelId,
+            emojiIds: extractCustomEmojiIds(text ?? ''),
+            stickerId,
+            error: new ApiError(
+                403,
+                ErrorMessages.CHANNEL.NO_PERMISSION_EXTERNAL_EMOJI,
+            ),
+        });
+
         const created = await this.transactionManager.runInTransaction(
             async (session) => {
                 const msg = await this.messageRepo.create(
@@ -1047,6 +1069,20 @@ export class ServerController {
                 'You cannot edit messages while timed out.',
             );
         }
+
+        await assertNoUnauthorizedExternalEmoji({
+            permissionService: this.permissionService,
+            emojiRepo: this.emojiRepo,
+            stickerRepo: this.stickerRepo,
+            serverId: message.serverId.toString(),
+            userId,
+            channelId: message.channelId.toString(),
+            emojiIds: extractCustomEmojiIds(text),
+            error: new ApiError(
+                403,
+                ErrorMessages.CHANNEL.NO_PERMISSION_EXTERNAL_EMOJI,
+            ),
+        });
 
         const previousText = message.text;
         const updated = await this.messageRepo.updateMessage(messageId, {

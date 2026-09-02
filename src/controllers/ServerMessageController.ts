@@ -41,6 +41,8 @@ import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepos
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IReactionRepository } from '@/di/interfaces/IReactionRepository';
+import type { IEmojiRepository } from '@/di/interfaces/IEmojiRepository';
+import type { IStickerRepository } from '@/di/interfaces/IStickerRepository';
 import type { IAuditLogRepository } from '@/di/interfaces/IAuditLogRepository';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
 import { PermissionService } from '@/permissions/PermissionService';
@@ -60,6 +62,8 @@ import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { assertSlowModeAllows } from '@/utils/slowMode';
+import { extractCustomEmojiIds } from '@/utils/emojiParser';
+import { assertNoUnauthorizedExternalEmoji } from '@/utils/emojiOwnership';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import {
     SendMessageRequestDTO,
@@ -82,6 +86,10 @@ export class ServerMessageController {
         private channelRepo: IChannelRepository,
         @Inject(TYPES.ReactionRepository)
         private reactionRepo: IReactionRepository,
+        @Inject(TYPES.EmojiRepository)
+        private emojiRepo: IEmojiRepository,
+        @Inject(TYPES.StickerRepository)
+        private stickerRepo: IStickerRepository,
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @Inject(TYPES.Logger)
@@ -368,6 +376,20 @@ export class ServerMessageController {
         ) {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
+
+        await assertNoUnauthorizedExternalEmoji({
+            permissionService: this.permissionService,
+            emojiRepo: this.emojiRepo,
+            stickerRepo: this.stickerRepo,
+            serverId,
+            userId,
+            channelId,
+            emojiIds: extractCustomEmojiIds(messageText),
+            stickerId: body.stickerId,
+            error: new ForbiddenException(
+                ErrorMessages.CHANNEL.NO_PERMISSION_EXTERNAL_EMOJI,
+            ),
+        });
 
         const message = await this.messageRepo.create({
             serverId: serverId,
@@ -770,6 +792,19 @@ export class ServerMessageController {
         ) {
             throw new BadRequestException(ErrorMessages.MESSAGE.TEXT_REQUIRED);
         }
+
+        await assertNoUnauthorizedExternalEmoji({
+            permissionService: this.permissionService,
+            emojiRepo: this.emojiRepo,
+            stickerRepo: this.stickerRepo,
+            serverId,
+            userId,
+            channelId,
+            emojiIds: extractCustomEmojiIds(messageText),
+            error: new ForbiddenException(
+                ErrorMessages.CHANNEL.NO_PERMISSION_EXTERNAL_EMOJI,
+            ),
+        });
 
         const updatedMessage = await this.messageRepo.updateMessage(messageId, {
             text: messageText,

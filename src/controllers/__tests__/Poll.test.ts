@@ -104,6 +104,8 @@ function buildController(): void {
         mockMemberRepo as any,
         mockChannelRepo as any,
         mockReactionRepo as any,
+        { findById: jest.fn().mockResolvedValue(null) } as any,
+        { findById: jest.fn().mockResolvedValue(null) } as any,
         mockPermissionService as any,
         mockLogger,
         mockWsServer as any,
