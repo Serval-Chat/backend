@@ -753,6 +753,13 @@ export class ServerController {
             }
         }
 
+        if (replyToId !== undefined && replyToId !== '') {
+            const repliedToMessage = await this.messageRepo.findById(replyToId);
+            if (repliedToMessage === null) {
+                throw new ApiError(404, 'Message not found');
+            }
+        }
+
         const created = await this.transactionManager.runInTransaction(
             async (session) => {
                 const msg = await this.messageRepo.create(

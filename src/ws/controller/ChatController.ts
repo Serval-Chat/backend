@@ -136,6 +136,9 @@ export class ChatController {
         let repliedToMessage = null;
         if (replyToId !== undefined && replyToId !== '') {
             repliedToMessage = await this.messageRepo.findById(replyToId);
+            if (repliedToMessage === null) {
+                throw new ApiError(404, 'Message not found');
+            }
         }
 
         const channel = await this.channelService.getOrCreateDmChannel(
