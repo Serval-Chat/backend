@@ -35,6 +35,12 @@ export class NotificationSoundDTO {
 
     @ApiProperty()
     public enabled!: boolean;
+
+    @ApiPropertyOptional()
+    public volume?: number;
+
+    @ApiPropertyOptional()
+    public normalizationGain?: number;
 }
 
 export class KeybindDTO {
@@ -116,6 +122,9 @@ export class UserSettingsResponseDTO {
 
     @ApiPropertyOptional()
     public useDefaultSounds?: boolean;
+
+    @ApiPropertyOptional()
+    public notificationVolume?: number;
 
     @ApiPropertyOptional()
     public use24HourTime?: boolean;

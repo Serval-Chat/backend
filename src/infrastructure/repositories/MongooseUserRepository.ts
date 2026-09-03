@@ -430,7 +430,10 @@ export class MongooseUserRepository implements IUserRepository {
                 name: string;
                 url: string;
                 enabled: boolean;
+                volume?: number;
+                normalizationGain?: number;
             }[];
+            notificationVolume?: number;
             useDefaultSounds?: boolean;
             use24HourTime?: boolean;
             keybinds?: Record<

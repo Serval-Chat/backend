@@ -2,8 +2,10 @@ import {
     Controller,
     Get,
     Post,
+    Patch,
     Delete,
     Param,
+    Body,
     Res,
     UseGuards,
     UseInterceptors,
@@ -17,13 +19,15 @@ import { TYPES } from '@/di/types';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { AuthGuard } from '@/modules/auth/auth.module';
+import { NoBot } from '@/modules/auth/bot.decorator';
 import { Public } from '@/modules/auth/public.decorator';
 import { Response } from 'express';
 import path from 'path';
 import { promises as fsPromises, constants as fsConstants } from 'fs';
 import { randomUUID } from 'crypto';
 import { SERVER_URL } from '@/config/env';
-import { processAudio } from '@/utils/audio';
+import { processAudio, analyzeLoudness } from '@/utils/audio';
+import { withSoundDefaults } from '@/utils/notificationSounds';
 import { WsServer } from '@/ws/server';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import {
@@ -38,9 +42,12 @@ import {
 import {
     NotificationSoundResponseDTO,
     NotificationSoundDeletedResponseDTO,
+    PatchNotificationSoundRequestDTO,
 } from './dto/notification-sound.response.dto';
 
 @ApiTags('Notification Sounds')
+@UseGuards(AuthGuard)
+@NoBot()
 @Controller('api/v1/notification-sounds')
 @ApiBearerAuth()
 export class NotificationSoundController {
@@ -63,7 +70,6 @@ export class NotificationSoundController {
     }
 
     @Post('upload')
-    @UseGuards(AuthGuard)
     @UseInterceptors(
         FileInterceptor('file', {
             limits: { fileSize: 512 * 1024 },
@@ -106,12 +112,15 @@ export class NotificationSoundController {
         try {
             await fsPromises.writeFile(tempInputPath, file.buffer);
 
-            await processAudio(tempInputPath, outputPath, {
-                maxDuration: 8,
-                sampleRate: 48000,
-                channels: 2,
-                bitrate: '320k',
-            });
+            const [, normalizationGain] = await Promise.all([
+                processAudio(tempInputPath, outputPath, {
+                    maxDuration: 8,
+                    sampleRate: 48000,
+                    channels: 2,
+                    bitrate: '320k',
+                }),
+                analyzeLoudness(tempInputPath),
+            ]);
 
             const soundUrl = `${SERVER_URL}/api/v1/notification-sounds/play/${soundId}.ogg`;
             const newSound = {
@@ -119,9 +128,14 @@ export class NotificationSoundController {
                 name: file.originalname.replace(/\.[^/.]+$/, ''),
                 url: soundUrl,
                 enabled: true,
+                volume: 1,
+                normalizationGain,
             };
 
-            const updatedSounds = [...currentSounds, newSound];
+            const updatedSounds = [
+                ...currentSounds.map((s) => withSoundDefaults(s)),
+                newSound,
+            ];
             await this.userRepo.updateSettings(user.snowflakeId, {
                 notificationSounds: updatedSounds,
             });
@@ -141,16 +155,52 @@ export class NotificationSoundController {
     }
 
     @Get()
-    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get all custom notification sounds' })
     @ApiOkResponse({ type: [NotificationSoundResponseDTO] })
     public async getSounds(@CurrentUser('id') userId: string) {
         const user = await this.userRepo.findById(userId);
-        return user?.settings?.notificationSounds ?? [];
+        const sounds = user?.settings?.notificationSounds ?? [];
+        return sounds.map((s) => withSoundDefaults(s));
+    }
+
+    @Patch(':id')
+    @ApiOperation({ summary: 'Update a custom notification sound' })
+    @ApiOkResponse({ type: NotificationSoundResponseDTO })
+    public async updateSound(
+        @CurrentUser('id') userId: string,
+        @Param('id') id: string,
+        @Body() dto: PatchNotificationSoundRequestDTO,
+    ) {
+        const user = await this.userRepo.findById(userId);
+        if (user === null) throw new NotFoundException('User not found');
+
+        const currentSounds = user.settings?.notificationSounds ?? [];
+        const sound = currentSounds.find((s) => s.id === id);
+        if (sound === undefined) throw new NotFoundException('Sound not found');
+
+        const updatedSound = withSoundDefaults({
+            ...sound,
+            name: dto.name ?? sound.name,
+            enabled: dto.enabled ?? sound.enabled,
+            volume: dto.volume ?? sound.volume,
+        });
+
+        const updatedSounds = currentSounds.map((s) =>
+            s.id === id ? updatedSound : withSoundDefaults(s),
+        );
+        await this.userRepo.updateSettings(user.snowflakeId, {
+            notificationSounds: updatedSounds,
+        });
+
+        this.wsServer.broadcastToUser(userId, {
+            type: 'notification_sounds_updated',
+            payload: { sounds: updatedSounds },
+        });
+
+        return updatedSound;
     }
 
     @Delete(':id')
-    @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Delete a custom notification sound' })
     @ApiOkResponse({ type: NotificationSoundDeletedResponseDTO })
     public async deleteSound(
@@ -165,7 +215,9 @@ export class NotificationSoundController {
         if (soundToDelete === undefined)
             throw new NotFoundException('Sound not found');
 
-        const updatedSounds = currentSounds.filter((s) => s.id !== id);
+        const updatedSounds = currentSounds
+            .filter((s) => s.id !== id)
+            .map((s) => withSoundDefaults(s));
         await this.userRepo.updateSettings(user.snowflakeId, {
             notificationSounds: updatedSounds,
         });

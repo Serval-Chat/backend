@@ -71,6 +71,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { ApiError } from '@/utils/ApiError';
 import { Permissions } from '@/modules/auth/permissions.decorator';
 import { mapUser } from '@/utils/user';
+import { withSoundDefaults } from '@/utils/notificationSounds';
 import {
     resolveSerializedCustomStatus,
     SerializedCustomStatus,
@@ -323,6 +324,16 @@ export class ProfileController {
 
         if (isOwnProfile) {
             mapped.serverSettings = user.serverSettings;
+
+            if (mapped.settings && user.settings) {
+                const settings = mapped.settings as Record<string, unknown>;
+                settings.notificationVolume =
+                    user.settings.notificationVolume ?? 1;
+                settings.notificationSounds =
+                    user.settings.notificationSounds?.map((s) =>
+                        withSoundDefaults(s),
+                    );
+            }
         }
 
         mapped.connections = isOwnProfile

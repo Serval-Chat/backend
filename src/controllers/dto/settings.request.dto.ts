@@ -7,6 +7,9 @@ import {
     IsOptional,
     IsBoolean,
     IsEnum,
+    IsNumber,
+    Min,
+    Max,
     Matches,
     IsString,
     MaxLength,
@@ -218,6 +221,13 @@ export class UpdateSettingsRequestDTO {
     @IsOptional()
     @IsBoolean()
     public useDefaultSounds?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    @Max(1)
+    public notificationVolume?: number;
 
     @ApiPropertyOptional()
     @IsOptional()

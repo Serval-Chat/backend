@@ -103,7 +103,10 @@ export interface IUser extends Document {
             name: string;
             url: string;
             enabled: boolean;
+            volume?: number;
+            normalizationGain?: number;
         }[];
+        notificationVolume?: number;
         useDefaultSounds?: boolean;
         use24HourTime?: boolean;
         keybinds?: Record<
@@ -265,11 +268,29 @@ const schema = new Schema<IUser>(
                             name: { type: String, required: true },
                             url: { type: String, required: true },
                             enabled: { type: Boolean, default: true },
+                            volume: {
+                                type: Number,
+                                default: 1,
+                                min: 0,
+                                max: 1,
+                            },
+                            normalizationGain: {
+                                type: Number,
+                                default: 1,
+                                min: 0.25,
+                                max: 4,
+                            },
                         },
                         { _id: false },
                     ),
                 ],
                 default: [],
+            },
+            notificationVolume: {
+                type: Number,
+                default: 1,
+                min: 0,
+                max: 1,
             },
             useDefaultSounds: { type: Boolean, default: true },
             use24HourTime: { type: Boolean, default: false },

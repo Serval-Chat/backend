@@ -84,7 +84,10 @@ export interface IUser {
             name: string;
             url: string;
             enabled: boolean;
+            volume?: number;
+            normalizationGain?: number;
         }[];
+        notificationVolume?: number;
         useDefaultSounds?: boolean;
         use24HourTime?: boolean;
         keybinds?: Record<
@@ -277,7 +280,10 @@ export interface IUserRepository {
                 name: string;
                 url: string;
                 enabled: boolean;
+                volume?: number;
+                normalizationGain?: number;
             }[];
+            notificationVolume?: number;
             useDefaultSounds?: boolean;
             use24HourTime?: boolean;
             keybinds?: Record<

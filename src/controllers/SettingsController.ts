@@ -37,6 +37,7 @@ import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import { UpdateSettingsRequestDTO } from './dto/settings.request.dto';
 import { UpdateServerSettingsRequestDTO } from './dto/server-settings.request.dto';
+import { withSoundDefaults } from '@/utils/notificationSounds';
 import type { WsServer } from '@/ws/server';
 
 interface UserSettings {
@@ -59,7 +60,10 @@ interface UserSettings {
         name: string;
         url: string;
         enabled: boolean;
+        volume?: number;
+        normalizationGain?: number;
     }[];
+    notificationVolume?: number;
     useDefaultSounds?: boolean;
     use24HourTime?: boolean;
     keybinds?: Record<
@@ -137,6 +141,11 @@ export class SettingsController {
             settings.serverSettings = user.serverSettings;
         }
 
+        settings.notificationVolume = settings.notificationVolume ?? 1;
+        settings.notificationSounds = settings.notificationSounds?.map((s) =>
+            withSoundDefaults(s),
+        );
+
         return settings;
     }
 
@@ -160,8 +169,24 @@ export class SettingsController {
             throw new NotFoundException(ErrorMessages.AUTH.USER_NOT_FOUND);
         }
 
+        const settingsUpdate = { ...body };
+        if (settingsUpdate.notificationSounds !== undefined) {
+            const existingById = new Map(
+                (user.settings?.notificationSounds ?? []).map((s) => [s.id, s]),
+            );
+            settingsUpdate.notificationSounds =
+                settingsUpdate.notificationSounds.map((s) => {
+                    const existing = existingById.get(s.id);
+                    return withSoundDefaults({
+                        ...s,
+                        volume: existing?.volume,
+                        normalizationGain: existing?.normalizationGain,
+                    });
+                });
+        }
+
         // Perform a partial settings update
-        await this.userRepo.updateSettings(userId, body);
+        await this.userRepo.updateSettings(userId, settingsUpdate);
 
         const updatedUser = await this.userRepo.findById(userId);
         const updatedSettings = updatedUser?.settings || {};
