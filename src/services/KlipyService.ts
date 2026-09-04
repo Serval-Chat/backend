@@ -14,6 +14,9 @@ import type {
     GifMetadataResponseDTO,
     ToggleFavoriteResponseDTO,
 } from '@/controllers/dto/klipy.response.dto';
+import { ApiError } from '@/utils/ApiError';
+import { ErrorMessages } from '@/constants/errorMessages';
+import { MAX_FAVORITE_GIFS_PER_USER } from '@/constants/favoriteGifs';
 
 @injectable()
 export class KlipyService {
@@ -28,6 +31,15 @@ export class KlipyService {
 
     private getApiUrl(endpoint: string) {
         return `${this.baseUrl}/${KLIPY_API_KEY}${endpoint}`;
+    }
+
+    private isDuplicateKeyError(error: unknown): boolean {
+        return (
+            typeof error === 'object' &&
+            error !== null &&
+            'code' in error &&
+            (error as { code?: unknown }).code === 11000
+        );
     }
 
     public async searchGifs(query: string) {
@@ -125,6 +137,7 @@ export class KlipyService {
                 ),
             );
             const data = response.data.data as {
+                id?: string | number;
                 slug?: string;
                 file?: {
                     hd?: {
@@ -149,8 +162,13 @@ export class KlipyService {
                 throw new Error('Invalid GIF data received from Klipy');
             }
 
+            const canonicalKlipyId =
+                data.id !== undefined && String(data.id) !== ''
+                    ? String(data.id)
+                    : klipyId;
+
             const metadata = {
-                klipyId,
+                klipyId: canonicalKlipyId,
                 slug: data.slug,
                 url:
                     data.file.hd?.gif?.url ??
@@ -169,7 +187,7 @@ export class KlipyService {
 
             try {
                 return await this.klipyCacheModel.findOneAndUpdate(
-                    { klipyId },
+                    { klipyId: canonicalKlipyId },
                     { $set: metadata },
                     {
                         upsert: true,
@@ -178,14 +196,9 @@ export class KlipyService {
                     },
                 );
             } catch (innerError: unknown) {
-                if (
-                    typeof innerError === 'object' &&
-                    innerError !== null &&
-                    'code' in innerError &&
-                    innerError.code === 11000
-                ) {
+                if (this.isDuplicateKeyError(innerError)) {
                     const existing = await this.klipyCacheModel.findOne({
-                        klipyId,
+                        klipyId: canonicalKlipyId,
                     });
                     if (existing) return existing;
                 }
@@ -217,40 +230,45 @@ export class KlipyService {
 
         const existing = await this.favoriteGifModel.findOne({
             userId,
-            klipyId,
+            $or: [{ klipyId }, { url }],
         });
 
         if (existing) {
             await this.favoriteGifModel.deleteOne({ _id: existing._id });
             return { favorited: false };
-        } else {
-            try {
-                await this.favoriteGifModel.create({
+        }
+
+        const favoriteCount = await this.favoriteGifModel.countDocuments({
+            userId,
+        });
+        if (favoriteCount >= MAX_FAVORITE_GIFS_PER_USER) {
+            throw new ApiError(
+                409,
+                ErrorMessages.FAVORITE_GIF.MAX_FAVORITES_REACHED,
+            );
+        }
+
+        try {
+            await this.favoriteGifModel.create({
+                userId,
+                klipyId,
+                slug: gifData.slug,
+                url,
+                previewUrl,
+                width,
+                height,
+                contentType,
+            });
+            return { favorited: true };
+        } catch (error: unknown) {
+            if (this.isDuplicateKeyError(error)) {
+                await this.favoriteGifModel.deleteOne({
                     userId,
-                    klipyId,
-                    slug: gifData.slug,
-                    url,
-                    previewUrl,
-                    width,
-                    height,
-                    contentType,
+                    $or: [{ klipyId }, { url }],
                 });
-                return { favorited: true };
-            } catch (error: unknown) {
-                if (
-                    typeof error === 'object' &&
-                    error !== null &&
-                    'code' in error &&
-                    error.code === 11000
-                ) {
-                    await this.favoriteGifModel.deleteOne({
-                        userId,
-                        klipyId,
-                    });
-                    return { favorited: false };
-                }
-                throw error;
+                return { favorited: false };
             }
+            throw error;
         }
     }
 }

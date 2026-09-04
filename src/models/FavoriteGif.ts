@@ -39,6 +39,7 @@ schema.plugin(mongooseIdPlugin);
 
 schema.plugin(snowflakeIdPlugin);
 schema.index({ userId: 1, klipyId: 1 }, { unique: true });
+schema.index({ userId: 1, url: 1 }, { unique: true });
 schema.index({ userId: 1, tagIds: 1 });
 
 export const FavoriteGif = {

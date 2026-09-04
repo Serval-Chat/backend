@@ -294,4 +294,7 @@ export const ErrorMessages = {
         INVALID_TAG_IDS: 'One or more tag ids are invalid or not owned by you',
         EMPTY_TAG_LIST: 'At least one tag id is required',
     },
+    FAVORITE_GIF: {
+        MAX_FAVORITES_REACHED: 'Maximum number of favorite GIFs reached',
+    },
 } as const;
