@@ -143,6 +143,7 @@ messageSchema.index({ createdAt: -1 });
 messageSchema.index({ channelId: 1, createdAt: -1 });
 messageSchema.index({ channelId: 1, deletedAt: 1, createdAt: -1 });
 messageSchema.index({ serverId: 1 });
+messageSchema.index({ serverId: 1, senderId: 1, createdAt: -1 });
 
 export const Message: Model<IMessage> = mongoose.model(
     'Message',

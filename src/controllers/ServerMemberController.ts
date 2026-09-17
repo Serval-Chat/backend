@@ -12,6 +12,7 @@ import {
     NotFoundException,
     ForbiddenException,
     BadRequestException,
+    InternalServerErrorException,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -23,9 +24,10 @@ import {
 import {
     ServerMemberResponseDTO,
     ServerMemberWithUserResponseDTO,
+    ServerMemberWithPresenceResponseDTO,
     OnboardingStateResponseDTO,
-    ServerMemberListResponseDTO,
-    ServerMemberSearchResponseDTO,
+    ServerMemberAdminListResponseDTO,
+    ServerMemberAdminEntryDTO,
     MemberActionResponseDTO,
     TimeoutResponseDTO,
     ServerBanResponseDTO,
@@ -43,6 +45,7 @@ import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IRoleRepository } from '@/di/interfaces/IRoleRepository';
 import type { ICategoryRepository } from '@/di/interfaces/ICategoryRepository';
 import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
+import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import type { ILogger } from '@/di/interfaces/ILogger';
 import type { IServerAuditLogService } from '@/di/interfaces/IServerAuditLogService';
@@ -50,11 +53,15 @@ import type { IBlockRepository } from '@/di/interfaces/IBlockRepository';
 import { BlockFlags } from '@/privacy/blockFlags';
 import { PingService } from '@/services/PingService';
 
-import { mapUser } from '@/utils/user';
-import { mapPublicServerMember } from '@/utils/serverMember';
+import { mapUser, type MappedUser } from '@/utils/user';
+import {
+    mapPublicServerMember,
+    mapServerMemberToDTO,
+    mapServerMemberWithUserToDTO,
+    type ServerMemberDTOShape,
+    type ServerMemberWithUserDTOShape,
+} from '@/utils/serverMember';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
-import { MappedUser } from '@/utils/user';
-import { IServerBan } from '@/di/interfaces/IServerBanRepository';
 import { IUser } from '@/models/User';
 import { Bot } from '@/models/Bot';
 import { Role } from '@/models/Server';
@@ -66,6 +73,8 @@ import {
     BanMemberRequestDTO,
     TransferOwnershipRequestDTO,
     TimeoutMemberRequestDTO,
+    ServerMemberAdminQueryDTO,
+    banDurationToHours,
 } from './dto/server-member.request.dto';
 import {
     ChannelPreferencesRequestDTO,
@@ -104,6 +113,8 @@ export class ServerMemberController {
         private channelRepo?: IChannelRepository,
         @Inject(TYPES.CategoryRepository)
         private categoryRepo?: ICategoryRepository,
+        @Inject(TYPES.MessageRepository)
+        private messageRepo?: IMessageRepository,
     ) {}
 
     private async requireMember(
@@ -182,7 +193,7 @@ export class ServerMemberController {
         @CurrentUser('id') userId: string,
     ): Promise<{
         onboarding: ReturnType<ServerMemberController['getOnboardingConfig']>;
-        member: IServerMember;
+        member: ServerMemberDTOShape;
     }> {
         const member = await this.requireMember(serverId, userId);
         const server = await this.serverRepo.findById(serverId);
@@ -192,7 +203,7 @@ export class ServerMemberController {
 
         return {
             onboarding: this.getOnboardingConfig(server),
-            member,
+            member: mapServerMemberToDTO(member),
         };
     }
 
@@ -206,7 +217,7 @@ export class ServerMemberController {
     public async acceptOnboardingRules(
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
-    ): Promise<IServerMember> {
+    ): Promise<ServerMemberDTOShape> {
         await this.requireMember(serverId, userId);
 
         const member = await this.serverMemberRepo.update(serverId, userId, {
@@ -216,7 +227,7 @@ export class ServerMemberController {
             throw new NotFoundException(ErrorMessages.MEMBER.NOT_FOUND);
         }
         this.broadcastMemberUpdateToUser(serverId, userId, member);
-        return member;
+        return mapServerMemberToDTO(member);
     }
 
     @Patch('self-roles')
@@ -230,7 +241,7 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
         @Body() body: SelfRolesRequestDTO,
-    ): Promise<IServerMember> {
+    ): Promise<ServerMemberDTOShape> {
         const member = await this.requireMember(serverId, userId);
         const server = await this.serverRepo.findById(serverId);
         if (server === null) {
@@ -288,7 +299,7 @@ export class ServerMemberController {
             updatedMember,
         );
 
-        return updatedMember;
+        return mapServerMemberToDTO(updatedMember);
     }
 
     @Patch('channel-preferences')
@@ -302,11 +313,13 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
         @Body() body: ChannelPreferencesRequestDTO,
-    ): Promise<IServerMember> {
+    ): Promise<ServerMemberDTOShape> {
         await this.requireMember(serverId, userId);
 
         if (!this.channelRepo || !this.categoryRepo) {
-            throw new Error('Required repositories are not initialized');
+            throw new InternalServerErrorException(
+                'Required repositories are not initialized',
+            );
         }
         const channels = await this.channelRepo.findByServerId(serverId);
         const categories = await this.categoryRepo.findByServerId(serverId);
@@ -342,7 +355,7 @@ export class ServerMemberController {
         }
 
         this.broadcastMemberUpdateToUser(serverId, userId, member);
-        return member;
+        return mapServerMemberToDTO(member);
     }
 
     @Post('onboarding/complete')
@@ -355,7 +368,7 @@ export class ServerMemberController {
     public async completeOnboarding(
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
-    ): Promise<IServerMember> {
+    ): Promise<ServerMemberDTOShape> {
         await this.requireMember(serverId, userId);
 
         const now = new Date();
@@ -368,22 +381,20 @@ export class ServerMemberController {
         }
 
         this.broadcastMemberUpdateToUser(serverId, userId, member);
-        return member;
+        return mapServerMemberToDTO(member);
     }
 
     @Get('members')
     @ApiOperation({ summary: 'Get all server members' })
     @ApiOkResponse({
-        type: ServerMemberListResponseDTO,
+        type: [ServerMemberWithPresenceResponseDTO],
         description: 'Server members retrieved',
     })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
     public async getServerMembers(
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
-    ): Promise<
-        (IServerMember & { user: MappedUser | null; online: boolean })[]
-    > {
+    ): Promise<(ServerMemberWithUserDTOShape & { online: boolean })[]> {
         const member = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             userId,
@@ -395,9 +406,41 @@ export class ServerMemberController {
         const members =
             await this.serverMemberRepo.findByServerIdWithUserInfo(serverId);
 
+        return this.filterAndEnrichMembers(members, userId);
+    }
+
+    @Get('members/search')
+    @ApiOperation({ summary: 'Search server members' })
+    @ApiOkResponse({
+        type: [ServerMemberWithPresenceResponseDTO],
+        description: 'Search results',
+    })
+    @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
+    public async searchMembers(
+        @Param('serverId') serverId: string,
+        @Query('q') q: string,
+        @CurrentUser('id') userId: string,
+    ): Promise<(ServerMemberWithUserDTOShape & { online: boolean })[]> {
+        const member = await this.serverMemberRepo.findByServerAndUser(
+            serverId,
+            userId,
+        );
+        if (member === null) {
+            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
+        }
+
+        const members = await this.serverMemberRepo.searchMembers(serverId, q);
+
+        return this.filterAndEnrichMembers(members, userId);
+    }
+
+    private async filterAndEnrichMembers(
+        members: (IServerMember & { user: MappedUser | null })[],
+        currentUserId: string,
+    ): Promise<(ServerMemberWithUserDTOShape & { online: boolean })[]> {
         const [blocksByA, blocksAgainstA] = await Promise.all([
-            this.blockRepo.findBlocksByBlocker(userId),
-            this.blockRepo.findBlocksByTarget(userId),
+            this.blockRepo.findBlocksByBlocker(currentUserId),
+            this.blockRepo.findBlocksByTarget(currentUserId),
         ]);
 
         const hideEntirelySet = new Set(
@@ -432,7 +475,7 @@ export class ServerMemberController {
                 const isInvisible = m.user?.presenceStatus === 'offline';
 
                 return {
-                    ...m,
+                    ...mapServerMemberWithUserToDTO(m, m.user),
                     online:
                         shouldHidePresence || isInvisible
                             ? false
@@ -442,75 +485,48 @@ export class ServerMemberController {
         );
     }
 
-    @Get('members/search')
-    @ApiOperation({ summary: 'Search server members' })
+    @Get('members/admin')
+    @ApiOperation({ summary: 'Get server members (admin/moderation view)' })
     @ApiOkResponse({
-        type: ServerMemberSearchResponseDTO,
-        description: 'Search results',
+        type: ServerMemberAdminListResponseDTO,
+        description: 'Filtered member list retrieved',
     })
     @ApiResponse({ status: 403, description: ErrorMessages.SERVER.NOT_MEMBER })
-    public async searchMembers(
+    public async getServerMembersAdmin(
         @Param('serverId') serverId: string,
-        @Query('q') q: string,
+        @Query() query: ServerMemberAdminQueryDTO,
         @CurrentUser('id') userId: string,
-    ): Promise<
-        (IServerMember & { user: MappedUser | null; online: boolean })[]
-    > {
-        const member = await this.serverMemberRepo.findByServerAndUser(
+    ): Promise<ServerMemberAdminListResponseDTO> {
+        await this.requireMember(serverId, userId);
+
+        await this.permissionService.requireAnyPermission(
             serverId,
             userId,
-        );
-        if (member === null) {
-            throw new ForbiddenException(ErrorMessages.SERVER.NOT_MEMBER);
-        }
-
-        const members = await this.serverMemberRepo.searchMembers(serverId, q);
-
-        const [blocksByA, blocksAgainstA] = await Promise.all([
-            this.blockRepo.findBlocksByBlocker(userId),
-            this.blockRepo.findBlocksByTarget(userId),
-        ]);
-
-        const hideEntirelySet = new Set(
-            blocksByA
-                .filter((b) => b.flags & BlockFlags.HIDE_FROM_MENTIONS)
-                .map((b) => b.targetId),
+            ['banMembers', 'kickMembers', 'moderateMembers'],
+            new ForbiddenException(
+                ErrorMessages.MEMBER.NO_PERMISSION_VIEW_MEMBERS,
+            ),
         );
 
-        const hidePresenceByA = new Set(
-            blocksByA
-                .filter((b) => b.flags & BlockFlags.HIDE_THEIR_PRESENCE)
-                .map((b) => b.targetId),
-        );
+        const limit = query.limit ?? 50;
+        const offset = query.offset ?? 0;
 
-        const hidePresenceAgainstA = new Set(
-            blocksAgainstA
-                .filter((b) => b.flags & BlockFlags.HIDE_MY_PRESENCE)
-                .map((b) => b.blockerId),
-        );
+        const { members, total } =
+            await this.serverMemberRepo.findByServerIdFiltered(serverId, {
+                roleId: query.roleId,
+                search: query.search,
+                sortBy: query.sortBy ?? 'joinedAt',
+                sortDir: query.sortDir ?? 'desc',
+                limit,
+                offset,
+            });
 
-        const filteredMembers = members.filter(
-            (m) => !hideEntirelySet.has(m.userId.toString()),
-        );
+        const mappedMembers: ServerMemberAdminEntryDTO[] = members.map((m) => ({
+            ...mapServerMemberWithUserToDTO(m, m.user),
+            joinedVia: m.joinedVia,
+        }));
 
-        return Promise.all(
-            filteredMembers.map(async (m) => {
-                const targetUserIdStr = m.userId.toString();
-                const shouldHidePresence =
-                    hidePresenceByA.has(targetUserIdStr) ||
-                    hidePresenceAgainstA.has(targetUserIdStr);
-
-                const isInvisible = m.user?.presenceStatus === 'offline';
-
-                return {
-                    ...m,
-                    online:
-                        shouldHidePresence || isInvisible
-                            ? false
-                            : await this.wsServer.isUserOnline(targetUserIdStr),
-                };
-            }),
-        );
+        return { members: mappedMembers, total, limit, offset };
     }
 
     @Get('members/:userId')
@@ -525,7 +541,7 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @Param('userId') userId: string,
         @CurrentUser('id') currentUserId: string,
-    ): Promise<IServerMember & { user: MappedUser | null }> {
+    ): Promise<ServerMemberWithUserDTOShape> {
         const currentMember = await this.serverMemberRepo.findByServerAndUser(
             serverId,
             currentUserId,
@@ -543,7 +559,10 @@ export class ServerMemberController {
         }
 
         const user = await this.userRepo.findById(userId);
-        return { ...member, user: user ? mapUser(user as IUser) : null };
+        return mapServerMemberWithUserToDTO(
+            member,
+            user ? mapUser(user as IUser) : null,
+        );
     }
 
     private async teardownServerSubscriptions(
@@ -577,7 +596,7 @@ export class ServerMemberController {
     public async leaveServer(
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
-    ): Promise<{ message: string }> {
+    ): Promise<MemberActionResponseDTO> {
         const server = await this.serverRepo.findById(serverId);
         if (server && String(server.ownerId) === userId) {
             throw new ForbiddenException(
@@ -630,7 +649,7 @@ export class ServerMemberController {
         @Param('userId') userId: string,
         @CurrentUser('id') currentUserId: string,
         @Body() _body: KickMemberRequestDTO,
-    ): Promise<{ message: string }> {
+    ): Promise<MemberActionResponseDTO> {
         await this.permissionService.requirePermission(
             serverId,
             currentUserId,
@@ -714,8 +733,8 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') currentUserId: string,
         @Body() body: BanMemberRequestDTO,
-    ): Promise<{ message: string }> {
-        const { userId, reason } = body;
+    ): Promise<MemberActionResponseDTO> {
+        const { userId, reason, deleteMessageDuration } = body;
 
         await this.permissionService.requirePermission(
             serverId,
@@ -766,6 +785,36 @@ export class ServerMemberController {
             this.logger.error('Failed to clear pings after ban:', err);
         }
 
+        if (deleteMessageDuration !== undefined && this.messageRepo) {
+            try {
+                const hours = banDurationToHours(deleteMessageDuration);
+                const after =
+                    hours !== null
+                        ? new Date(Date.now() - hours * 60 * 60 * 1000)
+                        : new Date(0);
+
+                const deletedCount =
+                    await this.messageRepo.softDeleteByAuthorAfter(
+                        serverId,
+                        userId,
+                        after,
+                    );
+
+                if (deletedCount > 0) {
+                    this.wsServer.broadcastToServer(serverId, {
+                        type: 'messages_server_bulk_deleted_by_author',
+                        payload: {
+                            senderId: userId,
+                            serverId,
+                            after: after.toISOString(),
+                        },
+                    });
+                }
+            } catch (err) {
+                this.logger.error('Failed to delete messages after ban:', err);
+            }
+        }
+
         this.wsServer.broadcastToServer(serverId, {
             type: 'member_removed',
             payload: { serverId, userId },
@@ -785,6 +834,9 @@ export class ServerMemberController {
             targetType: 'user',
             targetUserId: userId,
             reason: reason,
+            metadata: {
+                deleteMessageDuration,
+            },
         });
 
         return { message: 'Member banned' };
@@ -805,7 +857,7 @@ export class ServerMemberController {
         @Param('userId') userId: string,
         @CurrentUser('id') currentUserId: string,
         @Body() body: TimeoutMemberRequestDTO,
-    ): Promise<{ message: string; communicationDisabledUntil: string | null }> {
+    ): Promise<TimeoutResponseDTO> {
         const { duration, reason } = body;
 
         await this.permissionService.requirePermission(
@@ -897,7 +949,7 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @Param('userId') userId: string,
         @CurrentUser('id') currentUserId: string,
-    ): Promise<{ message: string }> {
+    ): Promise<MemberActionResponseDTO> {
         await this.permissionService.requirePermission(
             serverId,
             currentUserId,
@@ -937,7 +989,7 @@ export class ServerMemberController {
     public async getBans(
         @Param('serverId') serverId: string,
         @CurrentUser('id') currentUserId: string,
-    ): Promise<IServerBan[]> {
+    ): Promise<ServerBanResponseDTO[]> {
         await this.permissionService.requirePermission(
             serverId,
             currentUserId,
@@ -947,7 +999,14 @@ export class ServerMemberController {
             ),
         );
 
-        return await this.serverBanRepo.findByServerIdWithUserInfo(serverId);
+        const bans =
+            await this.serverBanRepo.findByServerIdWithUserInfo(serverId);
+        return bans.map((ban) => ({
+            userId: ban.userId,
+            username: ban.user?.username,
+            reason: ban.reason,
+            bannedAt: ban.createdAt.toISOString(),
+        }));
     }
 
     @Post('members/:userId/roles/:roleId')
@@ -963,7 +1022,7 @@ export class ServerMemberController {
         @Param('userId') userId: string,
         @Param('roleId') roleId: string,
         @CurrentUser('id') currentUserId: string,
-    ): Promise<IServerMember> {
+    ): Promise<ServerMemberDTOShape> {
         await this.permissionService.requirePermission(
             serverId,
             currentUserId,
@@ -1026,7 +1085,7 @@ export class ServerMemberController {
         }
 
         if (member.roles.some((r) => r === roleId)) {
-            return member;
+            return mapServerMemberToDTO(member);
         }
 
         const updatedMember = await this.serverMemberRepo.addRole(
@@ -1053,7 +1112,7 @@ export class ServerMemberController {
             metadata: { roleName: role.name },
         });
 
-        return updatedMember;
+        return mapServerMemberToDTO(updatedMember);
     }
 
     @Delete('members/:userId/roles/:roleId')
@@ -1072,7 +1131,7 @@ export class ServerMemberController {
         @Param('userId') userId: string,
         @Param('roleId') roleId: string,
         @CurrentUser('id') currentUserId: string,
-    ): Promise<IServerMember> {
+    ): Promise<ServerMemberDTOShape> {
         await this.permissionService.requirePermission(
             serverId,
             currentUserId,
@@ -1094,7 +1153,7 @@ export class ServerMemberController {
         if (role === null || role.serverId !== serverId) {
             throw new NotFoundException(ErrorMessages.ROLE.NOT_FOUND);
         }
-        if (role.name === '@everyone') {
+        if (role.name.trim().toLowerCase() === '@everyone') {
             throw new BadRequestException(
                 ErrorMessages.ROLE.CANNOT_REMOVE_EVERYONE,
             );
@@ -1158,7 +1217,7 @@ export class ServerMemberController {
             metadata: { roleName: role.name },
         });
 
-        return updatedMember;
+        return mapServerMemberToDTO(updatedMember);
     }
 
     @Post('transfer-ownership')
@@ -1176,7 +1235,7 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
         @Body() body: TransferOwnershipRequestDTO,
-    ): Promise<{ message: string }> {
+    ): Promise<TransferOwnershipResponseDTO> {
         const { newOwnerId } = body;
 
         const server = await this.serverRepo.findById(serverId);

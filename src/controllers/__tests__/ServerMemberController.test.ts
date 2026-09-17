@@ -5,6 +5,10 @@ import { ServerMemberController } from '../ServerMemberController';
 import type { Request } from 'express';
 import type { JWTPayload } from '@/utils/jwt';
 import { IsHumanGuard } from '@/modules/auth/bot.guard';
+import {
+    mapPublicServerMember,
+    mapServerMemberToDTO,
+} from '@/utils/serverMember';
 
 jest.mock('@/models/Bot', () => ({
     Bot: {
@@ -36,6 +40,7 @@ describe('ServerMemberController', () => {
         updateRoles: jest.fn(),
         findByServerIdWithUserInfo: jest.fn(),
         searchMembers: jest.fn(),
+        findByServerIdFiltered: jest.fn(),
     };
     const mockServerRepo = {
         findById: jest.fn(),
@@ -68,6 +73,23 @@ describe('ServerMemberController', () => {
             }
         }),
         getHighestRolePosition: jest.fn(),
+        hasAnyPermission: jest.fn(),
+        requireAnyPermission: jest.fn(async function (
+            this: {
+                hasAnyPermission: (...args: unknown[]) => Promise<boolean>;
+            },
+            serverId: unknown,
+            userId: unknown,
+            permissions: unknown,
+            error: Error,
+        ) {
+            if (
+                (await this.hasAnyPermission(serverId, userId, permissions)) !==
+                true
+            ) {
+                throw error;
+            }
+        }),
     };
     const mockLogger = {
         error: jest.fn(),
@@ -94,6 +116,9 @@ describe('ServerMemberController', () => {
     const mockCategoryRepo = {
         findByServerId: jest.fn(),
     };
+    const mockMessageRepo = {
+        softDeleteByAuthorAfter: jest.fn(),
+    };
 
     let controller: ServerMemberController;
 
@@ -119,6 +144,7 @@ describe('ServerMemberController', () => {
             mockPingService as any,
             mockChannelRepo as any,
             mockCategoryRepo as any,
+            mockMessageRepo as any,
         );
     });
 
@@ -150,6 +176,8 @@ describe('ServerMemberController', () => {
 
         it('broadcasts rules acceptance only to the current user', async () => {
             const updatedMember = {
+                _id: new Types.ObjectId(),
+                snowflakeId: '1000000000000000001',
                 userId: meId,
                 serverId,
                 roles: [],
@@ -182,7 +210,7 @@ describe('ServerMemberController', () => {
                 },
             });
             expect(mockWsServer.broadcastToServer).not.toHaveBeenCalled();
-            expect(result).toBe(updatedMember);
+            expect(result).toEqual(mapServerMemberToDTO(updatedMember as any));
         });
 
         it('validates and broadcasts channel preferences only to the current user', async () => {
@@ -191,6 +219,8 @@ describe('ServerMemberController', () => {
             const categoryId = new Types.ObjectId();
             const categoryIdStr = categoryId.toHexString();
             const updatedMember = {
+                _id: new Types.ObjectId(),
+                snowflakeId: '1000000000000000002',
                 userId: meId,
                 serverId,
                 roles: [],
@@ -237,7 +267,7 @@ describe('ServerMemberController', () => {
                 },
             });
             expect(mockWsServer.broadcastToServer).not.toHaveBeenCalled();
-            expect(result).toBe(updatedMember);
+            expect(result).toEqual(mapServerMemberToDTO(updatedMember as any));
         });
 
         it('rejects channel preferences for channels outside the server', async () => {
@@ -268,6 +298,8 @@ describe('ServerMemberController', () => {
 
         it('broadcasts onboarding completion only to the current user', async () => {
             const updatedMember = {
+                _id: new Types.ObjectId(),
+                snowflakeId: '1000000000000000003',
                 userId: meId,
                 serverId,
                 roles: [],
@@ -304,7 +336,7 @@ describe('ServerMemberController', () => {
                 },
             });
             expect(mockWsServer.broadcastToServer).not.toHaveBeenCalled();
-            expect(result).toBe(updatedMember);
+            expect(result).toEqual(mapServerMemberToDTO(updatedMember as any));
         });
     });
 
@@ -342,6 +374,138 @@ describe('ServerMemberController', () => {
 
             expect(result).toHaveLength(1);
             expect(result[0]?.online).toBe(false);
+        });
+    });
+
+    describe('getServerMembersAdmin', () => {
+        it('throws ForbiddenException when the caller is not a member', async () => {
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce(
+                null,
+            );
+
+            await expect(
+                controller.getServerMembersAdmin(serverIdStr, {}, meIdStr),
+            ).rejects.toThrow();
+
+            expect(
+                mockPermissionService.requireAnyPermission,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws ForbiddenException when the caller lacks all of banMembers/kickMembers/moderateMembers', async () => {
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockPermissionService.hasAnyPermission.mockResolvedValueOnce(false);
+
+            await expect(
+                controller.getServerMembersAdmin(serverIdStr, {}, meIdStr),
+            ).rejects.toThrow();
+
+            expect(
+                mockPermissionService.requireAnyPermission,
+            ).toHaveBeenCalledWith(
+                serverIdStr,
+                meIdStr,
+                ['banMembers', 'kickMembers', 'moderateMembers'],
+                expect.any(Error),
+            );
+        });
+
+        it('succeeds when the caller has only one of the required permissions', async () => {
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockPermissionService.hasAnyPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerIdFiltered.mockResolvedValueOnce({
+                members: [],
+                total: 0,
+            });
+
+            const result = await controller.getServerMembersAdmin(
+                serverIdStr,
+                {},
+                meIdStr,
+            );
+
+            expect(result.members).toEqual([]);
+            expect(result.total).toBe(0);
+        });
+
+        it('applies default limit/offset/sort and forwards filters to the repository', async () => {
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockPermissionService.hasAnyPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerIdFiltered.mockResolvedValueOnce({
+                members: [],
+                total: 0,
+            });
+
+            await controller.getServerMembersAdmin(
+                serverIdStr,
+                { roleId: 'role-1', search: 'foo' },
+                meIdStr,
+            );
+
+            expect(
+                mockServerMemberRepo.findByServerIdFiltered,
+            ).toHaveBeenCalledWith(serverIdStr, {
+                roleId: 'role-1',
+                search: 'foo',
+                sortBy: 'joinedAt',
+                sortDir: 'desc',
+                limit: 50,
+                offset: 0,
+            });
+        });
+
+        it('returns total/limit/offset alongside the mapped members, passing joinedVia through unmodified', async () => {
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
+                userId: meId,
+                serverId,
+                roles: [],
+            });
+            mockPermissionService.hasAnyPermission.mockResolvedValueOnce(true);
+            mockServerMemberRepo.findByServerIdFiltered.mockResolvedValueOnce({
+                members: [
+                    {
+                        userId: 'user-with-invite',
+                        serverId: serverIdStr,
+                        roles: [],
+                        joinedVia: { method: 'invite', code: 'abc123' },
+                        user: null,
+                    },
+                    {
+                        userId: 'user-without-invite',
+                        serverId: serverIdStr,
+                        roles: [],
+                        user: null,
+                    },
+                ],
+                total: 2,
+            });
+
+            const result = await controller.getServerMembersAdmin(
+                serverIdStr,
+                { limit: 10, offset: 0 },
+                meIdStr,
+            );
+
+            expect(result.total).toBe(2);
+            expect(result.limit).toBe(10);
+            expect(result.offset).toBe(0);
+            expect(result.members[0]?.joinedVia).toEqual({
+                method: 'invite',
+                code: 'abc123',
+            });
+            expect(result.members[1]?.joinedVia).toBeUndefined();
         });
     });
 
@@ -446,6 +610,8 @@ describe('ServerMemberController', () => {
             const selfRoleId = new Types.ObjectId().toHexString();
             const keptRoleId = new Types.ObjectId().toHexString();
             const updatedMember = {
+                _id: new Types.ObjectId(),
+                snowflakeId: '1000000000000000004',
                 userId: meId,
                 serverId,
                 roles: [keptRoleId, selfRoleId],
@@ -510,15 +676,11 @@ describe('ServerMemberController', () => {
                     payload: {
                         serverId: serverIdStr,
                         userId: meIdStr,
-                        member: {
-                            userId: meId,
-                            serverId,
-                            roles: [keptRoleId, selfRoleId],
-                        },
+                        member: mapPublicServerMember(updatedMember as any),
                     },
                 },
             );
-            expect(result).toBe(updatedMember);
+            expect(result).toEqual(mapServerMemberToDTO(updatedMember as any));
         });
     });
 
@@ -1062,6 +1224,211 @@ describe('ServerMemberController', () => {
                 roleIdStr,
             );
             expect(result).toEqual(mockUpdatedMember);
+        });
+    });
+
+    describe('banMember with deleteMessageDuration', () => {
+        const req = {
+            user: { id: meIdStr } as JWTPayload,
+        } as Request;
+        const targetId = new Types.ObjectId();
+        const targetIdStr = targetId.toHexString();
+
+        beforeEach(() => {
+            mockPermissionService.hasPermission.mockResolvedValue(true);
+            mockServerRepo.findById.mockResolvedValue({
+                _id: serverId,
+                ownerId: meId,
+            });
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                10,
+            );
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                5,
+            );
+            mockChannelRepo.findByServerId.mockResolvedValue([
+                { snowflakeId: 'ch1' },
+                { snowflakeId: 'ch2' },
+            ]);
+        });
+
+        it('does not delete messages when deleteMessageDuration is omitted', async () => {
+            await controller.banMember(serverIdStr, req.user?.id as string, {
+                userId: targetIdStr,
+                reason: 'test',
+            });
+
+            expect(
+                mockMessageRepo.softDeleteByAuthorAfter,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('soft-deletes messages from the last 24h when duration is 24h', async () => {
+            mockMessageRepo.softDeleteByAuthorAfter.mockResolvedValue(5);
+
+            await controller.banMember(serverIdStr, req.user?.id as string, {
+                userId: targetIdStr,
+                reason: 'spam',
+                deleteMessageDuration: '24h',
+            });
+
+            expect(
+                mockMessageRepo.softDeleteByAuthorAfter,
+            ).toHaveBeenCalledTimes(1);
+            const [argServerId, argUserId, argAfter] =
+                mockMessageRepo.softDeleteByAuthorAfter.mock.calls[0];
+            expect(argServerId).toBe(serverIdStr);
+            expect(argUserId).toBe(targetIdStr);
+            expect(argAfter).toBeInstanceOf(Date);
+            const hoursDiff =
+                (Date.now() - argAfter.getTime()) / (1000 * 60 * 60);
+            expect(hoursDiff).toBeCloseTo(24, 0);
+        });
+
+        it('soft-deletes all messages when duration is all', async () => {
+            mockMessageRepo.softDeleteByAuthorAfter.mockResolvedValue(12);
+
+            await controller.banMember(serverIdStr, req.user?.id as string, {
+                userId: targetIdStr,
+                deleteMessageDuration: 'all',
+            });
+
+            const [, , argAfter] =
+                mockMessageRepo.softDeleteByAuthorAfter.mock.calls[0];
+            expect(argAfter.getTime()).toBe(0);
+        });
+
+        it('broadcasts bulk delete by author when messages are deleted', async () => {
+            mockMessageRepo.softDeleteByAuthorAfter.mockResolvedValue(3);
+
+            await controller.banMember(serverIdStr, req.user?.id as string, {
+                userId: targetIdStr,
+                deleteMessageDuration: '1h',
+            });
+
+            const broadcasts = mockWsServer.broadcastToServer.mock.calls;
+            const deleteBroadcasts = broadcasts.filter(
+                (c) => c[1]?.type === 'messages_server_bulk_deleted_by_author',
+            );
+            expect(deleteBroadcasts).toHaveLength(1);
+            expect(deleteBroadcasts[0][1].payload).toEqual({
+                senderId: targetIdStr,
+                serverId: serverIdStr,
+                after: expect.any(String),
+            });
+        });
+
+        it('does not broadcast when no messages are deleted', async () => {
+            mockMessageRepo.softDeleteByAuthorAfter.mockResolvedValue(0);
+
+            await controller.banMember(serverIdStr, req.user?.id as string, {
+                userId: targetIdStr,
+                deleteMessageDuration: '12h',
+            });
+
+            const broadcasts = mockWsServer.broadcastToServer.mock.calls;
+            const deleteBroadcasts = broadcasts.filter(
+                (c) => c[1]?.type === 'messages_server_bulk_deleted_by_author',
+            );
+            expect(deleteBroadcasts).toHaveLength(0);
+        });
+
+        it('still bans and removes the member even if message deletion is requested', async () => {
+            mockMessageRepo.softDeleteByAuthorAfter.mockResolvedValue(2);
+
+            await controller.banMember(serverIdStr, req.user?.id as string, {
+                userId: targetIdStr,
+                deleteMessageDuration: '6h',
+            });
+
+            expect(mockServerBanRepo.create).toHaveBeenCalled();
+            expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
+                serverIdStr,
+                targetIdStr,
+            );
+        });
+
+        it('still bans and removes the member when message deletion throws', async () => {
+            mockMessageRepo.softDeleteByAuthorAfter.mockRejectedValue(
+                new Error('db timeout'),
+            );
+
+            await controller.banMember(serverIdStr, req.user?.id as string, {
+                userId: targetIdStr,
+                deleteMessageDuration: 'all',
+            });
+
+            expect(mockServerBanRepo.create).toHaveBeenCalled();
+            expect(mockServerMemberRepo.remove).toHaveBeenCalledWith(
+                serverIdStr,
+                targetIdStr,
+            );
+            expect(mockLogger.error).toHaveBeenCalledWith(
+                'Failed to delete messages after ban:',
+                expect.any(Error),
+            );
+        });
+
+        it('removes the member before attempting message deletion', async () => {
+            const callOrder: string[] = [];
+            mockServerMemberRepo.remove.mockImplementationOnce(async () => {
+                callOrder.push('remove');
+            });
+            mockMessageRepo.softDeleteByAuthorAfter.mockImplementationOnce(
+                async () => {
+                    callOrder.push('softDeleteByAuthorAfter');
+                    return 1;
+                },
+            );
+
+            await controller.banMember(serverIdStr, req.user?.id as string, {
+                userId: targetIdStr,
+                deleteMessageDuration: '1h',
+            });
+
+            expect(callOrder).toEqual(['remove', 'softDeleteByAuthorAfter']);
+        });
+
+        it('still bans when messageRepo is not injected', async () => {
+            const controllerNoMsgRepo = new ServerMemberController(
+                mockServerMemberRepo as any,
+                mockServerRepo as any,
+                mockUserRepo as any,
+                mockRoleRepo as any,
+                mockServerBanRepo as any,
+                mockPermissionService as any,
+                mockLogger as any,
+                mockWsServer as any,
+                mockServerAuditLogService,
+                mockBlockRepo as any,
+                mockPingService as any,
+                mockChannelRepo as any,
+                mockCategoryRepo as any,
+            );
+
+            mockPermissionService.hasPermission.mockResolvedValue(true);
+            mockServerRepo.findById.mockResolvedValue({
+                _id: serverId,
+                ownerId: meId,
+            });
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                10,
+            );
+            mockPermissionService.getHighestRolePosition.mockResolvedValueOnce(
+                5,
+            );
+
+            await controllerNoMsgRepo.banMember(
+                serverIdStr,
+                req.user?.id as string,
+                {
+                    userId: targetIdStr,
+                    deleteMessageDuration: '24h',
+                },
+            );
+
+            expect(mockServerBanRepo.create).toHaveBeenCalled();
+            expect(mockServerMemberRepo.remove).toHaveBeenCalled();
         });
     });
 });

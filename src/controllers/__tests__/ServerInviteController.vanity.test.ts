@@ -165,6 +165,7 @@ describe('ServerInviteController - vanity link join path', () => {
                 expect.objectContaining({
                     serverId: SERVER_ID,
                     userId: USER_ID,
+                    joinedVia: { method: 'vanity', code: 'myserver' },
                 }),
             );
             expect(
@@ -194,6 +195,13 @@ describe('ServerInviteController - vanity link join path', () => {
 
             expect(result).toEqual({ serverId: SERVER_ID });
             expect(mockInviteRepo.claimUse).toHaveBeenCalledWith('inv1');
+            expect(mockServerMemberRepo.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    serverId: SERVER_ID,
+                    userId: USER_ID,
+                    joinedVia: { method: 'invite', code: 'inv123' },
+                }),
+            );
             expect(
                 mockServerAuditLogService.createAndBroadcast,
             ).toHaveBeenCalledWith(

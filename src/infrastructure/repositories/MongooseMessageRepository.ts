@@ -384,6 +384,23 @@ export class MongooseMessageRepository implements IMessageRepository {
         return result.deletedCount;
     }
 
+    public async softDeleteByAuthorAfter(
+        serverId: string,
+        senderId: string,
+        after: Date,
+    ): Promise<number> {
+        const result = await this.messageModel.updateMany(
+            {
+                serverId,
+                senderId,
+                createdAt: { $gte: after },
+                deletedAt: { $exists: false },
+            },
+            { $set: { deletedAt: new Date() } },
+        );
+        return result.modifiedCount;
+    }
+
     public async updateManyBySenderId(
         senderId: string,
         update: {

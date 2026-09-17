@@ -19,6 +19,17 @@ export interface IServerMember {
     onboardingCompletedAt?: Date | null;
     hiddenChannelIds?: string[];
     hiddenCategoryIds?: string[];
+    joinedVia?: { method: 'invite' | 'vanity'; code: string };
+}
+
+// Filters accepted by findByServerIdFiltered
+export interface ServerMemberFilterOptions {
+    roleId?: string;
+    search?: string;
+    sortBy?: 'joinedAt' | 'username';
+    sortDir?: 'asc' | 'desc';
+    limit: number;
+    offset: number;
 }
 
 // Server Member Repository Interface
@@ -40,6 +51,7 @@ export interface IServerMemberRepository {
         userId: string;
         roles: string[];
         onboardingRequired?: boolean;
+        joinedVia?: { method: 'invite' | 'vanity'; code: string };
     }): Promise<IServerMember>;
 
     // Update member roles
@@ -111,6 +123,15 @@ export interface IServerMemberRepository {
         serverId: string,
         query: string,
     ): Promise<(IServerMember & { user: MappedUser | null })[]>;
+
+    // Filtered/paginated member listing for the admin Members tab
+    findByServerIdFiltered(
+        serverId: string,
+        filters: ServerMemberFilterOptions,
+    ): Promise<{
+        members: (IServerMember & { user: MappedUser | null })[];
+        total: number;
+    }>;
 
     // Add a role to a member
     addRole(

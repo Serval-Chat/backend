@@ -1,12 +1,14 @@
 import {
     IServerMemberRepository,
     IServerMember,
+    ServerMemberFilterOptions,
 } from '@/di/interfaces/IServerMemberRepository';
 import { mapUser, type MappedUser } from '@/utils/user';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { ServerMember } from '@/models/Server';
 import { User } from '@/models/User';
 import { injectable } from 'inversify';
+import type { PipelineStage } from 'mongoose';
 
 function escapeRegex(input: string): string {
     return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -15,6 +17,23 @@ function escapeRegex(input: string): string {
 function normalizeRegexSearch(input: string): string {
     return escapeRegex(input.trim().slice(0, 64));
 }
+
+const SENSITIVE_USER_FIELDS = [
+    'permissions',
+    'password',
+    'settings',
+    'language',
+    'login',
+    'deletedReason',
+] as const;
+
+const SENSITIVE_USER_FIELDS_SELECT = SENSITIVE_USER_FIELDS.map(
+    (field) => `-${field}`,
+).join(' ');
+
+const SENSITIVE_USER_FIELDS_PROJECTION: Record<string, 0> = Object.fromEntries(
+    SENSITIVE_USER_FIELDS.map((field) => [field, 0]),
+);
 
 // Mongoose Server Member repository
 //
@@ -43,6 +62,7 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         userId: string;
         roles: string[];
         onboardingRequired?: boolean;
+        joinedVia?: { method: 'invite' | 'vanity'; code: string };
     }): Promise<IServerMember> {
         const member = new this.serverMemberModel(data);
         return (await member.save()).toObject();
@@ -191,26 +211,12 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         const userIds = members.map((m) => m.userId);
         const users = await this.userModel
             .find({ snowflakeId: { $in: userIds } })
-            .select(
-                '-permissions -password -settings -language -login -deletedReason',
-            )
+            .select(SENSITIVE_USER_FIELDS_SELECT)
             .lean();
 
         return members.map((m) => {
             const user = users.find((u) => u.snowflakeId === m.userId);
-            if (!user) return { ...m, user: null };
-
-            const safeUser: Record<string, unknown> = { ...user };
-            delete safeUser.permissions;
-            delete safeUser.password;
-            delete safeUser.settings;
-            delete safeUser.language;
-            delete safeUser.login;
-            delete safeUser.deletedReason;
-            return {
-                ...m,
-                user: mapUser(safeUser),
-            };
+            return { ...m, user: user ? mapUser(user) : null };
         });
     }
 
@@ -228,38 +234,123 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
                     { displayName: { $regex: safeQuery, $options: 'i' } },
                 ],
             })
-            .select('snowflakeId')
+            .select(SENSITIVE_USER_FIELDS_PROJECTION)
             .lean();
+
+        const userBySnowflake = new Map(users.map((u) => [u.snowflakeId, u]));
 
         const userIds = users.map((u) => u.snowflakeId);
         const members = await this.serverMemberModel
             .find({ serverId, userId: { $in: userIds } })
             .lean();
 
-        const memberUserIds = members.map((m) => m.userId);
-        const populatedUsers = await this.userModel
-            .find({ snowflakeId: { $in: memberUserIds } })
-            .select(
-                '-permissions -password -settings -language -login -deletedReason',
-            )
-            .lean();
-
         return members.map((m) => {
-            const user = populatedUsers.find((u) => u.snowflakeId === m.userId);
-            if (!user) return { ...m, user: null };
+            const user = userBySnowflake.get(m.userId);
+            return { ...m, user: user ? mapUser(user) : null };
+        });
+    }
 
-            const safeUser: Record<string, unknown> = { ...user };
-            delete safeUser.permissions;
-            delete safeUser.password;
-            delete safeUser.settings;
-            delete safeUser.language;
-            delete safeUser.login;
-            delete safeUser.deletedReason;
+    // Filtered/paginated member listing for the admin Members tab
+    //
+    // Combines role filtering, username/displayName search, sort, and
+    // pagination in a single aggregation round trip since username-based
+    // search/sort requires joining against the User collection.
+    public async findByServerIdFiltered(
+        serverId: string,
+        filters: ServerMemberFilterOptions,
+    ): Promise<{
+        members: (IServerMember & { user: MappedUser | null })[];
+        total: number;
+    }> {
+        const {
+            roleId,
+            search,
+            sortBy = 'joinedAt',
+            sortDir = 'desc',
+        } = filters;
+
+        const matchFilter: Record<string, unknown> = { serverId };
+        if (roleId !== undefined && roleId !== '') matchFilter.roles = roleId;
+
+        const matchStage: PipelineStage.Match = { $match: matchFilter };
+        const lookupStage: PipelineStage.Lookup = {
+            $lookup: {
+                from: this.userModel.collection.name,
+                let: { uid: '$userId' },
+                pipeline: [
+                    { $match: { $expr: { $eq: ['$snowflakeId', '$$uid'] } } },
+                    { $project: SENSITIVE_USER_FIELDS_PROJECTION },
+                ],
+                as: 'user',
+            },
+        };
+        const unwindStage: PipelineStage.Unwind = {
+            $unwind: { path: '$user', preserveNullAndEmptyArrays: true },
+        };
+
+        const pipeline: PipelineStage[] = [
+            matchStage,
+            lookupStage,
+            unwindStage,
+        ];
+
+        const safeSearch =
+            search !== undefined && search !== ''
+                ? normalizeRegexSearch(search)
+                : '';
+        if (safeSearch !== '') {
+            const searchStage: PipelineStage.Match = {
+                $match: {
+                    $or: [
+                        {
+                            'user.username': {
+                                $regex: safeSearch,
+                                $options: 'i',
+                            },
+                        },
+                        {
+                            'user.displayName': {
+                                $regex: safeSearch,
+                                $options: 'i',
+                            },
+                        },
+                    ],
+                },
+            };
+            pipeline.push(searchStage);
+        }
+
+        const sortField = sortBy === 'username' ? 'user.username' : 'joinedAt';
+        const sortDirection = sortDir === 'asc' ? 1 : -1;
+
+        const facetStage: PipelineStage.Facet = {
+            $facet: {
+                data: [
+                    { $sort: { [sortField]: sortDirection } },
+                    { $skip: filters.offset },
+                    { $limit: filters.limit },
+                ],
+                count: [{ $count: 'total' }],
+            },
+        };
+        pipeline.push(facetStage);
+
+        const [result] = await this.serverMemberModel.aggregate<{
+            data: (IServerMember & { user?: Record<string, unknown> })[];
+            count: { total: number }[];
+        }>(pipeline);
+        const data = result?.data ?? [];
+        const total = result?.count?.[0]?.total ?? 0;
+
+        const members = data.map((m) => {
+            const { user, ...member } = m;
             return {
-                ...m,
-                user: mapUser(safeUser),
+                ...member,
+                user: user ? mapUser(user) : null,
             };
         });
+
+        return { members, total };
     }
 
     public async addRole(

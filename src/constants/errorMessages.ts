@@ -101,6 +101,7 @@ export const ErrorMessages = {
         NO_PERMISSION_UNBAN: 'No permission to unban members',
         NO_PERMISSION_VIEW_BANS: 'No permission to view bans',
         NO_PERMISSION_MANAGE_ROLES: 'No permission to manage roles',
+        NO_PERMISSION_VIEW_MEMBERS: 'No permission to view server members',
     },
 
     ROLE: {

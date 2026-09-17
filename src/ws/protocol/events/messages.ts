@@ -494,6 +494,16 @@ export interface IMessagesServerBulkDeletedEvent extends WsEvent<
         hard?: boolean;
     }
 > {}
+
+export interface IMessagesServerBulkDeletedByAuthorEvent extends WsEvent<
+    'messages_server_bulk_deleted_by_author',
+    {
+        senderId: string;
+        serverId: string;
+        after: string;
+    }
+> {}
+
 /**
  * Server -> Client (Broadcast)
  * Server message pin status updated.

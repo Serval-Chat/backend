@@ -37,6 +37,7 @@ import type {
     IDeleteMessageServerEvent,
     IMessageServerDeletedEvent,
     IMessagesServerBulkDeletedEvent,
+    IMessagesServerBulkDeletedByAuthorEvent,
     IMessageServerPinUpdatedEvent,
     IMarkChannelReadEvent,
     IChannelUnreadUpdatedEvent,
@@ -173,6 +174,7 @@ export type AnyResponseWsEvent =
     | IMessageServerEditedEvent
     | IMessageServerDeletedEvent
     | IMessagesServerBulkDeletedEvent
+    | IMessagesServerBulkDeletedByAuthorEvent
     | IMessageServerPinUpdatedEvent
     | IChannelUnreadUpdatedEvent
     | IServerUnreadUpdatedEvent

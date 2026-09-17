@@ -459,6 +459,7 @@ export class ServerInviteController {
                 userId: userId,
                 roles,
                 onboardingRequired: server?.onboarding?.enabled === true,
+                joinedVia: { method: target.source, code },
             });
         } catch (err) {
             if (target.source === 'invite') {

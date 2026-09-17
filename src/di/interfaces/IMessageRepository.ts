@@ -121,6 +121,12 @@ export interface IMessageRepository {
 
     deleteByChannelId(channelId: string): Promise<number>;
 
+    softDeleteByAuthorAfter(
+        serverId: string,
+        senderId: string,
+        after: Date,
+    ): Promise<number>;
+
     // Update many messages sent by a user (for hard delete - anonymize)
     updateManyBySenderId(
         senderId: string,

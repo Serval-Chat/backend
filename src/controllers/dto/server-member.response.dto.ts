@@ -35,31 +35,61 @@ export class ServerMemberWithUserResponseDTO extends ServerMemberResponseDTO {
     public user!: UserProfileResponseDTO | null;
 }
 
+export class ServerMemberWithPresenceResponseDTO extends ServerMemberWithUserResponseDTO {
+    @ApiProperty()
+    public online!: boolean;
+}
+
+export class ServerOnboardingConfigDTO {
+    @ApiProperty()
+    public enabled!: boolean;
+
+    @ApiProperty({ type: [String] })
+    public guidelines!: string[];
+
+    @ApiProperty({ type: [String] })
+    public selfAssignableRoleIds!: string[];
+
+    @ApiPropertyOptional({ nullable: true })
+    public landingChannelId?: string | null;
+
+    @ApiProperty({ type: [String] })
+    public welcomeChannelIds!: string[];
+}
+
 export class OnboardingStateResponseDTO {
-    @ApiProperty()
-    public hasAcceptedRules!: boolean;
+    @ApiProperty({ type: ServerOnboardingConfigDTO })
+    public onboarding!: ServerOnboardingConfigDTO;
 
-    @ApiProperty()
-    public hasCompletedOnboarding!: boolean;
-
-    @ApiPropertyOptional()
-    public selectedSelfRoleIds?: string[];
-
-    @ApiPropertyOptional()
-    public selectedChannelIds?: string[];
+    @ApiProperty({ type: ServerMemberResponseDTO })
+    public member!: ServerMemberResponseDTO;
 }
 
-export class ServerMemberListResponseDTO {
-    @ApiProperty({ type: [ServerMemberWithUserResponseDTO] })
-    public members!: ServerMemberWithUserResponseDTO[];
+export class ServerMemberJoinedViaDTO {
+    @ApiProperty({ enum: ['invite', 'vanity'] })
+    public method!: 'invite' | 'vanity';
 
-    @ApiPropertyOptional()
-    public total?: number;
+    @ApiProperty()
+    public code!: string;
 }
 
-export class ServerMemberSearchResponseDTO {
-    @ApiProperty({ type: [ServerMemberWithUserResponseDTO] })
-    public members!: ServerMemberWithUserResponseDTO[];
+export class ServerMemberAdminEntryDTO extends ServerMemberWithUserResponseDTO {
+    @ApiPropertyOptional({ type: ServerMemberJoinedViaDTO, nullable: true })
+    public joinedVia?: ServerMemberJoinedViaDTO;
+}
+
+export class ServerMemberAdminListResponseDTO {
+    @ApiProperty({ type: [ServerMemberAdminEntryDTO] })
+    public members!: ServerMemberAdminEntryDTO[];
+
+    @ApiProperty()
+    public total!: number;
+
+    @ApiProperty()
+    public limit!: number;
+
+    @ApiProperty()
+    public offset!: number;
 }
 
 export class MemberActionResponseDTO {

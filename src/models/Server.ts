@@ -130,6 +130,7 @@ export interface IServerMember extends Document {
     onboardingCompletedAt?: Date | null;
     hiddenChannelIds?: string[];
     hiddenCategoryIds?: string[];
+    joinedVia?: { method: 'invite' | 'vanity'; code: string };
 }
 
 // Role interface
@@ -395,6 +396,17 @@ const serverMemberSchema = new Schema<IServerMember>({
     onboardingCompletedAt: { type: Date, default: null },
     hiddenChannelIds: [{ type: String }],
     hiddenCategoryIds: [{ type: String }],
+    joinedVia: {
+        type: new Schema(
+            {
+                method: { type: String, enum: ['invite', 'vanity'] },
+                code: { type: String },
+            },
+            { _id: false },
+        ),
+        required: false,
+        default: undefined,
+    },
 });
 serverMemberSchema.index({ serverId: 1, userId: 1 }, { unique: true });
 
