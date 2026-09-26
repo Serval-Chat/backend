@@ -49,7 +49,10 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { ILogger } from '@/di/interfaces/ILogger';
 import { WsServer } from '@/ws/server';
 import { ErrorMessages } from '@/constants/errorMessages';
-import { assertDefined } from '@/utils/typeGuards';
+import {
+    isChannelUnread,
+    resolveChannelVisibility,
+} from '@/services/ServerUnread';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ApiError } from '@/utils/ApiError';
 import { AuthGuard } from '@/modules/auth/auth.module';
@@ -384,8 +387,6 @@ export class ServerController {
         const unreadMap: Record<string, boolean> = {};
         serverIds.forEach((id) => (unreadMap[id.toString()] = false));
 
-        const permissionMapsByServer = new Map<string, Map<string, boolean>>();
-
         for (const serverId of serverIds) {
             const serverIdStr = serverId.toString();
             const serverChannels = channels.filter(
@@ -393,36 +394,24 @@ export class ServerController {
             );
             if (serverChannels.length === 0) continue;
 
-            const perms = await this.permissionService.hasChannelPermissions(
-                serverId,
+            const visibility = await resolveChannelVisibility(
+                this.permissionService,
+                serverIdStr,
                 userId,
-                serverChannels.map((c) => c.snowflakeId),
-                'viewChannels',
+                serverChannels,
             );
-            permissionMapsByServer.set(serverIdStr, perms);
-        }
 
-        // A server is unread if any of its channels have a message newer than the user's last read timestamp
-        for (const channel of channels) {
-            assertDefined(channel.serverId, ErrorMessages.CHANNEL.NOT_FOUND);
-            const serverIdStr = channel.serverId.toString();
-            if (unreadMap[serverIdStr] === true) continue;
-            if (channel.type === 'link') continue;
-
-            const hasPerm = permissionMapsByServer
-                .get(serverIdStr)
-                ?.get(channel.snowflakeId);
-            if (hasPerm !== true) continue;
-
-            const lastMessageAt = channel.lastMessageAt;
-            if (lastMessageAt === undefined) continue;
-
-            const lastReadAt = readMap.get(channel.snowflakeId);
-            if (
-                lastReadAt === undefined ||
-                new Date(lastMessageAt) > new Date(lastReadAt)
-            ) {
-                unreadMap[serverIdStr] = true;
+            for (const channel of serverChannels) {
+                if (unreadMap[serverIdStr] === true) break;
+                if (
+                    isChannelUnread(
+                        channel,
+                        readMap.get(channel.snowflakeId),
+                        visibility.get(channel.snowflakeId) === true,
+                    )
+                ) {
+                    unreadMap[serverIdStr] = true;
+                }
             }
         }
 

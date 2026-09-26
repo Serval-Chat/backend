@@ -12,11 +12,11 @@ describe('snowflakeIdPlugin', () => {
         );
     };
 
-    test('assigns a valid snowflakeId on validate when none is set', async () => {
+    test('assigns a valid snowflakeId when none is set', async () => {
         const Model = makeModel();
         const doc = new Model({ name: 'a' });
 
-        expect(doc.get('snowflakeId')).toBeUndefined();
+        expect(isValidSnowflakeId(doc.get('snowflakeId'))).toBe(true);
         await doc.validate();
         expect(isValidSnowflakeId(doc.get('snowflakeId'))).toBe(true);
     });

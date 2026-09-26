@@ -4,13 +4,19 @@ import {
     ApiExtraModels,
     getSchemaPath,
 } from '@nestjs/swagger';
-import { IsMongoId, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
+import {
+    IsChannelId,
+    IsServerId,
+    IsSnowflakeId,
+    IsUserId,
+} from '@/validation/schemas/common';
 import { PingMentionMessageDTO, PingExportMessageDTO } from './types.dto';
 
 @ApiExtraModels(PingMentionMessageDTO, PingExportMessageDTO)
 export class PingNotificationDTO {
     @ApiProperty()
-    @IsMongoId()
+    @IsSnowflakeId()
     @IsString()
     public id!: string;
 
@@ -21,19 +27,19 @@ export class PingNotificationDTO {
     public sender!: string;
 
     @ApiProperty()
-    @IsMongoId()
+    @IsUserId()
     @IsString()
     public senderId!: string;
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsMongoId()
+    @IsServerId()
     @IsString()
     public serverId?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
-    @IsMongoId()
+    @IsChannelId()
     @IsString()
     public channelId?: string;
 

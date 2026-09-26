@@ -38,6 +38,7 @@ import { TotpUsedCode } from '@/models/TotpUsedCode';
 import { User } from '@/models/User';
 import { UserBlock } from '@/models/UserBlock';
 import { UserConnection } from '@/models/UserConnection';
+import { VanityLink } from '@/models/VanityLink';
 import { Warning } from '@/models/Warning';
 import { Webhook } from '@/models/Webhook';
 
@@ -78,6 +79,7 @@ const MODELS: Model<any>[] = [
     PushSubscription,
     KlipyCache,
     Badge,
+    VanityLink,
 ];
 
 interface MigrationOptions {

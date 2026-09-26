@@ -13,9 +13,9 @@ import {
 @injectable()
 export class MongoosePingRepository implements IPingRepository {
     public async findById(id: string): Promise<IPing | null> {
-        return (await Ping.findOne({
+        return await Ping.findOne({
             snowflakeId: id,
-        }).lean()) as IPing | null;
+        }).lean();
     }
 
     public async findByUserId(
@@ -101,8 +101,8 @@ export class MongoosePingRepository implements IPingRepository {
         return count > 0;
     }
 
-    public async delete(id: string): Promise<boolean> {
-        const result = await Ping.deleteOne({ snowflakeId: id });
+    public async delete(id: string, userId: string): Promise<boolean> {
+        const result = await Ping.deleteOne({ snowflakeId: id, userId });
         return result.deletedCount > 0;
     }
 

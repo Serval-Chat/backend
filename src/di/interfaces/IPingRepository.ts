@@ -53,7 +53,7 @@ export interface IPingRepository {
     ): Promise<boolean>;
 
     // Delete a specific ping by ID
-    delete(id: string): Promise<boolean>;
+    delete(id: string, userId: string): Promise<boolean>;
 
     // Delete all pings for a specific channel
     deleteByChannelId(userId: string, channelId: string): Promise<number>;

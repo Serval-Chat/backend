@@ -62,6 +62,10 @@ import type { IStickerRepository } from '@/di/interfaces/IStickerRepository';
 import type { PermissionService } from '@/permissions/PermissionService';
 import type { PermissionKey } from '@/permissions/types';
 import type { PingService } from '@/services/PingService';
+import {
+    isChannelUnread,
+    resolveChannelVisibility,
+} from '@/services/ServerUnread';
 import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import type { IMuteRepository } from '@/di/interfaces/IMuteRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
@@ -941,30 +945,34 @@ export class ServerController {
             type: 'server_unread_updated',
             payload: { serverId, hasUnread: true },
         };
-        for (const m of members) {
-            const targetUserId = m.userId.toString();
-            if (targetUserId === userId) continue;
-            try {
-                const hasView =
-                    await this.permissionService.hasChannelPermission(
-                        serverId,
-                        targetUserId,
-                        channelId,
-                        'viewChannels',
-                    );
-                if (hasView) {
-                    this.wsServer.broadcastToUser(
-                        targetUserId,
-                        serverUnreadEvent,
-                        undefined,
-                        undefined,
-                        { excludeBots: true },
+        if (channel !== null) {
+            for (const m of members) {
+                const targetUserId = m.userId.toString();
+                if (targetUserId === userId) continue;
+                try {
+                    const canView =
+                        (
+                            await resolveChannelVisibility(
+                                this.permissionService,
+                                serverId,
+                                targetUserId,
+                                [channel],
+                            )
+                        ).get(channel.snowflakeId) === true;
+                    if (canView) {
+                        this.wsServer.broadcastToUser(
+                            targetUserId,
+                            serverUnreadEvent,
+                            undefined,
+                            undefined,
+                            { excludeBots: true },
+                        );
+                    }
+                } catch (err) {
+                    logger.debug(
+                        `[ServerController] Skip server_unread for user ${targetUserId}: ${(err as Error).message}`,
                     );
                 }
-            } catch (err) {
-                logger.debug(
-                    `[ServerController] Skip server_unread for user ${targetUserId}: ${(err as Error).message}`,
-                );
             }
         }
 
@@ -1385,15 +1393,19 @@ export class ServerController {
         const readMap = new Map(
             reads.map((r) => [r.channelId.toString(), r.lastReadAt]),
         );
-        const hasUnread = channels.some((ch) => {
-            const lastMessageAt = ch.lastMessageAt;
-            if (lastMessageAt === undefined) return false;
-            const lastReadAt = readMap.get(ch.snowflakeId);
-            return (
-                lastReadAt === undefined ||
-                new Date(lastMessageAt) > new Date(lastReadAt)
-            );
-        });
+        const visibility = await resolveChannelVisibility(
+            this.permissionService,
+            serverId,
+            userId,
+            channels,
+        );
+        const hasUnread = channels.some((ch) =>
+            isChannelUnread(
+                ch,
+                readMap.get(ch.snowflakeId),
+                visibility.get(ch.snowflakeId) === true,
+            ),
+        );
         this.wsServer.broadcastToUser(userId, {
             type: 'server_unread_updated',
             payload: { serverId, hasUnread },
@@ -1616,7 +1628,10 @@ export class ServerController {
                 },
             };
 
-            await this.pingService.addPing(mentionedUserId, pingData);
+            const ping = await this.pingService.addPing(
+                mentionedUserId,
+                pingData,
+            );
 
             notifyUser(mentionedUserId, 'mention', {
                 type: 'mention',
@@ -1639,6 +1654,7 @@ export class ServerController {
                     senderId,
                     serverId,
                     channelId,
+                    pingId: ping.id === 'temporary' ? undefined : ping.id,
                     message,
                 };
 

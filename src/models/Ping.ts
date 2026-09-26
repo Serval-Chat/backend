@@ -1,5 +1,9 @@
 import { mongooseIdPlugin } from '@/utils/mongooseId';
 import { snowflakeIdPlugin } from '@/utils/snowflake';
+import type {
+    PingExportMessageDTO,
+    PingMentionMessageDTO,
+} from '@/controllers/dto/types.dto';
 import type { Document, Model } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
@@ -15,7 +19,7 @@ interface IPing extends Document {
     serverId?: string; // server ID if ping is from a server message
     channelId?: string; // channel ID if ping is from a server message
     messageId: string; // reference to the message that triggered the ping
-    message: Record<string, unknown>; // Full message object (stored for quick access)
+    message: PingMentionMessageDTO | PingExportMessageDTO;
     timestamp: Date;
     createdAt: Date;
 }

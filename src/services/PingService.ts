@@ -143,7 +143,7 @@ export class PingService {
 
     // Remove a specific ping
     public async removePing(userId: string, pingId: string): Promise<boolean> {
-        return await this.pingRepo.delete(pingId);
+        return await this.pingRepo.delete(pingId, userId);
     }
 
     // Clear all pings for a specific channel

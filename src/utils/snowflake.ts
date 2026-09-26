@@ -131,6 +131,7 @@ export const snowflakeIdPlugin = (schema: Schema): void => {
             type: String,
             unique: true,
             sparse: true,
+            default: generateSnowflakeId,
         },
     });
 

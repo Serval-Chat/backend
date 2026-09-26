@@ -16,6 +16,7 @@ const VISIBLE_USER_ID = hex();
 const HIDDEN_USER_ID = hex();
 const ROLE_ID = hex();
 const MESSAGE_ID = hex();
+const PING_ID = '1234567890123456789';
 
 type HandleMentions = (
     serverId: string,
@@ -104,7 +105,22 @@ describe('Server WS mention visibility', () => {
             ),
             hasPermission: jest.fn().mockResolvedValue(true),
         };
-        pingService = { addPing: jest.fn().mockResolvedValue({}) };
+        pingService = {
+            addPing: jest.fn().mockResolvedValue({
+                id: PING_ID,
+                type: 'mention',
+                sender: 'sender',
+                senderId: SENDER_ID,
+                serverId: SERVER_ID,
+                channelId: CHANNEL_ID,
+                message: {
+                    messageId: MESSAGE_ID,
+                    text: message.text,
+                    createdAt: message.createdAt,
+                },
+                timestamp: Date.now(),
+            }),
+        };
         wsServer = {
             isUserOnline: jest.fn().mockResolvedValue(true),
             broadcastToUser: jest.fn(),
@@ -173,8 +189,48 @@ describe('Server WS mention visibility', () => {
         );
         expect(wsServer.broadcastToUser).toHaveBeenCalledWith(
             VISIBLE_USER_ID,
-            expect.objectContaining({ type: 'mention' }),
+            expect.objectContaining({
+                type: 'mention',
+                payload: expect.objectContaining({
+                    type: 'mention',
+                    pingId: PING_ID,
+                    message,
+                }),
+            }),
         );
+    });
+
+    it('omits pingId from the mention payload when the ping was not persisted', async () => {
+        pingService.addPing.mockResolvedValue({
+            id: 'temporary',
+            type: 'mention',
+            sender: 'sender',
+            senderId: SENDER_ID,
+            message: {},
+            timestamp: Date.now(),
+        });
+
+        await handleMentions(
+            SERVER_ID,
+            CHANNEL_ID,
+            SENDER_ID,
+            'sender',
+            [VISIBLE_USER_ID],
+            [],
+            false,
+            message,
+        );
+
+        expect(wsServer.broadcastToUser).toHaveBeenCalledWith(
+            VISIBLE_USER_ID,
+            expect.objectContaining({
+                payload: expect.objectContaining({
+                    type: 'mention',
+                }),
+            }),
+        );
+        const [, frame] = wsServer.broadcastToUser.mock.calls[0];
+        expect(frame.payload.pingId).toBeUndefined();
     });
 
     it('filters role mentions to members who can view the channel', async () => {

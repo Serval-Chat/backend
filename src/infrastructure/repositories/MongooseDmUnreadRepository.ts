@@ -43,6 +43,9 @@ export class MongooseDmUnreadRepository implements IDmUnreadRepository {
                 session,
             },
         );
+        if (result === null) {
+            throw new Error('Failed to increment DM unread count');
+        }
         return result.count;
     }
 
