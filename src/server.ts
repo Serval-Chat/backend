@@ -48,6 +48,17 @@ export function setupExpressApp(app: Application): Application {
     }
     app.disable('x-powered-by');
 
+    app.use((req: Request, res: Response, next: NextFunction) => {
+        if (
+            PROJECT_LEVEL === 'release' &&
+            /^\/api\/v1\/_internal(?:\/|$)/i.test(req.path)
+        ) {
+            res.status(404).json({ error: 'Not Found' });
+            return;
+        }
+        next();
+    });
+
     app.use((_req: Request, res: Response, next: NextFunction) => {
         const json = res.json.bind(res);
         res.json = (body?: unknown) => json(toApiId(body));
@@ -267,6 +278,9 @@ export function setupExpressApp(app: Application): Application {
     // Gzip
     app.use(compression());
 
+    if (PROJECT_LEVEL !== 'release') {
+        app.use('/api/v1/_internal/wcag', express.json({ limit: '16mb' }));
+    }
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 

@@ -61,6 +61,7 @@ import { EmbedController } from './controllers/EmbedController';
 import { InteractionController } from './controllers/InteractionController';
 import { ApplicationController } from './controllers/ApplicationController';
 import { DecorationController } from './controllers/DecorationController';
+import { InternalWcagController } from './controllers/InternalWcagController';
 import { loginBackoff } from '@/middleware/loginBackoff';
 import {
     botTokenLimiter,
@@ -203,6 +204,7 @@ import {
         InteractionController,
         ApplicationController,
         DecorationController,
+        ...(PROJECT_LEVEL === 'release' ? [] : [InternalWcagController]),
     ],
     providers: [
         {
