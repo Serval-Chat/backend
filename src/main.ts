@@ -133,9 +133,6 @@ async function bootstrap() {
     await app.listen(PORT, '0.0.0.0');
     Logger.log(`Application is running on: ${await app.getUrl()}`, 'Bootstrap');
 
-    app.enableShutdownHooks();
-
-    // Handle signals for WsServer shutdown
     let isShuttingDown = false;
     const cleanup = async (signal: string) => {
         if (isShuttingDown) {
@@ -156,14 +153,13 @@ async function bootstrap() {
 
         try {
             await wsServer.shutdown();
+            await app.close();
 
             const redisService = container.get<IRedisService>(
                 TYPES.RedisService,
             );
 
             await redisService.quit();
-
-            await app.close();
             clearTimeout(forceExitTimeout);
             Logger.log('Application shut down successfully', 'Bootstrap');
             process.exit(0);
@@ -174,12 +170,11 @@ async function bootstrap() {
         }
     };
 
-    process.on('SIGTERM', () => {
-        void cleanup('SIGTERM');
-    });
-    process.on('SIGINT', () => {
-        void cleanup('SIGINT');
-    });
+    for (const signal of ['SIGTERM', 'SIGINT', 'SIGUSR2'] as const) {
+        process.on(signal, () => {
+            void cleanup(signal);
+        });
+    }
 }
 
 void bootstrap();

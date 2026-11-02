@@ -19,16 +19,15 @@ const makeServer = (overrides: Partial<IServer> = {}): IServer =>
         ...overrides,
     }) as IServer;
 
-const makeVanityLink = (overrides: Partial<IVanityLink> = {}): IVanityLink =>
-    ({
-        _id: new Types.ObjectId(),
-        snowflakeId: '1234567890123456789',
-        serverId: new Types.ObjectId().toString(),
-        code: 'vanity',
-        createdByUserId: new Types.ObjectId().toString(),
-        createdAt: new Date(),
-        ...overrides,
-    }) as IVanityLink;
+const makeVanityLink = (overrides: Partial<IVanityLink> = {}): IVanityLink => ({
+    _id: new Types.ObjectId(),
+    snowflakeId: '1234567890123456789',
+    serverId: new Types.ObjectId().toString(),
+    code: 'vanity',
+    createdByUserId: new Types.ObjectId().toString(),
+    createdAt: new Date(),
+    ...overrides,
+});
 
 describe('ServerDiscoveryService eligibility helpers', () => {
     it('accepts verified opted-in servers with a vanity link', () => {
@@ -66,9 +65,7 @@ describe('ServerDiscoveryService eligibility helpers', () => {
         );
 
         expect(status.eligible).toBe(false);
-        expect(status.blockers).toContain(
-            'Server must opt in to discovery.',
-        );
+        expect(status.blockers).toContain('Server must opt in to discovery.');
     });
 
     it('rejects servers without a description or tags', () => {

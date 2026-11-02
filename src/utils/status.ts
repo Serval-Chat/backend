@@ -105,7 +105,7 @@ export const resolveSerializedCustomStatus = (
     const hasContent = Boolean(
         (typeof rawStatus.text === 'string' &&
             rawStatus.text.trim().length > 0) ||
-            (rawStatus.emoji !== undefined && rawStatus.emoji !== ''),
+        (rawStatus.emoji !== undefined && rawStatus.emoji !== ''),
     );
     if (hasContent === false) return null;
 

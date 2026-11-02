@@ -11,9 +11,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 //
 // Implements IServerChannelReadRepository using Mongoose ServerChannelRead model
 @injectable()
-export class MongooseServerChannelReadRepository
-    implements IServerChannelReadRepository
-{
+export class MongooseServerChannelReadRepository implements IServerChannelReadRepository {
     public async findByServerAndUser(
         serverId: string,
         userId: string,

@@ -5,9 +5,7 @@ import { IPasswordReset, PasswordReset } from '@/models/PasswordReset';
 import { RateLimitError } from '@/utils/RateLimitError';
 
 @injectable()
-export class MongoosePasswordResetRepository
-    implements IPasswordResetRepository
-{
+export class MongoosePasswordResetRepository implements IPasswordResetRepository {
     private model: Model<IPasswordReset>;
 
     public constructor() {

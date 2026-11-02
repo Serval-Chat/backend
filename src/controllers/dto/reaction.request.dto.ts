@@ -37,8 +37,7 @@ export class AddCustomReactionRequestDTO {
 }
 
 export type AddReactionRequestDTO =
-    | AddUnicodeReactionRequestDTO
-    | AddCustomReactionRequestDTO;
+    AddUnicodeReactionRequestDTO | AddCustomReactionRequestDTO;
 
 export class RemoveUnicodeReactionRequestDTO {
     @ApiProperty({ example: '👍' })
@@ -68,5 +67,4 @@ export class RemoveCustomReactionRequestDTO {
 }
 
 export type RemoveReactionRequestDTO =
-    | RemoveUnicodeReactionRequestDTO
-    | RemoveCustomReactionRequestDTO;
+    RemoveUnicodeReactionRequestDTO | RemoveCustomReactionRequestDTO;

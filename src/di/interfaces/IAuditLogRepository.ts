@@ -26,12 +26,7 @@ export interface IAuditLog {
     actionType: string;
     targetId?: string;
     targetType?:
-        | 'user'
-        | 'channel'
-        | 'category'
-        | 'role'
-        | 'message'
-        | 'server';
+        'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
     targetUserId?: string;
     // populated via .populate('targetUserIdUser'), present when targetUserId is a user.
     targetUserIdUser?: IAuditLogUserRef;
@@ -53,12 +48,7 @@ export interface IAuditLogRepository {
         actionType: string;
         targetId?: string;
         targetType?:
-            | 'user'
-            | 'channel'
-            | 'category'
-            | 'role'
-            | 'message'
-            | 'server';
+            'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
         targetUserId?: string;
         changes?: IAuditLogChange[];
         reason?: string;

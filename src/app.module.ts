@@ -62,6 +62,7 @@ import { InteractionController } from './controllers/InteractionController';
 import { ApplicationController } from './controllers/ApplicationController';
 import { DecorationController } from './controllers/DecorationController';
 import { InternalWcagController } from './controllers/InternalWcagController';
+import { ReportController } from './controllers/ReportController';
 import { loginBackoff } from '@/middleware/loginBackoff';
 import {
     botTokenLimiter,
@@ -91,6 +92,7 @@ import {
     websiteConnectionRemoveLimiter,
     websiteConnectionVerifyLimiter,
     webhookExecutionLimiter,
+    reportSubmitLimiter,
 } from './middleware/rateLimiting';
 
 @Module({
@@ -166,6 +168,7 @@ import {
         AdminInviteController,
         UserPingController,
         UserWarningController,
+        ReportController,
         EmojiController,
         FileController,
         FileCompatibilityController,
@@ -219,6 +222,10 @@ import {
 })
 export class AppModule {
     public configure(consumer: MiddlewareConsumer) {
+        consumer.apply(reportSubmitLimiter).forRoutes({
+            path: 'api/v1/reports',
+            method: RequestMethod.POST,
+        });
         consumer.apply(loginLimiter, loginBackoff).forRoutes({
             path: 'api/v1/auth/login',
             method: RequestMethod.POST,

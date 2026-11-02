@@ -1,11 +1,7 @@
 import { Schema } from 'mongoose';
 
 export type MessageAttachmentType =
-    | 'image'
-    | 'video'
-    | 'audio'
-    | 'text'
-    | 'file';
+    'image' | 'video' | 'audio' | 'text' | 'file';
 
 export interface IMessageAttachment {
     attachmentId: string;

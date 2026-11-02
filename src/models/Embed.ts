@@ -1,11 +1,5 @@
 export type EmbedType =
-    | 'rich'
-    | 'image'
-    | 'video'
-    | 'gifv'
-    | 'article'
-    | 'link'
-    | 'youtube';
+    'rich' | 'image' | 'video' | 'gifv' | 'article' | 'link' | 'youtube';
 
 export interface IEmbedField {
     name: string;
@@ -36,11 +30,7 @@ export interface IEmbedProvider {
 }
 
 export type EmbedButtonStyle =
-    | 'primary'
-    | 'secondary'
-    | 'success'
-    | 'danger'
-    | 'link';
+    'primary' | 'secondary' | 'success' | 'danger' | 'link';
 
 export interface IEmbedButtonEmoji {
     id?: string;

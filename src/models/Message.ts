@@ -24,6 +24,21 @@ export interface IPoll {
     expiresAt?: Date;
 }
 
+export interface IMessageEditPatch {
+    start: number;
+    removedText: string;
+    insertedText: string;
+    editedAt: Date;
+}
+
+export interface ILegacyMessageEditRevision {
+    text: string;
+    editedAt: Date;
+}
+
+export type IMessageEditRevision =
+    IMessageEditPatch | ILegacyMessageEditRevision;
+
 export interface IMessage extends Document {
     snowflakeId: string;
     channelId: string;
@@ -58,6 +73,7 @@ export interface IMessage extends Document {
     attachments?: IMessageAttachment[];
     noEmbeds?: boolean;
     noEmbedsUrls?: string[];
+    editHistory?: IMessageEditRevision[];
 }
 
 const messageSchema = new Schema<IMessage>({
@@ -124,6 +140,21 @@ const messageSchema = new Schema<IMessage>({
     attachments: { type: [messageAttachmentSchema], default: [] },
     noEmbeds: { type: Boolean, default: false },
     noEmbedsUrls: { type: [String], default: [] },
+    editHistory: {
+        type: [
+            new Schema(
+                {
+                    start: { type: Number, min: 0 },
+                    removedText: { type: String },
+                    insertedText: { type: String },
+                    text: { type: String },
+                    editedAt: { type: Date, required: true },
+                },
+                { _id: false },
+            ),
+        ],
+        default: [],
+    },
 });
 
 messageSchema.plugin(mongooseIdPlugin);

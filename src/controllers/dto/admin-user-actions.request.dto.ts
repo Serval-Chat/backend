@@ -7,11 +7,16 @@ import {
     IsOptional,
     IsInt,
     IsPositive,
+    IsString,
+    MaxLength,
+    MinLength,
     ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { AdminPermissions, ProfileFieldDTO } from './common.request.dto';
-import { IsReason, IsMessageContent } from '@/validation/schemas/common';
+import { IsReason } from '@/validation/schemas/common';
+
+const MAX_MODERATION_NOTICE_LENGTH = 5000;
 
 export class AdminResetProfileRequestDTO {
     @ApiProperty({ enum: ProfileFieldDTO, isArray: true })
@@ -64,6 +69,10 @@ export class AdminPermissionsDTO implements AdminPermissions {
 
     @ApiProperty()
     @IsBoolean()
+    public viewReports!: boolean;
+
+    @ApiProperty()
+    @IsBoolean()
     public manageServer!: boolean;
 
     @ApiProperty()
@@ -85,7 +94,9 @@ export class AdminUpdateUserPermissionsRequestDTO {
 
 export class AdminBanUserRequestDTO {
     @ApiProperty()
-    @IsReason()
+    @IsString()
+    @MinLength(1)
+    @MaxLength(MAX_MODERATION_NOTICE_LENGTH)
     public reason!: string;
 
     @ApiProperty()
@@ -96,7 +107,12 @@ export class AdminBanUserRequestDTO {
 
 export class AdminWarnUserRequestDTO {
     @ApiProperty()
-    @IsMessageContent()
+    @Transform(({ value }) =>
+        typeof value === 'string' ? value.trim() : value,
+    )
+    @IsString()
+    @MinLength(1)
+    @MaxLength(MAX_MODERATION_NOTICE_LENGTH)
     public message!: string;
 
     @ApiPropertyOptional()
@@ -108,7 +124,9 @@ export class AdminWarnUserRequestDTO {
 
 export class AdminMuteUserRequestDTO {
     @ApiProperty()
-    @IsReason()
+    @IsString()
+    @MinLength(1)
+    @MaxLength(MAX_MODERATION_NOTICE_LENGTH)
     public reason!: string;
 
     @ApiProperty()

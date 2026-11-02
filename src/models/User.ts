@@ -218,6 +218,7 @@ const schema = new Schema<IUser>(
             viewBans: { type: Boolean, default: false },
             warnUsers: { type: Boolean, default: false },
             viewLogs: { type: Boolean, default: false },
+            viewReports: { type: Boolean, default: false },
             manageServer: { type: Boolean, default: false },
             manageInvites: { type: Boolean, default: false },
             manageBots: { type: Boolean, default: false },

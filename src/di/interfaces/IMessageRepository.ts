@@ -1,5 +1,5 @@
 import type { Types, ClientSession } from 'mongoose';
-import type { IPoll } from '@/models/Message';
+import type { IMessageEditRevision, IPoll } from '@/models/Message';
 import type { IEmbed, IEmbedButton } from '@/models/Embed';
 import type { IMessageAttachment } from '@/models/Attachment';
 import type { InteractionValue } from '@/types/interactions';
@@ -44,6 +44,10 @@ export interface IMessage {
     noEmbedsUrls?: string[];
 }
 
+export interface IMessageWithEditHistory extends IMessage {
+    editHistory: IMessageEditRevision[];
+}
+
 export interface IMessageRepository {
     findById(id: string, includeDeleted?: boolean): Promise<IMessage | null>;
 
@@ -66,6 +70,14 @@ export interface IMessageRepository {
         after?: string,
         includeDeleted?: boolean,
     ): Promise<IMessage[]>;
+
+    findContextAround(
+        channelId: string,
+        messageId: string,
+        beforeCount?: number,
+        afterCount?: number,
+        includeDeleted?: boolean,
+    ): Promise<IMessageWithEditHistory[]>;
 
     findCursorByChannelId(channelId: string): AsyncIterable<IMessage>;
 

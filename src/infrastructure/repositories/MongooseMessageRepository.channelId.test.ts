@@ -80,3 +80,120 @@ describe('MongooseMessageRepository.findByChannelId', () => {
         ]);
     });
 });
+
+describe('MongooseMessageRepository message history', () => {
+    test('stores text revisions without exposing them through normal reads', async () => {
+        const message = await repo.create({
+            senderId: 'userA',
+            receiverId: 'userB',
+            channelId: 'history-channel',
+            text: 'Foooz',
+        });
+        const firstEditAt = new Date('2026-10-01T12:00:00.000Z');
+        const secondEditAt = new Date('2026-10-01T12:01:00.000Z');
+
+        await repo.updateMessage(message.snowflakeId, {
+            text: 'Foz',
+            editedAt: firstEditAt,
+            isEdited: true,
+        });
+        await repo.updateMessage(message.snowflakeId, {
+            text: 'Foo',
+            editedAt: secondEditAt,
+            isEdited: true,
+        });
+        await repo.updateMessage(message.snowflakeId, {
+            embeds: [{ title: 'Embed update' }],
+        });
+
+        const normalRead = await repo.findById(message.snowflakeId);
+        expect(normalRead).not.toHaveProperty('editHistory');
+
+        const [contextMessage] = await repo.findContextAround(
+            'history-channel',
+            message.snowflakeId,
+        );
+        expect(contextMessage).toEqual(
+            expect.objectContaining({
+                text: 'Foo',
+                editedAt: secondEditAt,
+                editHistory: [
+                    {
+                        start: 2,
+                        removedText: 'oo',
+                        insertedText: '',
+                        editedAt: firstEditAt,
+                    },
+                    {
+                        start: 2,
+                        removedText: 'z',
+                        insertedText: 'o',
+                        editedAt: secondEditAt,
+                    },
+                ],
+            }),
+        );
+    });
+
+    test('returns ten visible neighbors on either side in chronological order', async () => {
+        const baseTime = new Date('2026-10-01T12:00:00.000Z').getTime();
+        const messages = await Promise.all(
+            Array.from({ length: 23 }, (_, index) =>
+                repo.create({
+                    senderId: index % 2 === 0 ? 'userA' : 'userB',
+                    receiverId: index % 2 === 0 ? 'userB' : 'userA',
+                    channelId: 'context-channel',
+                    text: `message-${index}`,
+                }),
+            ),
+        );
+        await Promise.all(
+            messages.map((message, index) =>
+                Message.updateOne(
+                    { snowflakeId: message.snowflakeId },
+                    { $set: { createdAt: new Date(baseTime + index) } },
+                ),
+            ),
+        );
+        const deletedMessage = messages[10];
+        const target = messages[11];
+        if (!deletedMessage || !target) {
+            throw new Error('Expected message fixture was not created');
+        }
+        await Message.updateOne(
+            { snowflakeId: deletedMessage.snowflakeId },
+            { $set: { deletedAt: new Date(baseTime + 100) } },
+        );
+
+        const visibleContext = await repo.findContextAround(
+            'context-channel',
+            target.snowflakeId,
+        );
+        expect(visibleContext.map((message) => message.text)).toEqual([
+            ...Array.from({ length: 10 }, (_, index) => `message-${index}`),
+            'message-11',
+            ...Array.from(
+                { length: 10 },
+                (_, index) => `message-${index + 12}`,
+            ),
+        ]);
+
+        const contextIncludingDeleted = await repo.findContextAround(
+            'context-channel',
+            target.snowflakeId,
+            10,
+            10,
+            true,
+        );
+        expect(contextIncludingDeleted).toHaveLength(21);
+        expect(contextIncludingDeleted.map((message) => message.text)).toEqual([
+            ...Array.from({ length: 9 }, (_, index) => `message-${index + 1}`),
+            'message-10',
+            'message-11',
+            ...Array.from(
+                { length: 10 },
+                (_, index) => `message-${index + 12}`,
+            ),
+        ]);
+    });
+});

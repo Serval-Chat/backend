@@ -160,6 +160,18 @@ export const messageSearchLimiter = rateLimit({
     message: 'Too many search requests, please try again later.',
 });
 
+export const reportSubmitLimiter = rateLimit({
+    ...(process.env.NODE_ENV !== 'test'
+        ? { store: getStore('rl:report-submit:') }
+        : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    keyGenerator: authenticatedUserKey,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many reports submitted, please try again later.',
+});
+
 export const discoverySearchLimiter = rateLimit({
     ...(process.env.NODE_ENV !== 'test'
         ? { store: getStore('rl:discovery:search:') }

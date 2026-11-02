@@ -13,12 +13,7 @@ export interface IServerAuditLogService {
         actionType: string;
         targetId?: string;
         targetType?:
-            | 'user'
-            | 'channel'
-            | 'category'
-            | 'role'
-            | 'message'
-            | 'server';
+            'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
         targetUserId?: string;
         changes?: IAuditLogChange[];
         reason?: string;

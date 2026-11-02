@@ -4,11 +4,7 @@ import type { Document, Model, Types } from 'mongoose';
 import mongoose, { Schema } from 'mongoose';
 
 export type ExportStatus =
-    | 'queued'
-    | 'in_progress'
-    | 'completed'
-    | 'failed'
-    | 'cancelled';
+    'queued' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
 
 export interface IExportJob extends Document {
     snowflakeId: string;

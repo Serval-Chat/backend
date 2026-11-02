@@ -2,16 +2,23 @@ import { type QueryFilter, ClientSession } from 'mongoose';
 import {
     IMessageRepository,
     IMessage,
+    IMessageWithEditHistory,
 } from '@/di/interfaces/IMessageRepository';
-import { Message, type IPoll } from '@/models/Message';
+import {
+    Message,
+    type IMessageEditRevision,
+    type IPoll,
+} from '@/models/Message';
 import { injectable } from 'inversify';
 import type { IEmbed, IEmbedButton } from '@/models/Embed';
 import type { IMessageAttachment } from '@/models/Attachment';
 import type { InteractionValue } from '@/types/interactions';
 import { isValidSnowflakeId } from '@/utils/snowflake';
+import { createTextPatch } from '@/utils/textPatch';
 
 type PopulatedMessageDoc = IMessage & {
     repliedToMessage?: PopulatedMessageDoc;
+    editHistory?: IMessageEditRevision[];
 };
 
 // Mongoose Message repository
@@ -29,6 +36,7 @@ export class MongooseMessageRepository implements IMessageRepository {
     private transformMessage(msg: PopulatedMessageDoc): IMessage {
         const transformed = { ...msg } as IMessage;
         delete (transformed as Partial<PopulatedMessageDoc>).repliedToMessage;
+        delete (transformed as Partial<PopulatedMessageDoc>).editHistory;
 
         if (msg.repliedToMessage) {
             transformed.referenced_message = this.transformMessage(
@@ -150,6 +158,67 @@ export class MongooseMessageRepository implements IMessageRepository {
             after,
             includeDeleted,
         );
+    }
+
+    public async findContextAround(
+        channelId: string,
+        messageId: string,
+        beforeCount = 10,
+        afterCount = 10,
+        includeDeleted = false,
+    ): Promise<IMessageWithEditHistory[]> {
+        const target = (await this.messageModel
+            .findOne({ channelId, snowflakeId: messageId })
+            .lean()) as PopulatedMessageDoc | null;
+        if (target === null || target.createdAt === undefined) return [];
+
+        const deletedFilter: QueryFilter<IMessage> = includeDeleted
+            ? {}
+            : { deletedAt: { $exists: false } };
+        const before = (await this.messageModel
+            .find({
+                channelId,
+                ...deletedFilter,
+                $or: [
+                    { createdAt: { $lt: target.createdAt } },
+                    {
+                        createdAt: target.createdAt,
+                        snowflakeId: { $lt: messageId },
+                    },
+                ],
+            })
+            .sort({ createdAt: -1, snowflakeId: -1 })
+            .limit(beforeCount)
+            .lean()) as PopulatedMessageDoc[];
+        const after = (await this.messageModel
+            .find({
+                channelId,
+                ...deletedFilter,
+                $or: [
+                    { createdAt: { $gt: target.createdAt } },
+                    {
+                        createdAt: target.createdAt,
+                        snowflakeId: { $gt: messageId },
+                    },
+                ],
+            })
+            .sort({ createdAt: 1, snowflakeId: 1 })
+            .limit(afterCount)
+            .lean()) as PopulatedMessageDoc[];
+
+        return [...before.reverse(), target, ...after].map((message) => ({
+            ...this.transformMessage(message),
+            editHistory: (message.editHistory ?? []).map((revision) =>
+                'text' in revision
+                    ? { text: revision.text, editedAt: revision.editedAt }
+                    : {
+                          start: revision.start,
+                          removedText: revision.removedText,
+                          insertedText: revision.insertedText,
+                          editedAt: revision.editedAt,
+                      },
+            ),
+        }));
     }
 
     private async findByQuery(
@@ -287,29 +356,88 @@ export class MongooseMessageRepository implements IMessageRepository {
         return this.transformMessage(msgObj);
     }
 
+    private async updateText(
+        id: string,
+        text: string,
+        data: Partial<IMessage> = {},
+    ): Promise<IMessage | null> {
+        const editedAt = data.editedAt ?? new Date();
+        const additionalSet = Object.fromEntries(
+            Object.entries(data)
+                .filter(
+                    ([key]) =>
+                        key !== 'text' &&
+                        key !== 'editedAt' &&
+                        key !== 'isEdited',
+                )
+                .map(([key, value]) => [key, { $literal: value }]),
+        );
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            const current = await this.messageModel
+                .findOne({ snowflakeId: id })
+                .select({ text: 1 })
+                .lean();
+            if (current === null) return null;
+
+            const previousText =
+                typeof current.text === 'string' ? current.text : '';
+            const filter: QueryFilter<IMessage> = {
+                snowflakeId: id,
+                ...(current.text !== undefined
+                    ? { text: current.text }
+                    : { text: { $exists: false } }),
+            };
+            const set: Record<string, unknown> = {
+                ...additionalSet,
+                text: { $literal: text },
+                editedAt: { $literal: editedAt },
+                isEdited: { $literal: true },
+            };
+
+            if (previousText !== text) {
+                set.editHistory = {
+                    $concatArrays: [
+                        { $ifNull: ['$editHistory', []] },
+                        [
+                            {
+                                $literal: {
+                                    ...createTextPatch(previousText, text),
+                                    editedAt,
+                                },
+                            },
+                        ],
+                    ],
+                };
+            }
+
+            const msg = (await this.messageModel
+                .findOneAndUpdate(filter, [{ $set: set }], {
+                    returnDocument: 'after',
+                    updatePipeline: true,
+                })
+                .populate({
+                    path: 'repliedToMessage',
+                    populate: { path: 'repliedToMessage' },
+                })
+                .lean()) as PopulatedMessageDoc | null;
+            if (msg) return this.transformMessage(msg);
+        }
+
+        throw new Error(`Message ${id} changed too often to save its edit`);
+    }
+
     public async update(id: string, text: string): Promise<IMessage | null> {
-        const msg = (await this.messageModel
-            .findOneAndUpdate(
-                { snowflakeId: id },
-                {
-                    text,
-                    editedAt: new Date(),
-                    isEdited: true,
-                },
-                { returnDocument: 'after' },
-            )
-            .populate({
-                path: 'repliedToMessage',
-                populate: { path: 'repliedToMessage' },
-            })
-            .lean()) as PopulatedMessageDoc | null;
-        return msg ? this.transformMessage(msg) : null;
+        return this.updateText(id, text);
     }
 
     public async updateMessage(
         id: string,
         data: Partial<IMessage>,
     ): Promise<IMessage | null> {
+        if (data.text !== undefined) {
+            return this.updateText(id, data.text, data);
+        }
         const msg = (await this.messageModel
             .findOneAndUpdate({ snowflakeId: id }, data, {
                 returnDocument: 'after',

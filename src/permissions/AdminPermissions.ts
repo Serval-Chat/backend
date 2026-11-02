@@ -13,6 +13,7 @@ export interface AdminPermissions {
     viewBans: boolean; // Can view ban lists
     warnUsers: boolean; // Can issue warnings to users
     viewLogs: boolean; // Can view audit logs
+    viewReports: boolean;
     manageServer: boolean; // Can manage servers (delete/restore)
     manageInvites: boolean; // Can manage registration invites
     manageBots: boolean; // Can manage bot verification
@@ -27,6 +28,7 @@ export const DEFAULT_PERMISSIONS: AdminPermissions = {
     viewBans: false,
     warnUsers: false,
     viewLogs: false,
+    viewReports: false,
     manageServer: false,
     manageInvites: false,
     manageBots: false,
@@ -42,6 +44,7 @@ export const PERMISSION_KEYS = [
     'viewBans',
     'warnUsers',
     'viewLogs',
+    'viewReports',
     'manageServer',
     'manageInvites',
     'manageBots',

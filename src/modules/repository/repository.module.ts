@@ -8,6 +8,7 @@ import { MongooseFriendshipRepository } from '@/infrastructure/repositories/Mong
 import { MongooseServerRepository } from '@/infrastructure/repositories/MongooseServerRepository';
 import { MongooseMessageRepository } from '@/infrastructure/repositories/MongooseMessageRepository';
 import { MongooseWarningRepository } from '@/infrastructure/repositories/MongooseWarningRepository';
+import { MongooseReportRepository } from '@/infrastructure/repositories/MongooseReportRepository';
 import { MongooseServerMemberRepository } from '@/infrastructure/repositories/MongooseServerMemberRepository';
 import { MongooseRoleRepository } from '@/infrastructure/repositories/MongooseRoleRepository';
 import { MongooseCategoryRepository } from '@/infrastructure/repositories/MongooseCategoryRepository';
@@ -65,6 +66,10 @@ import { MongoosePasskeyCredentialRepository } from '@/infrastructure/repositori
         {
             provide: TYPES.WarningRepository,
             useClass: MongooseWarningRepository,
+        },
+        {
+            provide: TYPES.ReportRepository,
+            useClass: MongooseReportRepository,
         },
         {
             provide: TYPES.ServerMemberRepository,
@@ -164,6 +169,7 @@ import { MongoosePasskeyCredentialRepository } from '@/infrastructure/repositori
         TYPES.ServerRepository,
         TYPES.MessageRepository,
         TYPES.WarningRepository,
+        TYPES.ReportRepository,
         TYPES.ServerMemberRepository,
         TYPES.RoleRepository,
         TYPES.CategoryRepository,

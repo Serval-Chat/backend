@@ -16,6 +16,7 @@ export const TYPES = {
     RoleRepository: Symbol.for('RoleRepository'),
     DmUnreadRepository: Symbol.for('DmUnreadRepository'),
     WarningRepository: Symbol.for('WarningRepository'),
+    ReportRepository: Symbol.for('ReportRepository'),
     FriendshipRepository: Symbol.for('FriendshipRepository'),
     EmojiRepository: Symbol.for('EmojiRepository'),
     StickerRepository: Symbol.for('StickerRepository'),

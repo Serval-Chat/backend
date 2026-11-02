@@ -22,14 +22,7 @@ export type TagExprNode =
     | { type: 'xor'; left: TagExprNode; right: TagExprNode };
 
 type TokenType =
-    | 'AND'
-    | 'OR'
-    | 'XOR'
-    | 'NOT'
-    | 'LPAREN'
-    | 'RPAREN'
-    | 'IDENT'
-    | 'EOF';
+    'AND' | 'OR' | 'XOR' | 'NOT' | 'LPAREN' | 'RPAREN' | 'IDENT' | 'EOF';
 
 interface Token {
     type: TokenType;

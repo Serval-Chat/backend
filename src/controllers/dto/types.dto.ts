@@ -68,9 +68,7 @@ export class InteractionResolvedUserDTO implements InteractionResolvedUser {
     public isBot?: boolean;
 }
 
-export class InteractionResolvedChannelDTO
-    implements InteractionResolvedChannel
-{
+export class InteractionResolvedChannelDTO implements InteractionResolvedChannel {
     @ApiProperty()
     public id!: string;
     @ApiProperty()

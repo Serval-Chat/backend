@@ -22,12 +22,7 @@ export interface IAuditLog extends Document {
     // refer to snowflake-migrated entities.
     targetId?: string;
     targetType?:
-        | 'user'
-        | 'channel'
-        | 'category'
-        | 'role'
-        | 'message'
-        | 'server';
+        'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
     targetUserId?: string;
     changes?: IAuditLogChange[];
     reason?: string;

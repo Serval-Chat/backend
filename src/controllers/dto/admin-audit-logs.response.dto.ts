@@ -41,12 +41,7 @@ export class AdminAuditLogListItemDTO {
         enum: ['user', 'channel', 'category', 'role', 'message', 'server'],
     })
     public targetType?:
-        | 'user'
-        | 'channel'
-        | 'category'
-        | 'role'
-        | 'message'
-        | 'server';
+        'user' | 'channel' | 'category' | 'role' | 'message' | 'server';
     @ApiPropertyOptional()
     public targetUserId?: string;
     @ApiPropertyOptional({ type: AdminNoteAdminInfoDTO })
