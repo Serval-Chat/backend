@@ -9,6 +9,7 @@ import {
     type IMessageEditRevision,
     type IPoll,
 } from '@/models/Message';
+import { Reaction } from '@/models/Reaction';
 import { injectable } from 'inversify';
 import type { IEmbed, IEmbedButton } from '@/models/Embed';
 import type { IMessageAttachment } from '@/models/Attachment';
@@ -27,21 +28,71 @@ export class MongooseMessageRepository implements IMessageRepository {
     private messageModel = Message;
     public constructor() {}
 
-    private notDeletedFilter(
+    private messageVisibilityFilter(
         includeDeleted?: boolean,
-    ): Partial<QueryFilter<IMessage>> {
-        return includeDeleted === true ? {} : { deletedAt: { $exists: false } };
+        deletedAfter?: Date,
+    ): QueryFilter<IMessage> {
+        if (includeDeleted !== true) {
+            return { deletedAt: { $exists: false } };
+        }
+        if (deletedAfter !== undefined) {
+            return {
+                $or: [
+                    { deletedAt: { $exists: false } },
+                    { deletedAt: { $gt: deletedAfter } },
+                ],
+            };
+        }
+        return {};
     }
 
-    private transformMessage(msg: PopulatedMessageDoc): IMessage {
+    private combineFilters(
+        ...filters: QueryFilter<IMessage>[]
+    ): QueryFilter<IMessage> {
+        const nonEmpty = filters.filter(
+            (filter) => Object.keys(filter).length > 0,
+        );
+        if (nonEmpty.length === 0) return {};
+        if (nonEmpty.length === 1) return nonEmpty[0] as QueryFilter<IMessage>;
+        return { $and: nonEmpty };
+    }
+
+    private isMessageVisible(
+        message: IMessage,
+        includeDeleted?: boolean,
+        deletedAfter?: Date,
+    ): boolean {
+        if (message.deletedAt === undefined) return true;
+        return (
+            includeDeleted === true &&
+            (deletedAfter === undefined || message.deletedAt > deletedAfter)
+        );
+    }
+
+    private transformMessage(
+        msg: PopulatedMessageDoc,
+        includeDeleted?: boolean,
+        deletedAfter?: Date,
+    ): IMessage {
         const transformed = { ...msg } as IMessage;
         delete (transformed as Partial<PopulatedMessageDoc>).repliedToMessage;
         delete (transformed as Partial<PopulatedMessageDoc>).editHistory;
 
-        if (msg.repliedToMessage) {
+        if (
+            msg.repliedToMessage &&
+            this.isMessageVisible(
+                msg.repliedToMessage,
+                includeDeleted,
+                deletedAfter,
+            )
+        ) {
             transformed.referenced_message = this.transformMessage(
                 msg.repliedToMessage,
+                includeDeleted,
+                deletedAfter,
             );
+        } else {
+            delete transformed.referenced_message;
         }
 
         return transformed;
@@ -49,8 +100,12 @@ export class MongooseMessageRepository implements IMessageRepository {
 
     private async transformMessages(
         messages: PopulatedMessageDoc[],
+        includeDeleted?: boolean,
+        deletedAfter?: Date,
     ): Promise<IMessage[]> {
-        const transformed = messages.map((msg) => this.transformMessage(msg));
+        const transformed = messages.map((msg) =>
+            this.transformMessage(msg, includeDeleted, deletedAfter),
+        );
 
         const replyToIds = transformed
             .filter(
@@ -65,9 +120,19 @@ export class MongooseMessageRepository implements IMessageRepository {
 
         // Legacy replyToId references are only populated one level deep; nested replies within legacy messages will not have referenced_message set.
         const replyDocs = (await this.messageModel
-            .find({ snowflakeId: { $in: replyToIds } })
+            .find(
+                this.combineFilters(
+                    { snowflakeId: { $in: replyToIds } },
+                    this.messageVisibilityFilter(includeDeleted, deletedAfter),
+                ),
+            )
             .lean()) as PopulatedMessageDoc[];
-        const replyMap = new Map(replyDocs.map((d) => [d.snowflakeId, d]));
+        const replyMap = new Map(
+            replyDocs.map((d) => [
+                d.snowflakeId,
+                this.transformMessage(d, includeDeleted, deletedAfter),
+            ]),
+        );
 
         return transformed.map((m) => {
             if (
@@ -78,7 +143,7 @@ export class MongooseMessageRepository implements IMessageRepository {
                 if (ref) {
                     return {
                         ...m,
-                        referenced_message: this.transformMessage(ref),
+                        referenced_message: ref,
                     };
                 }
             }
@@ -89,11 +154,12 @@ export class MongooseMessageRepository implements IMessageRepository {
     public async findById(
         id: string,
         includeDeleted?: boolean,
+        deletedAfter?: Date,
     ): Promise<IMessage | null> {
-        const filter: QueryFilter<IMessage> = {
-            snowflakeId: id,
-            ...this.notDeletedFilter(includeDeleted),
-        };
+        const filter = this.combineFilters(
+            { snowflakeId: id },
+            this.messageVisibilityFilter(includeDeleted, deletedAfter),
+        );
 
         const msg = (await this.messageModel
             .findOne(filter)
@@ -102,7 +168,9 @@ export class MongooseMessageRepository implements IMessageRepository {
                 populate: { path: 'repliedToMessage' },
             })
             .lean()) as PopulatedMessageDoc | null;
-        return msg ? this.transformMessage(msg) : null;
+        return msg
+            ? this.transformMessage(msg, includeDeleted, deletedAfter)
+            : null;
     }
 
     public async conversationExists(
@@ -149,6 +217,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         around?: string,
         after?: string,
         includeDeleted?: boolean,
+        deletedAfter?: Date,
     ): Promise<IMessage[]> {
         return this.findByQuery(
             { channelId },
@@ -157,6 +226,7 @@ export class MongooseMessageRepository implements IMessageRepository {
             around,
             after,
             includeDeleted,
+            deletedAfter,
         );
     }
 
@@ -166,48 +236,55 @@ export class MongooseMessageRepository implements IMessageRepository {
         beforeCount = 10,
         afterCount = 10,
         includeDeleted = false,
+        deletedAfter?: Date,
     ): Promise<IMessageWithEditHistory[]> {
         const target = (await this.messageModel
-            .findOne({ channelId, snowflakeId: messageId })
+            .findOne(
+                this.combineFilters(
+                    { channelId, snowflakeId: messageId },
+                    this.messageVisibilityFilter(includeDeleted, deletedAfter),
+                ),
+            )
             .lean()) as PopulatedMessageDoc | null;
         if (target === null || target.createdAt === undefined) return [];
 
-        const deletedFilter: QueryFilter<IMessage> = includeDeleted
-            ? {}
-            : { deletedAt: { $exists: false } };
+        const deletedFilter = this.messageVisibilityFilter(
+            includeDeleted,
+            deletedAfter,
+        );
         const before = (await this.messageModel
-            .find({
-                channelId,
-                ...deletedFilter,
-                $or: [
-                    { createdAt: { $lt: target.createdAt } },
-                    {
-                        createdAt: target.createdAt,
-                        snowflakeId: { $lt: messageId },
-                    },
-                ],
-            })
+            .find(
+                this.combineFilters({ channelId }, deletedFilter, {
+                    $or: [
+                        { createdAt: { $lt: target.createdAt } },
+                        {
+                            createdAt: target.createdAt,
+                            snowflakeId: { $lt: messageId },
+                        },
+                    ],
+                }),
+            )
             .sort({ createdAt: -1, snowflakeId: -1 })
             .limit(beforeCount)
             .lean()) as PopulatedMessageDoc[];
         const after = (await this.messageModel
-            .find({
-                channelId,
-                ...deletedFilter,
-                $or: [
-                    { createdAt: { $gt: target.createdAt } },
-                    {
-                        createdAt: target.createdAt,
-                        snowflakeId: { $gt: messageId },
-                    },
-                ],
-            })
+            .find(
+                this.combineFilters({ channelId }, deletedFilter, {
+                    $or: [
+                        { createdAt: { $gt: target.createdAt } },
+                        {
+                            createdAt: target.createdAt,
+                            snowflakeId: { $gt: messageId },
+                        },
+                    ],
+                }),
+            )
             .sort({ createdAt: 1, snowflakeId: 1 })
             .limit(afterCount)
             .lean()) as PopulatedMessageDoc[];
 
         return [...before.reverse(), target, ...after].map((message) => ({
-            ...this.transformMessage(message),
+            ...this.transformMessage(message, includeDeleted, deletedAfter),
             editHistory: (message.editHistory ?? []).map((revision) =>
                 'text' in revision
                     ? { text: revision.text, editedAt: revision.editedAt }
@@ -228,14 +305,18 @@ export class MongooseMessageRepository implements IMessageRepository {
         around?: string,
         after?: string,
         includeDeleted?: boolean,
+        deletedAfter?: Date,
     ): Promise<IMessage[]> {
-        const deletedFilter = this.notDeletedFilter(includeDeleted);
+        const deletedFilter = this.messageVisibilityFilter(
+            includeDeleted,
+            deletedAfter,
+        );
 
         if (around !== undefined && around !== '') {
-            const targetFilter: QueryFilter<IMessage> = {
-                snowflakeId: around,
-                ...deletedFilter,
-            };
+            const targetFilter = this.combineFilters(
+                { snowflakeId: around },
+                deletedFilter,
+            );
             const targetMessage = (await this.messageModel
                 .findOne(targetFilter)
                 .lean()) as PopulatedMessageDoc | null;
@@ -244,11 +325,9 @@ export class MongooseMessageRepository implements IMessageRepository {
             const targetDate = targetMessage.createdAt;
 
             // Fetch messages before (older)
-            const beforeQuery = {
-                ...baseQuery,
-                ...deletedFilter,
+            const beforeQuery = this.combineFilters(baseQuery, deletedFilter, {
                 createdAt: { $lt: targetDate },
-            };
+            });
             const beforeMessages = (await this.messageModel
                 .find(beforeQuery)
                 .sort({ createdAt: -1 })
@@ -260,11 +339,11 @@ export class MongooseMessageRepository implements IMessageRepository {
                 .lean()) as PopulatedMessageDoc[];
 
             const afterMessages = (await this.messageModel
-                .find({
-                    ...baseQuery,
-                    ...deletedFilter,
-                    createdAt: { $gte: targetDate },
-                })
+                .find(
+                    this.combineFilters(baseQuery, deletedFilter, {
+                        createdAt: { $gte: targetDate },
+                    }),
+                )
                 .sort({ createdAt: 1 }) // Ascending to get closest to target
                 .limit(Math.ceil(limit / 2))
                 .populate({
@@ -279,27 +358,31 @@ export class MongooseMessageRepository implements IMessageRepository {
                     (a.createdAt?.getTime() ?? 0) -
                     (b.createdAt?.getTime() ?? 0),
             );
-            return await this.transformMessages(combined);
+            return await this.transformMessages(
+                combined,
+                includeDeleted,
+                deletedAfter,
+            );
         }
 
-        const query = { ...baseQuery, ...deletedFilter };
+        let cursorFilter: QueryFilter<IMessage> = {};
 
         if (before !== undefined && before !== '') {
             if (isValidSnowflakeId(before)) {
-                query.snowflakeId = { $lt: before };
+                cursorFilter = { snowflakeId: { $lt: before } };
             } else {
-                query.createdAt = { $lt: new Date(before) };
+                cursorFilter = { createdAt: { $lt: new Date(before) } };
             }
         } else if (after !== undefined && after !== '') {
             if (isValidSnowflakeId(after)) {
-                query.snowflakeId = { $gt: after };
+                cursorFilter = { snowflakeId: { $gt: after } };
             } else {
-                query.createdAt = { $gt: new Date(after) };
+                cursorFilter = { createdAt: { $gt: new Date(after) } };
             }
         }
 
         const messages = (await this.messageModel
-            .find(query)
+            .find(this.combineFilters(baseQuery, deletedFilter, cursorFilter))
             .sort({ createdAt: after !== undefined && after !== '' ? 1 : -1 })
             .limit(limit)
             .populate({
@@ -312,12 +395,28 @@ export class MongooseMessageRepository implements IMessageRepository {
             messages.reverse();
         }
 
-        return await this.transformMessages(messages);
+        return await this.transformMessages(
+            messages,
+            includeDeleted,
+            deletedAfter,
+        );
     }
 
-    public findCursorByChannelId(channelId: string): AsyncIterable<IMessage> {
+    public findCursorByChannelId(
+        channelId: string,
+        deletedAfter?: Date,
+    ): AsyncIterable<IMessage> {
+        const visibility =
+            deletedAfter === undefined
+                ? {}
+                : {
+                      $or: [
+                          { deletedAt: { $exists: false } },
+                          { deletedAt: { $gt: deletedAfter } },
+                      ],
+                  };
         return this.messageModel
-            .find({ channelId })
+            .find(this.combineFilters({ channelId }, visibility))
             .sort({ createdAt: 1 })
             .lean()
             .cursor();
@@ -496,14 +595,48 @@ export class MongooseMessageRepository implements IMessageRepository {
             {
                 channelId: channelId,
                 snowflakeId: { $in: ids },
+                deletedAt: { $exists: false },
             },
             { $set: { deletedAt: new Date() } },
         );
         return result.modifiedCount;
     }
 
+    public async findNonDeletedIdsByChannelId(
+        channelId: string,
+        ids: string[],
+    ): Promise<string[]> {
+        const messages = await this.messageModel
+            .find({
+                channelId,
+                snowflakeId: { $in: ids },
+                deletedAt: { $exists: false },
+            })
+            .select({ snowflakeId: 1 })
+            .lean();
+        return messages.map((message) => message.snowflakeId);
+    }
+
     public async deleteByServerId(serverId: string): Promise<number> {
         const result = await this.messageModel.deleteMany({ serverId });
+        return result.deletedCount;
+    }
+
+    public async hardDeleteDeletedByServerId(
+        serverId: string,
+    ): Promise<number> {
+        const filter = { serverId, deletedAt: { $exists: true } };
+        const messages = await this.messageModel
+            .find(filter)
+            .select({ snowflakeId: 1 })
+            .lean();
+        if (messages.length > 0) {
+            await Reaction.deleteMany({
+                messageType: 'server',
+                messageId: { $in: messages.map((m) => m.snowflakeId) },
+            });
+        }
+        const result = await this.messageModel.deleteMany(filter);
         return result.deletedCount;
     }
 
@@ -558,10 +691,10 @@ export class MongooseMessageRepository implements IMessageRepository {
         channelId: string,
         includeDeleted?: boolean,
     ): Promise<number> {
-        const filter: QueryFilter<IMessage> = {
-            channelId,
-            ...this.notDeletedFilter(includeDeleted),
-        };
+        const filter = this.combineFilters(
+            { channelId },
+            this.messageVisibilityFilter(includeDeleted),
+        );
         return await this.messageModel.countDocuments(filter);
     }
 
@@ -577,7 +710,7 @@ export class MongooseMessageRepository implements IMessageRepository {
         const filter: QueryFilter<IMessage> = {
             channelId,
             senderId: userId,
-            ...this.notDeletedFilter(includeDeleted),
+            ...this.messageVisibilityFilter(includeDeleted),
         };
         const doc = (await this.messageModel
             .findOne(filter)
@@ -589,12 +722,13 @@ export class MongooseMessageRepository implements IMessageRepository {
     public async findPinnedByChannelId(
         channelId: string,
         includeDeleted?: boolean,
+        deletedAfter?: Date,
     ): Promise<IMessage[]> {
-        const filter: QueryFilter<IMessage> = {
-            channelId,
-            $or: [{ isPinned: true }, { isSticky: true }],
-            ...this.notDeletedFilter(includeDeleted),
-        };
+        const filter = this.combineFilters(
+            { channelId },
+            { $or: [{ isPinned: true }, { isSticky: true }] },
+            this.messageVisibilityFilter(includeDeleted, deletedAfter),
+        );
         const messages = (await this.messageModel
             .find(filter)
             .sort({ createdAt: -1 })
@@ -604,7 +738,11 @@ export class MongooseMessageRepository implements IMessageRepository {
             })
             .lean()) as PopulatedMessageDoc[];
         if (messages.length === 0) return [];
-        return await this.transformMessages(messages);
+        return await this.transformMessages(
+            messages,
+            includeDeleted,
+            deletedAfter,
+        );
     }
 
     public async count(): Promise<number> {

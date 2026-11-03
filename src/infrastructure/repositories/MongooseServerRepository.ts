@@ -9,6 +9,7 @@ import {
 import { Server } from '@/models/Server';
 import { injectable } from 'inversify';
 import { toApiId, toDatabaseId } from '@/utils/mongooseId';
+import { sanitizeDeletedMessageRetentionMinutes } from '@/utils/deletedMessageRetention';
 
 // Mongoose Server repository
 //
@@ -25,6 +26,10 @@ export class MongooseServerRepository implements IServerRepository {
         return {
             ...(withApiId as IServer),
             id: record.snowflakeId,
+            deletedMessageRetentionMinutes:
+                sanitizeDeletedMessageRetentionMinutes(
+                    record.deletedMessageRetentionMinutes,
+                ),
         } as IServer;
     }
 
@@ -80,6 +85,14 @@ export class MongooseServerRepository implements IServerRepository {
         id: RepositoryId,
         data: Partial<IServer>,
     ): Promise<IServer | null> {
+        const updates = { ...data };
+        if (data.deletedMessageRetentionMinutes !== undefined) {
+            updates.deletedMessageRetentionMinutes =
+                sanitizeDeletedMessageRetentionMinutes(
+                    data.deletedMessageRetentionMinutes,
+                );
+        }
+
         return this.mapOne(
             await this.serverModel
                 .findOneAndUpdate(
@@ -87,7 +100,7 @@ export class MongooseServerRepository implements IServerRepository {
                         snowflakeId: String(id),
                         deletedAt: { $exists: false },
                     },
-                    toDatabaseId(data),
+                    toDatabaseId(updates),
                     { returnDocument: 'after' },
                 )
                 .lean(),

@@ -39,6 +39,7 @@ import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import type { IMessageRepository } from '@/di/interfaces/IMessageRepository';
 import type { IChannelRepository } from '@/di/interfaces/IChannelRepository';
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
+import type { IServerRepository } from '@/di/interfaces/IServerRepository';
 import { PermissionService } from '@/permissions/PermissionService';
 import type {
     ReportContextMessageSnapshot,
@@ -54,6 +55,7 @@ import {
     deleteReportUserProfileSnapshotImages,
     getReportUserProfileImagePath,
 } from '@/utils/reportUserProfileSnapshot';
+import { getDeletedMessageRetentionCutoff } from '@/utils/deletedMessageRetention';
 import {
     CreateReportRequestDTO,
     UpdateReportRequestDTO,
@@ -74,6 +76,8 @@ export class ReportController {
         private channelRepo: IChannelRepository,
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
+        @Inject(TYPES.ServerRepository)
+        private serverRepo: IServerRepository,
         @Inject(TYPES.PermissionService)
         private permissionService: PermissionService,
         @Inject(TYPES.WsServer) private wsServer: IWsServer,
@@ -82,7 +86,7 @@ export class ReportController {
     private async requireMessageVisibility(
         message: IMessage,
         userId: string,
-    ): Promise<boolean> {
+    ): Promise<{ canSeeDeleted: boolean; deletedAfter?: Date }> {
         if (message.serverId !== undefined) {
             const member = await this.serverMemberRepo.findByServerAndUser(
                 message.serverId,
@@ -115,10 +119,27 @@ export class ReportController {
                     message.channelId,
                     'seeDeletedMessages',
                 );
-            if (message.deletedAt && !canSeeDeletedMessage) {
-                throw new NotFoundException('Report target not found');
+            const server = canSeeDeletedMessage
+                ? await this.serverRepo.findById(message.serverId)
+                : null;
+            const deletedAfter = canSeeDeletedMessage
+                ? getDeletedMessageRetentionCutoff(
+                      server?.deletedMessageRetentionMinutes,
+                  )
+                : undefined;
+            if (message.deletedAt) {
+                if (!canSeeDeletedMessage) {
+                    throw new NotFoundException('Report target not found');
+                }
+                if (
+                    deletedAfter !== undefined &&
+                    message.deletedAt < deletedAfter
+                ) {
+                    throw new NotFoundException('Report target not found');
+                }
+                return { canSeeDeleted: true, deletedAfter };
             }
-            return canSeeDeletedMessage;
+            return { canSeeDeleted: canSeeDeletedMessage, deletedAfter };
         }
 
         const channel = await this.channelRepo.findById(message.channelId);
@@ -129,7 +150,7 @@ export class ReportController {
         ) {
             throw new NotFoundException('Report target not found');
         }
-        return false;
+        return { canSeeDeleted: false };
     }
 
     @Get('reports/options')
@@ -325,16 +346,15 @@ export class ReportController {
         if (!message || message.senderId === reporterId) {
             throw new NotFoundException('Report target not found');
         }
-        const canSeeDeletedContext = await this.requireMessageVisibility(
-            message,
-            reporterId,
-        );
+        const { canSeeDeleted, deletedAfter } =
+            await this.requireMessageVisibility(message, reporterId);
         const contextMessages = await this.messageRepo.findContextAround(
             message.channelId,
             message.snowflakeId,
             10,
             10,
-            canSeeDeletedContext,
+            canSeeDeleted,
+            deletedAfter,
         );
         const contextAuthors = await this.userRepo.findByIds([
             ...new Set(contextMessages.map((context) => context.senderId)),

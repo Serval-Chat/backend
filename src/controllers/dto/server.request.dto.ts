@@ -11,6 +11,9 @@ import {
     ArrayMaxSize,
     MaxLength,
     IsIn,
+    IsInt,
+    Max,
+    Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -21,6 +24,11 @@ import {
     IsCategoryId,
 } from '@/validation/schemas/common';
 import { ServerBannerTypeDTO } from './common.request.dto';
+import {
+    DELETED_MESSAGE_RETENTION_OPTIONS,
+    MAX_DELETED_MESSAGE_RETENTION_MINUTES,
+    MIN_DELETED_MESSAGE_RETENTION_MINUTES,
+} from '@/utils/deletedMessageRetention';
 
 export class ServerBannerDTO {
     @ApiProperty({ enum: ServerBannerTypeDTO })
@@ -57,6 +65,20 @@ export class MarkdownBlockadeRuleDTO {
 }
 
 export class UpdateServerRequestDTO {
+    @ApiPropertyOptional({
+        enum: [...DELETED_MESSAGE_RETENTION_OPTIONS],
+        minimum: MIN_DELETED_MESSAGE_RETENTION_MINUTES,
+        maximum: MAX_DELETED_MESSAGE_RETENTION_MINUTES,
+        description:
+            'Deleted server message visibility window in one of the supported durations',
+    })
+    @ValidateIf((_, value) => value !== undefined)
+    @IsInt()
+    @IsIn([...DELETED_MESSAGE_RETENTION_OPTIONS])
+    @Min(MIN_DELETED_MESSAGE_RETENTION_MINUTES)
+    @Max(MAX_DELETED_MESSAGE_RETENTION_MINUTES)
+    public deletedMessageRetentionMinutes?: number;
+
     @ApiPropertyOptional()
     @IsOptional()
     @IsName()

@@ -36,6 +36,7 @@ describe('ReportController', () => {
     };
     const channelRepo = { findById: jest.fn() };
     const serverMemberRepo = { findByServerAndUser: jest.fn() };
+    const serverRepo = { findById: jest.fn() };
     const permissionService = {
         requireChannelPermission: jest.fn(),
         hasChannelPermission: jest.fn(),
@@ -47,6 +48,7 @@ describe('ReportController', () => {
         messageRepo as never,
         channelRepo as never,
         serverMemberRepo as never,
+        serverRepo as never,
         permissionService as never,
         wsServer as never,
     );
@@ -108,6 +110,9 @@ describe('ReportController', () => {
         channelRepo.findById.mockResolvedValue({
             type: 'text',
             serverId: '5234567890123456789',
+        });
+        serverRepo.findById.mockResolvedValue({
+            deletedMessageRetentionMinutes: 4320,
         });
         serverMemberRepo.findByServerAndUser.mockResolvedValue({
             userId: report.reporterId,
@@ -375,7 +380,7 @@ describe('ReportController', () => {
             serverId: '5234567890123456789',
             channelId: '6234567890123456789',
             text: 'deleted content',
-            deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+            deletedAt: new Date(),
         });
         reportRepo.create.mockResolvedValue({
             ...report,
@@ -399,6 +404,32 @@ describe('ReportController', () => {
             'seeDeletedMessages',
         );
         expect(reportRepo.create).toHaveBeenCalled();
+    });
+
+    it('rejects a deleted server message after the configured retention window', async () => {
+        messageRepo.findById.mockResolvedValue({
+            senderId: '4234567890123456789',
+            serverId: '5234567890123456789',
+            channelId: '6234567890123456789',
+            text: 'expired deleted content',
+            deletedAt: new Date(Date.now() - 6 * 60_000),
+        });
+        serverRepo.findById.mockResolvedValue({
+            deletedMessageRetentionMinutes: 5,
+        });
+
+        await expect(
+            controller.create(
+                {
+                    targetType: 'message',
+                    targetId: '3234567890123456789',
+                    reason: 'spam',
+                },
+                report.reporterId,
+            ),
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(messageRepo.findContextAround).not.toHaveBeenCalled();
+        expect(reportRepo.create).not.toHaveBeenCalled();
     });
 
     it('rejects a DM message unless the reporter is a channel participant', async () => {
@@ -528,6 +559,7 @@ describe('ReportController', () => {
             10,
             10,
             true,
+            expect.any(Date),
         );
         expect(reportRepo.create).toHaveBeenCalledWith(
             expect.objectContaining({

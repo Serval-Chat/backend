@@ -49,7 +49,11 @@ export interface IMessageWithEditHistory extends IMessage {
 }
 
 export interface IMessageRepository {
-    findById(id: string, includeDeleted?: boolean): Promise<IMessage | null>;
+    findById(
+        id: string,
+        includeDeleted?: boolean,
+        deletedAfter?: Date,
+    ): Promise<IMessage | null>;
 
     conversationExists(user1Id: string, user2Id: string): Promise<boolean>;
 
@@ -69,6 +73,7 @@ export interface IMessageRepository {
         around?: string,
         after?: string,
         includeDeleted?: boolean,
+        deletedAfter?: Date,
     ): Promise<IMessage[]>;
 
     findContextAround(
@@ -77,9 +82,13 @@ export interface IMessageRepository {
         beforeCount?: number,
         afterCount?: number,
         includeDeleted?: boolean,
+        deletedAfter?: Date,
     ): Promise<IMessageWithEditHistory[]>;
 
-    findCursorByChannelId(channelId: string): AsyncIterable<IMessage>;
+    findCursorByChannelId(
+        channelId: string,
+        deletedAfter?: Date,
+    ): AsyncIterable<IMessage>;
 
     create(
         data: {
@@ -129,7 +138,14 @@ export interface IMessageRepository {
 
     bulkSoftDelete(channelId: string, ids: string[]): Promise<number>;
 
+    findNonDeletedIdsByChannelId(
+        channelId: string,
+        ids: string[],
+    ): Promise<string[]>;
+
     deleteByServerId(serverId: string): Promise<number>;
+
+    hardDeleteDeletedByServerId(serverId: string): Promise<number>;
 
     deleteByChannelId(channelId: string): Promise<number>;
 
@@ -173,6 +189,7 @@ export interface IMessageRepository {
     findPinnedByChannelId(
         channelId: string,
         includeDeleted?: boolean,
+        deletedAfter?: Date,
     ): Promise<IMessage[]>;
 
     count(): Promise<number>;

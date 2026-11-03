@@ -9,14 +9,16 @@ let mongod: MongoMemoryServer;
 let repo: MongooseMessageRepository;
 
 beforeAll(async () => {
-    mongod = await MongoMemoryServer.create();
+    mongod = await MongoMemoryServer.create({
+        instance: { ip: '127.0.0.1' },
+    });
     await mongoose.connect(mongod.getUri());
     repo = new MongooseMessageRepository();
 });
 
 afterAll(async () => {
     await mongoose.disconnect();
-    await mongod.stop();
+    await mongod?.stop();
 });
 
 afterEach(async () => {
@@ -133,6 +135,152 @@ describe('MongooseMessageRepository message history', () => {
                 ],
             }),
         );
+    });
+
+    test('limits privileged channel reads to the retention window', async () => {
+        const channelId = 'retention-channel';
+        const now = new Date();
+        const cutoff = new Date(now.getTime() - 30 * 60_000);
+        const current = await repo.create({
+            senderId: 'userA',
+            channelId,
+            serverId: 'serverA',
+            text: 'current message',
+        });
+        const recentDeleted = await repo.create({
+            senderId: 'userA',
+            channelId,
+            serverId: 'serverA',
+            text: 'recent deleted message',
+        });
+        const expiredDeleted = await repo.create({
+            senderId: 'userA',
+            channelId,
+            serverId: 'serverA',
+            text: 'expired deleted message',
+        });
+        await Message.updateOne(
+            { snowflakeId: recentDeleted.snowflakeId },
+            { $set: { deletedAt: new Date(now.getTime() - 10 * 60_000) } },
+        );
+        await Message.updateOne(
+            { snowflakeId: expiredDeleted.snowflakeId },
+            { $set: { deletedAt: new Date(now.getTime() - 31 * 60_000) } },
+        );
+
+        const visible = await repo.findByChannelId(
+            channelId,
+            50,
+            undefined,
+            undefined,
+            undefined,
+            true,
+            cutoff,
+        );
+
+        expect(visible.map((message) => message.text)).toEqual([
+            'current message',
+            'recent deleted message',
+        ]);
+        await expect(
+            repo.findById(expiredDeleted.snowflakeId, true, cutoff),
+        ).resolves.toBeNull();
+        await expect(
+            repo.findById(recentDeleted.snowflakeId, true, cutoff),
+        ).resolves.toEqual(
+            expect.objectContaining({ text: 'recent deleted message' }),
+        );
+    });
+
+    test('does not expose an expired deleted message through a reply preview', async () => {
+        const parent = await repo.create({
+            senderId: 'userA',
+            channelId: 'reply-retention-channel',
+            serverId: 'serverA',
+            text: 'expired reply target content',
+        });
+        await Message.updateOne(
+            { snowflakeId: parent.snowflakeId },
+            { $set: { deletedAt: new Date(Date.now() - 60 * 60_000) } },
+        );
+        const reply = await repo.create({
+            senderId: 'userB',
+            channelId: 'reply-retention-channel',
+            serverId: 'serverA',
+            text: 'reply',
+            repliedToMessageId: parent.snowflakeId,
+        });
+
+        const visible = await repo.findById(
+            reply.snowflakeId,
+            true,
+            new Date(Date.now() - 30 * 60_000),
+        );
+
+        expect(visible).not.toHaveProperty('referenced_message');
+    });
+
+    test('filters expired deleted pinned messages and deleted context targets', async () => {
+        const channelId = 'retention-pins-channel';
+        const oldPin = await repo.create({
+            senderId: 'userA',
+            channelId,
+            serverId: 'serverA',
+            text: 'old pin',
+        });
+        await Message.updateOne(
+            { snowflakeId: oldPin.snowflakeId },
+            {
+                $set: {
+                    deletedAt: new Date(Date.now() - 60 * 60_000),
+                    isPinned: true,
+                },
+            },
+        );
+        const cutoff = new Date(Date.now() - 30 * 60_000);
+
+        await expect(
+            repo.findPinnedByChannelId(channelId, true, cutoff),
+        ).resolves.toEqual([]);
+        await expect(
+            repo.findContextAround(
+                channelId,
+                oldPin.snowflakeId,
+                10,
+                10,
+                true,
+                cutoff,
+            ),
+        ).resolves.toEqual([]);
+    });
+
+    test('does not reset deletion time when a bulk delete repeats an ID', async () => {
+        const message = await repo.create({
+            senderId: 'userA',
+            channelId: 'bulk-retention-channel',
+            serverId: 'serverA',
+            text: 'already deleted',
+        });
+        const deletedAt = new Date(Date.now() - 60 * 60_000);
+        await Message.updateOne(
+            { snowflakeId: message.snowflakeId },
+            { $set: { deletedAt } },
+        );
+
+        expect(
+            await repo.findNonDeletedIdsByChannelId('bulk-retention-channel', [
+                message.snowflakeId,
+            ]),
+        ).toEqual([]);
+        expect(
+            await repo.bulkSoftDelete('bulk-retention-channel', [
+                message.snowflakeId,
+            ]),
+        ).toBe(0);
+        expect(
+            (await Message.findOne({ snowflakeId: message.snowflakeId }).lean())
+                ?.deletedAt,
+        ).toEqual(deletedAt);
     });
 
     test('returns ten visible neighbors on either side in chronological order', async () => {

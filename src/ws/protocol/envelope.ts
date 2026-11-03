@@ -81,6 +81,7 @@ import type { IMentionEvent } from './events/mentions';
 import type {
     IServerUpdatedEvent,
     IServerDeletedEvent,
+    IServerDeletedMessagesFlushedEvent,
     IServerIconUpdatedEvent,
     IServerBannerUpdatedEvent,
     ICommandsUpdatedEvent,
@@ -192,6 +193,7 @@ export type AnyResponseWsEvent =
     // Server Notifications
     | IServerUpdatedEvent
     | IServerDeletedEvent
+    | IServerDeletedMessagesFlushedEvent
     | IServerIconUpdatedEvent
     | IServerBannerUpdatedEvent
     | ICommandsUpdatedEvent

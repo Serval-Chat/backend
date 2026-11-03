@@ -8,6 +8,12 @@ import {
     type PermissionKey,
     type Permissions,
 } from '@/permissions/types';
+import {
+    DEFAULT_DELETED_MESSAGE_RETENTION_MINUTES,
+    DELETED_MESSAGE_RETENTION_OPTIONS,
+    MAX_DELETED_MESSAGE_RETENTION_MINUTES,
+    MIN_DELETED_MESSAGE_RETENTION_MINUTES,
+} from '@/utils/deletedMessageRetention';
 
 interface MarkdownBlockadeRule {
     targetType: 'everyone' | 'role' | 'user';
@@ -48,6 +54,7 @@ export interface IServer extends Document {
         landingChannelId?: string | null;
         welcomeChannelIds: string[];
     };
+    deletedMessageRetentionMinutes?: number;
     createdAt: Date;
     deletedAt?: Date;
     allTimeHigh?: number;
@@ -265,6 +272,14 @@ const serverSchema = new Schema<IServer>({
             landingChannelId: null,
             welcomeChannelIds: [],
         },
+    },
+    deletedMessageRetentionMinutes: {
+        type: Number,
+        enum: [...DELETED_MESSAGE_RETENTION_OPTIONS],
+        min: MIN_DELETED_MESSAGE_RETENTION_MINUTES,
+        max: MAX_DELETED_MESSAGE_RETENTION_MINUTES,
+        validate: Number.isInteger,
+        default: DEFAULT_DELETED_MESSAGE_RETENTION_MINUTES,
     },
     createdAt: { type: Date, default: Date.now },
     deletedAt: { type: Date },

@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsMongoId, IsOptional, IsString } from 'class-validator';
+import { DELETED_MESSAGE_RETENTION_OPTIONS } from '@/utils/deletedMessageRetention';
 import { ServerBannerDTO } from './server.request.dto';
 
 export class ServerStatsResponseDTO {
@@ -62,6 +63,9 @@ export class ServerResponseDTO {
 
     @ApiProperty({ required: false })
     public description?: string;
+
+    @ApiProperty({ enum: [...DELETED_MESSAGE_RETENTION_OPTIONS] })
+    public deletedMessageRetentionMinutes!: number;
 
     @ApiProperty({ required: false })
     public discoveryEnabled?: boolean;

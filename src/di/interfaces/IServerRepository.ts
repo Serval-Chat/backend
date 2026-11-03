@@ -36,6 +36,7 @@ export interface IServer {
         landingChannelId?: string | null;
         welcomeChannelIds: string[];
     };
+    deletedMessageRetentionMinutes?: number;
     createdAt?: Date;
     updatedAt?: Date;
     deletedAt?: Date;

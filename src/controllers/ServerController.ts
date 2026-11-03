@@ -87,6 +87,7 @@ import {
     ServerDiscoveryService,
     normalizeDiscoveryTags,
 } from '@/services/ServerDiscoveryService';
+import { sanitizeDeletedMessageRetentionMinutes } from '@/utils/deletedMessageRetention';
 
 @Controller('api/v1/servers')
 @ApiTags('Servers')
@@ -756,6 +757,12 @@ export class ServerController {
             updates.markdownBlockadeRules = body.markdownBlockadeRules;
         if (body.discoveryEnabled !== undefined)
             updates.discoveryEnabled = body.discoveryEnabled;
+        if (body.deletedMessageRetentionMinutes !== undefined) {
+            updates.deletedMessageRetentionMinutes =
+                sanitizeDeletedMessageRetentionMinutes(
+                    body.deletedMessageRetentionMinutes,
+                );
+        }
 
         if (body.tags !== undefined)
             updates.tags = normalizeDiscoveryTags(body.tags);
@@ -852,6 +859,19 @@ export class ServerController {
                     before: existingServer.discoveryEnabled ?? false,
                     after: body.discoveryEnabled,
                 });
+            if (
+                body.deletedMessageRetentionMinutes !== undefined &&
+                sanitizeDeletedMessageRetentionMinutes(
+                    existingServer.deletedMessageRetentionMinutes,
+                ) !== updates.deletedMessageRetentionMinutes
+            )
+                changes.push({
+                    field: 'deletedMessageRetentionMinutes',
+                    before: sanitizeDeletedMessageRetentionMinutes(
+                        existingServer.deletedMessageRetentionMinutes,
+                    ),
+                    after: updates.deletedMessageRetentionMinutes,
+                });
         }
 
         if (changes.length > 0) {
@@ -868,6 +888,43 @@ export class ServerController {
         await this.discoveryService.refreshServer(serverId);
 
         return server;
+    }
+
+    @Delete(':serverId/deleted-messages')
+    @ApiOperation({ summary: 'Permanently delete all deleted server messages' })
+    @ApiOkResponse({ description: 'Deleted server messages were purged' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    @NoBot()
+    public async flushDeletedMessages(
+        @Param('serverId') serverId: string,
+        @CurrentUser('id') userId: string,
+    ): Promise<{ message: string; deletedCount: number }> {
+        await this.permissionService.requirePermission(
+            serverId,
+            userId,
+            'manageServer',
+            new ApiError(403, ErrorMessages.SERVER.NO_PERMISSION_MANAGE),
+        );
+
+        const deletedCount =
+            await this.messageRepo.hardDeleteDeletedByServerId(serverId);
+
+        if (deletedCount > 0) {
+            this.wsServer.broadcastToServer(serverId, {
+                type: 'server_deleted_messages_flushed',
+                payload: { serverId },
+            });
+            await this.serverAuditLogService.createAndBroadcast({
+                serverId,
+                actorId: userId,
+                actionType: 'flush_deleted_messages',
+                targetId: serverId,
+                targetType: 'server',
+                metadata: { deletedCount },
+            });
+        }
+
+        return { message: 'Deleted messages flushed', deletedCount };
     }
 
     @Get(':serverId/discovery-status')

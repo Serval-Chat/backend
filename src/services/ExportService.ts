@@ -19,6 +19,7 @@ import { SERVER_URL } from '@/config/env';
 import { SYSTEM_SENDER_ID } from '@/utils/snowflake';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { assertDefined } from '@/utils/typeGuards';
+import { getDeletedMessageRetentionCutoff } from '@/utils/deletedMessageRetention';
 
 @injectable()
 export class ExportService implements OnModuleInit, OnModuleDestroy {
@@ -183,6 +184,10 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
             await this.handleJobFailure(job, 'Channel no longer exists');
             return;
         }
+        const server = await this.serverRepo.findById(job.serverId);
+        const deletedAfter = getDeletedMessageRetentionCutoff(
+            server?.deletedMessageRetentionMinutes,
+        );
 
         const fileName = `channel-${job.channelId.toString()}.json`;
         const filePath = path.join(
@@ -196,6 +201,7 @@ export class ExportService implements OnModuleInit, OnModuleDestroy {
 
             const cursor = this.messageRepo.findCursorByChannelId(
                 job.channelId,
+                deletedAfter,
             );
             let first = true;
 

@@ -64,6 +64,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import { assertSlowModeAllows } from '@/utils/slowMode';
 import { extractCustomEmojiIds } from '@/utils/emojiParser';
 import { assertNoUnauthorizedExternalEmoji } from '@/utils/emojiOwnership';
+import { getDeletedMessageRetentionCutoff } from '@/utils/deletedMessageRetention';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import {
     SendMessageRequestDTO,
@@ -154,6 +155,13 @@ export class ServerMessageController {
         }
     }
 
+    private async getDeletedMessageCutoff(serverId: string): Promise<Date> {
+        const server = await this.serverRepo.findById(serverId);
+        return getDeletedMessageRetentionCutoff(
+            server?.deletedMessageRetentionMinutes,
+        );
+    }
+
     private async attachReactions(
         message: IMessage,
         userId: string,
@@ -227,6 +235,9 @@ export class ServerMessageController {
                 channelId,
                 'seeDeletedMessages',
             );
+        const deletedAfter = includeDeleted
+            ? await this.getDeletedMessageCutoff(serverId)
+            : undefined;
 
         const msgs = await this.messageRepo.findByChannelId(
             channelId,
@@ -235,6 +246,7 @@ export class ServerMessageController {
             around,
             after,
             includeDeleted,
+            deletedAfter,
         );
 
         const messageIds = msgs.map((m) => m.snowflakeId);
@@ -563,10 +575,14 @@ export class ServerMessageController {
                 channelId,
                 'seeDeletedMessages',
             );
+        const deletedAfter = includeDeleted
+            ? await this.getDeletedMessageCutoff(serverId)
+            : undefined;
 
         const pins = await this.messageRepo.findPinnedByChannelId(
             channelId,
             includeDeleted,
+            deletedAfter,
         );
 
         const pinIds = pins.map((p) => p.snowflakeId);
@@ -638,10 +654,14 @@ export class ServerMessageController {
                 channelId,
                 'seeDeletedMessages',
             );
+        const deletedAfter = includeDeleted
+            ? await this.getDeletedMessageCutoff(serverId)
+            : undefined;
 
         const message = await this.messageRepo.findById(
             messageId,
             includeDeleted,
+            deletedAfter,
         );
         if (message === null || message.channelId.toString() !== channelId) {
             throw new NotFoundException(ErrorMessages.MESSAGE.NOT_FOUND);
@@ -653,6 +673,7 @@ export class ServerMessageController {
             const repliedMsg = await this.messageRepo.findById(
                 message.replyToId,
                 includeDeleted,
+                deletedAfter,
             );
             if (
                 repliedMsg !== null &&
@@ -667,6 +688,7 @@ export class ServerMessageController {
             const repliedMsg = await this.messageRepo.findById(
                 message.repliedToMessageId,
                 includeDeleted,
+                deletedAfter,
             );
             if (
                 repliedMsg !== null &&
@@ -1003,17 +1025,24 @@ export class ServerMessageController {
             );
         }
 
+        const messageIds = await this.messageRepo.findNonDeletedIdsByChannelId(
+            channelId,
+            [...new Set(body.messageIds)],
+        );
         const deletedCount = await this.messageRepo.bulkSoftDelete(
             channelId,
-            body.messageIds,
+            messageIds,
         );
+        if (deletedCount === 0) {
+            return { message: 'Messages deleted', deletedCount };
+        }
 
         await this.wsServer.broadcastToServerWithPermission(
             serverId,
             {
                 type: 'messages_server_bulk_deleted',
                 payload: {
-                    messageIds: body.messageIds,
+                    messageIds,
                     serverId,
                     channelId,
                     hard: true,
@@ -1032,7 +1061,7 @@ export class ServerMessageController {
             {
                 type: 'messages_server_bulk_deleted',
                 payload: {
-                    messageIds: body.messageIds,
+                    messageIds,
                     serverId,
                     channelId,
                     hard: false,
@@ -1051,7 +1080,7 @@ export class ServerMessageController {
             {
                 type: 'messages_server_bulk_deleted',
                 payload: {
-                    messageIds: body.messageIds,
+                    messageIds,
                     serverId,
                     channelId,
                     hard: true,

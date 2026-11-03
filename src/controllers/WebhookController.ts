@@ -972,6 +972,8 @@ export class WebhookController {
 
         if (message.deletedAt === undefined) {
             await this.messageRepo.softDelete(messageId);
+        } else {
+            return { message: 'Webhook message deleted successfully' };
         }
 
         const serverId = webhook.serverId.toString();

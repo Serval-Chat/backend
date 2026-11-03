@@ -32,6 +32,11 @@ export interface IServerDeletedEvent extends WsEvent<
     }
 > {}
 
+export interface IServerDeletedMessagesFlushedEvent extends WsEvent<
+    'server_deleted_messages_flushed',
+    { serverId: string }
+> {}
+
 /**
  * Server -> Client (Broadcast)
  * Server icon updated.
