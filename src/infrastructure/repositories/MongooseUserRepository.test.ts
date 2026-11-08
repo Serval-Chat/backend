@@ -168,3 +168,24 @@ describe('MongooseUserRepository decorations and notification preferences', () =
         expect(await repo.findNotificationPreferences('missing')).toBeNull();
     });
 });
+
+describe('MongooseUserRepository.findBotIdsMatching', () => {
+    test('matches bot usernames and display names, literally and case-insensitively', async () => {
+        const byName = await createUser({
+            username: 'Find.Me_bot',
+            isBot: true,
+        });
+        const byDisplay = await createUser({
+            displayName: 'find.me helper',
+            isBot: true,
+        });
+        await createUser({ username: 'find.me_human' });
+        await createUser({ username: 'findxme_bot', isBot: true });
+
+        const ids = await repo.findBotIdsMatching('  FIND.ME ');
+
+        expect(ids.sort()).toEqual(
+            [byName.snowflakeId, byDisplay.snowflakeId].sort(),
+        );
+    });
+});

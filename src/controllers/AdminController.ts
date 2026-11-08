@@ -59,14 +59,8 @@ import type {
     IServerDeletedEvent,
     IWarningEvent,
 } from '@/ws/protocol/events/server_notifications';
-import { Badge } from '@/models/Badge';
 
 type ApiUser = IUser & { id: string };
-import { Ban } from '@/models/Ban';
-import { ServerBan, ServerMember } from '@/models/Server';
-import { Bot } from '@/models/Bot';
-import { User } from '@/models/User';
-import { UserConnection } from '@/models/UserConnection';
 import { resolveSerializedCustomStatus } from '@/utils/status';
 import { IAdminNote, IAdminNoteHistory } from '@/models/AdminNote';
 import mongoose from 'mongoose';
@@ -162,7 +156,10 @@ import { AuthenticatedRequest } from '@/middleware/auth';
 
 import { NoBot } from '@/modules/auth/bot.decorator';
 import { grantsBeyond, outranks } from '@/permissions/adminHierarchy';
-import { normalizeRegexSearch } from '@/utils/regex';
+import type { IServerBanRepository } from '@/di/interfaces/IServerBanRepository';
+import type { IBotRepository } from '@/di/interfaces/IBotRepository';
+import type { IBadgeRepository } from '@/di/interfaces/IBadgeRepository';
+import type { IUserConnectionRepository } from '@/di/interfaces/IUserConnectionRepository';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -203,6 +200,14 @@ export class AdminController {
         private serverVerificationService: ServerVerificationService,
         @Inject(TYPES.ServerDiscoveryService)
         private discoveryService: ServerDiscoveryService,
+        @Inject(TYPES.ServerBanRepository)
+        private serverBanRepo: IServerBanRepository,
+        @Inject(TYPES.BotRepository)
+        private botRepo: IBotRepository,
+        @Inject(TYPES.BadgeRepository)
+        private badgeRepo: IBadgeRepository,
+        @Inject(TYPES.UserConnectionRepository)
+        private userConnectionRepo: IUserConnectionRepository,
     ) {}
 
     @Get('stats')
@@ -1062,13 +1067,12 @@ export class AdminController {
     @ApiResponse({ status: 200, type: AdminBansDiagnosticResponseDTO })
     @ApiResponse({ status: 403, description: 'Forbidden' })
     public async getBansDiagnostic(): Promise<AdminBansDiagnosticResponseDTO> {
-        const appBansCount = await Ban.countDocuments();
-        const appBansSampleRaw: unknown = await Ban.find({}).limit(5).lean();
+        const appBansCount = await this.banRepo.countAll();
+        const appBansSampleRaw: unknown = await this.banRepo.findSample(5);
 
-        const serverBansCount = await ServerBan.countDocuments();
-        const serverBansSampleRaw: unknown = await ServerBan.find({})
-            .limit(5)
-            .lean();
+        const serverBansCount = await this.serverBanRepo.countAll();
+        const serverBansSampleRaw: unknown =
+            await this.serverBanRepo.findSample(5);
 
         const response = new AdminBansDiagnosticResponseDTO();
         response.appBans = {
@@ -1657,12 +1661,7 @@ export class AdminController {
 
         let badges: unknown[] = [];
         if (user.badges && user.badges.length > 0) {
-            badges = await Badge.find({
-                $or: [
-                    { id: { $in: user.badges } },
-                    { snowflakeId: { $in: user.badges } },
-                ],
-            }).lean();
+            badges = await this.badgeRepo.findByIdsOrSnowflakes(user.badges);
         }
 
         const response = new AdminExtendedUserDetailsDTO();
@@ -1710,12 +1709,9 @@ export class AdminController {
             hideStatus: user.privacySettings?.hideStatus ?? false,
         };
 
-        const connections = await UserConnection.find({
-            userId: user.id,
-            status: 'verified',
-        })
-            .sort({ verifiedAt: 1, createdAt: 1 })
-            .exec();
+        const connections = await this.userConnectionRepo.findVerifiedByUser(
+            user.id,
+        );
         response.connections = connections.map((connection) => ({
             id: connection.snowflakeId,
             type: connection.type,
@@ -2121,20 +2117,14 @@ export class AdminController {
         );
         const botUserIds = bots.map((b) => b.userId);
 
-        const [owners, serverCounts] = await Promise.all([
+        const [owners, serverCountByUserId] = await Promise.all([
             this.userRepo
                 .findByIds(ownerIds)
                 .then((u) => toApiId(u) as ApiUser[]),
-            ServerMember.aggregate<{ _id: string; count: number }>([
-                { $match: { userId: { $in: botUserIds } } },
-                { $group: { _id: '$userId', count: { $sum: 1 } } },
-            ]),
+            this.serverMemberRepo.countServersByUserIds(botUserIds),
         ]);
 
         const ownerById = new Map(owners.map((o) => [o.id, o]));
-        const serverCountByUserId = new Map(
-            serverCounts.map((s) => [s._id, s.count]),
-        );
 
         return bots.map((bot) => {
             const owner = ownerById.get(bot.ownerId);
@@ -2182,27 +2172,16 @@ export class AdminController {
         @Query('search') search?: string,
     ): Promise<AdminBotListResponseDTO> {
         const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
-        const query: Record<string, unknown> = {};
+        const userIds =
+            search !== undefined && search.trim() !== ''
+                ? await this.userRepo.findBotIdsMatching(search)
+                : undefined;
 
-        if (search !== undefined && search.trim() !== '') {
-            const regex = new RegExp(normalizeRegexSearch(search), 'i');
-            const matchingBotUsers = await User.find({
-                isBot: true,
-                $or: [{ username: regex }, { displayName: regex }],
-            })
-                .select('snowflakeId')
-                .lean();
-            query.userId = {
-                $in: matchingBotUsers.map((u) => u.snowflakeId),
-            };
-        }
-
-        const bots = await Bot.find(query)
-            .populate('userIdUser', 'username displayName profilePicture')
-            .sort({ createdAt: -1 })
-            .skip(Number(offset))
-            .limit(safeLimit)
-            .lean();
+        const bots = await this.botRepo.listForAdmin({
+            userIds,
+            limit: safeLimit,
+            offset: Number(offset),
+        });
 
         return this.buildAdminBotList(bots);
     }
@@ -2217,16 +2196,13 @@ export class AdminController {
         @Query('offset') offset: number = 0,
     ): Promise<{ items: AdminBotListResponseDTO; total: number }> {
         const safeLimit = Math.min(Math.max(Number(limit), 1), 200);
-        const query = { verificationRequested: true };
 
         const [bots, total] = await Promise.all([
-            Bot.find(query)
-                .populate('userIdUser', 'username displayName profilePicture')
-                .sort({ createdAt: -1 })
-                .skip(Number(offset))
-                .limit(safeLimit)
-                .lean(),
-            Bot.countDocuments(query),
+            this.botRepo.listAwaitingReview({
+                limit: safeLimit,
+                offset: Number(offset),
+            }),
+            this.botRepo.countAwaitingReview(),
         ]);
 
         const items = await this.buildAdminBotList(bots);
@@ -2246,13 +2222,15 @@ export class AdminController {
         @Path('clientId') clientId: string,
         @Request() req: AuthenticatedRequest,
     ): Promise<{ message: string }> {
-        const bot = await Bot.findOne({ clientId }).lean();
+        const bot = await this.botRepo.findByClientId(clientId);
         if (bot === null || bot.verificationRequested !== true) {
             throw new NotFoundException('Verification request not found.');
         }
 
         await Promise.all([
-            Bot.updateOne({ clientId }, { verificationRequested: false }),
+            this.botRepo.updateVerification(clientId, {
+                verificationRequested: false,
+            }),
             this.logAdminAction(
                 req,
                 'decline_bot_verification',
@@ -2280,7 +2258,7 @@ export class AdminController {
         verified: boolean;
         override: 'verified' | 'unverified' | null;
     }> {
-        const bot = await Bot.findOne({ clientId }).lean();
+        const bot = await this.botRepo.findByClientId(clientId);
         if (bot === null) {
             throw new NotFoundException('Bot not found');
         }
@@ -2294,15 +2272,12 @@ export class AdminController {
                   : bot.verified;
 
         await Promise.all([
-            Bot.updateOne(
-                { clientId },
-                {
-                    verified,
-                    verificationOverride: override,
-                    verificationRequested:
-                        override === null ? bot.verificationRequested : false,
-                },
-            ),
+            this.botRepo.updateVerification(clientId, {
+                verified,
+                verificationOverride: override,
+                verificationRequested:
+                    override === null ? bot.verificationRequested : false,
+            }),
             this.userRepo.update(bot.userId, { botVerified: verified }),
             this.logAdminAction(
                 req,
@@ -2326,7 +2301,7 @@ export class AdminController {
         @Path('clientId') clientId: string,
         @Request() req: AuthenticatedRequest,
     ): Promise<{ verified: boolean }> {
-        const bot = await Bot.findOne({ clientId }).lean();
+        const bot = await this.botRepo.findByClientId(clientId);
         if (bot === null) {
             throw new NotFoundException('Bot not found');
         }
@@ -2338,14 +2313,11 @@ export class AdminController {
         }
 
         await Promise.all([
-            Bot.updateOne(
-                { clientId },
-                {
-                    verified: true,
-                    verificationOverride: 'verified',
-                    verificationRequested: false,
-                },
-            ),
+            this.botRepo.updateVerification(clientId, {
+                verified: true,
+                verificationOverride: 'verified',
+                verificationRequested: false,
+            }),
             this.userRepo.update(bot.userId, { botVerified: true }),
             this.logAdminAction(req, 'verify_bot', bot.ownerId.toString(), {
                 clientId,
@@ -2364,16 +2336,16 @@ export class AdminController {
         @Path('clientId') clientId: string,
         @Request() req: AuthenticatedRequest,
     ): Promise<{ verified: boolean }> {
-        const bot = await Bot.findOne({ clientId }).lean();
+        const bot = await this.botRepo.findByClientId(clientId);
         if (bot === null) {
             throw new NotFoundException('Bot not found');
         }
 
         await Promise.all([
-            Bot.updateOne(
-                { clientId },
-                { verified: false, verificationOverride: 'unverified' },
-            ),
+            this.botRepo.updateVerification(clientId, {
+                verified: false,
+                verificationOverride: 'unverified',
+            }),
             this.userRepo.update(bot.userId, { botVerified: false }),
             this.logAdminAction(req, 'unverify_bot', bot.ownerId.toString(), {
                 clientId,

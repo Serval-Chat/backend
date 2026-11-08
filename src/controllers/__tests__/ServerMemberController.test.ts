@@ -128,7 +128,7 @@ describe('ServerMemberController', () => {
             mockServerAuditLogService,
             mockBlockRepo as any,
             mockPingService as any,
-            mockBotRepo,
+            mockBotRepo as any,
             mockChannelRepo as any,
             mockCategoryRepo as any,
             mockMessageRepo as any,
@@ -1449,7 +1449,7 @@ describe('ServerMemberController', () => {
                 mockServerAuditLogService,
                 mockBlockRepo as any,
                 mockPingService as any,
-                mockBotRepo,
+                mockBotRepo as any,
                 mockChannelRepo as any,
                 mockCategoryRepo as any,
             );

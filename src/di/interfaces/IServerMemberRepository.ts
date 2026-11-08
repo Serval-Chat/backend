@@ -95,6 +95,8 @@ export interface IServerMemberRepository {
     // Count members by server ID
     countByServerId(serverId: string): Promise<number>;
 
+    countServersByUserIds(userIds: string[]): Promise<Map<string, number>>;
+
     // Delete server member by ID
     deleteById(memberId: string): Promise<boolean>;
 

@@ -35,6 +35,7 @@ import { MongooseBotRepository } from '@/infrastructure/repositories/MongooseBot
 import { MongooseBadgeRepository } from '@/infrastructure/repositories/MongooseBadgeRepository';
 import { MongooseDecorationRepository } from '@/infrastructure/repositories/MongooseDecorationRepository';
 import { MongoosePushSubscriptionRepository } from '@/infrastructure/repositories/MongoosePushSubscriptionRepository';
+import { MongooseUserConnectionRepository } from '@/infrastructure/repositories/MongooseUserConnectionRepository';
 
 @Global()
 @Module({
@@ -179,6 +180,10 @@ import { MongoosePushSubscriptionRepository } from '@/infrastructure/repositorie
             provide: TYPES.PushSubscriptionRepository,
             useClass: MongoosePushSubscriptionRepository,
         },
+        {
+            provide: TYPES.UserConnectionRepository,
+            useClass: MongooseUserConnectionRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -216,6 +221,7 @@ import { MongoosePushSubscriptionRepository } from '@/infrastructure/repositorie
         TYPES.BadgeRepository,
         TYPES.DecorationRepository,
         TYPES.PushSubscriptionRepository,
+        TYPES.UserConnectionRepository,
     ],
 })
 export class RepositoryModule {}

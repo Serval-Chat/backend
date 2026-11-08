@@ -41,6 +41,7 @@ export const TYPES = {
     BadgeRepository: Symbol.for('BadgeRepository'),
     DecorationRepository: Symbol.for('DecorationRepository'),
     PushSubscriptionRepository: Symbol.for('PushSubscriptionRepository'),
+    UserConnectionRepository: Symbol.for('UserConnectionRepository'),
     ExportService: Symbol.for('ExportService'),
 
     AuthService: Symbol.for('AuthService'),

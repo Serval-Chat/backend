@@ -91,11 +91,9 @@ import { ILogger } from '@/di/interfaces/ILogger';
 import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { NoBot } from '@/modules/auth/bot.decorator';
 
-import { Badge } from '@/models/Badge';
-import { Bot } from '@/models/Bot';
 import { imageFileFilter, imageUploadLimits, storage } from '@/config/multer';
 import type { WsServer } from '@/ws/server';
-import { UserConnection, IUserConnection } from '@/models/UserConnection';
+import type { IUserConnection } from '@/models/UserConnection';
 import {
     createWebsiteVerificationToken,
     getWebsiteVerificationFileUrl,
@@ -104,7 +102,6 @@ import {
     isWebsiteVerificationRecord,
     normalizeWebsite,
     resolveTxtRecordsViaDoh,
-    WEBSITE_CONNECTION_TYPE,
     WEBSITE_VERIFICATION_FILE_PATH,
     WEBSITE_VERIFICATION_FAILURE,
     WEBSITE_VERIFICATION_PREFIX,
@@ -118,6 +115,9 @@ import {
 import { assertHttpNotMuted } from '@/utils/mute';
 import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertHttpNotWarned } from '@/utils/warning';
+import type { IBotRepository } from '@/di/interfaces/IBotRepository';
+import type { IBadgeRepository } from '@/di/interfaces/IBadgeRepository';
+import type { IUserConnectionRepository } from '@/di/interfaces/IUserConnectionRepository';
 
 @ApiTags('Profile')
 @Controller('api/v1/profile')
@@ -143,6 +143,12 @@ export class ProfileController {
         private muteRepo: IMuteRepository,
         @Inject(TYPES.WarningRepository)
         private warningRepo: IWarningRepository,
+        @Inject(TYPES.BotRepository)
+        private botRepo: IBotRepository,
+        @Inject(TYPES.BadgeRepository)
+        private badgeRepo: IBadgeRepository,
+        @Inject(TYPES.UserConnectionRepository)
+        private userConnectionRepo: IUserConnectionRepository,
     ) {}
 
     private mapConnection(connection: IUserConnection) {
@@ -155,12 +161,8 @@ export class ProfileController {
     }
 
     private async getVerifiedConnections(userId: string) {
-        const connections = await UserConnection.find({
-            userId,
-            status: 'verified',
-        })
-            .sort({ verifiedAt: 1, createdAt: 1 })
-            .exec();
+        const connections =
+            await this.userConnectionRepo.findVerifiedByUser(userId);
 
         return connections.map((connection) => ({
             id: connection.snowflakeId,
@@ -170,15 +172,7 @@ export class ProfileController {
     }
 
     private async getOwnConnections(userId: string) {
-        const connections = await UserConnection.find({ userId })
-            .sort({ status: 1, verifiedAt: 1, createdAt: 1 })
-            .exec();
-
-        await Promise.all(
-            connections
-                .filter((connection) => !connection.snowflakeId)
-                .map((connection) => connection.save()),
-        );
+        const connections = await this.userConnectionRepo.findAllByUser(userId);
 
         return connections.map((connection) => ({
             ...this.mapConnection(connection),
@@ -301,14 +295,9 @@ export class ProfileController {
 
         if (user.badges !== undefined && user.badges.length > 0) {
             try {
-                const badgeDocs = await Badge.find({
-                    $or: [
-                        { id: { $in: user.badges } },
-                        { snowflakeId: { $in: user.badges } },
-                    ],
-                })
-                    .lean()
-                    .exec();
+                const badgeDocs = await this.badgeRepo.findByIdsOrSnowflakes(
+                    user.badges,
+                );
                 mapped.badges = badgeDocs.map((doc) => ({
                     id: doc.id,
                     name: doc.name,
@@ -477,27 +466,16 @@ export class ProfileController {
             throw new ApiError(400, 'Invalid website');
         }
 
-        const ownedByAnotherUser = await UserConnection.findOne({
-            type: WEBSITE_CONNECTION_TYPE,
-            normalizedValue: website.normalizedValue,
-            status: 'verified',
-            userId: { $ne: userId },
-        })
-            .lean()
-            .exec();
-        if (ownedByAnotherUser !== null) {
-            throw new ApiError(409, 'Website is already connected');
-        }
-
-        const alreadyVerified = await UserConnection.findOne({
-            userId: userId,
-            type: WEBSITE_CONNECTION_TYPE,
-            normalizedValue: website.normalizedValue,
-            status: 'verified',
-        })
-            .lean()
-            .exec();
-        if (alreadyVerified !== null) {
+        if (
+            (await this.userConnectionRepo.isWebsiteVerifiedByOtherUser(
+                website.normalizedValue,
+                userId,
+            )) ||
+            (await this.userConnectionRepo.isWebsiteVerifiedByUser(
+                userId,
+                website.normalizedValue,
+            ))
+        ) {
             throw new ApiError(409, 'Website is already connected');
         }
 
@@ -505,29 +483,15 @@ export class ProfileController {
         const tokenHash = hashWebsiteVerificationToken(token);
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-        let connection = await UserConnection.findOne({
-            userId: userId,
-            type: WEBSITE_CONNECTION_TYPE,
-            normalizedValue: website.normalizedValue,
-        }).exec();
-
-        if (connection === null) {
-            connection = new UserConnection({
-                userId: userId,
-                type: WEBSITE_CONNECTION_TYPE,
+        const connection =
+            await this.userConnectionRepo.startWebsiteVerification({
+                userId,
                 value: website.value,
                 normalizedValue: website.normalizedValue,
+                verificationTokenHash: tokenHash,
+                verificationRecordName: website.verificationRecordName,
+                expiresAt,
             });
-        }
-
-        connection.value = website.value;
-        connection.status = 'pending';
-        connection.verificationTokenHash = tokenHash;
-        connection.verificationRecordName = website.verificationRecordName;
-        connection.expiresAt = expiresAt;
-        connection.verifiedAt = undefined;
-
-        await connection.save();
 
         return {
             message: 'Please add this TXT to the DNS records of your website.',
@@ -570,11 +534,10 @@ export class ProfileController {
             userId,
             'change profile connections',
         );
-        const connection = await UserConnection.findOne({
-            snowflakeId: params.connectionId,
-            userId: userId,
-            type: WEBSITE_CONNECTION_TYPE,
-        }).exec();
+        const connection = await this.userConnectionRepo.findWebsiteForUser(
+            params.connectionId,
+            userId,
+        );
 
         if (connection === null) {
             throw new ApiError(404, 'Connection not found');
@@ -617,15 +580,17 @@ export class ProfileController {
             throw new ApiError(400, WEBSITE_VERIFICATION_FAILURE);
         }
 
-        connection.status = 'verified';
-        connection.verificationTokenHash = undefined;
-        connection.verificationRecordName = undefined;
-        connection.expiresAt = undefined;
-        connection.verifiedAt = new Date();
+        let verified: IUserConnection | null;
         try {
-            await connection.save();
+            verified = await this.userConnectionRepo.markVerified(
+                params.connectionId,
+                userId,
+            );
         } catch {
             throw new ApiError(409, 'Website is already connected');
+        }
+        if (verified === null) {
+            throw new ApiError(404, 'Connection not found');
         }
 
         try {
@@ -637,9 +602,9 @@ export class ProfileController {
         return {
             message: 'Website verified successfully',
             connection: {
-                id: connection.snowflakeId,
-                type: connection.type,
-                value: connection.value,
+                id: verified.snowflakeId,
+                type: verified.type,
+                value: verified.value,
             },
         };
     }
@@ -668,12 +633,12 @@ export class ProfileController {
             userId,
             'change profile connections',
         );
-        const deleted = await UserConnection.findOneAndDelete({
-            snowflakeId: params.connectionId,
-            userId: userId,
-        }).exec();
+        const deleted = await this.userConnectionRepo.deleteForUser(
+            params.connectionId,
+            userId,
+        );
 
-        if (deleted === null) {
+        if (!deleted) {
             throw new ApiError(404, 'Connection not found');
         }
 
@@ -704,7 +669,7 @@ export class ProfileController {
         }
 
         if (viewer.isBot === true && viewerId !== userId) {
-            const bot = await Bot.findOne({ userId: viewerId }).lean();
+            const bot = await this.botRepo.findByUserId(viewerId);
             if (bot === null || bot.botPermissions.readUsers !== true) {
                 throw new ApiError(
                     403,
@@ -774,14 +739,9 @@ export class ProfileController {
                 };
             }
 
-            const validBadges = await Badge.find({
-                $or: [
-                    { id: { $in: request.badgeIds } },
-                    { snowflakeId: { $in: request.badgeIds } },
-                ],
-            })
-                .lean()
-                .exec();
+            const validBadges = await this.badgeRepo.findByIdsOrSnowflakes(
+                request.badgeIds,
+            );
 
             const validBadgeIds = validBadges.flatMap((b) =>
                 [b.id, b.snowflakeId].filter(

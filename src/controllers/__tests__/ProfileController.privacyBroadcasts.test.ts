@@ -1,14 +1,6 @@
 import { Types } from 'mongoose';
 import { ProfileController } from '../ProfileController';
 
-jest.mock('@/models/Bot', () => ({
-    Bot: { findOne: jest.fn() },
-}));
-
-jest.mock('@/models/UserConnection', () => ({
-    UserConnection: { find: jest.fn() },
-}));
-
 describe('ProfileController privacy-aware broadcasts', () => {
     const userId = new Types.ObjectId().toHexString();
     const req = {
@@ -41,6 +33,10 @@ describe('ProfileController privacy-aware broadcasts', () => {
     const warningRepo = {
         hasUnacknowledged: jest.fn().mockResolvedValue(false),
     };
+    const userConnectionRepo = {
+        findVerifiedByUser: jest.fn().mockResolvedValue([]),
+        findAllByUser: jest.fn().mockResolvedValue([]),
+    };
 
     function createController(): ProfileController {
         return new ProfileController(
@@ -54,6 +50,9 @@ describe('ProfileController privacy-aware broadcasts', () => {
             {} as never,
             muteRepo as never,
             warningRepo as never,
+            {} as never,
+            { findByIdsOrSnowflakes: jest.fn().mockResolvedValue([]) } as never,
+            userConnectionRepo as never,
         );
     }
 

@@ -6,41 +6,13 @@ import { AdminController } from '../../src/controllers/AdminController';
 import { createMockRequest } from '../utils/test-utils';
 import type { AuthenticatedRequest } from '../../src/middleware/auth';
 
-jest.mock('../../src/models/Bot', () => ({
-    Bot: {
-        find: jest.fn(),
-        findOne: jest.fn(),
-        countDocuments: jest.fn(),
-        updateOne: jest.fn(),
-    },
-}));
-jest.mock('../../src/models/User', () => ({
-    User: { find: jest.fn() },
-}));
-jest.mock('../../src/models/Server', () => ({
-    ServerBan: { findOne: jest.fn() },
-    ServerMember: { countDocuments: jest.fn(), aggregate: jest.fn() },
-}));
-
-import { Bot } from '../../src/models/Bot';
-import { ServerMember } from '../../src/models/Server';
-
-function makeChain(value: unknown) {
-    return {
-        populate: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        lean: jest.fn().mockResolvedValue(value),
-    };
-}
-
 const CLIENT_ID = '0123456789abcdef0123456789abcdef';
 
 describe('AdminController bot verification', () => {
     let mockUserRepo: Record<string, jest.Mock>;
     let mockAuditLogRepo: Record<string, jest.Mock>;
+    let mockBotRepo: Record<string, jest.Mock>;
+    let mockServerMemberRepo: Record<string, jest.Mock>;
     let controller: AdminController;
 
     beforeEach(() => {
@@ -51,6 +23,17 @@ describe('AdminController bot verification', () => {
             findByIds: jest.fn().mockResolvedValue([]),
             update: jest.fn().mockResolvedValue(null),
             updatePermissions: jest.fn(),
+            findBotIdsMatching: jest.fn(),
+        };
+        mockBotRepo = {
+            findByClientId: jest.fn(),
+            listForAdmin: jest.fn().mockResolvedValue([]),
+            listAwaitingReview: jest.fn().mockResolvedValue([]),
+            countAwaitingReview: jest.fn().mockResolvedValue(0),
+            updateVerification: jest.fn(),
+        };
+        mockServerMemberRepo = {
+            countServersByUserIds: jest.fn().mockResolvedValue(new Map()),
         };
         mockAuditLogRepo = {
             create: jest.fn().mockResolvedValue({}),
@@ -73,23 +56,24 @@ describe('AdminController bot verification', () => {
             {} as any,
             {} as any,
             {} as any,
+            mockServerMemberRepo as any,
             {} as any,
             {} as any,
             {} as any,
             {} as any,
+            {} as any,
+            {} as any,
+            mockBotRepo as any,
             {} as any,
             {} as any,
         );
-
-        (ServerMember.countDocuments as jest.Mock).mockResolvedValue(0);
-        (ServerMember.aggregate as jest.Mock).mockResolvedValue([]);
     });
 
     describe('listBots', () => {
         it('maps bots with owner details, defaulting verification fields when unset on legacy documents', async () => {
             const ownerId = new Types.ObjectId().toHexString();
-            (Bot.find as jest.Mock).mockReturnValue(
-                makeChain([
+            mockBotRepo.listForAdmin!.mockResolvedValue(
+                [
                     {
                         snowflakeId: 'bot-1',
                         clientId: CLIENT_ID,
@@ -103,7 +87,7 @@ describe('AdminController bot verification', () => {
                         },
                         // legacy document: no verified/verificationRequested/verificationOverride
                     },
-                ]),
+                ],
             );
             (mockUserRepo.findByIds as jest.Mock).mockResolvedValue([
                 {
@@ -113,9 +97,9 @@ describe('AdminController bot verification', () => {
                     profilePicture: undefined,
                 },
             ]);
-            (ServerMember.aggregate as jest.Mock).mockResolvedValue([
-                { _id: 'bot-user-1', count: 3 },
-            ]);
+            mockServerMemberRepo.countServersByUserIds!.mockResolvedValue(
+                new Map([['bot-user-1', 3]]),
+            );
 
             const result = await controller.listBots(50, 0, undefined);
 
@@ -139,53 +123,42 @@ describe('AdminController bot verification', () => {
         });
 
         it('scopes the bot search to bot accounts matching username/displayName', async () => {
-            (Bot.find as jest.Mock).mockReturnValue(makeChain([]));
-            const { User } = jest.requireMock('../../src/models/User');
-            User.find.mockReturnValue({
-                select: jest.fn().mockReturnThis(),
-                lean: jest
-                    .fn()
-                    .mockResolvedValue([{ snowflakeId: 'bot-user-1' }]),
-            });
+            mockUserRepo.findBotIdsMatching!.mockResolvedValue(['bot-user-1']);
 
             await controller.listBots(50, 0, 'mybot');
 
-            expect(User.find).toHaveBeenCalledWith(
-                expect.objectContaining({ isBot: true }),
+            expect(mockUserRepo.findBotIdsMatching).toHaveBeenCalledWith(
+                'mybot',
             );
-            expect(Bot.find).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    userId: { $in: ['bot-user-1'] },
-                }),
-            );
+            expect(mockBotRepo.listForAdmin).toHaveBeenCalledWith({
+                userIds: ['bot-user-1'],
+                limit: 50,
+                offset: 0,
+            });
         });
     });
 
     describe('listAwaitingReviewBots', () => {
         it('queries only bots with a pending verification request', async () => {
-            (Bot.find as jest.Mock).mockReturnValue(makeChain([]));
-            (Bot.countDocuments as jest.Mock).mockResolvedValue(0);
-
             const result = await controller.listAwaitingReviewBots(50, 0);
 
-            expect(Bot.find).toHaveBeenCalledWith({
-                verificationRequested: true,
+            expect(mockBotRepo.listAwaitingReview).toHaveBeenCalledWith({
+                limit: 50,
+                offset: 0,
             });
-            expect(Bot.countDocuments).toHaveBeenCalledWith({
-                verificationRequested: true,
-            });
+            expect(mockBotRepo.countAwaitingReview).toHaveBeenCalled();
             expect(result).toEqual({ items: [], total: 0 });
         });
     });
 
     describe('declineBotVerification', () => {
         it('throws NotFoundException when there is no pending request', async () => {
-            (Bot.findOne as jest.Mock).mockReturnValue(
-                makeChain({
+            mockBotRepo.findByClientId!.mockResolvedValue(
+                {
                     clientId: CLIENT_ID,
                     ownerId: 'owner-1',
                     verificationRequested: false,
-                }),
+                },
             );
 
             const req = createMockRequest({
@@ -195,16 +168,16 @@ describe('AdminController bot verification', () => {
             await expect(
                 controller.declineBotVerification(CLIENT_ID, req),
             ).rejects.toThrow(NotFoundException);
-            expect(Bot.updateOne).not.toHaveBeenCalled();
+            expect(mockBotRepo.updateVerification).not.toHaveBeenCalled();
         });
 
         it('clears verificationRequested and logs the action', async () => {
-            (Bot.findOne as jest.Mock).mockReturnValue(
-                makeChain({
+            mockBotRepo.findByClientId!.mockResolvedValue(
+                {
                     clientId: CLIENT_ID,
                     ownerId: 'owner-1',
                     verificationRequested: true,
-                }),
+                },
             );
 
             const req = createMockRequest({
@@ -216,8 +189,8 @@ describe('AdminController bot verification', () => {
                 req,
             );
 
-            expect(Bot.updateOne).toHaveBeenCalledWith(
-                { clientId: CLIENT_ID },
+            expect(mockBotRepo.updateVerification).toHaveBeenCalledWith(
+                CLIENT_ID,
                 { verificationRequested: false },
             );
             expect(mockAuditLogRepo.create).toHaveBeenCalledWith(
@@ -234,14 +207,14 @@ describe('AdminController bot verification', () => {
 
     describe('setBotVerificationOverride', () => {
         it('forces verified=true and syncs the bot user botVerified flag', async () => {
-            (Bot.findOne as jest.Mock).mockReturnValue(
-                makeChain({
+            mockBotRepo.findByClientId!.mockResolvedValue(
+                {
                     clientId: CLIENT_ID,
                     ownerId: 'owner-1',
                     userId: 'bot-user-1',
                     verified: false,
                     verificationRequested: true,
-                }),
+                },
             );
 
             const req = createMockRequest({
@@ -254,8 +227,8 @@ describe('AdminController bot verification', () => {
                 req,
             );
 
-            expect(Bot.updateOne).toHaveBeenCalledWith(
-                { clientId: CLIENT_ID },
+            expect(mockBotRepo.updateVerification).toHaveBeenCalledWith(
+                CLIENT_ID,
                 {
                     verified: true,
                     verificationOverride: 'verified',
@@ -269,15 +242,15 @@ describe('AdminController bot verification', () => {
         });
 
         it('clearing the override preserves the current verified state and pending request flag', async () => {
-            (Bot.findOne as jest.Mock).mockReturnValue(
-                makeChain({
+            mockBotRepo.findByClientId!.mockResolvedValue(
+                {
                     clientId: CLIENT_ID,
                     ownerId: 'owner-1',
                     userId: 'bot-user-1',
                     verified: true,
                     verificationRequested: false,
                     verificationOverride: 'verified',
-                }),
+                },
             );
 
             const req = createMockRequest({
@@ -290,8 +263,8 @@ describe('AdminController bot verification', () => {
                 req,
             );
 
-            expect(Bot.updateOne).toHaveBeenCalledWith(
-                { clientId: CLIENT_ID },
+            expect(mockBotRepo.updateVerification).toHaveBeenCalledWith(
+                CLIENT_ID,
                 {
                     verified: true,
                     verificationOverride: null,
@@ -304,13 +277,13 @@ describe('AdminController bot verification', () => {
 
     describe('verifyBot', () => {
         it('throws BadRequestException when verification was never requested', async () => {
-            (Bot.findOne as jest.Mock).mockReturnValue(
-                makeChain({
+            mockBotRepo.findByClientId!.mockResolvedValue(
+                {
                     clientId: CLIENT_ID,
                     ownerId: 'owner-1',
                     userId: 'bot-user-1',
                     verificationRequested: false,
-                }),
+                },
             );
 
             const req = createMockRequest({
@@ -320,18 +293,18 @@ describe('AdminController bot verification', () => {
             await expect(
                 controller.verifyBot(CLIENT_ID, req),
             ).rejects.toThrow(BadRequestException);
-            expect(Bot.updateOne).not.toHaveBeenCalled();
+            expect(mockBotRepo.updateVerification).not.toHaveBeenCalled();
             expect(mockUserRepo.update).not.toHaveBeenCalled();
         });
 
         it('grants the badge, syncs the bot user, and logs the action', async () => {
-            (Bot.findOne as jest.Mock).mockReturnValue(
-                makeChain({
+            mockBotRepo.findByClientId!.mockResolvedValue(
+                {
                     clientId: CLIENT_ID,
                     ownerId: 'owner-1',
                     userId: 'bot-user-1',
                     verificationRequested: true,
-                }),
+                },
             );
 
             const req = createMockRequest({
@@ -340,8 +313,8 @@ describe('AdminController bot verification', () => {
 
             const result = await controller.verifyBot(CLIENT_ID, req);
 
-            expect(Bot.updateOne).toHaveBeenCalledWith(
-                { clientId: CLIENT_ID },
+            expect(mockBotRepo.updateVerification).toHaveBeenCalledWith(
+                CLIENT_ID,
                 {
                     verified: true,
                     verificationOverride: 'verified',
@@ -363,13 +336,13 @@ describe('AdminController bot verification', () => {
 
     describe('unverifyBot', () => {
         it('revokes the badge and syncs the bot user regardless of request state', async () => {
-            (Bot.findOne as jest.Mock).mockReturnValue(
-                makeChain({
+            mockBotRepo.findByClientId!.mockResolvedValue(
+                {
                     clientId: CLIENT_ID,
                     ownerId: 'owner-1',
                     userId: 'bot-user-1',
                     verified: true,
-                }),
+                },
             );
 
             const req = createMockRequest({
@@ -378,8 +351,8 @@ describe('AdminController bot verification', () => {
 
             const result = await controller.unverifyBot(CLIENT_ID, req);
 
-            expect(Bot.updateOne).toHaveBeenCalledWith(
-                { clientId: CLIENT_ID },
+            expect(mockBotRepo.updateVerification).toHaveBeenCalledWith(
+                CLIENT_ID,
                 { verified: false, verificationOverride: 'unverified' },
             );
             expect(mockUserRepo.update).toHaveBeenCalledWith('bot-user-1', {

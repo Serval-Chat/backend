@@ -1,20 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Types } from 'mongoose';
-import { Bot } from '@/models/Bot';
-import { UserConnection } from '@/models/UserConnection';
 import { ProfileController } from '../ProfileController';
-
-jest.mock('@/models/Bot', () => ({
-    Bot: {
-        findOne: jest.fn(),
-    },
-}));
-
-jest.mock('@/models/UserConnection', () => ({
-    UserConnection: {
-        find: jest.fn(),
-    },
-}));
 
 describe('ProfileController mute restrictions', () => {
     const userRepo = {
@@ -42,6 +28,16 @@ describe('ProfileController mute restrictions', () => {
     const warningRepo = {
         hasUnacknowledged: jest.fn().mockResolvedValue(false),
     };
+    const botRepo = {
+        findByUserId: jest.fn(),
+    };
+    const badgeRepo = {
+        findByIdsOrSnowflakes: jest.fn().mockResolvedValue([]),
+    };
+    const userConnectionRepo = {
+        findVerifiedByUser: jest.fn(),
+        findAllByUser: jest.fn(),
+    };
 
     function createController() {
         return new ProfileController(
@@ -55,6 +51,9 @@ describe('ProfileController mute restrictions', () => {
             {} as never,
             muteRepo as never,
             warningRepo as never,
+            botRepo as never,
+            badgeRepo as never,
+            userConnectionRepo as never,
         );
     }
 
@@ -63,11 +62,8 @@ describe('ProfileController mute restrictions', () => {
         blockRepo.getActiveBlockFlags.mockResolvedValue(0);
         friendshipRepo.areFriends.mockResolvedValue(false);
         warningRepo.hasUnacknowledged.mockResolvedValue(false);
-        (UserConnection.find as jest.Mock).mockReturnValue({
-            sort: jest.fn().mockReturnValue({
-                exec: jest.fn().mockResolvedValue([]),
-            }),
-        });
+        userConnectionRepo.findVerifiedByUser.mockResolvedValue([]);
+        userConnectionRepo.findAllByUser.mockResolvedValue([]);
     });
 
     it('rejects muted users before changing custom status', async () => {
@@ -116,10 +112,8 @@ describe('ProfileController mute restrictions', () => {
             username: 'target',
             createdAt: new Date(),
         });
-        (Bot.findOne as jest.Mock).mockReturnValue({
-            lean: jest.fn().mockResolvedValue({
-                botPermissions: { readUsers: false },
-            }),
+        botRepo.findByUserId.mockResolvedValue({
+            botPermissions: { readUsers: false },
         });
 
         await expect(
@@ -152,10 +146,8 @@ describe('ProfileController mute restrictions', () => {
             displayName: 'Target User',
             createdAt: new Date(),
         });
-        (Bot.findOne as jest.Mock).mockReturnValue({
-            lean: jest.fn().mockResolvedValue({
-                botPermissions: { readUsers: true },
-            }),
+        botRepo.findByUserId.mockResolvedValue({
+            botPermissions: { readUsers: true },
         });
         serverMemberRepo.findServerIdsByUserId
             .mockResolvedValueOnce([sharedServerId])
@@ -174,9 +166,9 @@ describe('ProfileController mute restrictions', () => {
 
         expect(profile.id).toBe(targetUserId.toHexString());
         expect(profile.username).toBe('target');
-        expect(Bot.findOne).toHaveBeenCalledWith({
-            userId: botUserId.toHexString(),
-        });
+        expect(botRepo.findByUserId).toHaveBeenCalledWith(
+            botUserId.toHexString(),
+        );
         expect(serverMemberRepo.findServerIdsByUserId).toHaveBeenCalledTimes(2);
     });
 });

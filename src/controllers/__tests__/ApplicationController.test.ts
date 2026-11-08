@@ -32,7 +32,7 @@ describe('ApplicationController', () => {
             slashCommandRepo as never,
             serverMemberRepo as never,
             wsServer as never,
-            botRepo,
+            botRepo as never,
         );
     });
 

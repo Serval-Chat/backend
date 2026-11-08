@@ -67,6 +67,10 @@ export interface IBanRepository {
     // Count active bans
     countActive(): Promise<number>;
 
+    countAll(): Promise<number>;
+
+    findSample(limit: number): Promise<IBan[]>;
+
     // Count bans created after a certain date
     countCreatedAfter(date: Date): Promise<number>;
 

@@ -72,4 +72,12 @@ export class MongooseServerBanRepository implements IServerBanRepository {
         const result = await ServerBan.deleteOne({ serverId, userId });
         return result.deletedCount > 0;
     }
+
+    public async countAll(): Promise<number> {
+        return await ServerBan.countDocuments();
+    }
+
+    public async findSample(limit: number): Promise<IServerBan[]> {
+        return await ServerBan.find({}).limit(limit).lean();
+    }
 }

@@ -150,6 +150,19 @@ export class MongooseServerMemberRepository implements IServerMemberRepository {
         return await this.serverMemberModel.countDocuments({ serverId });
     }
 
+    public async countServersByUserIds(
+        userIds: string[],
+    ): Promise<Map<string, number>> {
+        const counts = await this.serverMemberModel.aggregate<{
+            _id: string;
+            count: number;
+        }>([
+            { $match: { userId: { $in: userIds } } },
+            { $group: { _id: '$userId', count: { $sum: 1 } } },
+        ]);
+        return new Map(counts.map((c) => [c._id, c.count]));
+    }
+
     // Delete a member record by its ID
     //
     // Low-level cleanup operation

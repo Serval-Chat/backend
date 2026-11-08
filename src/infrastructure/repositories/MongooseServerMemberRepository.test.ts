@@ -375,3 +375,25 @@ describe('MongooseServerMemberRepository.searchMembers', () => {
         expectNoSensitiveFields(member?.user);
     });
 });
+
+describe('MongooseServerMemberRepository.countServersByUserIds', () => {
+    it('counts memberships per requested user', async () => {
+        await ServerMember.create([
+            { serverId: 'count-s1', userId: 'count-u1' },
+            { serverId: 'count-s2', userId: 'count-u1' },
+            { serverId: 'count-s1', userId: 'count-u2' },
+            { serverId: 'count-s1', userId: 'count-other' },
+        ]);
+
+        const counts = await repo.countServersByUserIds([
+            'count-u1',
+            'count-u2',
+            'count-none',
+        ]);
+
+        expect(counts.get('count-u1')).toBe(2);
+        expect(counts.get('count-u2')).toBe(1);
+        expect(counts.has('count-none')).toBe(false);
+        expect(counts.has('count-other')).toBe(false);
+    });
+});

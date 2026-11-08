@@ -5,15 +5,13 @@ import { AdminController } from '../../src/controllers/AdminController';
 import { createTestUser, createMockRequest } from '../utils/test-utils';
 import { ProfileFieldDTO } from '../../src/controllers/dto/common.request.dto';
 import type { AuthenticatedRequest } from '../../src/middleware/auth';
-import { Badge } from '../../src/models/Badge';
-import { UserConnection } from '../../src/models/UserConnection';
 
-jest.mock('../../src/models/Badge', () => ({
-    Badge: { find: jest.fn() },
-}));
-jest.mock('../../src/models/UserConnection', () => ({
-    UserConnection: { find: jest.fn() },
-}));
+const mockBadgeRepo = {
+    findByIdsOrSnowflakes: jest.fn(),
+};
+const mockUserConnectionRepo = {
+    findVerifiedByUser: jest.fn(),
+};
 
 describe('AdminController', () => {
     let mockUserRepo: Record<string, jest.Mock>;
@@ -119,6 +117,10 @@ describe('AdminController', () => {
             mockAdminNoteRepo as any,
             mockServerVerificationService as any,
             mockServerDiscoveryService as any,
+            {} as any,
+            {} as any,
+            mockBadgeRepo as any,
+            mockUserConnectionRepo as any,
         );
     });
 
@@ -224,21 +226,15 @@ describe('AdminController', () => {
         (mockWarningRepo.countByUserId as jest.Mock).mockResolvedValue(3);
         mockServerMemberRepo.findByUserId = jest.fn().mockResolvedValue([]);
         (mockServerRepo.findByIds as jest.Mock).mockResolvedValue([]);
-        (Badge.find as jest.Mock).mockReturnValue({
-            lean: jest.fn().mockResolvedValue([]),
-        });
-        (UserConnection.find as jest.Mock).mockReturnValue({
-            sort: jest.fn().mockReturnValue({
-                exec: jest.fn().mockResolvedValue([
-                    {
-                        snowflakeId: 'conn-1',
-                        type: 'Website',
-                        value: 'ser.chat',
-                        status: 'verified',
-                    },
-                ]),
-            }),
-        });
+        mockBadgeRepo.findByIdsOrSnowflakes.mockResolvedValue([]);
+        mockUserConnectionRepo.findVerifiedByUser.mockResolvedValue([
+            {
+                snowflakeId: 'conn-1',
+                type: 'Website',
+                value: 'ser.chat',
+                status: 'verified',
+            },
+        ]);
 
         const result = await controller.getExtendedUserDetails(userId);
 
@@ -280,10 +276,9 @@ describe('AdminController', () => {
                 status: 'verified',
             },
         ]);
-        expect(UserConnection.find).toHaveBeenCalledWith({
+        expect(mockUserConnectionRepo.findVerifiedByUser).toHaveBeenCalledWith(
             userId,
-            status: 'verified',
-        });
+        );
     });
 
     it('listBans resolves userId and issuedBy to usernames, so the panel shows names instead of raw snowflakes', async () => {

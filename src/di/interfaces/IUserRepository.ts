@@ -319,6 +319,8 @@ export interface IUserRepository {
 
     clearDecorationFromAllUsers(decorationId: string): Promise<string[]>;
 
+    findBotIdsMatching(search: string): Promise<string[]>;
+
     findNotificationPreferences(
         id: string,
     ): Promise<NotificationPreferences | null>;

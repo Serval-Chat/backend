@@ -504,6 +504,18 @@ export class MongooseUserRepository implements IUserRepository {
         return users.map((u) => u.snowflakeId);
     }
 
+    public async findBotIdsMatching(search: string): Promise<string[]> {
+        const regex = new RegExp(normalizeRegexSearch(search), 'i');
+        const users = await this.userModel
+            .find({
+                isBot: true,
+                $or: [{ username: regex }, { displayName: regex }],
+            })
+            .select('snowflakeId')
+            .lean();
+        return users.map((u) => u.snowflakeId);
+    }
+
     public async findNotificationPreferences(
         id: string,
     ): Promise<NotificationPreferences | null> {

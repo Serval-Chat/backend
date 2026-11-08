@@ -148,6 +148,14 @@ export class MongooseBanRepository implements IBanRepository {
         return await this.banModel.countDocuments({ active: true });
     }
 
+    public async countAll(): Promise<number> {
+        return await this.banModel.countDocuments();
+    }
+
+    public async findSample(limit: number): Promise<IBan[]> {
+        return await this.banModel.find({}).limit(limit).lean();
+    }
+
     public async countCreatedAfter(date: Date): Promise<number> {
         return await this.banModel.countDocuments({ timestamp: { $gt: date } });
     }

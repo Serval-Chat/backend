@@ -51,4 +51,8 @@ export interface IServerBanRepository {
 
     // Unban user from server
     unban(serverId: string, userId: string): Promise<boolean>;
+
+    countAll(): Promise<number>;
+
+    findSample(limit: number): Promise<IServerBan[]>;
 }
