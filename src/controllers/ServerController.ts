@@ -12,6 +12,7 @@ import {
     Inject,
 } from '@nestjs/common';
 import { isValidSnowflakeId } from '@/utils/snowflake';
+import { getOnboardingConfig } from '@/utils/serverOnboarding';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiTags,
@@ -141,33 +142,6 @@ export class ServerController {
         if (fs.existsSync(this.UPLOADS_DIR) === false) {
             fs.mkdirSync(this.UPLOADS_DIR, { recursive: true });
         }
-    }
-
-    private getOnboardingConfig(
-        server: IServer,
-    ): NonNullable<IServer['onboarding']> {
-        const stringArray = (value: unknown): string[] =>
-            Array.isArray(value)
-                ? value.filter((item): item is string =>
-                      isValidSnowflakeId(item),
-                  )
-                : [];
-
-        return {
-            enabled: server.onboarding?.enabled ?? false,
-            guidelines: Array.isArray(server.onboarding?.guidelines)
-                ? server.onboarding.guidelines.filter(
-                      (item): item is string => typeof item === 'string',
-                  )
-                : [],
-            selfAssignableRoleIds: stringArray(
-                server.onboarding?.selfAssignableRoleIds,
-            ),
-            landingChannelId: server.onboarding?.landingChannelId ?? null,
-            welcomeChannelIds: stringArray(
-                server.onboarding?.welcomeChannelIds,
-            ),
-        };
     }
 
     private async validateOnboardingSettings(
@@ -535,7 +509,7 @@ export class ServerController {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        return this.getOnboardingConfig(server);
+        return getOnboardingConfig(server);
     }
 
     @Patch(':serverId/onboarding-settings')
@@ -562,7 +536,7 @@ export class ServerController {
             throw new ApiError(404, ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const current = this.getOnboardingConfig(server);
+        const current = getOnboardingConfig(server);
         const onboarding = await this.validateOnboardingSettings(
             serverId,
             body,

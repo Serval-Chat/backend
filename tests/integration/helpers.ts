@@ -1,10 +1,7 @@
 import mongoose from 'mongoose';
-import { io as Client } from 'socket.io-client';
 import { User } from '../../src/models/User';
 import { createSession } from '../../src/utils/sessionAuth';
 import type { IUser } from '../../src/models/User';
-import type { Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
 
 export async function createTestUser(overrides: Record<string, unknown> = {}) {
     const email = (overrides.login !== undefined && overrides.login !== null && overrides.login !== '') ? String(overrides.login) : `test_${Date.now()}@example.com`;
@@ -25,17 +22,6 @@ export async function generateAuthToken(user: IUser) {
         '127.0.0.1',
     );
     return token;
-}
-
-export function createSocketClient(server: Server, token: string) {
-    const address = server.address() as AddressInfo;
-    const url = `http://localhost:${address.port}`;
-
-    return Client(url, {
-        auth: { token },
-        transports: ['websocket'],
-        forceNew: true
-    });
 }
 
 export async function clearDatabase() {

@@ -174,6 +174,35 @@ describe('ServerMemberController', () => {
             user: { id: meIdStr } as JWTPayload,
         } as Request;
 
+        it('drops malformed stored onboarding values from the member view', async () => {
+            const roleId = '1000000000000000105';
+            const channelId = '1000000000000000106';
+            const member = { userId: meId, serverId, roles: [] };
+            mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce(
+                member,
+            );
+            mockServerRepo.findById.mockResolvedValueOnce({
+                _id: serverId,
+                onboarding: {
+                    enabled: true,
+                    guidelines: ['Be kind', 42],
+                    selfAssignableRoleIds: [roleId, 'not-a-snowflake'],
+                    landingChannelId: channelId,
+                    welcomeChannelIds: [channelId, new Types.ObjectId()],
+                },
+            });
+
+            const result = await controller.getOnboarding(serverIdStr, meIdStr);
+
+            expect(result.onboarding).toEqual({
+                enabled: true,
+                guidelines: ['Be kind'],
+                selfAssignableRoleIds: [roleId],
+                landingChannelId: channelId,
+                welcomeChannelIds: [channelId],
+            });
+        });
+
         it('broadcasts rules acceptance only to the current user', async () => {
             const updatedMember = {
                 _id: new Types.ObjectId(),
@@ -575,8 +604,8 @@ describe('ServerMemberController', () => {
         } as Request;
 
         it('rejects roles outside the server allowlist', async () => {
-            const allowedRoleId = new Types.ObjectId();
-            const blockedRoleId = new Types.ObjectId();
+            const allowedRoleId = '1000000000000000103';
+            const blockedRoleId = '1000000000000000104';
 
             mockServerMemberRepo.findByServerAndUser.mockResolvedValueOnce({
                 userId: meId,
@@ -598,7 +627,7 @@ describe('ServerMemberController', () => {
                     serverIdStr,
                     req.user?.id as string,
                     {
-                        roleIds: [blockedRoleId.toHexString()],
+                        roleIds: [blockedRoleId],
                     },
                 ),
             ).rejects.toThrow('Role is not self-assignable in this server');
@@ -607,8 +636,8 @@ describe('ServerMemberController', () => {
         });
 
         it('preserves roles outside the allowlist when saving self roles', async () => {
-            const selfRoleId = new Types.ObjectId().toHexString();
-            const keptRoleId = new Types.ObjectId().toHexString();
+            const selfRoleId = '1000000000000000101';
+            const keptRoleId = '1000000000000000102';
             const updatedMember = {
                 _id: new Types.ObjectId(),
                 snowflakeId: '1000000000000000004',

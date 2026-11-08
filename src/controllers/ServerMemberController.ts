@@ -61,6 +61,10 @@ import {
     type ServerMemberDTOShape,
     type ServerMemberWithUserDTOShape,
 } from '@/utils/serverMember';
+import {
+    getOnboardingConfig,
+    type OnboardingConfig,
+} from '@/utils/serverOnboarding';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { IUser } from '@/models/User';
 import { Bot } from '@/models/Bot';
@@ -131,25 +135,6 @@ export class ServerMemberController {
         return member;
     }
 
-    private getOnboardingConfig(
-        server: Awaited<ReturnType<IServerRepository['findById']>>,
-    ): {
-        enabled: boolean;
-        guidelines: string[];
-        selfAssignableRoleIds: string[];
-        landingChannelId?: string | null;
-        welcomeChannelIds: string[];
-    } {
-        return {
-            enabled: server?.onboarding?.enabled ?? false,
-            guidelines: server?.onboarding?.guidelines ?? [],
-            selfAssignableRoleIds:
-                server?.onboarding?.selfAssignableRoleIds ?? [],
-            landingChannelId: server?.onboarding?.landingChannelId ?? null,
-            welcomeChannelIds: server?.onboarding?.welcomeChannelIds ?? [],
-        };
-    }
-
     private broadcastMemberUpdateToUser(
         serverId: string,
         userId: string,
@@ -192,7 +177,7 @@ export class ServerMemberController {
         @Param('serverId') serverId: string,
         @CurrentUser('id') userId: string,
     ): Promise<{
-        onboarding: ReturnType<ServerMemberController['getOnboardingConfig']>;
+        onboarding: OnboardingConfig;
         member: ServerMemberDTOShape;
     }> {
         const member = await this.requireMember(serverId, userId);
@@ -202,7 +187,7 @@ export class ServerMemberController {
         }
 
         return {
-            onboarding: this.getOnboardingConfig(server),
+            onboarding: getOnboardingConfig(server),
             member: mapServerMemberToDTO(member),
         };
     }
@@ -248,7 +233,7 @@ export class ServerMemberController {
             throw new NotFoundException(ErrorMessages.SERVER.NOT_FOUND);
         }
 
-        const config = this.getOnboardingConfig(server);
+        const config = getOnboardingConfig(server);
         const allowedIds = new Set(
             config.selfAssignableRoleIds.map((id) => id.toString()),
         );

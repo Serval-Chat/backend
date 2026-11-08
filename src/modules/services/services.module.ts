@@ -1,77 +1,34 @@
 import { Global, Module } from '@nestjs/common';
 import { TYPES } from '@/di/types';
-import elasticsearchConfig from '@/config/elasticsearch.json';
-import { AuthService } from '@/services/AuthService';
-import { PasskeyService } from '@/services/PasskeyService';
-import { PasswordlessService } from '@/services/PasswordlessService';
-import { PermissionService } from '@/permissions/PermissionService';
-import { PingService } from '@/services/PingService';
-import { MailService } from '@/services/MailService';
-import { ExportService } from '@/services/ExportService';
 import { KlipyService } from '@/services/KlipyService';
 import { GifTagService } from '@/services/GifTagService';
-import { MetricsService } from '@/services/MetricsService';
-import { ServerAuditLogService } from '@/services/ServerAuditLogService';
-import { ImageDeliveryService } from '@/services/ImageDeliveryService';
 import { RegistrationInviteService } from '@/services/RegistrationInviteService';
 import { GeoIpService } from '@/services/GeoIpService';
 import { VpnDetectionService } from '@/services/VpnDetectionService';
-import { ScraperService } from '@/services/ScraperService';
-import { EmbedService } from '@/services/EmbedService';
 import { ServerVerificationService } from '@/services/ServerVerificationService';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
-import { MessageSearchService } from '@/services/MessageSearchService';
-import { ChannelService } from '@/services/ChannelService';
 import { RepositoryModule } from '@/modules/repository/repository.module';
 import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 import { container } from '@/di/container';
 
-const esConfig = elasticsearchConfig as {
-    settings: Record<string, unknown>;
-    mappings: Record<string, unknown>;
-};
+const fromContainer = (token: symbol) => ({
+    provide: token,
+    useFactory: () => container.get(token),
+});
 
 @Global()
 @Module({
     imports: [RepositoryModule, InfrastructureModule],
     providers: [
-        {
-            provide: TYPES.AuthService,
-            useClass: AuthService,
-        },
-        {
-            provide: TYPES.PasskeyService,
-            useClass: PasskeyService,
-        },
-        {
-            provide: TYPES.PasswordlessService,
-            useClass: PasswordlessService,
-        },
-        {
-            provide: TYPES.PermissionService,
-            useFactory: () =>
-                container.get<PermissionService>(TYPES.PermissionService),
-        },
-        {
-            provide: TYPES.PingService,
-            useClass: PingService,
-        },
-        {
-            provide: TYPES.MailService,
-            useClass: MailService,
-        },
-        {
-            provide: TYPES.MailConfig,
-            useValue: { skipSending: process.env.NODE_ENV === 'test' },
-        },
-        {
-            provide: TYPES.MetricsService,
-            useClass: MetricsService,
-        },
-        {
-            provide: TYPES.ExportService,
-            useClass: ExportService,
-        },
+        fromContainer(TYPES.AuthService),
+        fromContainer(TYPES.PasskeyService),
+        fromContainer(TYPES.PasswordlessService),
+        fromContainer(TYPES.PermissionService),
+        fromContainer(TYPES.PingService),
+        fromContainer(TYPES.MailService),
+        fromContainer(TYPES.MailConfig),
+        fromContainer(TYPES.MetricsService),
+        fromContainer(TYPES.ExportService),
         {
             provide: TYPES.KlipyService,
             useClass: KlipyService,
@@ -80,14 +37,8 @@ const esConfig = elasticsearchConfig as {
             provide: TYPES.GifTagService,
             useClass: GifTagService,
         },
-        {
-            provide: TYPES.ServerAuditLogService,
-            useClass: ServerAuditLogService,
-        },
-        {
-            provide: TYPES.ImageDeliveryService,
-            useClass: ImageDeliveryService,
-        },
+        fromContainer(TYPES.ServerAuditLogService),
+        fromContainer(TYPES.ImageDeliveryService),
         {
             provide: TYPES.RegistrationInviteService,
             useClass: RegistrationInviteService,
@@ -100,14 +51,8 @@ const esConfig = elasticsearchConfig as {
             provide: TYPES.VpnDetectionService,
             useClass: VpnDetectionService,
         },
-        {
-            provide: TYPES.ScraperService,
-            useClass: ScraperService,
-        },
-        {
-            provide: TYPES.EmbedService,
-            useClass: EmbedService,
-        },
+        fromContainer(TYPES.ScraperService),
+        fromContainer(TYPES.EmbedService),
         {
             provide: TYPES.ServerVerificationService,
             useClass: ServerVerificationService,
@@ -116,19 +61,9 @@ const esConfig = elasticsearchConfig as {
             provide: TYPES.ServerDiscoveryService,
             useClass: ServerDiscoveryService,
         },
-        {
-            provide: TYPES.MessageSearchService,
-            useFactory: () =>
-                container.get<MessageSearchService>(TYPES.MessageSearchService),
-        },
-        {
-            provide: TYPES.ElasticsearchConfig,
-            useValue: esConfig,
-        },
-        {
-            provide: TYPES.ChannelService,
-            useClass: ChannelService,
-        },
+        fromContainer(TYPES.MessageSearchService),
+        fromContainer(TYPES.ElasticsearchConfig),
+        fromContainer(TYPES.ChannelService),
     ],
     exports: [
         TYPES.AuthService,

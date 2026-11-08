@@ -85,7 +85,6 @@ import { PermissionService } from '@/permissions/PermissionService';
 import { PingService } from '@/services/PingService';
 import { ExportService } from '@/services/ExportService';
 import { ServerAuditLogService } from '@/services/ServerAuditLogService';
-import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
 import { MessageSearchService } from '@/services/MessageSearchService';
 import type { IMessageSearchService } from '@/di/interfaces/IMessageSearchService';
 import { RedisService } from '@/services/RedisService';
@@ -330,11 +329,6 @@ container
 container
     .bind<ChannelService>(TYPES.ChannelService)
     .to(ChannelService)
-    .inSingletonScope();
-
-container
-    .bind<ServerDiscoveryService>(TYPES.ServerDiscoveryService)
-    .to(ServerDiscoveryService)
     .inSingletonScope();
 
 container
