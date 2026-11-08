@@ -4,6 +4,7 @@ import {
     IUser,
     CreateUserDTO,
     FrequentlyUsedEmojiEntry,
+    NotificationPreferences,
 } from '@/di/interfaces/IUserRepository';
 import { AdminPermissions } from '@/permissions/AdminPermissions';
 import { User, IUser as IUserModel } from '@/models/User';
@@ -484,6 +485,46 @@ export class MongooseUserRepository implements IUserRepository {
             decorationId === null
                 ? { $unset: { decorationId: '' } }
                 : { decorationId },
+        );
+    }
+
+    public async clearDecorationFromAllUsers(
+        decorationId: string,
+    ): Promise<string[]> {
+        const users = await this.userModel
+            .find({ decorationId })
+            .select('snowflakeId')
+            .lean();
+        if (users.length === 0) return [];
+
+        await this.userModel.updateMany(
+            { decorationId },
+            { $unset: { decorationId: '' } },
+        );
+        return users.map((u) => u.snowflakeId);
+    }
+
+    public async findNotificationPreferences(
+        id: string,
+    ): Promise<NotificationPreferences | null> {
+        const user = await this.userModel
+            .findOne({ snowflakeId: id })
+            .select('notificationPreferences')
+            .lean();
+        return user?.notificationPreferences ?? null;
+    }
+
+    public async updateNotificationPreferences(
+        id: string,
+        preferences: Partial<NotificationPreferences>,
+    ): Promise<void> {
+        const update: Record<string, boolean> = {};
+        for (const [key, value] of Object.entries(preferences)) {
+            update[`notificationPreferences.${key}`] = value;
+        }
+        await this.userModel.findOneAndUpdate(
+            { snowflakeId: id },
+            { $set: update },
         );
     }
 

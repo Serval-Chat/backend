@@ -78,4 +78,6 @@ export interface IRoleRepository {
 
     // Find role with maximum position for a server
     findMaxPositionByServerId(serverId: string): Promise<IRole | null>;
+
+    findManagedByBot(serverId: string, botId: string): Promise<IRole | null>;
 }

@@ -105,4 +105,15 @@ export class MongooseRoleRepository implements IRoleRepository {
     ): Promise<IRole | null> {
         return await Role.findOne({ serverId }).sort({ position: -1 }).lean();
     }
+
+    public async findManagedByBot(
+        serverId: string,
+        botId: string,
+    ): Promise<IRole | null> {
+        return await Role.findOne({
+            serverId,
+            managed: true,
+            managedBotId: botId,
+        }).lean();
+    }
 }

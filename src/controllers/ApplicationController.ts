@@ -23,9 +23,9 @@ import type { ISlashCommandRepository } from '@/di/interfaces/ISlashCommandRepos
 import type { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import type { IWsServer } from '@/ws/interfaces/IWsServer';
 import { AuthGuard } from '@/modules/auth/auth.module';
-import { Bot } from '@/models/Bot';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 import { SetCommandsRequestDTO } from './dto/application.request.dto';
+import type { IBotRepository } from '@/di/interfaces/IBotRepository';
 
 @ApiTags('Applications')
 @ApiBearerAuth()
@@ -37,6 +37,7 @@ export class ApplicationController {
         @Inject(TYPES.ServerMemberRepository)
         private serverMemberRepo: IServerMemberRepository,
         @Inject(TYPES.WsServer) private wsServer: IWsServer,
+        @Inject(TYPES.BotRepository) private botRepo: IBotRepository,
     ) {}
 
     private async broadcastCommandsUpdated(bot: {
@@ -65,7 +66,7 @@ export class ApplicationController {
     public async getMyCommands(@Req() req: AuthenticatedRequest) {
         if (req.user.isBot !== true) throw new ForbiddenException('Forbidden');
 
-        const bot = await Bot.findOne({ userId: req.user.id }).lean();
+        const bot = await this.botRepo.findByUserId(req.user.id);
         if (bot === null) throw new ForbiddenException('Forbidden');
 
         return this.slashCommandRepo.findByBotId(bot.snowflakeId);
@@ -84,7 +85,7 @@ export class ApplicationController {
     ) {
         if (req.user.isBot !== true) throw new ForbiddenException('Forbidden');
 
-        const bot = await Bot.findOne({ userId: req.user.id }).lean();
+        const bot = await this.botRepo.findByUserId(req.user.id);
         if (bot === null) throw new ForbiddenException('Forbidden');
 
         await this.slashCommandRepo.deleteByBotId(bot.snowflakeId);

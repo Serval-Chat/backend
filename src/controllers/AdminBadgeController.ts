@@ -21,7 +21,6 @@ import {
 } from '@nestjs/swagger';
 import { TYPES } from '@/di/types';
 import type { IUserRepository } from '@/di/interfaces/IUserRepository';
-import { Badge } from '@/models/Badge';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import { Permissions } from '@/modules/auth/permissions.decorator';
 import { NoBot } from '@/modules/auth/bot.decorator';
@@ -32,6 +31,7 @@ import {
     AdminSimpleMessageResponseDTO,
     BadgeUserActionResponseDTO,
 } from './dto/admin-badges.dto';
+import type { IBadgeRepository } from '@/di/interfaces/IBadgeRepository';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -42,6 +42,8 @@ export class AdminBadgeController {
     public constructor(
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
+        @Inject(TYPES.BadgeRepository)
+        private badgeRepo: IBadgeRepository,
     ) {}
 
     @Get('badges')
@@ -49,8 +51,7 @@ export class AdminBadgeController {
     @ApiOperation({ summary: 'Retrieve all available badges' })
     @ApiResponse({ status: 200, type: [BadgeResponseDTO] })
     public async getBadges(): Promise<BadgeResponseDTO[]> {
-        const badges = await Badge.find().sort({ createdAt: 1 }).lean();
-        return badges;
+        return await this.badgeRepo.findAll();
     }
 
     @Post('badges')
@@ -61,20 +62,15 @@ export class AdminBadgeController {
     public async createBadge(
         @Body() data: CreateBadgeRequestDTO,
     ): Promise<BadgeResponseDTO> {
-        const existingBadge = await Badge.findOne({
-            $or: [{ id: data.id }, { snowflakeId: data.id }],
-        });
+        const existingBadge = await this.badgeRepo.findByIdOrSnowflake(data.id);
         if (existingBadge) {
             throw new ConflictException('Badge ID already exists');
         }
 
-        const badge = new Badge({
+        return await this.badgeRepo.create({
             ...data,
             color: data.color ?? '#3b82f6',
         });
-
-        await badge.save();
-        return badge.toObject();
     }
 
     @Put('badges/:badgeId')
@@ -86,21 +82,11 @@ export class AdminBadgeController {
         @Path('badgeId') badgeId: string,
         @Body() data: UpdateBadgeRequestDTO,
     ): Promise<BadgeResponseDTO> {
-        const badge = await Badge.findOne({
-            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
-        });
+        const badge = await this.badgeRepo.update(badgeId, data);
         if (!badge) {
             throw new NotFoundException('Badge not found');
         }
-
-        if (data.name !== undefined) badge.name = data.name;
-        if (data.description !== undefined)
-            badge.description = data.description;
-        if (data.icon !== undefined) badge.icon = data.icon;
-        if (data.color !== undefined) badge.color = data.color;
-
-        await badge.save();
-        return badge.toObject();
+        return badge;
     }
 
     @Delete('badges/:badgeId')
@@ -115,16 +101,12 @@ export class AdminBadgeController {
     public async deleteBadge(
         @Path('badgeId') badgeId: string,
     ): Promise<{ message: string }> {
-        const badge = await Badge.findOne({
-            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
-        });
+        const badge = await this.badgeRepo.findByIdOrSnowflake(badgeId);
         if (!badge) {
             throw new NotFoundException('Badge not found');
         }
 
-        await Badge.deleteOne({
-            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
-        });
+        await this.badgeRepo.deleteByIdOrSnowflake(badgeId);
         await this.userRepo.removeBadgeFromAllUsers(badge.id);
         if (
             typeof badge.snowflakeId === 'string' &&
@@ -150,13 +132,7 @@ export class AdminBadgeController {
         }
 
         const badgeIds = user.badges || [];
-        const badges = await Badge.find({
-            $or: [
-                { id: { $in: badgeIds } },
-                { snowflakeId: { $in: badgeIds } },
-            ],
-        }).lean();
-        return badges;
+        return await this.badgeRepo.findByIdsOrSnowflakes(badgeIds);
     }
 
     @Post('users/:userId/badges')
@@ -177,9 +153,7 @@ export class AdminBadgeController {
             throw new NotFoundException('User not found');
         }
 
-        const badge = await Badge.findOne({
-            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
-        });
+        const badge = await this.badgeRepo.findByIdOrSnowflake(badgeId);
         if (!badge) {
             throw new NotFoundException('Badge not found');
         }
@@ -222,9 +196,7 @@ export class AdminBadgeController {
             throw new NotFoundException('User not found');
         }
 
-        const badge = await Badge.findOne({
-            $or: [{ id: badgeId }, { snowflakeId: badgeId }],
-        });
+        const badge = await this.badgeRepo.findByIdOrSnowflake(badgeId);
         const snowflakeId =
             typeof badge?.snowflakeId === 'string'
                 ? badge.snowflakeId

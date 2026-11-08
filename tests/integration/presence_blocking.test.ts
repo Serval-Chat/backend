@@ -142,7 +142,8 @@ describe('Presence Blocking Integration', () => {
                 mockWsServer as any,
                 {} as any, // serverAuditLogService
                 container.get<ConstructorParameters<typeof ServerMemberController>[9]>(TYPES.BlockRepository),
-                container.get<ConstructorParameters<typeof ServerMemberController>[10]>(TYPES.PingService)
+                container.get<ConstructorParameters<typeof ServerMemberController>[10]>(TYPES.PingService),
+                {} as any, // botRepo
             );
 
             await setupBlock(blocker.snowflakeId, blocked.snowflakeId, BlockFlags.HIDE_MY_PRESENCE);

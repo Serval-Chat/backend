@@ -135,3 +135,36 @@ describe('MongooseUserRepository.updateFrequentlyUsedEmojis', () => {
         ).rejects.toThrow();
     });
 });
+
+describe('MongooseUserRepository decorations and notification preferences', () => {
+    test('clears a decoration from every user wearing it', async () => {
+        const wearerA = await createUser({ decorationId: 'deco-1' });
+        const wearerB = await createUser({ decorationId: 'deco-1' });
+        const other = await createUser({ decorationId: 'deco-2' });
+
+        const cleared = await repo.clearDecorationFromAllUsers('deco-1');
+
+        expect(cleared.sort()).toEqual(
+            [wearerA.snowflakeId, wearerB.snowflakeId].sort(),
+        );
+        expect(await User.countDocuments({ decorationId: 'deco-1' })).toBe(0);
+        expect(
+            (await User.findOne({ snowflakeId: other.snowflakeId }).lean())
+                ?.decorationId,
+        ).toBe('deco-2');
+        expect(await repo.clearDecorationFromAllUsers('deco-1')).toEqual([]);
+    });
+
+    test('reads and partially updates notification preferences', async () => {
+        const user = await createUser();
+
+        await repo.updateNotificationPreferences(user.snowflakeId, {
+            mention: false,
+        });
+
+        expect(
+            await repo.findNotificationPreferences(user.snowflakeId),
+        ).toMatchObject({ mention: false, friend_request: true, custom: true });
+        expect(await repo.findNotificationPreferences('missing')).toBeNull();
+    });
+});

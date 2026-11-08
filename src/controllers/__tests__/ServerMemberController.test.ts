@@ -10,21 +10,6 @@ import {
     mapServerMemberToDTO,
 } from '@/utils/serverMember';
 
-jest.mock('@/models/Bot', () => ({
-    Bot: {
-        findOne: jest.fn(),
-    },
-}));
-
-jest.mock('@/models/Server', () => ({
-    Role: {
-        findOne: jest.fn(),
-    },
-}));
-
-import { Bot } from '@/models/Bot';
-import { Role } from '@/models/Server';
-
 describe('ServerMemberController', () => {
     const meId = new Types.ObjectId();
     const serverId = new Types.ObjectId();
@@ -51,6 +36,11 @@ describe('ServerMemberController', () => {
     const mockRoleRepo = {
         findById: jest.fn(),
         findByServerId: jest.fn(),
+        findManagedByBot: jest.fn(),
+        delete: jest.fn(),
+    };
+    const mockBotRepo = {
+        findByUserId: jest.fn(),
     };
     const mockServerBanRepo = {
         create: jest.fn(),
@@ -124,12 +114,8 @@ describe('ServerMemberController', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        (Bot.findOne as jest.Mock).mockReturnValue({
-            lean: jest.fn().mockResolvedValue(null),
-        });
-        (Role.findOne as jest.Mock).mockReturnValue({
-            lean: jest.fn().mockResolvedValue(null),
-        });
+        mockBotRepo.findByUserId.mockResolvedValue(null);
+        mockRoleRepo.findManagedByBot.mockResolvedValue(null);
         controller = new ServerMemberController(
             mockServerMemberRepo as any,
             mockServerRepo as any,
@@ -142,6 +128,7 @@ describe('ServerMemberController', () => {
             mockServerAuditLogService,
             mockBlockRepo as any,
             mockPingService as any,
+            mockBotRepo,
             mockChannelRepo as any,
             mockCategoryRepo as any,
             mockMessageRepo as any,
@@ -594,6 +581,37 @@ describe('ServerMemberController', () => {
             expect(mockPingService.clearServerPings).toHaveBeenCalledWith(
                 meIdStr,
                 serverIdStr,
+            );
+        });
+
+        it("deletes a departing bot's managed role and broadcasts it", async () => {
+            const botId = '1000000000000000201';
+            const managedRoleId = '1000000000000000202';
+            mockServerRepo.findById.mockResolvedValue({
+                _id: serverId,
+                ownerId: new Types.ObjectId(),
+            });
+            mockBotRepo.findByUserId.mockResolvedValueOnce({
+                snowflakeId: botId,
+            });
+            mockRoleRepo.findManagedByBot.mockResolvedValueOnce({
+                snowflakeId: managedRoleId,
+            });
+
+            await controller.leaveServer(serverIdStr, meIdStr);
+
+            expect(mockBotRepo.findByUserId).toHaveBeenCalledWith(meIdStr);
+            expect(mockRoleRepo.findManagedByBot).toHaveBeenCalledWith(
+                serverIdStr,
+                botId,
+            );
+            expect(mockRoleRepo.delete).toHaveBeenCalledWith(managedRoleId);
+            expect(mockWsServer.broadcastToServer).toHaveBeenCalledWith(
+                serverIdStr,
+                {
+                    type: 'role_deleted',
+                    payload: { serverId: serverIdStr, roleId: managedRoleId },
+                },
             );
         });
     });
@@ -1431,6 +1449,7 @@ describe('ServerMemberController', () => {
                 mockServerAuditLogService,
                 mockBlockRepo as any,
                 mockPingService as any,
+                mockBotRepo,
                 mockChannelRepo as any,
                 mockCategoryRepo as any,
             );

@@ -2,6 +2,11 @@ import type { Types } from 'mongoose';
 import type { AdminPermissions } from '@/permissions/AdminPermissions';
 import type { NonEmptyString } from '@/types/branded';
 import type { PresenceStatus } from '@/types/presence';
+import type { IUser as IUserDocument } from '@/models/User';
+
+export type NotificationPreferences = NonNullable<
+    IUserDocument['notificationPreferences']
+>;
 
 // User DTO for creation
 export interface CreateUserDTO {
@@ -311,6 +316,17 @@ export interface IUserRepository {
 
     // Update user's decoration
     updateDecoration(id: string, decorationId: string | null): Promise<void>;
+
+    clearDecorationFromAllUsers(decorationId: string): Promise<string[]>;
+
+    findNotificationPreferences(
+        id: string,
+    ): Promise<NotificationPreferences | null>;
+
+    updateNotificationPreferences(
+        id: string,
+        preferences: Partial<NotificationPreferences>,
+    ): Promise<void>;
 
     // Replace a user's entire frequently-used emoji list
     updateFrequentlyUsedEmojis(

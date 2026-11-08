@@ -37,6 +37,10 @@ export const TYPES = {
     SlashCommandRepository: Symbol.for('SlashCommandRepository'),
     SessionRepository: Symbol.for('SessionRepository'),
     PasskeyCredentialRepository: Symbol.for('PasskeyCredentialRepository'),
+    BotRepository: Symbol.for('BotRepository'),
+    BadgeRepository: Symbol.for('BadgeRepository'),
+    DecorationRepository: Symbol.for('DecorationRepository'),
+    PushSubscriptionRepository: Symbol.for('PushSubscriptionRepository'),
     ExportService: Symbol.for('ExportService'),
 
     AuthService: Symbol.for('AuthService'),

@@ -45,7 +45,6 @@
   },
   "include": [
     "tests/**/*",
-    "old_tests/**/*",
     "src/**/*",
     "src/di/types.ts"
   ],

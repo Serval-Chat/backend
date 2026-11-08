@@ -31,6 +31,10 @@ import { MongooseAdminNoteRepository } from '@/infrastructure/repositories/Mongo
 import { SlashCommandRepository } from '@/infrastructure/repositories/SlashCommandRepository';
 import { MongooseSessionRepository } from '@/infrastructure/repositories/MongooseSessionRepository';
 import { MongoosePasskeyCredentialRepository } from '@/infrastructure/repositories/MongoosePasskeyCredentialRepository';
+import { MongooseBotRepository } from '@/infrastructure/repositories/MongooseBotRepository';
+import { MongooseBadgeRepository } from '@/infrastructure/repositories/MongooseBadgeRepository';
+import { MongooseDecorationRepository } from '@/infrastructure/repositories/MongooseDecorationRepository';
+import { MongoosePushSubscriptionRepository } from '@/infrastructure/repositories/MongoosePushSubscriptionRepository';
 
 @Global()
 @Module({
@@ -159,6 +163,22 @@ import { MongoosePasskeyCredentialRepository } from '@/infrastructure/repositori
             provide: TYPES.PasskeyCredentialRepository,
             useClass: MongoosePasskeyCredentialRepository,
         },
+        {
+            provide: TYPES.BotRepository,
+            useClass: MongooseBotRepository,
+        },
+        {
+            provide: TYPES.BadgeRepository,
+            useClass: MongooseBadgeRepository,
+        },
+        {
+            provide: TYPES.DecorationRepository,
+            useClass: MongooseDecorationRepository,
+        },
+        {
+            provide: TYPES.PushSubscriptionRepository,
+            useClass: MongoosePushSubscriptionRepository,
+        },
     ],
     exports: [
         TYPES.UserRepository,
@@ -192,6 +212,10 @@ import { MongoosePasskeyCredentialRepository } from '@/infrastructure/repositori
         TYPES.SlashCommandRepository,
         TYPES.SessionRepository,
         TYPES.PasskeyCredentialRepository,
+        TYPES.BotRepository,
+        TYPES.BadgeRepository,
+        TYPES.DecorationRepository,
+        TYPES.PushSubscriptionRepository,
     ],
 })
 export class RepositoryModule {}

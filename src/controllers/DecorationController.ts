@@ -35,7 +35,6 @@ import { TYPES } from '@/di/types';
 import { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { IServerMemberRepository } from '@/di/interfaces/IServerMemberRepository';
 import { IFriendshipRepository } from '@/di/interfaces/IFriendshipRepository';
-import { Decoration } from '@/models/Decoration';
 import { processImage, ImageProcessingOptions } from '@/utils/imageProcessing';
 import { diskStorage } from 'multer';
 import crypto from 'crypto';
@@ -46,7 +45,7 @@ import {
     SimpleMessageResponseDTO,
     DecorationListResponseDTO,
 } from './dto/decoration.response.dto';
-import { User } from '@/models/User';
+import type { IDecorationRepository } from '@/di/interfaces/IDecorationRepository';
 
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads', 'decorations');
 
@@ -73,6 +72,8 @@ export class DecorationController {
         private serverMemberRepo: IServerMemberRepository,
         @Inject(TYPES.FriendshipRepository)
         private friendshipRepo: IFriendshipRepository,
+        @Inject(TYPES.DecorationRepository)
+        private decorationRepo: IDecorationRepository,
     ) {}
 
     private async broadcastUserUpdate(
@@ -189,13 +190,11 @@ export class DecorationController {
                 );
             }
 
-            const decoration = new Decoration({
+            const decoration = await this.decorationRepo.create({
                 name: body.name,
                 filename: file.filename,
                 createdBy: userId,
             });
-
-            await decoration.save();
 
             return {
                 message: 'Decoration uploaded successfully',
@@ -223,7 +222,7 @@ export class DecorationController {
         @Param('id') id: string,
         @CurrentUser('id') userId: string,
     ): Promise<SimpleMessageResponseDTO> {
-        const decoration = await Decoration.findOne({ snowflakeId: id }).exec();
+        const decoration = await this.decorationRepo.findById(id);
         if (!decoration) {
             throw new ApiError(404, 'Decoration not found');
         }
@@ -260,9 +259,7 @@ export class DecorationController {
     public async getMyDecorations(
         @CurrentUser('id') userId: string,
     ): Promise<DecorationListResponseDTO> {
-        const decorations = await Decoration.find({ createdBy: userId })
-            .sort({ createdAt: -1 })
-            .exec();
+        const decorations = await this.decorationRepo.findByCreator(userId);
 
         return {
             decorations: decorations.map((d) => ({
@@ -285,7 +282,7 @@ export class DecorationController {
         @Param('id') id: string,
         @CurrentUser('id') userId: string,
     ): Promise<SimpleMessageResponseDTO> {
-        const decoration = await Decoration.findOne({ snowflakeId: id }).exec();
+        const decoration = await this.decorationRepo.findById(id);
         if (!decoration) {
             throw new ApiError(404, 'Decoration not found');
         }
@@ -297,7 +294,7 @@ export class DecorationController {
             );
         }
 
-        await Decoration.deleteOne({ _id: decoration._id });
+        await this.decorationRepo.delete(decoration.snowflakeId);
 
         const sizes = [64, 128, 256, 512];
         const isAnimated = decoration.filename.endsWith('.gif');
@@ -315,18 +312,10 @@ export class DecorationController {
             await fsPromises.unlink(filePath).catch(() => {});
         }
 
-        const usersWithDeco = await User.find({ decorationId: id })
-            .select('snowflakeId')
-            .exec();
-        if (usersWithDeco.length > 0) {
-            await User.updateMany(
-                { decorationId: id },
-                { $unset: { decorationId: '' } },
-            );
-
-            for (const u of usersWithDeco) {
-                await this.broadcastUserUpdate(u.snowflakeId, null);
-            }
+        const clearedUserIds =
+            await this.userRepo.clearDecorationFromAllUsers(id);
+        for (const clearedUserId of clearedUserIds) {
+            await this.broadcastUserUpdate(clearedUserId, null);
         }
 
         return { message: 'Decoration deleted successfully' };
@@ -340,7 +329,7 @@ export class DecorationController {
     public async getDecoration(
         @Param('id') id: string,
     ): Promise<DecorationResponseDTO> {
-        const decoration = await Decoration.findOne({ snowflakeId: id }).exec();
+        const decoration = await this.decorationRepo.findById(id);
         if (!decoration) {
             throw new ApiError(404, 'Decoration not found');
         }
@@ -362,7 +351,7 @@ export class DecorationController {
         @Req() req: Request,
         @Res() res: Response,
     ): Promise<void> {
-        const decoration = await Decoration.findOne({ snowflakeId: id }).exec();
+        const decoration = await this.decorationRepo.findById(id);
         if (!decoration) {
             throw new ApiError(404, 'Decoration not found');
         }

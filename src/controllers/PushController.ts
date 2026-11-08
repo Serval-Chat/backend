@@ -1,5 +1,6 @@
 import {
     Controller,
+    Inject,
     Get,
     Post,
     Patch,
@@ -24,8 +25,6 @@ import type { Request as ExpressRequest } from 'express';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import { Public } from '@/modules/auth/public.decorator';
-import { PushSubscription } from '@/models/PushSubscription';
-import { User } from '@/models/User';
 import {
     WebPushDto,
     FcmDto,
@@ -33,13 +32,21 @@ import {
     MigrateVapidDto,
 } from './dto/push.request.dto';
 import { VAPID_KEY_VERSION, VAPID_PUB } from '@/config/env';
+import { TYPES } from '@/di/types';
+import type { IPushSubscriptionRepository } from '@/di/interfaces/IPushSubscriptionRepository';
+import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 
 @Controller('api/v1/push')
 @ApiTags('Push')
 @UseGuards(AuthGuard)
 @ApiBearerAuth()
 export class PushController {
-    public constructor() {}
+    public constructor(
+        @Inject(TYPES.PushSubscriptionRepository)
+        private pushSubscriptionRepo: IPushSubscriptionRepository,
+        @Inject(TYPES.UserRepository)
+        private userRepo: IUserRepository,
+    ) {}
 
     @Get('vapid-public-key')
     @Public()
@@ -68,19 +75,12 @@ export class PushController {
         @CurrentUser('id') userId: string,
         @Body() body: WebPushDto,
     ) {
-        await PushSubscription.updateOne(
-            { userId, 'endpointData.endpoint': body.subscription.endpoint },
-            {
-                $set: {
-                    userId,
-                    type: 'webpush',
-                    endpointData: body.subscription,
-                    vapidKeyVersion: VAPID_KEY_VERSION,
-                    userAgent: req.headers['user-agent'],
-                },
-            },
-            { upsert: true },
-        );
+        await this.pushSubscriptionRepo.upsertWebPush({
+            userId,
+            endpointData: body.subscription,
+            vapidKeyVersion: VAPID_KEY_VERSION,
+            userAgent: req.headers['user-agent'],
+        });
         return { success: true };
     }
 
@@ -92,31 +92,12 @@ export class PushController {
         @CurrentUser('id') userId: string,
         @Body() body: FcmDto,
     ) {
-        if (body.deviceId !== undefined && body.deviceId.trim() !== '') {
-            await PushSubscription.deleteMany({
-                userId,
-                type: 'fcm',
-                deviceId: body.deviceId,
-                fcmToken: { $ne: body.token },
-            });
-        }
-
-        await PushSubscription.updateOne(
-            { userId, fcmToken: body.token },
-            {
-                $set: {
-                    userId,
-                    type: 'fcm',
-                    fcmToken: body.token,
-                    ...(body.deviceId !== undefined &&
-                    body.deviceId.trim() !== ''
-                        ? { deviceId: body.deviceId }
-                        : {}),
-                    userAgent: req.headers['user-agent'],
-                },
-            },
-            { upsert: true },
-        );
+        await this.pushSubscriptionRepo.upsertFcm({
+            userId,
+            token: body.token,
+            deviceId: body.deviceId,
+            userAgent: req.headers['user-agent'],
+        });
         return { success: true };
     }
 
@@ -124,7 +105,7 @@ export class PushController {
     @ApiOperation({ summary: 'Unsubscribe from all push notifications' })
     @ApiOkResponse({ type: SuccessResponseDTO })
     public async unsubscribe(@CurrentUser('id') userId: string) {
-        await PushSubscription.deleteMany({ userId });
+        await this.pushSubscriptionRepo.deleteAllForUser(userId);
         return { success: true };
     }
 
@@ -132,11 +113,10 @@ export class PushController {
     @ApiOperation({ summary: 'Get notification preferences' })
     @ApiOkResponse({ type: PushPreferencesResponseDTO })
     public async getPreferences(@CurrentUser('id') userId: string) {
-        const user = await User.findOne({ snowflakeId: userId })
-            .select('notificationPreferences')
-            .lean();
+        const preferences =
+            await this.userRepo.findNotificationPreferences(userId);
         return (
-            user?.notificationPreferences ?? {
+            preferences ?? {
                 mention: true,
                 friend_request: true,
                 custom: true,
@@ -151,17 +131,7 @@ export class PushController {
         @CurrentUser('id') userId: string,
         @Body() body: UpdatePreferencesDto,
     ) {
-        const updateObj: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(body)) {
-            updateObj[`notificationPreferences.${k}`] = v;
-        }
-
-        await User.findOneAndUpdate(
-            { snowflakeId: userId },
-            {
-                $set: updateObj,
-            },
-        );
+        await this.userRepo.updateNotificationPreferences(userId, body);
         return { success: true };
     }
 
@@ -173,24 +143,16 @@ export class PushController {
         @CurrentUser('id') userId: string,
         @Body() body: MigrateVapidDto,
     ) {
-        await PushSubscription.deleteOne({
+        await this.pushSubscriptionRepo.deleteWebPushByEndpoint(
             userId,
-            'endpointData.endpoint': body.oldEndpoint,
-        });
-
-        await PushSubscription.updateOne(
-            { userId, 'endpointData.endpoint': body.newSubscription.endpoint },
-            {
-                $set: {
-                    userId,
-                    type: 'webpush',
-                    endpointData: body.newSubscription,
-                    vapidKeyVersion: VAPID_KEY_VERSION,
-                    userAgent: req.headers['user-agent'],
-                },
-            },
-            { upsert: true },
+            body.oldEndpoint,
         );
+        await this.pushSubscriptionRepo.upsertWebPush({
+            userId,
+            endpointData: body.newSubscription,
+            vapidKeyVersion: VAPID_KEY_VERSION,
+            userAgent: req.headers['user-agent'],
+        });
         return { success: true };
     }
 }

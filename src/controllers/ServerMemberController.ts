@@ -67,8 +67,6 @@ import {
 } from '@/utils/serverOnboarding';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { IUser } from '@/models/User';
-import { Bot } from '@/models/Bot';
-import { Role } from '@/models/Server';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { AuthGuard } from '@/modules/auth/auth.module';
 import { NoBot } from '@/modules/auth/bot.decorator';
@@ -84,6 +82,7 @@ import {
     ChannelPreferencesRequestDTO,
     SelfRolesRequestDTO,
 } from './dto/server.request.dto';
+import type { IBotRepository } from '@/di/interfaces/IBotRepository';
 
 @Controller('api/v1/servers/:serverId')
 @ApiTags('Server Members')
@@ -113,6 +112,8 @@ export class ServerMemberController {
         private blockRepo: IBlockRepository,
         @Inject(TYPES.PingService)
         private pingService: PingService,
+        @Inject(TYPES.BotRepository)
+        private botRepo: IBotRepository,
         @Inject(TYPES.ChannelRepository)
         private channelRepo?: IChannelRepository,
         @Inject(TYPES.CategoryRepository)
@@ -1269,13 +1270,12 @@ export class ServerMemberController {
 
     private async cleanupManagedRole(serverId: string, userId: string) {
         try {
-            const bot = await Bot.findOne({ userId }).lean();
+            const bot = await this.botRepo.findByUserId(userId);
             if (bot) {
-                const managedRole = await Role.findOne({
+                const managedRole = await this.roleRepo.findManagedByBot(
                     serverId,
-                    managed: true,
-                    managedBotId: bot.snowflakeId,
-                }).lean();
+                    bot.snowflakeId,
+                );
 
                 if (managedRole) {
                     await this.roleRepo.delete(managedRole.snowflakeId);

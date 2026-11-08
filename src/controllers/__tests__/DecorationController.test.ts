@@ -2,8 +2,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { DecorationController } from '../DecorationController';
 import { ApiError } from '@/utils/ApiError';
-import { Decoration } from '@/models/Decoration';
-import { User } from '@/models/User';
 
 const OWNER_ID = 'user_owner';
 const OTHER_ID = 'user_other';
@@ -19,38 +17,25 @@ const makeDecoration = (overrides: Partial<Record<string, unknown>> = {}) => ({
     ...overrides,
 });
 
-const mockFindOne = (returnValue: unknown) =>
-    jest.spyOn(Decoration, 'findOne').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(returnValue),
-    } as any);
-
-const mockFind = (returnValue: unknown[]) =>
-    jest.spyOn(Decoration, 'find').mockReturnValue({
-        sort: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(returnValue),
-    } as any);
-
-const mockDeleteOne = () =>
-    jest
-        .spyOn(Decoration, 'deleteOne')
-        .mockResolvedValue({ deletedCount: 1 } as any);
-
-const mockUserFind = (returnValue: unknown[]) =>
-    jest.spyOn(User, 'find').mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(returnValue),
-    } as any);
-
-const mockUserUpdateMany = () =>
-    jest
-        .spyOn(User, 'updateMany')
-        .mockResolvedValue({ modifiedCount: 1 } as any);
-
 const mockUserRepo = {
     update: jest.fn(),
     findById: jest.fn(),
     updateDecoration: jest.fn(),
+    clearDecorationFromAllUsers: jest.fn(),
 };
+
+const mockDecorationRepo = {
+    create: jest.fn(),
+    findById: jest.fn(),
+    findByCreator: jest.fn(),
+    delete: jest.fn(),
+};
+
+const mockFindOne = (decoration: unknown) =>
+    mockDecorationRepo.findById.mockResolvedValue(decoration);
+
+const mockFind = (decorations: unknown[]) =>
+    mockDecorationRepo.findByCreator.mockResolvedValue(decorations);
 
 const mockWsServer = {
     broadcastToServer: jest.fn(),
@@ -75,6 +60,7 @@ describe('DecorationController', () => {
             mockWsServer as any,
             mockServerMemberRepo as any,
             mockFriendshipRepo as any,
+            mockDecorationRepo,
         );
     });
 
@@ -203,21 +189,17 @@ describe('DecorationController', () => {
         });
 
         it('should delete document and broadcast to users currently wearing it', async () => {
-            const deco = makeDecoration();
-            mockFindOne(deco);
-            mockDeleteOne();
-            mockUserFind([{ snowflakeId: 'affected_user' }]);
-            mockUserUpdateMany();
+            mockFindOne(makeDecoration());
+            mockUserRepo.clearDecorationFromAllUsers.mockResolvedValue([
+                'affected_user',
+            ]);
 
             const result = await controller.deleteDecoration(DECO_ID, OWNER_ID);
 
-            expect(Decoration.deleteOne).toHaveBeenCalledWith({
-                _id: deco._id,
-            });
-            expect(User.updateMany).toHaveBeenCalledWith(
-                { decorationId: DECO_ID },
-                { $unset: { decorationId: '' } },
-            );
+            expect(mockDecorationRepo.delete).toHaveBeenCalledWith(DECO_ID);
+            expect(
+                mockUserRepo.clearDecorationFromAllUsers,
+            ).toHaveBeenCalledWith(DECO_ID);
             expect(mockWsServer.broadcastToUser).toHaveBeenCalledWith(
                 'affected_user',
                 expect.objectContaining({
@@ -228,15 +210,14 @@ describe('DecorationController', () => {
             expect(result.message).toBe('Decoration deleted successfully');
         });
 
-        it('should skip User.updateMany when no users are wearing the decoration', async () => {
+        it('should broadcast nothing when no users are wearing the decoration', async () => {
             mockFindOne(makeDecoration());
-            mockDeleteOne();
-            mockUserFind([]);
-            const updateManySpy = mockUserUpdateMany();
+            mockUserRepo.clearDecorationFromAllUsers.mockResolvedValue([]);
 
             await controller.deleteDecoration(DECO_ID, OWNER_ID);
 
-            expect(updateManySpy).not.toHaveBeenCalled();
+            expect(mockDecorationRepo.delete).toHaveBeenCalledWith(DECO_ID);
+            expect(mockWsServer.broadcastToUser).not.toHaveBeenCalled();
         });
     });
 

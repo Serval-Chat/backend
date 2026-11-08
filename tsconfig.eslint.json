@@ -6,7 +6,6 @@
     "include": [
         "src/**/*",
         "tests/**/*.ts",
-        "old_tests/**/*",
         "generate.ts"
     ]
 }

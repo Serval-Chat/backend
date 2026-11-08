@@ -45,8 +45,6 @@ const WEBAUTHN_RP_ID = process.env.WEBAUTHN_RP_ID ?? 'localhost';
 const WEBAUTHN_RP_NAME = process.env.WEBAUTHN_RP_NAME ?? 'Serchat';
 const WEBAUTHN_ORIGIN = process.env.WEBAUTHN_ORIGIN ?? 'http://localhost:5173';
 
-const OTEL_ENDPOINT =
-    process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'grpc://otel-collector:4317';
 const LOKI_HOST = process.env.LOKI_HOST ?? 'http://loki:3100';
 const APP_VERSION = process.env.APP_VERSION ?? '0.0.0';
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
@@ -171,7 +169,6 @@ export {
     MAILGUN_BASE_URL,
     FRONTEND_URL,
     METRICS_TOKEN,
-    OTEL_ENDPOINT,
     LOKI_HOST,
     APP_VERSION,
     LOG_LEVEL,

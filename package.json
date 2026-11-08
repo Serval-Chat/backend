@@ -80,8 +80,6 @@
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/express-rate-limit": "^6.0.2",
-    "@types/helmet": "^4.0.0",
     "@types/istextorbinary": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/jsdom": "^28.0.3",

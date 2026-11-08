@@ -2,13 +2,6 @@ import { ForbiddenException } from '@nestjs/common';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import type { AuthenticatedRequest } from '@/middleware/auth';
 
-jest.mock('@/models/Bot', () => ({
-    Bot: {
-        findOne: jest.fn(),
-    },
-}));
-
-import { Bot } from '@/models/Bot';
 import { ApplicationController } from '../ApplicationController';
 
 const slashCommandRepo = {
@@ -21,6 +14,9 @@ const serverMemberRepo = {
 };
 const wsServer = {
     broadcastToServer: jest.fn(),
+};
+const botRepo = {
+    findByUserId: jest.fn(),
 };
 
 const req = {
@@ -36,25 +32,24 @@ describe('ApplicationController', () => {
             slashCommandRepo as never,
             serverMemberRepo as never,
             wsServer as never,
+            botRepo,
         );
     });
 
     it('rejects getMyCommands when token does not belong to bot', async () => {
-        (Bot.findOne as jest.Mock).mockReturnValue({
-            lean: jest.fn().mockResolvedValue(null),
-        });
+        botRepo.findByUserId.mockResolvedValue(null);
 
         await expect(controller.getMyCommands(req)).rejects.toThrow(
             ForbiddenException,
         );
+        expect(botRepo.findByUserId).toHaveBeenCalledWith(req.user.id);
     });
 
     it('setMyCommands lowercases names and overwrites existing commands', async () => {
         const botId = generateSnowflakeId();
-        (Bot.findOne as jest.Mock).mockReturnValue({
-            lean: jest
-                .fn()
-                .mockResolvedValue({ snowflakeId: botId, userId: req.user.id }),
+        botRepo.findByUserId.mockResolvedValue({
+            snowflakeId: botId,
+            userId: req.user.id,
         });
         slashCommandRepo.create.mockResolvedValue({ snowflakeId: 'cmd-1' });
 
@@ -72,10 +67,9 @@ describe('ApplicationController', () => {
         const botId = generateSnowflakeId();
         const botUserId = generateSnowflakeId();
         const serverId = generateSnowflakeId();
-        (Bot.findOne as jest.Mock).mockReturnValue({
-            lean: jest
-                .fn()
-                .mockResolvedValue({ snowflakeId: botId, userId: botUserId }),
+        botRepo.findByUserId.mockResolvedValue({
+            snowflakeId: botId,
+            userId: botUserId,
         });
         slashCommandRepo.create.mockResolvedValue({ snowflakeId: 'cmd-1' });
         serverMemberRepo.findServerIdsByUserId.mockResolvedValue([serverId]);
