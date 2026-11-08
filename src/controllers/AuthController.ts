@@ -19,7 +19,7 @@ import {
     revokeAllSessionsForUser,
     revokeSessionById,
 } from '@/utils/sessionAuth';
-import { SessionDuration } from '@/models/User';
+import { sessionDurationFor } from '@/models/User';
 import {
     loginAttemptsCounter,
     registrationAttemptsCounter,
@@ -96,12 +96,6 @@ export class AuthController {
         private userRepo: IUserRepository,
     ) {}
 
-    private sessionDurationFor(user: {
-        settings?: { sessionDuration?: string };
-    }): string {
-        return user.settings?.sessionDuration ?? SessionDuration.THIRTY_DAYS;
-    }
-
     @Post('login')
     @Public()
     @HttpCode(HttpStatus.OK)
@@ -171,7 +165,7 @@ export class AuthController {
             user.snowflakeId,
             req.headers['user-agent'] ?? 'unknown',
             extractClientIp(req),
-            this.sessionDurationFor(user),
+            sessionDurationFor(user),
         );
 
         res.status(HttpStatus.OK).json({
@@ -233,7 +227,7 @@ export class AuthController {
             updatedUser.snowflakeId,
             req.headers['user-agent'] ?? 'unknown',
             extractClientIp(req),
-            this.sessionDurationFor(updatedUser),
+            sessionDurationFor(updatedUser),
         );
 
         return { ...result, token };
@@ -275,7 +269,7 @@ export class AuthController {
             user.snowflakeId,
             req.headers['user-agent'] ?? 'unknown',
             extractClientIp(req),
-            this.sessionDurationFor(user),
+            sessionDurationFor(user),
         );
 
         res.status(HttpStatus.OK).json({
@@ -334,7 +328,7 @@ export class AuthController {
             updatedUser.snowflakeId,
             req.headers['user-agent'] ?? 'unknown',
             extractClientIp(req),
-            this.sessionDurationFor(updatedUser),
+            sessionDurationFor(updatedUser),
         );
 
         return {
@@ -449,7 +443,7 @@ export class AuthController {
                 newUser.snowflakeId,
                 req.headers['user-agent'] ?? 'unknown',
                 extractClientIp(req),
-                this.sessionDurationFor(newUser),
+                sessionDurationFor(newUser),
             );
 
             res.status(HttpStatus.OK).json({ token });
@@ -582,7 +576,7 @@ export class AuthController {
             updatedUser.snowflakeId,
             req.headers['user-agent'] ?? 'unknown',
             extractClientIp(req),
-            this.sessionDurationFor(updatedUser),
+            sessionDurationFor(updatedUser),
         );
 
         return {

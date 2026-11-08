@@ -8,6 +8,7 @@ import mime from 'mime-types';
 import sharp from 'sharp';
 
 import { extractOriginalFilename } from '@/config/multer';
+import { SERVER_URL } from '@/config/env';
 import type {
     IMessageAttachment,
     MessageAttachmentType,
@@ -87,7 +88,7 @@ export function getStoredFilenameFromUrl(rawUrl: string): string {
         if (
             KNOWN_ATTACHMENT_HOSTS.has(parsed.hostname) === false &&
             parsed.hostname !==
-                new URL(process.env.SERVER_URL ?? parsed.origin).hostname
+                new URL(SERVER_URL !== '' ? SERVER_URL : parsed.origin).hostname
         ) {
             throw new Error(`Unknown attachment host: ${parsed.hostname}`);
         }
@@ -128,13 +129,6 @@ export function extractLegacyFileMarkers(text: string): {
         .trim();
 
     return { urls, text: nextText };
-}
-
-function getOriginalFilename(storedFilename: string): string {
-    const isNewFormat = /^[a-f0-9]{20}-.+$/.test(storedFilename);
-    return isNewFormat
-        ? extractOriginalFilename(storedFilename)
-        : storedFilename;
 }
 
 const SVG_MIME_TYPE = 'image/svg+xml';
@@ -214,7 +208,7 @@ export async function buildAttachmentMetadata(
     }
 
     const filePath = path.join(getUploadsDir(), safeFilename);
-    const originalName = getOriginalFilename(safeFilename);
+    const originalName = extractOriginalFilename(safeFilename);
     const extension = originalName.split('.').pop()?.toLowerCase();
 
     let stats = await fsPromises.stat(filePath);

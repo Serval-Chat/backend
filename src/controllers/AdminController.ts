@@ -162,6 +162,7 @@ import { AuthenticatedRequest } from '@/middleware/auth';
 
 import { NoBot } from '@/modules/auth/bot.decorator';
 import { grantsBeyond, outranks } from '@/permissions/adminHierarchy';
+import { normalizeRegexSearch } from '@/utils/regex';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -2184,11 +2185,7 @@ export class AdminController {
         const query: Record<string, unknown> = {};
 
         if (search !== undefined && search.trim() !== '') {
-            const escaped = search
-                .trim()
-                .slice(0, 64)
-                .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(escaped, 'i');
+            const regex = new RegExp(normalizeRegexSearch(search), 'i');
             const matchingBotUsers = await User.find({
                 isBot: true,
                 $or: [{ username: regex }, { displayName: regex }],

@@ -14,6 +14,7 @@ import {
 } from '@/models/ReportSettings';
 import { generateSnowflakeId } from '@/utils/snowflake';
 import type { UpdateQuery } from 'mongoose';
+import { isDuplicateKeyError } from '@/utils/mongoErrors';
 
 type StoredReportReasonOption = Omit<ReportReasonOption, 'targetType'> & {
     targetType?: ReportReasonOption['targetType'];
@@ -60,14 +61,7 @@ export class MongooseReportRepository implements IReportRepository {
             ).lean();
             return this.normalizeSettings(settings);
         } catch (error) {
-            if (
-                typeof error !== 'object' ||
-                error === null ||
-                !('code' in error) ||
-                error.code !== 11000
-            ) {
-                throw error;
-            }
+            if (!isDuplicateKeyError(error)) throw error;
         }
 
         const settings = await ReportSettings.findOne({ key: 'global' }).lean();
@@ -229,14 +223,7 @@ export class MongooseReportRepository implements IReportRepository {
             const report = await Report.create({ ...data, dedupeKey });
             return report.toObject();
         } catch (error) {
-            if (
-                typeof error !== 'object' ||
-                error === null ||
-                !('code' in error) ||
-                error.code !== 11000
-            ) {
-                throw error;
-            }
+            if (!isDuplicateKeyError(error)) throw error;
 
             const racedReport = await Report.findOne(duplicateQuery).lean();
             if (!racedReport) throw error;

@@ -22,6 +22,11 @@ const USE_HTTPS = process.env.HTTPS ?? '';
 const CERTS_PATH = ensureAbsolute(process.env.CERTS_PATH ?? '');
 const VAPID_PUB = process.env.VAPID_PUBLIC_KEY ?? '';
 const VAPID_PRI = process.env.VAPID_PRIVATE_KEY ?? '';
+const VAPID_KEY_VERSION = process.env.VAPID_KEY_VERSION ?? 'v1';
+const VAPID_EMAIL =
+    process.env.VAPID_EMAIL !== undefined && process.env.VAPID_EMAIL !== ''
+        ? process.env.VAPID_EMAIL
+        : 'admin@localhost';
 const SERVER_URL = process.env.SERVER_URL ?? '';
 const GRAFANA_USER = process.env.GRAFANA_USER ?? '';
 const GRAFANA_PASSWORD = process.env.GRAFANA_PASSWORD ?? '';
@@ -155,6 +160,8 @@ export {
     CERTS_PATH,
     VAPID_PRI,
     VAPID_PUB,
+    VAPID_KEY_VERSION,
+    VAPID_EMAIL,
     SERVER_URL,
     GRAFANA_USER,
     GRAFANA_PASSWORD,

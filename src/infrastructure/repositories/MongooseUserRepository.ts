@@ -13,14 +13,7 @@ import { ErrorMessages } from '@/constants/errorMessages';
 import type { PresenceStatus } from '@/types/presence';
 
 import { injectable } from 'inversify';
-
-function escapeRegex(input: string): string {
-    return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function normalizeRegexSearch(input: string): string {
-    return escapeRegex(input.trim().slice(0, 64));
-}
+import { normalizeRegexSearch } from '@/utils/regex';
 
 // Mongoose User repository
 //

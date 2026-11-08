@@ -24,7 +24,7 @@ import type { JWTPayload } from '@/utils/jwt';
 import { PasskeyService } from '@/services/PasskeyService';
 import { createSession } from '@/utils/sessionAuth';
 import { extractClientIp } from '@/utils/ip';
-import { SessionDuration } from '@/models/User';
+import { sessionDurationFor } from '@/models/User';
 import {
     PasskeyListResponseDTO,
     PasskeyRegistrationOptionsResponseDTO,
@@ -47,12 +47,6 @@ export class PasskeyController {
         @Inject(TYPES.PasskeyService)
         private passkeyService: PasskeyService,
     ) {}
-
-    private sessionDurationFor(user: {
-        settings?: { sessionDuration?: string };
-    }): string {
-        return user.settings?.sessionDuration ?? SessionDuration.THIRTY_DAYS;
-    }
 
     @Get()
     @UseGuards(AuthGuard)
@@ -175,7 +169,7 @@ export class PasskeyController {
             user.snowflakeId,
             req.headers['user-agent'] ?? 'unknown',
             extractClientIp(req),
-            this.sessionDurationFor(user),
+            sessionDurationFor(user),
         );
 
         res.status(HttpStatus.OK).json({

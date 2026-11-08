@@ -21,7 +21,7 @@ import type { IUserRepository } from '@/di/interfaces/IUserRepository';
 import { createSession, revokeAllSessionsForUser } from '@/utils/sessionAuth';
 import { extractClientIp } from '@/utils/ip';
 import { verifyTurnstile } from '@/utils/turnstile';
-import { SessionDuration } from '@/models/User';
+import { sessionDurationFor } from '@/models/User';
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
 import {
@@ -45,12 +45,6 @@ export class PasswordlessController {
         @Inject(TYPES.UserRepository)
         private userRepo: IUserRepository,
     ) {}
-
-    private sessionDurationFor(user: {
-        settings?: { sessionDuration?: string };
-    }): string {
-        return user.settings?.sessionDuration ?? SessionDuration.THIRTY_DAYS;
-    }
 
     @Post('enable')
     @UseGuards(AuthGuard)
@@ -78,7 +72,7 @@ export class PasswordlessController {
             updatedUser.snowflakeId,
             req.headers['user-agent'] ?? 'unknown',
             extractClientIp(req),
-            this.sessionDurationFor(updatedUser),
+            sessionDurationFor(updatedUser),
         );
 
         return { recoveryKeys, token };
@@ -165,7 +159,7 @@ export class PasswordlessController {
             user.snowflakeId,
             req.headers['user-agent'] ?? 'unknown',
             extractClientIp(req),
-            this.sessionDurationFor(user),
+            sessionDurationFor(user),
         );
 
         res.status(HttpStatus.OK).json({

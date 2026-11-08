@@ -57,6 +57,7 @@ import type { IWarningRepository } from '@/di/interfaces/IWarningRepository';
 import { assertHttpNotWarned } from '@/utils/warning';
 import { mapPublicServerMember } from '@/utils/serverMember';
 import type { IEmbed, IEmbedButton } from '@/models/Embed';
+import { escapeRegex } from '@/utils/regex';
 
 interface InteractionOption {
     name: string;
@@ -850,7 +851,7 @@ export class InteractionController {
         } else if (userOptionIsSnowflake && typeof userOption === 'string') {
             targetMember = await findMemberByUserId(userOption);
         } else if (typeof userOption === 'string') {
-            const escaped = userOption.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escaped = escapeRegex(userOption);
             const foundUser = await User.findOne({
                 $or: [
                     { username: new RegExp(`^${escaped}$`, 'i') },
@@ -1136,7 +1137,7 @@ export class InteractionController {
         if (userId !== undefined && userId !== '') {
             user = await User.findOne({ snowflakeId: userId }).lean();
         } else {
-            const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escaped = escapeRegex(value);
             const foundUsers = await User.find({
                 $or: [
                     { username: new RegExp(`^${escaped}$`, 'i') },
@@ -1209,10 +1210,7 @@ export class InteractionController {
         } else {
             channel = await Channel.findOne({
                 serverId: serverId,
-                name: new RegExp(
-                    `^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
-                    'i',
-                ),
+                name: new RegExp(`^${escapeRegex(value)}$`, 'i'),
             }).lean();
         }
 
@@ -1251,10 +1249,7 @@ export class InteractionController {
         } else {
             role = await Role.findOne({
                 serverId: serverId,
-                name: new RegExp(
-                    `^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
-                    'i',
-                ),
+                name: new RegExp(`^${escapeRegex(value)}$`, 'i'),
             }).lean();
         }
 

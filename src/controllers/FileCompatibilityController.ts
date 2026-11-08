@@ -65,10 +65,7 @@ export class FileCompatibilityController {
             throw new ApiError(400, ErrorMessages.FILE.INVALID_PATH);
         }
 
-        const isNewFormat = /^[a-f0-9]{20}-.+$/.test(safeFilename);
-        const originalFilename = isNewFormat
-            ? extractOriginalFilename(safeFilename)
-            : safeFilename;
+        const originalFilename = extractOriginalFilename(safeFilename);
 
         const escapedFilename = originalFilename.replace(/["\\]/g, '\\$&');
         const encodedFilename = encodeURIComponent(originalFilename);

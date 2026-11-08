@@ -26,6 +26,12 @@ export const SESSION_DURATION_DAYS: Record<SessionDuration, number> = {
     [SessionDuration.NINETY_DAYS]: 90,
 };
 
+export function sessionDurationFor(user: {
+    settings?: { sessionDuration?: string };
+}): string {
+    return user.settings?.sessionDuration ?? SessionDuration.THIRTY_DAYS;
+}
+
 // User interface
 //
 // Represents a registered user in the system

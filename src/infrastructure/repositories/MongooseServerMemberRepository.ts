@@ -9,14 +9,7 @@ import { ServerMember } from '@/models/Server';
 import { User } from '@/models/User';
 import { injectable } from 'inversify';
 import type { PipelineStage } from 'mongoose';
-
-function escapeRegex(input: string): string {
-    return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function normalizeRegexSearch(input: string): string {
-    return escapeRegex(input.trim().slice(0, 64));
-}
+import { normalizeRegexSearch } from '@/utils/regex';
 
 const SENSITIVE_USER_FIELDS = [
     'permissions',

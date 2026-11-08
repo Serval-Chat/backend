@@ -558,7 +558,9 @@ export class ServerChannelController {
                     expiresAt: payload.expiresAt,
                 });
             } catch {
-                console.error('Failed to parse typing payload for key', key);
+                this.logger.error(
+                    `Failed to parse typing payload for key ${key}`,
+                );
             }
         }
 

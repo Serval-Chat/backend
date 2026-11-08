@@ -3,6 +3,7 @@ import { PUBLIC_FOLDER_PATH, PROJECT_LEVEL } from '@/config/env';
 import express from 'express';
 import path from 'path';
 import { readFileSync } from 'fs';
+import logger from '@/utils/logger';
 
 const router: Router = Router();
 
@@ -57,7 +58,7 @@ router.get(/.*/, (req, res, next) => {
         res.set('Content-Type', 'text/html');
         res.send(html);
     } catch (error) {
-        console.error('Error serving index.html:', error);
+        logger.error('Error serving index.html:', error);
         res.status(500).send('Internal Server Error');
     }
 });

@@ -17,6 +17,7 @@ import type {
 import { ApiError } from '@/utils/ApiError';
 import { ErrorMessages } from '@/constants/errorMessages';
 import { MAX_FAVORITE_GIFS_PER_USER } from '@/constants/favoriteGifs';
+import { isDuplicateKeyError } from '@/utils/mongoErrors';
 
 @injectable()
 export class KlipyService {
@@ -31,15 +32,6 @@ export class KlipyService {
 
     private getApiUrl(endpoint: string) {
         return `${this.baseUrl}/${KLIPY_API_KEY}${endpoint}`;
-    }
-
-    private isDuplicateKeyError(error: unknown): boolean {
-        return (
-            typeof error === 'object' &&
-            error !== null &&
-            'code' in error &&
-            (error as { code?: unknown }).code === 11000
-        );
     }
 
     public async searchGifs(query: string) {
@@ -196,7 +188,7 @@ export class KlipyService {
                     },
                 );
             } catch (innerError: unknown) {
-                if (this.isDuplicateKeyError(innerError)) {
+                if (isDuplicateKeyError(innerError)) {
                     const existing = await this.klipyCacheModel.findOne({
                         klipyId: canonicalKlipyId,
                     });
@@ -261,7 +253,7 @@ export class KlipyService {
             });
             return { favorited: true };
         } catch (error: unknown) {
-            if (this.isDuplicateKeyError(error)) {
+            if (isDuplicateKeyError(error)) {
                 await this.favoriteGifModel.deleteOne({
                     userId,
                     $or: [{ klipyId }, { url }],

@@ -1,4 +1,5 @@
 import { CF_TURNSTILE_SECRET } from '@/config/env';
+import logger from '@/utils/logger';
 
 export async function verifyTurnstile(
     token: string | undefined,
@@ -26,7 +27,7 @@ export async function verifyTurnstile(
         const data = (await res.json()) as { success: boolean };
         return data.success === true;
     } catch (err) {
-        console.error('Turnstile verification failed', err);
+        logger.error('Turnstile verification failed', err);
         return false;
     }
 }

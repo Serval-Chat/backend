@@ -5,7 +5,12 @@ import {
 } from '../models/PushSubscription';
 import { User } from '../models/User';
 import logger from '../utils/logger';
-import { VAPID_PUB, VAPID_PRI } from '../config/env';
+import {
+    VAPID_PUB,
+    VAPID_PRI,
+    VAPID_KEY_VERSION,
+    VAPID_EMAIL,
+} from '../config/env';
 import { parseNotificationText } from '../utils/textParser';
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
@@ -17,12 +22,8 @@ const vapidConfigs: Record<string, { publicKey: string; privateKey: string }> =
     {};
 
 export function initWebPush() {
-    if (
-        process.env.VAPID_KEY_VERSION !== undefined &&
-        VAPID_PUB !== '' &&
-        VAPID_PRI !== ''
-    ) {
-        vapidConfigs[process.env.VAPID_KEY_VERSION] = {
+    if (VAPID_PUB !== '' && VAPID_PRI !== '') {
+        vapidConfigs[VAPID_KEY_VERSION] = {
             publicKey: VAPID_PUB,
             privateKey: VAPID_PRI,
         };
@@ -159,7 +160,7 @@ async function sendToSubscription(
                 {
                     TTL: 86400, // 24h
                     vapidDetails: {
-                        subject: `mailto:${process.env.VAPID_EMAIL !== undefined && process.env.VAPID_EMAIL !== '' ? process.env.VAPID_EMAIL : 'admin@localhost'}`,
+                        subject: `mailto:${VAPID_EMAIL}`,
                         publicKey: config.publicKey,
                         privateKey: config.privateKey,
                     },

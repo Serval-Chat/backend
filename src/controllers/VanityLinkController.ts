@@ -36,15 +36,7 @@ import {
     VanityLinkDeletedResponseDTO,
 } from './dto/vanity-link.response.dto';
 import { ServerDiscoveryService } from '@/services/ServerDiscoveryService';
-
-function isDuplicateKeyError(error: unknown): boolean {
-    return (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        error.code === 11000
-    );
-}
+import { isDuplicateKeyError } from '@/utils/mongoErrors';
 
 @Controller('api/v1')
 @ApiTags('Vanity Links')

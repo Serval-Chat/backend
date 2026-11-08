@@ -32,7 +32,7 @@ import {
     UpdatePreferencesDto,
     MigrateVapidDto,
 } from './dto/push.request.dto';
-import { VAPID_PUB } from '@/config/env';
+import { VAPID_KEY_VERSION, VAPID_PUB } from '@/config/env';
 
 @Controller('api/v1/push')
 @ApiTags('Push')
@@ -55,7 +55,7 @@ export class PushController {
     @ApiOkResponse({ type: VapidStatusResponseDTO })
     public vapidStatus() {
         return {
-            currentVersion: process.env.VAPID_KEY_VERSION ?? 'v1',
+            currentVersion: VAPID_KEY_VERSION,
             currentPublicKey: VAPID_PUB,
         };
     }
@@ -75,7 +75,7 @@ export class PushController {
                     userId,
                     type: 'webpush',
                     endpointData: body.subscription,
-                    vapidKeyVersion: process.env.VAPID_KEY_VERSION ?? 'v1',
+                    vapidKeyVersion: VAPID_KEY_VERSION,
                     userAgent: req.headers['user-agent'],
                 },
             },
@@ -185,7 +185,7 @@ export class PushController {
                     userId,
                     type: 'webpush',
                     endpointData: body.newSubscription,
-                    vapidKeyVersion: process.env.VAPID_KEY_VERSION ?? 'v1',
+                    vapidKeyVersion: VAPID_KEY_VERSION,
                     userAgent: req.headers['user-agent'],
                 },
             },

@@ -12,15 +12,7 @@ import {
     compileTagExpression,
     parseTagExpression,
 } from '@/utils/gifTagExpression';
-
-function isDuplicateKeyError(error: unknown): boolean {
-    return (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        error.code === 11000
-    );
-}
+import { isDuplicateKeyError } from '@/utils/mongoErrors';
 
 @injectable()
 export class GifTagService {

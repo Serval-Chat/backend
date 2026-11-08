@@ -145,7 +145,9 @@ export class FileController {
     ): Promise<FileMetadataResponseDTO> {
         const filePath = await this.getFilePath(filename);
         const stats = await fsPromises.stat(filePath);
-        const originalFilename = this.getOriginalFilename(filename);
+        const originalFilename = extractOriginalFilename(
+            path.basename(filename),
+        );
 
         let isBinary = false;
         try {
@@ -182,7 +184,9 @@ export class FileController {
         @Res() res: Response,
     ): Promise<void> {
         const filePath = await this.getFilePath(filename);
-        const originalFilename = this.getOriginalFilename(filename);
+        const originalFilename = extractOriginalFilename(
+            path.basename(filename),
+        );
 
         const escapedFilename = originalFilename.replace(/["\\]/g, '\\$&');
         const encodedFilename = encodeURIComponent(originalFilename);
@@ -201,20 +205,6 @@ export class FileController {
         res.setHeader('Content-Type', contentType);
 
         res.send(buffer);
-    }
-
-    /**
-     * Extracts the original filename from a stored filename.
-     * Handles both new format (hash-prefixed) and legacy format.
-     * @param filename Stored filename
-     * @returns Original filename
-     */
-    private getOriginalFilename(filename: string): string {
-        const safeFilename = path.basename(filename);
-        const isNewFormat = /^[a-f0-9]{20}-.+$/.test(safeFilename);
-        return isNewFormat
-            ? extractOriginalFilename(safeFilename)
-            : safeFilename;
     }
 
     /**

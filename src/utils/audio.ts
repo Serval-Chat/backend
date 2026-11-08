@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import logger from '@/utils/logger';
 
 export interface AudioProcessingOptions {
     maxDuration?: number;
@@ -31,14 +32,14 @@ export async function analyzeLoudness(filePath: string): Promise<number> {
         });
 
         proc.on('error', (err) => {
-            console.error('Loudness analysis failed to start FFmpeg:', err);
+            logger.error('Loudness analysis failed to start FFmpeg:', err);
             resolve(1);
         });
 
         proc.on('close', () => {
             const jsonMatch = /\{[^{}]*"input_i"[^{}]*\}/.exec(stderr);
             if (!jsonMatch) {
-                console.error(
+                logger.error(
                     `Loudness analysis found no loudnorm stats for ${filePath}. Stderr: ${stderr}`,
                 );
                 resolve(1);
@@ -49,7 +50,7 @@ export async function analyzeLoudness(filePath: string): Promise<number> {
                 const stats = JSON.parse(jsonMatch[0]) as { input_i: string };
                 const inputLufs = Number.parseFloat(stats.input_i);
                 if (!Number.isFinite(inputLufs)) {
-                    console.error(
+                    logger.error(
                         `Loudness analysis got a non-finite input_i for ${filePath}: ${stats.input_i}`,
                     );
                     resolve(1);
@@ -64,7 +65,7 @@ export async function analyzeLoudness(filePath: string): Promise<number> {
                     ),
                 );
             } catch (err) {
-                console.error(
+                logger.error(
                     `Loudness analysis failed to parse loudnorm stats for ${filePath}:`,
                     err,
                 );

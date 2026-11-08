@@ -12,6 +12,7 @@ import {
     isJoinTargetUsable,
 } from '@/utils/invite';
 import { crawlerPreviewLimiter } from '@/middleware/rateLimiting';
+import logger from '@/utils/logger';
 
 /**
  * Middleware to detect Discord crawlers and serve a invite link preview.
@@ -136,7 +137,7 @@ async function renderInvitePreview(
         res.status(200).send(html);
         return;
     } catch (error) {
-        console.error('Crawler preview middleware error:', error);
+        logger.error('Crawler preview middleware error:', error);
         return next();
     }
 }
